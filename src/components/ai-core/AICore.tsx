@@ -1,0 +1,174 @@
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+
+import { parseHexColor } from '@/components/shell/wallpaper-field';
+import { getDevicePixelRatio, useAnimationFrame } from '@/hooks/use-animation-frame';
+import { useReducedMotion } from '@/hooks/use-media-query';
+import { cn } from '@/lib/cn';
+import { themeService } from '@/services/theme-service';
+import { useThemeStore } from '@/stores/use-theme-store';
+import type { AssistantMode } from '@/types/assistant';
+import { CORE_MODES } from './ai-core-modes';
+import { CoreRings } from './CoreRings';
+import { CoreWaveform } from './CoreWaveform';
+import { ParticleField, pickParticleCount } from './particle-field';
+
+interface AICoreProps {
+  readonly mode: AssistantMode;
+  /** Contador de pulsos — incrementá-lo dispara uma onda a partir do centro. */
+  readonly pulseCount: number;
+  /** `true` depois da entrada em cascata do desktop. */
+  readonly isVisible: boolean;
+  /** `true` quando o estado abaixo do núcleo já entrou. */
+  readonly isStateVisible: boolean;
+  /** Encolhe o núcleo quando há janelas abertas, para não competir com elas. */
+  readonly isShrunk: boolean;
+  readonly onActivate: () => void;
+}
+
+/**
+ * AI Core.
+ *
+ * Três camadas independentes: partículas e radar em canvas, anéis em SVG e a
+ * waveform em DOM. Cada uma anima-se sozinha e todas param quando a janela vai
+ * para segundo plano.
+ *
+ * O componente não sabe nada sobre voz nem sobre a IA — recebe um `mode` e
+ * desenha-o. Quem decide o modo é o `useVoice` e o `AIService`.
+ */
+export function AICore({
+  mode,
+  pulseCount,
+  isVisible,
+  isStateVisible,
+  isShrunk,
+  onActivate,
+}: AICoreProps): React.JSX.Element {
+  const hostRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fieldRef = useRef(new ParticleField());
+  const lastFrameRef = useRef(0);
+
+  const theme = useThemeStore((state) => state.theme);
+  const reducedMotion = useReducedMotion();
+  const config = CORE_MODES[mode];
+
+  // O canvas precisa da cor resolvida: `var(--accent)` não lhe diz nada.
+  // Os modos com cor fixa (analisar, responder, falha) ignoram o tema de
+  // propósito, para se lerem à mesma no Solar ou no Titanium.
+  const modeColor = useMemo(
+    () => config.color ?? themeService.readAccentColor(),
+    [config.color, theme],
+  );
+  const rgbColor = useMemo(() => parseHexColor(modeColor), [modeColor]);
+
+  const resize = useCallback((): void => {
+    const host = hostRef.current;
+    const canvas = canvasRef.current;
+    if (!host || !canvas) return;
+
+    const rect = host.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const dpr = getDevicePixelRatio();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+
+    fieldRef.current.resize(
+      canvas.width,
+      canvas.height,
+      dpr,
+      pickParticleCount(window.innerWidth, reducedMotion),
+    );
+  }, [reducedMotion]);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(host);
+    return () => observer.disconnect();
+  }, [resize]);
+
+  // Cada incremento de `pulseCount` é um clique no núcleo.
+  useEffect(() => {
+    if (pulseCount > 0) fieldRef.current.addRipple();
+  }, [pulseCount]);
+
+  useAnimationFrame(
+    useCallback(
+      (elapsed: number) => {
+        const ctx = canvasRef.current?.getContext('2d');
+        if (!ctx) return;
+
+        // Normalizar por 60 FPS: num ecrã de 120 Hz o núcleo rodaria ao dobro.
+        const delta = lastFrameRef.current === 0 ? 1 : (elapsed - lastFrameRef.current) / 16.7;
+        lastFrameRef.current = elapsed;
+
+        fieldRef.current.draw(ctx, config, rgbColor, Math.min(delta, 3));
+      },
+      [config, rgbColor],
+    ),
+  );
+
+  return (
+    <>
+      <div
+        ref={hostRef}
+        role="button"
+        tabIndex={0}
+        aria-label="Ativar assistente por voz"
+        onClick={onActivate}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onActivate();
+          }
+        }}
+        className={cn(
+          'relative h-[420px] max-h-[78vmin] w-[420px] max-w-[78vmin] cursor-pointer',
+          'transition-[transform,opacity] duration-[600ms] ease-out',
+          isVisible ? 'opacity-100' : 'opacity-0',
+          !isVisible && 'scale-[.86]',
+          isVisible && (isShrunk ? 'scale-75' : 'scale-100'),
+        )}
+      >
+        <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+        <CoreRings mode={mode} />
+
+        <div
+          className={cn(
+            'pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
+            'pl-[0.42em] text-[15px] font-light tracking-[0.42em] text-white',
+            '[text-shadow:0_0_18px_rgba(0,207,255,.5)]',
+          )}
+        >
+          JARVIS
+        </div>
+      </div>
+
+      <div
+        className={cn(
+          'mt-s3 flex flex-col items-center gap-3 transition-opacity duration-[500ms] ease-out',
+          isStateVisible ? 'opacity-100 delay-200' : 'opacity-0',
+        )}
+      >
+        {/* `aria-live` anuncia a mudança de estado a quem usa leitor de ecrã. */}
+        <div
+          className="flex items-center gap-[9px] text-label uppercase transition-colors duration-300"
+          style={{ color: modeColor }}
+          aria-live="polite"
+        >
+          <span
+            className="h-[6px] w-[6px] rounded-full bg-current shadow-[0_0_10px_currentColor] motion-safe:animate-breathe"
+            aria-hidden="true"
+          />
+          <span>{config.label}</span>
+        </div>
+
+        <CoreWaveform mode={mode} color={modeColor} />
+      </div>
+    </>
+  );
+}

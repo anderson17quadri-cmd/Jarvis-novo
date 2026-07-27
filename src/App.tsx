@@ -1,10 +1,12 @@
 import { useCallback, useEffect } from 'react';
 
+import { AICore } from '@/components/ai-core/AICore';
 import { AppShell } from '@/components/shell/AppShell';
 import { CustomCursor } from '@/components/shell/CustomCursor';
 import { Wallpaper } from '@/components/shell/Wallpaper';
 import { initializePlatform } from '@/platform';
 import { notificationService } from '@/services/notification-service';
+import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import type { AppId } from '@/types/app';
 
@@ -16,10 +18,23 @@ import type { AppId } from '@/types/app';
  */
 export function App(): React.JSX.Element {
   const hydrateTheme = useThemeStore((state) => state.hydrate);
+  const mode = useAssistantStore((state) => state.mode);
+  const pulseCount = useAssistantStore((state) => state.pulseCount);
+  const pulse = useAssistantStore((state) => state.pulse);
+  const setMode = useAssistantStore((state) => state.setMode);
 
   useEffect(() => {
     void initializePlatform().then(() => hydrateTheme());
   }, [hydrateTheme]);
+
+  // Provisório até ao bloco 7: percorre os modos para se ver o núcleo em cada um.
+  const handleActivateCore = useCallback((): void => {
+    const order = ['idle', 'listening', 'thinking', 'speaking', 'error'] as const;
+    const current = useAssistantStore.getState().mode;
+    const next = order[(order.indexOf(current) + 1) % order.length] ?? 'idle';
+    pulse();
+    setMode(next);
+  }, [pulse, setMode]);
 
   const handleLaunchApp = useCallback((appId: AppId): void => {
     notificationService.info('Janela', `"${appId}" abre no bloco do WindowManager.`);
@@ -42,10 +57,14 @@ export function App(): React.JSX.Element {
         onOpenNotifications={() => undefined}
         onLogout={() => undefined}
       >
-        <div className="text-center">
-          <h1 className="pl-[0.42em] text-h2 tracking-[0.42em]">JARVIS</h1>
-          <p className="mt-s2 text-desc text-t2">O núcleo entra no bloco 4.</p>
-        </div>
+        <AICore
+          mode={mode}
+          pulseCount={pulseCount}
+          isVisible
+          isStateVisible
+          isShrunk={false}
+          onActivate={handleActivateCore}
+        />
       </AppShell>
     </>
   );
