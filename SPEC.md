@@ -171,14 +171,29 @@ da Fase 2.
 
 Quatro pontos em que o código não segue a spec à letra. Todos deliberados.
 
-### 1. Estrutura de pastas
+### 1. Estrutura de pastas — resolvida como híbrido
 
 A Parte 3 pede `src/{app,components/{layouts,pages,widgets,assistant,system},contexts,store,api,utils,constants,assets,animations,workers,data}`.
 
-O que existe é a árvore aprovada no arranque desta sessão, organizada por
-domínio (`platform/`, `services/`, `stores/`, `components/{shell,ai-core,windows,boot,auth}/`, `apps/`) em vez de por tipo de ficheiro.
+**Decisão:** acrescentar as pastas em falta sem mover nada do que já existe.
 
-Reorganizar é mecânico mas toca em 144 ficheiros. **Fica por decidir.**
+Criadas: `constants/`, `utils/`, `animations/`, `workers/`, `assets/`. Cada uma
+com um `README.md` que define o que lhe pertence — e, tão importante, o que
+continua noutro sítio e não deve ser arrumado para lá.
+
+Mantidas as pastas por domínio (`platform/`, `services/`, `stores/`,
+`components/{shell,ai-core,windows,boot,auth,…}/`, `apps/`, `design-system/`).
+Continuam a divergir dos nomes da Parte 3.
+
+**Porquê não renomear:** mover ~60 ficheiros e reescrever os imports é churn
+puro num código que passa em 133 testes, e apagaria o histórico de `git blame`
+de tudo. A vantagem seria cosmética. As pastas por domínio também dizem mais:
+`components/ai-core/` diz o que lá está, `components/assistant/` não distingue o
+núcleo da janela de conversa.
+
+Pastas da Parte 3 ainda não criadas, por não terem para onde ir: `app/`,
+`contexts/` (o estado é Zustand, sem Context), `api/` (sem rede na Fase 1),
+`data/`, `components/{layouts,pages,widgets}`. Entram quando tiverem conteúdo.
 
 ### 2. Stack
 

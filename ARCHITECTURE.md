@@ -279,6 +279,39 @@ Numa fase seguinte, o mais correto é a chamada sair do lado Rust: assim a chave
 
 ---
 
+## Onde pôr um ficheiro novo
+
+A estrutura tem duas gerações. As pastas por domínio (`platform/`, `services/`,
+`stores/`, `components/…`, `apps/`) vêm da árvore original. As pastas da Parte 3
+(`constants/`, `utils/`, `animations/`, `workers/`, `assets/`) foram
+acrescentadas depois, e é para lá que o código novo desse tipo vai.
+
+**Nada foi movido.** Um ficheiro que já existe e passa nos testes fica onde está;
+a convenção aplica-se ao que se escreve a partir de agora. Cada uma das cinco
+pastas tem um `README.md` que define a fronteira exata — incluindo o que
+*continua* noutro sítio e não deve ser arrumado para lá.
+
+| Vais escrever | Vai para |
+|---|---|
+| Componente do shell | `components/shell/` |
+| Componente do núcleo | `components/ai-core/` |
+| Janela nova | `apps/<nome>/` + entrada em `apps/registry.ts` |
+| Hook | `hooks/use-nome.ts` |
+| Serviço | `services/nome-service.ts` |
+| Store | `stores/use-nome-store.ts` |
+| Função pura, sem dependências | `utils/` |
+| Envolver biblioteca de terceiros | `lib/` |
+| Constante usada por 2+ módulos | `constants/` |
+| Constante de um só módulo | junto do módulo |
+| Variante Framer Motion partilhada | `animations/` |
+| `@keyframes` de um só componente | `styles/<componente>.css` |
+| Token de cor, raio, duração, curva | `design-system/tokens.ts` |
+| Trabalho pesado fora da thread principal | `workers/` |
+| Som, tipo de letra, imagem importada | `assets/` |
+| Comando nativo | `src-tauri/src/commands/` + método no adapter |
+
+---
+
 ## Convenções
 
 | | |
