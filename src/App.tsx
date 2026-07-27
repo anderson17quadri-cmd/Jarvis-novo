@@ -38,7 +38,7 @@ export function App(): React.JSX.Element {
   const completeBoot = useSessionStore((state) => state.completeBoot);
   const authenticate = useSessionStore((state) => state.authenticate);
   const logout = useSessionStore((state) => state.logout);
-  const resetBootFlag = useSessionStore((state) => state.resetBootFlag);
+  const restartBootSequence = useSessionStore((state) => state.restartBootSequence);
 
   const hydrateTheme = useThemeStore((state) => state.hydrate);
   const setTheme = useThemeStore((state) => state.setTheme);
@@ -114,11 +114,9 @@ export function App(): React.JSX.Element {
       launchApp: launch,
       setTheme,
       toggleMicrophone: toggleListening,
-      restartBootSequence: () => {
-        void resetBootFlag().then(() => window.location.reload());
-      },
+      restartBootSequence: () => void restartBootSequence(),
     }),
-    [launch, resetBootFlag, setTheme, toggleListening],
+    [launch, restartBootSequence, setTheme, toggleListening],
   );
 
   return (

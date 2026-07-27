@@ -4,6 +4,7 @@
 @import './boot.css';
 @import './login.css';
 @import './windows.css';
+@import './loader.css';
 
 @tailwind base;
 @tailwind components;

@@ -18,8 +18,14 @@ interface SessionState {
    * termina a sessão vê o login e não os dez passos outra vez.
    */
   logout: () => void;
-  /** Só para o comando "reiniciar sequência de arranque" da paleta. */
-  resetBootFlag: () => Promise<void>;
+  /**
+   * Repõe a sequência de arranque completa e recarrega.
+   *
+   * Vive aqui, e não em quem chama, porque tem dois pontos de entrada — a
+   * Command Palette e a janela de Personalização (Parte 4 §Pular boot). Duas
+   * cópias divergiriam à primeira alteração.
+   */
+  restartBootSequence: () => Promise<void>;
 }
 
 export const useSessionStore = create<SessionState>((set) => ({
@@ -27,7 +33,12 @@ export const useSessionStore = create<SessionState>((set) => ({
   completeBoot: () => set({ phase: 'login' }),
   authenticate: () => set({ phase: 'desktop' }),
   logout: () => set({ phase: 'login' }),
-  resetBootFlag: async () => {
+
+  restartBootSequence: async () => {
     await storageService.set(STORAGE_KEYS.booted, false);
+    // Recarregar é a forma honesta de reiniciar: garante que tudo — canvas,
+    // temporizadores, serviços — volta ao estado de arranque, em vez de
+    // remontar componentes por cima de estado antigo.
+    window.location.reload();
   },
 }));

@@ -1,6 +1,7 @@
 import { Suspense, useCallback, useState } from 'react';
 import { Minus, Square, X } from 'lucide-react';
 
+import { CoreLoader } from '@/components/ui/CoreLoader';
 import { useIsCompact } from '@/hooks/use-media-query';
 import { useWindowDrag, useWindowResize } from '@/hooks/use-window-drag';
 import { cn } from '@/lib/cn';
@@ -193,8 +194,8 @@ function SnapPreview({ edge }: { readonly edge: SnapEdge }): React.JSX.Element |
 
 function WindowLoading(): React.JSX.Element {
   return (
-    <div className="flex h-full items-center justify-center text-desc text-t3">
-      A carregar o módulo…
+    <div className="flex h-full items-center justify-center">
+      <CoreLoader label="A carregar o módulo" />
     </div>
   );
 }

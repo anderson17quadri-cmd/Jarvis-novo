@@ -21,7 +21,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⬜ Fase 2+ · ⚠️ divergência 
 | Cursor personalizado | ✅ | `components/shell/CustomCursor.tsx` |
 | Wallpaper procedural | ✅ | `components/shell/Wallpaper.tsx` |
 | Grid de 12 colunas | ⬜ | O layout usa flex e grid próprios; o sistema de 12 colunas só faz sentido com o sistema de widgets |
-| Loaders futuristas | 🟡 | O arranque tem-nos; o `Suspense` das janelas usa texto |
+| Loaders futuristas | ✅ | `components/ui/CoreLoader.tsx` — três anéis concêntricos, sem spinner comum |
 
 ---
 
@@ -59,7 +59,7 @@ Legenda: ✅ implementado · 🟡 parcial · ⬜ Fase 2+ · ⚠️ divergência 
 | Duração 6–10s | ✅ | ~9s |
 | Efeitos sonoros | ⬜ | Sem recursos de áudio na Fase 1 |
 | Modo de erro simulado | ⬜ | Marcado como opcional na spec |
-| Botão "Mostrar sequência completa" nas configurações | 🟡 | Está na Command Palette, não na janela de Personalização |
+| Botão "Mostrar sequência completa" nas configurações | ✅ | Na janela de Personalização e na Command Palette; a ação vive no `useSessionStore`, sem duplicação |
 
 ---
 

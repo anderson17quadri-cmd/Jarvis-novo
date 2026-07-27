@@ -259,7 +259,34 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
             onCancel={() => setMethod('password')}
           />
         ) : (
-          <>
+          /*
+           * Um `<form>` a sério, e não um `<div>` com um handler de Enter: é o
+           * que faz os gestores de palavras-passe e o autopreenchimento do
+           * Android reconhecerem o campo, e o que dá o Enter de graça. O Chrome
+           * avisa na consola quando um campo de palavra-passe fica fora de um
+           * formulário — com razão.
+           */
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              submit();
+            }}
+          >
+            {/*
+              Campo de utilizador escondido. O sistema é de um só utilizador e
+              não o pede, mas sem ele os gestores de palavras-passe não sabem a
+              que conta associar a credencial — e o Chrome avisa-o na consola.
+              `hidden` mantém-no fora da ordem de tabulação e do leitor de ecrã.
+            */}
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              value="anderson.quadri"
+              readOnly
+              hidden
+            />
+
             <div
               className={cn(
                 'mt-s3 flex h-14 items-center gap-2.5 rounded-input border border-line bg-white/[.03] px-4',
@@ -273,11 +300,9 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
                 type={isPasswordVisible ? 'text' : 'password'}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                onKeyDown={(event) => {
-                  trackCapsLock(event);
-                  if (event.key === 'Enter') submit();
-                }}
+                onKeyDown={trackCapsLock}
                 onKeyUp={trackCapsLock}
+                name="password"
                 placeholder="Palavra-passe"
                 aria-label="Palavra-passe"
                 aria-describedby="pw-strength pw-caps"
@@ -329,8 +354,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
             )}
 
             <button
-              type="button"
-              onClick={submit}
+              type="submit"
               className={cn(
                 'mt-s2 flex h-[52px] w-full items-center justify-center gap-2.5 rounded-btn',
                 'bg-accent text-[15px] font-semibold text-[#04121A]',
@@ -341,7 +365,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
               <Unlock className="h-[17px] w-[17px]" aria-hidden="true" />
               Entrar
             </button>
-          </>
+          </form>
         )}
 
         <div className="mt-s3 flex justify-center gap-2.5">

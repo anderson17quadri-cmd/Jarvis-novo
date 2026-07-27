@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!--
+    Favicon do JARVIS AI OS.
+
+    O núcleo reduzido ao essencial: fundo, três anéis e o ponto central.
+    SVG e não PNG, para ficar nítido em qualquer densidade e continuar a
+    respeitar a Parte 2 §Ícones. As cores são as do tema Classic, literais
+    de propósito — um favicon é pedido antes de o CSS existir, por isso não
+    pode depender de `var(--accent)`.
+  -->
+  <circle cx="32" cy="32" r="32" fill="#05070A" />
+  <circle cx="32" cy="32" r="29" fill="none" stroke="#00A2FF" stroke-width="1.5" opacity=".35" />
+  <circle cx="32" cy="32" r="23" fill="none" stroke="#00CFFF" stroke-width="3" opacity=".85" />
+  <circle cx="32" cy="32" r="16" fill="none" stroke="#00CFFF" stroke-width="1.5" opacity=".5" />
+  <circle cx="32" cy="32" r="10" fill="none" stroke="#00A2FF" stroke-width="2.5" opacity=".7" />
+  <circle cx="32" cy="32" r="4.5" fill="#F2FEFF" />
+</svg>

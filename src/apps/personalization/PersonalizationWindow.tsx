@@ -1,8 +1,9 @@
-import { Check } from 'lucide-react';
+import { Check, RotateCcw } from 'lucide-react';
 
 import { THEMES } from '@/design-system/tokens';
 import { cn } from '@/lib/cn';
 import { notificationService } from '@/services/notification-service';
+import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 
 /**
@@ -14,6 +15,7 @@ import { useThemeStore } from '@/stores/use-theme-store';
 export default function PersonalizationWindow(): React.JSX.Element {
   const theme = useThemeStore((state) => state.theme);
   const setTheme = useThemeStore((state) => state.setTheme);
+  const restartBootSequence = useSessionStore((state) => state.restartBootSequence);
 
   return (
     <div>
@@ -66,6 +68,27 @@ export default function PersonalizationWindow(): React.JSX.Element {
           );
         })}
       </div>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Arranque</p>
+        <p className="mb-3 text-[11.5px] leading-[1.5] text-t3">
+          A sequência completa só corre na primeira vez. Reponha-a para a ver de novo — o
+          sistema recarrega.
+        </p>
+
+        <button
+          type="button"
+          onClick={() => void restartBootSequence()}
+          className={cn(
+            'flex items-center gap-2 rounded-btn border border-line px-4 py-2.5',
+            'text-[12.5px] font-medium text-t2 transition-all duration-hover ease-out',
+            'hover:border-accent/35 hover:bg-accent/[.05] hover:text-accent active:scale-[.98]',
+          )}
+        >
+          <RotateCcw className="h-4 w-4" aria-hidden="true" />
+          Mostrar sequência completa de arranque
+        </button>
+      </section>
     </div>
   );
 }
