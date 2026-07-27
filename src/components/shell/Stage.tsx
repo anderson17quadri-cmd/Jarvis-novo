@@ -33,7 +33,7 @@ export function Stage({ children }: StageProps): React.JSX.Element {
         className={cn(
           'pointer-events-none absolute inset-0 flex flex-col items-center justify-center',
           'transition-opacity duration-screen ease-out',
-          hasWidgets && 'opacity-40',
+          hasWidgets && 'opacity-[.18]',
         )}
       >
         {/* Reativa os eventos só no núcleo, não na camada inteira. */}

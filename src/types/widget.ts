@@ -2,7 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ComponentType, LazyExoticComponent } from 'react';
 
 /** Identificador de um widget. */
-export type WidgetId = 'clock' | 'cpu' | 'ram';
+export type WidgetId = 'clock' | 'cpu' | 'ram' | 'weather' | 'news' | 'mail' | 'music';
 
 /** Categorias da Parte 6.2, para agrupar na paleta e no futuro marketplace. */
 export type WidgetCategory = 'sistema' | 'produtividade' | 'informacao' | 'media';
@@ -56,6 +56,14 @@ export interface WidgetDefinition {
   readonly defaultSize: WidgetSizeName;
   /** Tamanhos que o widget aceita, para o menu de redimensionar. */
   readonly allowedSizes: readonly WidgetSizeName[];
+  /**
+   * Se entra no arranjo inicial.
+   *
+   * Todos os widgets registados juntos não cabem na grelha. Em vez de deixar a
+   * colocação decidir por ordem de registo — e uns nunca aparecerem sem
+   * explicação — a escolha é explícita. Os restantes ligam-se pela paleta.
+   */
+  readonly showByDefault: boolean;
   /** Carregado sob demanda: nenhum widget pesa no arranque. */
   readonly component: LazyExoticComponent<ComponentType>;
 }
@@ -80,5 +88,12 @@ export const GRID_COLUMNS = 12;
 export const GRID_ROW_HEIGHT = 84;
 /** Espaço entre células — corresponde ao token `--s2`. */
 export const GRID_GAP = 16;
-/** Quantas linhas a grelha oferece antes de precisar de scroll. */
-export const GRID_ROWS = 8;
+/**
+ * Linhas da grelha.
+ *
+ * Doze, não oito: os sete widgets registados somam 102 células, e com oito
+ * linhas (96) não cabiam todos. Pior — mesmo com área suficiente, faltava um
+ * bloco contíguo para os widgets grandes, e mostrá-los pela paleta falhava sem
+ * o utilizador perceber porquê. O palco já faz scroll vertical.
+ */
+export const GRID_ROWS = 12;

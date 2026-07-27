@@ -1,0 +1,46 @@
+/**
+ * Barra de progresso arrastável do widget de música.
+ *
+ * O `input[type=range]` nativo não herda o design system em lado nenhum, e cada
+ * motor desenha-o à sua maneira. Aqui é reconstruído com os tokens.
+ */
+
+.music-range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 99px;
+  background: rgb(255 255 255 / 0.08);
+  cursor: pointer;
+  outline: none;
+}
+
+.music-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+  transition: transform var(--d-hover) var(--e-out);
+}
+
+.music-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.music-range:hover::-webkit-slider-thumb,
+.music-range:active::-webkit-slider-thumb {
+  transform: scale(1.25);
+}
+
+.music-range:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}

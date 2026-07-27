@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { Clock, Cpu, MemoryStick } from 'lucide-react';
+import { Clock, CloudSun, Cpu, Mail, MemoryStick, Music, Newspaper } from 'lucide-react';
 
 import type { WidgetDefinition, WidgetId } from '@/types/widget';
 
@@ -23,6 +23,7 @@ export const WIDGET_REGISTRY: Readonly<Record<WidgetId, WidgetDefinition>> = {
     permissions: { systemMetrics: false, network: false, storage: false },
     defaultSize: 'small',
     allowedSizes: ['small', 'medium', 'wide'],
+    showByDefault: true,
     component: lazy(() => import('./clock/ClockWidget')),
   },
 
@@ -35,6 +36,7 @@ export const WIDGET_REGISTRY: Readonly<Record<WidgetId, WidgetDefinition>> = {
     permissions: { systemMetrics: true, network: false, storage: false },
     defaultSize: 'medium',
     allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: true,
     component: lazy(() => import('./cpu/CpuWidget')),
   },
 
@@ -47,7 +49,65 @@ export const WIDGET_REGISTRY: Readonly<Record<WidgetId, WidgetDefinition>> = {
     permissions: { systemMetrics: true, network: false, storage: false },
     defaultSize: 'medium',
     allowedSizes: ['small', 'medium', 'wide'],
+    showByDefault: false,
     component: lazy(() => import('./ram/RamWidget')),
+  },
+
+  /*
+   * Os quatro seguintes declaram `network: true` porque é disso que vão
+   * precisar quando tiverem provedores reais. Hoje os provedores são simulados
+   * e não abrem uma única ligação — a permissão é o contrato, não o estado.
+   */
+  weather: {
+    id: 'weather',
+    name: 'Clima',
+    description: 'Condição atual, sensação, vento e previsão a 7 dias.',
+    icon: CloudSun,
+    category: 'informacao',
+    permissions: { systemMetrics: false, network: true, storage: false },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: true,
+    component: lazy(() => import('./weather/WeatherWidget')),
+  },
+
+  news: {
+    id: 'news',
+    name: 'Notícias',
+    description: 'Manchetes por categoria, com favoritos e leitura rápida.',
+    icon: Newspaper,
+    category: 'informacao',
+    permissions: { systemMetrics: false, network: true, storage: false },
+    defaultSize: 'large',
+    allowedSizes: ['medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./news/NewsWidget')),
+  },
+
+  mail: {
+    id: 'mail',
+    name: 'Email',
+    description: 'Caixa de entrada, por ler e mensagens que pedem ação.',
+    icon: Mail,
+    category: 'produtividade',
+    permissions: { systemMetrics: false, network: true, storage: false },
+    defaultSize: 'large',
+    allowedSizes: ['medium', 'wide', 'large'],
+    showByDefault: true,
+    component: lazy(() => import('./mail/MailWidget')),
+  },
+
+  music: {
+    id: 'music',
+    name: 'Música',
+    description: 'Faixa atual e controlos de reprodução.',
+    icon: Music,
+    category: 'media',
+    permissions: { systemMetrics: false, network: true, storage: false },
+    defaultSize: 'wide',
+    allowedSizes: ['wide', 'medium', 'large'],
+    showByDefault: true,
+    component: lazy(() => import('./music/MusicWidget')),
   },
 };
 

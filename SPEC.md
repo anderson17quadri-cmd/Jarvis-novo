@@ -20,7 +20,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 180 testes |
+| Vitest | 205 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -55,6 +55,8 @@ npm run tauri android dev      # dispositivo Android
 
 | Funcionalidade | Onde vive | Estado |
 |---|---|:--:|
+| **Rede real** — meteorologia, notícias, email | `services/{weather,news,mail}/providers/` | 🚫 bloqueado |
+| **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ⚠️ por testar |
 | Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
 | Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
@@ -79,6 +81,11 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
 - Comandos Rust novos
 - Qualquer integração nativa adicional (bandeja, atalhos, ficheiros, energia)
 - Builds Windows e Android
+- **Chamadas de rede reais.** Os serviços de meteorologia, notícias e email têm
+  provedor e interface prontos, mas só a implementação simulada. Ligar um
+  provedor HTTP é escrever uma classe e registá-la — nenhum componente muda
+- **Reprodução de áudio.** O widget de música controla e mostra o estado; tocar
+  som exigiria ficheiros locais ou integração com o Spotify
 - Funcionalidades cuja verificação exija um dos dois alvos
 
 Se um item da Fase 2 precisar de nativo para funcionar, para-se e regista-se

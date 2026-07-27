@@ -5,6 +5,7 @@
 @import './login.css';
 @import './windows.css';
 @import './loader.css';
+@import './range.css';
 
 @tailwind base;
 @tailwind components;

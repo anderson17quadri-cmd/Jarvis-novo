@@ -117,8 +117,25 @@ export function App(): React.JSX.Element {
       toggleMicrophone: toggleListening,
       restartBootSequence: () => void restartBootSequence(),
       toggleWidget: (widgetId) => {
+        const wasVisible = useWidgetStore
+          .getState()
+          .widgets.find((widget) => widget.id === widgetId)?.isVisible;
+
         useWidgetStore.getState().toggle(widgetId);
         void useWidgetStore.getState().persist();
+
+        // Mostrar pode falhar por falta de espaço na grelha. Silenciar isso
+        // faria o comando parecer avariado.
+        const isVisible = useWidgetStore
+          .getState()
+          .widgets.find((widget) => widget.id === widgetId)?.isVisible;
+
+        if (!wasVisible && !isVisible) {
+          notificationService.warn(
+            'Sem espaço na grelha',
+            'Esconda outro widget ou reduza um antes de mostrar este.',
+          );
+        }
       },
       resetWidgets: () => {
         useWidgetStore.getState().reset();

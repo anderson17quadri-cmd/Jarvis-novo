@@ -13,14 +13,29 @@ describe('useWidgetStore', () => {
   });
 
   describe('arranjo predefinido', () => {
-    it('coloca todos os widgets registados', async () => {
+    it('regista todos os widgets, visíveis ou não', async () => {
       await useWidgetStore.getState().hydrate();
       expect(useWidgetStore.getState().widgets).toHaveLength(ALL_WIDGETS.length);
     });
 
-    it('nenhum se sobrepõe a outro', async () => {
+    it('mostra os marcados com showByDefault, e só esses', async () => {
       await useWidgetStore.getState().hydrate();
-      const placements = useWidgetStore.getState().widgets.map((w) => w.placement);
+
+      for (const definition of ALL_WIDGETS) {
+        const instance = useWidgetStore
+          .getState()
+          .widgets.find((widget) => widget.id === definition.id);
+        expect(instance?.isVisible, definition.id).toBe(definition.showByDefault);
+      }
+    });
+
+    it('nenhum dos visíveis se sobrepõe a outro', async () => {
+      await useWidgetStore.getState().hydrate();
+      // Os escondidos não ocupam lugar; comparar as suas posições não diz nada.
+      const placements = useWidgetStore
+        .getState()
+        .widgets.filter((widget) => widget.isVisible)
+        .map((widget) => widget.placement);
 
       for (let i = 0; i < placements.length; i++) {
         for (let j = i + 1; j < placements.length; j++) {
@@ -32,13 +47,31 @@ describe('useWidgetStore', () => {
       }
     });
 
-    it('todos cabem dentro da grelha', async () => {
+    it('os visíveis cabem dentro da grelha', async () => {
       await useWidgetStore.getState().hydrate();
 
-      for (const widget of useWidgetStore.getState().widgets) {
+      for (const widget of useWidgetStore.getState().widgets.filter((w) => w.isVisible)) {
         const { col, row, colSpan, rowSpan } = widget.placement;
         expect(col + colSpan).toBeLessThanOrEqual(GRID_COLUMNS);
         expect(row + rowSpan).toBeLessThanOrEqual(GRID_ROWS);
+      }
+    });
+
+    it('mostrar um escondido dá-lhe lugar livre, sem tapar nenhum visível', async () => {
+      await useWidgetStore.getState().hydrate();
+
+      const hidden = ALL_WIDGETS.find((definition) => !definition.showByDefault);
+      expect(hidden).toBeDefined();
+
+      useWidgetStore.getState().show(hidden!.id);
+
+      const visible = useWidgetStore.getState().widgets.filter((w) => w.isVisible);
+      const shown = visible.find((widget) => widget.id === hidden!.id);
+      expect(shown).toBeDefined();
+
+      for (const other of visible) {
+        if (other.id === hidden!.id) continue;
+        expect(overlaps(shown!.placement, other.placement), other.id).toBe(false);
       }
     });
   });
@@ -177,9 +210,13 @@ describe('useWidgetStore', () => {
 
       useWidgetStore.getState().reset();
 
-      expect(
-        useWidgetStore.getState().widgets.every((widget) => widget.isVisible),
-      ).toBe(true);
+      // Volta ao que cada definição declara, não a "tudo visível".
+      for (const definition of ALL_WIDGETS) {
+        const instance = useWidgetStore
+          .getState()
+          .widgets.find((widget) => widget.id === definition.id);
+        expect(instance?.isVisible, definition.id).toBe(definition.showByDefault);
+      }
     });
   });
 });

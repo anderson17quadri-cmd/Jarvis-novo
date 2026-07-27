@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { clampPlacement, findFreeSlot, resolveDrop } from '@/components/widgets/grid';
+import { clampPlacement, findFreeSlot, overlaps, resolveDrop } from '@/components/widgets/grid';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { ALL_WIDGETS, getWidgetDefinition } from '@/widgets/registry';
 import {
@@ -29,14 +29,31 @@ interface WidgetState {
   reset: () => void;
 }
 
-/** Widgets visíveis à primeira utilização, já sem se sobreporem. */
+/**
+ * Arranjo inicial.
+ *
+ * Só os widgets marcados com `showByDefault` entram visíveis — todos juntos não
+ * cabem na grelha. Os restantes ficam registados e escondidos, prontos a
+ * aparecer pela Command Palette sem perderem posição.
+ */
 function defaultLayout(): WidgetInstance[] {
   const placed: WidgetInstance[] = [];
 
   for (const definition of ALL_WIDGETS) {
     const size = WIDGET_SIZES[definition.defaultSize];
+
+    if (!definition.showByDefault) {
+      // Sem lugar atribuído ainda: recebe um quando for mostrado.
+      placed.push({
+        id: definition.id,
+        placement: { col: 0, row: 0, ...size },
+        isVisible: false,
+      });
+      continue;
+    }
+
     const slot = findFreeSlot(
-      placed.map((widget) => widget.placement),
+      placed.filter((widget) => widget.isVisible).map((widget) => widget.placement),
       size.colSpan,
       size.rowSpan,
     );
@@ -53,25 +70,35 @@ export const useWidgetStore = create<WidgetState>((set, get) => ({
 
   show: (id) =>
     set((state) => {
+      const visible = state.widgets
+        .filter((widget) => widget.isVisible && widget.id !== id)
+        .map((widget) => widget.placement);
+
       const existing = state.widgets.find((widget) => widget.id === id);
+      const size = WIDGET_SIZES[getWidgetDefinition(id).defaultSize];
+
+      // A posição guardada só serve se continuar livre. Um widget escondido
+      // desde o arranque não tem lugar atribuído, e reaparecer em cima de
+      // outro seria pior do que reaparecer noutro sítio.
+      const canKeepPlacement =
+        existing !== undefined && !visible.some((taken) => overlaps(existing.placement, taken));
+
+      const placement = canKeepPlacement
+        ? existing.placement
+        : findFreeSlot(visible, size.colSpan, size.rowSpan);
+
+      // Sem espaço, não se empilha por cima — quem chama avisa o utilizador.
+      if (!placement) return state;
+
       if (existing) {
         return {
           widgets: state.widgets.map((widget) =>
-            widget.id === id ? { ...widget, isVisible: true } : widget,
+            widget.id === id ? { ...widget, placement, isVisible: true } : widget,
           ),
         };
       }
 
-      const size = WIDGET_SIZES[getWidgetDefinition(id).defaultSize];
-      const slot = findFreeSlot(
-        state.widgets.filter((w) => w.isVisible).map((w) => w.placement),
-        size.colSpan,
-        size.rowSpan,
-      );
-      // Sem espaço, não se empilha por cima — o widget simplesmente não entra.
-      if (!slot) return state;
-
-      return { widgets: [...state.widgets, { id, placement: slot, isVisible: true }] };
+      return { widgets: [...state.widgets, { id, placement, isVisible: true }] };
     }),
 
   hide: (id) =>
