@@ -7,6 +7,104 @@ Legenda: ✅ implementado · 🟡 parcial · ⬜ Fase 2+ · ⚠️ divergência 
 
 ---
 
+# ⚠️ Estado de verificação
+
+> **Abre por aqui.** Esta secção diz o que está confirmado, o que está por
+> confirmar e o que ficou para trás. Mantém-se atualizada a cada bloco.
+
+## 1. Confirmado
+
+Verificado num contentor Linux, e a interface conduzida em Chromium com Playwright.
+
+| | |
+|---|---|
+| `tsc --noEmit` | limpo, strict total |
+| ESLint | 0 erros |
+| Vitest | 139 testes |
+| `vite build` | produz |
+| `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
+| `npm run dev` | arranca sem avisos; consola do browser limpa |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual |
+
+O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
+
+## 2. Por confirmar — só com Tauri nativo
+
+**Nada disto foi alguma vez executado.** O código compila para estes alvos, mas
+compilar não é correr. Fica por verificar até haver um PC com Windows e um
+dispositivo Android.
+
+### Primeiro teste a correr, antes de tudo o resto
+
+```bash
+npm install     # sem --legacy-peer-deps
+```
+
+Um `npm install` limpo já falhou uma vez, com `ERESOLVE`: o `@eslint/js` estava
+numa versão que exigia `eslint@^10` num projeto preso ao 9. Num `node_modules`
+já povoado não dava sinal — só num clone novo. Corrigido, mas é o primeiro
+sítio onde reaparece uma regressão de dependências, por isso corre-se primeiro.
+
+### Depois
+
+```bash
+npm run tauri dev              # Windows
+npm run android:init           # uma vez, gera o projeto Gradle
+npm run tauri android dev      # dispositivo Android
+```
+
+| Funcionalidade | Onde vive | Estado |
+|---|---|:--:|
+| Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ⚠️ por testar |
+| Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
+| Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
+| Atalho global `CTRL+ALT+J` | `src-tauri/src/shortcuts.rs` | ⚠️ por testar |
+| Notificações nativas do sistema | plugin `notification` | ⚠️ por testar |
+| Persistência via plugin `store` | `services/storage-service.ts` | ⚠️ por testar |
+| Diálogos nativos de ficheiro | plugin `dialog` | ⚠️ por testar |
+| Build Windows (MSI e NSIS) | `npm run tauri build` | ⚠️ por testar |
+| Build Android (APK e AAB) | `npm run android:build` | ⚠️ por testar |
+
+> No browser, tudo isto está desligado nas capacidades do `WebAdapter` e
+> substituído por simulação ou por vazio. Ver [PLATFORM.md](PLATFORM.md).
+
+## 3. Regra em vigor a partir daqui
+
+A **Fase 2 avançou sem essa confirmação, por decisão do utilizador**, e apenas
+na parte que não toca no nativo — o sistema de widgets, testável em browser via
+`WebAdapter`.
+
+**Fica bloqueado até a Fase 1 correr num PC a sério:**
+
+- Comandos Rust novos
+- Qualquer integração nativa adicional (bandeja, atalhos, ficheiros, energia)
+- Builds Windows e Android
+- Funcionalidades cuja verificação exija um dos dois alvos
+
+Se um item da Fase 2 precisar de nativo para funcionar, para-se e regista-se
+aqui, em vez de se construir às cegas por cima de uma base ainda não validada.
+
+## 4. Pastas da Parte 3 ainda não criadas
+
+Entram quando tiverem conteúdo. Criar diretórios vazios seria estrutura a
+fingir.
+
+| Pasta | Entra quando |
+|---|---|
+| `src/app/` | Houver router com mais do que uma rota. Hoje `main.tsx` e `App.tsx` estão na raiz de `src/` |
+| `src/contexts/` | Houver estado que o Zustand não sirva bem. Hoje não há Context nenhum |
+| `src/api/` | Houver chamadas de rede — provedores de IA reais, meteorologia, calendário |
+| `src/data/` | Os dados de exemplo saírem de dentro das janelas |
+| `src/components/layouts/` | — nome da Parte 3 para o que hoje é `components/shell/` |
+| `src/components/pages/` | Houver rotas a que corresponda uma página |
+| `src/components/widgets/` | **Fase 2, em curso** |
+
+As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
+`assets/` — têm cada uma um `README.md` que define a fronteira. Ver
+[ARCHITECTURE.md](ARCHITECTURE.md) §*Onde pôr um ficheiro novo*.
+
+---
+
 ## Parte 2 — Design System
 
 | Item | | Onde |
