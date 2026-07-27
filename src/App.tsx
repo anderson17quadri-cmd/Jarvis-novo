@@ -19,6 +19,7 @@ import { notificationService } from '@/services/notification-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { CommandActions } from '@/components/command-palette/command-registry';
 
@@ -115,6 +116,15 @@ export function App(): React.JSX.Element {
       setTheme,
       toggleMicrophone: toggleListening,
       restartBootSequence: () => void restartBootSequence(),
+      toggleWidget: (widgetId) => {
+        useWidgetStore.getState().toggle(widgetId);
+        void useWidgetStore.getState().persist();
+      },
+      resetWidgets: () => {
+        useWidgetStore.getState().reset();
+        void useWidgetStore.getState().persist();
+        notificationService.success('Widgets', 'O arranjo predefinido foi reposto.');
+      },
     }),
     [launch, restartBootSequence, setTheme, toggleListening],
   );

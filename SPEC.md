@@ -20,11 +20,11 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 139 testes |
+| Vitest | 180 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, **grelha de widgets com arrastar e persistência** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -97,7 +97,7 @@ fingir.
 | `src/data/` | Os dados de exemplo saírem de dentro das janelas |
 | `src/components/layouts/` | — nome da Parte 3 para o que hoje é `components/shell/` |
 | `src/components/pages/` | Houver rotas a que corresponda uma página |
-| `src/components/widgets/` | **Fase 2, em curso** |
+| `src/components/widgets/` | ✅ criada — grelha, moldura e estados |
 
 As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 `assets/` — têm cada uma um `README.md` que define a fronteira. Ver
@@ -118,7 +118,7 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 | Scrollbar fina azul | ✅ | `globals.css` |
 | Cursor personalizado | ✅ | `components/shell/CustomCursor.tsx` |
 | Wallpaper procedural | ✅ | `components/shell/Wallpaper.tsx` |
-| Grid de 12 colunas | ⬜ | O layout usa flex e grid próprios; o sistema de 12 colunas só faz sentido com o sistema de widgets |
+| Grid de 12 colunas | ✅ | `components/widgets/grid.ts` — 12 colunas fluidas, 4 no compacto |
 | Loaders futuristas | ✅ | `components/ui/CoreLoader.tsx` — três anéis concêntricos, sem spinner comum |
 
 ---
@@ -204,7 +204,7 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 | Encaixe: metades, quartos, ecrã inteiro | ✅ | `components/windows/snap.ts` |
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | |
-| **Sistema de widgets** | ⬜ | Fase 2 — interfaces em `src/plugins/` |
+| **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
 | Múltiplos desktops (1 a 4) | ⬜ | Excluído do âmbito da Fase 1 |
 | Painel lateral de notificações com agrupamento | ⬜ | A Fase 1 tem toasts |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis são Fase 2 |

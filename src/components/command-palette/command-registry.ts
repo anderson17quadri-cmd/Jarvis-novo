@@ -1,12 +1,14 @@
-import { Mic, Palette, RotateCcw, type LucideIcon } from 'lucide-react';
+import { LayoutGrid, Mic, Palette, RotateCcw, type LucideIcon } from 'lucide-react';
 
 import { ALL_APPS } from '@/apps/registry';
 import { THEMES } from '@/design-system/tokens';
+import { ALL_WIDGETS } from '@/widgets/registry';
 import type { AppId } from '@/types/app';
 import type { ThemeId } from '@/design-system/tokens';
+import type { WidgetId } from '@/types/widget';
 
 /** Grupos pela ordem em que aparecem na paleta. */
-export type CommandGroup = 'Aplicações' | 'Sistema' | 'Temas';
+export type CommandGroup = 'Aplicações' | 'Widgets' | 'Sistema' | 'Temas';
 
 export interface Command {
   readonly id: string;
@@ -29,6 +31,8 @@ export interface CommandActions {
   readonly setTheme: (theme: ThemeId) => void;
   readonly toggleMicrophone: () => void;
   readonly restartBootSequence: () => void;
+  readonly toggleWidget: (widgetId: WidgetId) => void;
+  readonly resetWidgets: () => void;
 }
 
 /**
@@ -56,7 +60,25 @@ export function buildCommands(): readonly Command[] {
     run: (actions) => actions.setTheme(theme.id),
   }));
 
+  // Derivados do registo de widgets, tal como as aplicações e os temas.
+  const widgetCommands: Command[] = ALL_WIDGETS.map((widget) => ({
+    id: `widget:${widget.id}`,
+    group: 'Widgets',
+    label: `Mostrar ou esconder ${widget.name}`,
+    icon: widget.icon,
+    hint: 'Widget',
+    run: (actions) => actions.toggleWidget(widget.id),
+  }));
+
   const systemCommands: Command[] = [
+    {
+      id: 'system:reset-widgets',
+      group: 'Sistema',
+      label: 'Repor o arranjo dos widgets',
+      icon: LayoutGrid,
+      hint: 'Widgets',
+      run: (actions) => actions.resetWidgets(),
+    },
     {
       id: 'system:microphone',
       group: 'Sistema',
@@ -76,8 +98,8 @@ export function buildCommands(): readonly Command[] {
   ];
 
   // Ordenados por grupo, para os cabeçalhos não se repetirem na lista.
-  const order: readonly CommandGroup[] = ['Aplicações', 'Sistema', 'Temas'];
-  return [...appCommands, ...systemCommands, ...themeCommands].sort(
+  const order: readonly CommandGroup[] = ['Aplicações', 'Widgets', 'Sistema', 'Temas'];
+  return [...appCommands, ...widgetCommands, ...systemCommands, ...themeCommands].sort(
     (a, b) => order.indexOf(a.group) - order.indexOf(b.group),
   );
 }

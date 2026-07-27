@@ -12,6 +12,8 @@ function createActions(): CommandActions & { calls: string[] } {
     setTheme: (theme) => calls.push(`theme:${theme}`),
     toggleMicrophone: () => calls.push('mic'),
     restartBootSequence: () => calls.push('reboot'),
+    toggleWidget: (widgetId) => calls.push(`widget:${widgetId}`),
+    resetWidgets: () => calls.push('reset-widgets'),
   };
 }
 
