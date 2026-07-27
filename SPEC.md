@@ -20,11 +20,11 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 218 testes |
+| Vitest | 251 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, **grelha de widgets com arrastar e persistência** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, **pesquisa global na paleta**, **painel de notificações**, **loja de plugins** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -57,6 +57,7 @@ npm run tauri android dev      # dispositivo Android
 |---|---|:--:|
 | **Rede real** — meteorologia, notícias, email | `services/{weather,news,mail}/providers/` | 🚫 bloqueado |
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
+| **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
 | Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ⚠️ por testar |
 | Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
 | Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
@@ -86,6 +87,11 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
   provedor HTTP é escrever uma classe e registá-la — nenhum componente muda
 - **Reprodução de áudio.** O widget de música controla e mostra o estado; tocar
   som exigiria ficheiros locais ou integração com o Spotify
+- **Execução de plugins.** A loja está feita — catálogo, categorias, pesquisa,
+  permissões à vista, instalar, ativar, remover, tudo persistido. Instalar
+  escreve num `Record` e nada mais: **nenhum código é descarregado nem
+  executado**. Carregar um plugin a sério exige sandbox, verificação de
+  assinatura e acesso ao sistema de ficheiros
 - Funcionalidades cuja verificação exija um dos dois alvos
 
 Se um item da Fase 2 precisar de nativo para funcionar, para-se e regista-se
@@ -210,11 +216,12 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 | Janelas: arrastar, redimensionar, z-index, persistência | ✅ | |
 | Encaixe: metades, quartos, ecrã inteiro | ✅ | `components/windows/snap.ts` |
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
-| Command Palette | ✅ | |
+| Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
 | Múltiplos desktops (1 a 4) | ⬜ | Excluído do âmbito da Fase 1 |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis são Fase 2 |
+| **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
 
 ---
 
@@ -267,8 +274,14 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 ## Parte 17 — Roadmap
 
 A Fase 1 do roadmap — Boot, Login, Desktop, AI Core, Chat, temas, configurações —
-está entregue, menos os "widgets principais", que dependem do sistema de widgets
-da Fase 2.
+está entregue, incluindo os "widgets principais" (relógio, CPU, RAM, clima,
+notícias, email, música), que entraram com o sistema de widgets.
+
+Da Fase 2, entraram as peças que não precisam do nativo: pesquisa global na
+paleta, painel de notificações com categorias e a interface do Plugin Manager.
+Ficam de fora, por dependerem de coisas ainda não validadas: execução de
+plugins, MCP, motor de automações, Developer Center, múltiplos desktops e
+layouts guardados.
 
 ---
 

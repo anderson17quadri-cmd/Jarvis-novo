@@ -14,7 +14,8 @@ export type AppId =
   | 'projects'
   | 'automations'
   | 'music'
-  | 'browser';
+  | 'browser'
+  | 'plugins';
 
 /**
  * Definição de uma janela.

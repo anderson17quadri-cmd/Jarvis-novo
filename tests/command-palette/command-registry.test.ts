@@ -14,6 +14,9 @@ function createActions(): CommandActions & { calls: string[] } {
     restartBootSequence: () => calls.push('reboot'),
     toggleWidget: (widgetId) => calls.push(`widget:${widgetId}`),
     resetWidgets: () => calls.push('reset-widgets'),
+    openNotifications: () => calls.push('notificacoes'),
+    openExternal: (url) => calls.push(`abrir:${url}`),
+    markMailRead: (id) => calls.push(`lido:${id}`),
   };
 }
 
@@ -74,6 +77,109 @@ describe('filtragem', () => {
 
   it('procura também pelo nome do grupo', () => {
     expect(filterCommands(commands, 'temas').length).toBe(THEMES.length);
+  });
+});
+
+describe('pesquisa global no conteúdo', () => {
+  const content = {
+    mail: [
+      {
+        id: 'm1',
+        from: 'Barbearia Silva',
+        fromAddress: 'geral@barbeariasilva.pt',
+        subject: 'Pedido de demonstração',
+        preview: 'Gostaríamos de ver o sistema.',
+        folder: 'inbox',
+        priority: 'acao',
+        receivedAt: Date.now(),
+        isRead: false,
+        isStarred: false,
+        hasAttachments: false,
+      },
+    ],
+    news: [
+      {
+        id: 'n1',
+        title: 'Modelos locais aproximam-se da nuvem',
+        summary: 'Testes independentes mostram diferenças menores.',
+        source: 'Ciência Hoje',
+        category: 'ciencia',
+        publishedAt: Date.now(),
+        url: 'https://exemplo.pt/a',
+        isRead: false,
+        isFavorite: false,
+      },
+    ],
+    notifications: [
+      {
+        id: 'x1',
+        title: 'Automação concluída',
+        description: 'Prospecção terminada.',
+        kind: 'ok',
+        category: 'automacao',
+        createdAt: Date.now(),
+        durationMs: null,
+        isRead: false,
+        isDismissed: true,
+        actions: [],
+      },
+    ],
+  } as unknown as Parameters<typeof buildCommands>[0];
+
+  const commands = buildCommands(content);
+
+  it('sem pesquisa, o conteúdo não aparece', () => {
+    // Abrir a paleta e ver cinquenta emails antes dos comandos seria inútil.
+    const visible = filterCommands(commands, '');
+    expect(visible.some((command) => command.group === 'Emails')).toBe(false);
+    expect(visible.some((command) => command.group === 'Notícias')).toBe(false);
+  });
+
+  it('encontra um email pelo assunto', () => {
+    const results = filterCommands(commands, 'demonstracao');
+    expect(results.some((command) => command.id === 'mail:m1')).toBe(true);
+  });
+
+  it('encontra um email pelo remetente, que não está na etiqueta', () => {
+    const results = filterCommands(commands, 'barbearia');
+    expect(results.some((command) => command.id === 'mail:m1')).toBe(true);
+  });
+
+  it('encontra uma notícia pelo resumo', () => {
+    const results = filterCommands(commands, 'diferencas menores');
+    expect(results.some((command) => command.id === 'news:n1')).toBe(true);
+  });
+
+  it('encontra uma notificação pela descrição', () => {
+    const results = filterCommands(commands, 'prospeccao');
+    expect(results.some((command) => command.id === 'notif:x1')).toBe(true);
+  });
+
+  it('o conteúdo vem antes dos comandos nos resultados', () => {
+    const results = filterCommands(commands, 'a');
+    const firstContent = results.findIndex((command) =>
+      ['Emails', 'Notícias', 'Notificações'].includes(command.group),
+    );
+    const firstCommand = results.findIndex((command) =>
+      ['Aplicações', 'Sistema', 'Temas'].includes(command.group),
+    );
+
+    expect(firstContent).toBeGreaterThanOrEqual(0);
+    expect(firstContent).toBeLessThan(firstCommand);
+  });
+
+  it('abrir uma notícia passa pelo adapter, não pelo componente', () => {
+    const actions = createActions();
+    commands.find((command) => command.id === 'news:n1')?.run(actions);
+
+    expect(actions.calls).toEqual(['abrir:https://exemplo.pt/a']);
+  });
+
+  it('abrir um email marca-o como lido e abre a janela', () => {
+    const actions = createActions();
+    commands.find((command) => command.id === 'mail:m1')?.run(actions);
+
+    expect(actions.calls).toEqual(['lido:m1', 'launch:emails']);
   });
 });
 

@@ -15,6 +15,7 @@ import {
   type NotificationCategory,
   type NotificationKind,
 } from '@/types/notification';
+import { normalizeSearch as normalize } from '@/utils/text';
 
 const KIND_ICON: Record<NotificationKind, React.ComponentType<{ className?: string }>> = {
   info: Info,
@@ -289,13 +290,4 @@ function CategoryChip({
       {label}
     </button>
   );
-}
-
-/** Compara sem acentos, como a Command Palette. */
-function normalize(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim();
 }

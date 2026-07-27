@@ -16,6 +16,7 @@ import {
   Monitor,
   Music,
   Palette,
+  Puzzle,
   Search,
   Settings,
   StickyNote,
@@ -58,6 +59,7 @@ export const RAIL_ITEMS: readonly (RailItem | null)[] = [
   { id: 'devices', label: 'Dispositivos', icon: Monitor },
   { id: 'analytics', label: 'Analytics', icon: ChartNoAxesColumn, appId: 'system' },
   null,
+  { id: 'plugins', label: 'Plugins', icon: Puzzle, appId: 'plugins' },
   { id: 'settings', label: 'Configurações', icon: Settings, appId: 'themes' },
   { id: 'profile', label: 'Perfil', icon: User },
   { id: 'logout', label: 'Terminar sessão', icon: LogOut, action: 'logout' },
@@ -80,6 +82,7 @@ export const DOCK_ITEMS: readonly DockItem[] = [
   { appId: 'projects', label: 'Projetos', icon: LayoutGrid },
   { appId: 'system', label: 'Recursos', icon: Gauge },
   { appId: 'themes', label: 'Personalização', icon: Palette },
+  { appId: 'plugins', label: 'Plugins', icon: Puzzle },
 ];
 
 /** Ícones usados na sequência de arranque. */

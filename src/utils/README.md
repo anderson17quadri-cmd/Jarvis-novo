@@ -14,6 +14,12 @@ export function clamp(value: number, min: number, max: number): number {
 }
 ```
 
+## O que já cá vive
+
+| Ficheiro | Porquê aqui |
+|---|---|
+| `text.ts` | `normalizeSearch` — tira acentos e caixa. Função pura, e usada por três módulos: Command Palette, painel de notificações e loja de plugins |
+
 ## `utils/` ou `lib/`?
 
 A fronteira é a dependência externa:

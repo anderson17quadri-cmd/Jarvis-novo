@@ -10,6 +10,7 @@ import {
   Mail,
   Music,
   Palette,
+  Puzzle,
   Terminal,
   Zap,
 } from 'lucide-react';
@@ -60,6 +61,14 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     icon: Palette,
     defaultSize: { width: 480, height: 380 },
     component: lazy(() => import('./personalization/PersonalizationWindow')),
+    implemented: true,
+  },
+  plugins: {
+    id: 'plugins',
+    title: 'Plugins',
+    icon: Puzzle,
+    defaultSize: { width: 520, height: 460 },
+    component: lazy(() => import('./plugin-manager/PluginManagerWindow')),
     implemented: true,
   },
 

@@ -17,9 +17,11 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
+import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
+import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
@@ -66,6 +68,7 @@ export function App(): React.JSX.Element {
     void initializePlatform().then(async () => {
       await hydrateTheme();
       await useNotificationStore.getState().hydrate();
+      await usePluginStore.getState().hydrate();
     });
   }, [hydrateTheme]);
 
@@ -151,6 +154,9 @@ export function App(): React.JSX.Element {
         void useWidgetStore.getState().persist();
         notificationService.success('Widgets', 'O arranjo predefinido foi reposto.');
       },
+      openNotifications: () => useNotificationStore.getState().setPanelOpen(true),
+      openExternal: (url) => void getPlatformAdapter().openExternal(url),
+      markMailRead: (messageId) => void mailService.markRead(messageId),
     }),
     [launch, restartBootSequence, setTheme, toggleListening],
   );

@@ -2,6 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { useShallow } from 'zustand/react/shallow';
+
+import { useDataService } from '@/hooks/use-data-service';
+import { mailService } from '@/services/mail/mail-service';
+import { newsService } from '@/services/news/news-service';
+import { useNotificationStore } from '@/stores/use-notification-store';
 import { buildCommands, filterCommands, type CommandActions } from './command-registry';
 
 interface CommandPaletteProps {
@@ -22,7 +28,20 @@ export function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const commands = useMemo(() => buildCommands(), []);
+  // O conteúdo pesquisável vem dos serviços, e muda a cada sondagem.
+  const { data: mailbox } = useDataService(mailService);
+  const { data: feed } = useDataService(newsService);
+  const notifications = useNotificationStore(useShallow((state) => state.notifications));
+
+  const commands = useMemo(
+    () =>
+      buildCommands({
+        mail: mailbox?.messages ?? [],
+        news: feed?.articles ?? [],
+        notifications,
+      }),
+    [feed, mailbox, notifications],
+  );
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
 
   // Cada abertura começa do zero — reabrir com a pesquisa anterior confunde.
@@ -101,7 +120,7 @@ export function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Pesquisar comandos, janelas, temas…"
+            placeholder="Pesquisar comandos, emails, notícias, janelas, temas…"
             aria-label="Pesquisar comandos"
             aria-controls="command-results"
             className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-t3"
