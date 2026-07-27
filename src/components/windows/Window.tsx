@@ -7,7 +7,7 @@ import { cn } from '@/lib/cn';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { AppDefinition } from '@/types/app';
 import type { SnapEdge, WindowInstance, WindowRect } from '@/types/window';
-import { maximizedRect, readViewport } from './snap';
+import { maximizedRect, readViewport, rectForSnapEdge } from './snap';
 
 interface WindowProps {
   readonly instance: WindowInstance;
@@ -21,9 +21,13 @@ interface WindowProps {
  * disso se liga: a janela ocupa a largura toda e empilha-se, porque arrastar
  * janelas num telemóvel não é uma experiência encolhida, é uma má experiência.
  */
+/** Duração da viagem até ao dock, ao minimizar (Parte 9 §Janelas). */
+const MINIMIZE_ANIMATION_MS = 220;
+
 export function Window({ instance, definition }: WindowProps): React.JSX.Element {
   const isCompact = useIsCompact();
   const [snapPreview, setSnapPreview] = useState<SnapEdge>('none');
+  const [isMinimizing, setMinimizing] = useState(false);
 
   const close = useWindowStore((state) => state.close);
   const focus = useWindowStore((state) => state.focus);
@@ -50,6 +54,18 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
     },
     [instance.id, move, persistLayout, resize],
   );
+
+  /**
+   * Minimizar não desaparece: a janela encolhe e "viaja" até ao dock, para o
+   * utilizador ver para onde foi. Só depois sai do ecrã.
+   */
+  const handleMinimize = useCallback((): void => {
+    setMinimizing(true);
+    setTimeout(() => {
+      minimize(instance.id);
+      setMinimizing(false);
+    }, MINIMIZE_ANIMATION_MS);
+  }, [instance.id, minimize]);
 
   const drag = useWindowDrag(instance.rect, {
     onMove: handleMove,
@@ -96,6 +112,8 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
           'motion-safe:animate-window-in',
           // No compacto: largura toda, altura limitada, sem posicionamento livre.
           isCompact && 'inset-x-s2 top-[calc(var(--header-h)+12px)] max-h-[56vh]',
+          // A viagem até ao dock: encolhe em direção ao fundo do ecrã.
+          isMinimizing && 'window-minimizing',
         )}
       >
         <header
@@ -109,7 +127,7 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
           <span className="flex-1 truncate text-[13px] font-medium">{instance.title}</span>
 
           <div className="flex gap-[5px]">
-            <ControlButton label="Minimizar" onClick={() => minimize(instance.id)}>
+            <ControlButton label="Minimizar" onClick={handleMinimize}>
               <Minus />
             </ControlButton>
 
@@ -153,25 +171,16 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
   );
 }
 
-/** Sombra que mostra onde a janela vai ficar ao largar. */
+/**
+ * Sombra que mostra onde a janela vai ficar ao largar.
+ *
+ * Usa a mesma função que faz o encaixe de verdade — se a pré-visualização
+ * calculasse a geometria por sua conta, mais cedo ou mais tarde mostraria uma
+ * coisa e a janela iria para outra.
+ */
 function SnapPreview({ edge }: { readonly edge: SnapEdge }): React.JSX.Element | null {
-  const viewport = readViewport();
-  const rect =
-    edge === 'top'
-      ? maximizedRect(viewport)
-      : edge === 'left'
-        ? {
-            x: viewport.leftInset,
-            y: viewport.topInset,
-            width: (viewport.width - viewport.leftInset) / 2,
-            height: viewport.height - viewport.topInset - viewport.bottomInset,
-          }
-        : {
-            x: viewport.leftInset + (viewport.width - viewport.leftInset) / 2,
-            y: viewport.topInset,
-            width: (viewport.width - viewport.leftInset) / 2,
-            height: viewport.height - viewport.topInset - viewport.bottomInset,
-          };
+  const rect = rectForSnapEdge(edge, readViewport());
+  if (!rect) return null;
 
   return (
     <div

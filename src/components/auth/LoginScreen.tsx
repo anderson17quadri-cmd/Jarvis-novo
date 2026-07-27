@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Accessibility,
   Activity,
   Cpu,
   Eye,
@@ -9,18 +10,26 @@ import {
   Grid3x3,
   HardDrive,
   KeyRound,
+  Languages,
   Lock,
   Monitor,
+  Power,
+  RotateCcw,
   ScanFace,
   Shield,
+  Moon,
   Unlock,
   Wifi,
 } from 'lucide-react';
 
 import { useClock } from '@/hooks/use-clock';
 import { useReducedMotion } from '@/hooks/use-media-query';
+import { useTypewriter } from '@/hooks/use-typewriter';
 import { cn } from '@/lib/cn';
 import { formatLongDate, formatTime } from '@/lib/format';
+import { notificationService } from '@/services/notification-service';
+import { measurePasswordStrength } from './password-strength';
+import { PinKeypad } from './PinKeypad';
 
 /** Frases que o assistente vai dizendo enquanto espera pela autenticação. */
 const ASSISTANT_LINES = [
@@ -37,13 +46,14 @@ const FACE_SCAN_MS = 2_000;
 const GRANT_DELAY_MS = 620;
 
 type HintTone = 'neutral' | 'ok' | 'error';
+type AuthMethod = 'password' | 'pin';
 
 interface LoginScreenProps {
   readonly onAuthenticated: () => void;
 }
 
 /**
- * Ecrã de autenticação.
+ * Ecrã de autenticação (Parte 5).
  *
  * A biometria é simulada — é o que o MVP prevê. Está isolada em handlers
  * próprios para que ligar o Windows Hello mais tarde seja trocar o corpo de
@@ -53,8 +63,10 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
   const now = useClock();
   const reducedMotion = useReducedMotion();
 
+  const [method, setMethod] = useState<AuthMethod>('password');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setPasswordVisible] = useState(false);
+  const [isCapsLockOn, setCapsLockOn] = useState(false);
   const [hint, setHint] = useState<{ text: string; tone: HintTone }>({
     text: ASSISTANT_LINES[0],
     tone: 'neutral',
@@ -66,6 +78,8 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
   const inputRef = useRef<HTMLInputElement>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const isResolvedRef = useRef(false);
+
+  const strength = measurePasswordStrength(password);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -100,12 +114,15 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
       setHint({ text: message, tone: 'ok' });
       timersRef.current.push(
-        setTimeout(() => {
-          setLeaving(true);
-          timersRef.current.push(
-            setTimeout(onAuthenticated, reducedMotion ? 0 : GRANT_DELAY_MS),
-          );
-        }, reducedMotion ? 0 : GRANT_DELAY_MS),
+        setTimeout(
+          () => {
+            setLeaving(true);
+            timersRef.current.push(
+              setTimeout(onAuthenticated, reducedMotion ? 0 : GRANT_DELAY_MS),
+            );
+          },
+          reducedMotion ? 0 : GRANT_DELAY_MS,
+        ),
       );
     },
     [onAuthenticated, reducedMotion],
@@ -133,10 +150,13 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     setScanningFace(true);
     setHint({ text: 'A analisar biometria…', tone: 'neutral' });
     timersRef.current.push(
-      setTimeout(() => {
-        setScanningFace(false);
-        grant('Acesso autorizado.');
-      }, reducedMotion ? 0 : FACE_SCAN_MS),
+      setTimeout(
+        () => {
+          setScanningFace(false);
+          grant('Acesso autorizado.');
+        },
+        reducedMotion ? 0 : FACE_SCAN_MS,
+      ),
     );
   }, [grant, reducedMotion]);
 
@@ -158,6 +178,11 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     }, 130);
   }, [grant, reducedMotion]);
 
+  /** CAPS LOCK só se sabe a partir de um evento de teclado, não do estado. */
+  const trackCapsLock = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
+    setCapsLockOn(event.getModifierState('CapsLock'));
+  }, []);
+
   return (
     <div
       className={cn(
@@ -175,6 +200,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
         <div className="mt-s3 flex flex-wrap justify-center gap-s3">
           <MetaItem value={formatTime(now)} label="Hora" mono />
           <MetaItem value={formatLongDate(now)} label="Data" />
+          <MetaItem value={localTimeZone()} label="Fuso" />
           <MetaItem value="22°" label="Céu limpo" />
           <MetaItem value="Pronta" label="IA" tone="ok" />
         </div>
@@ -182,10 +208,14 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
       <section
         className={cn(
-          'relative w-[min(520px,94vw)] overflow-hidden rounded-card border border-line-2',
+          // Sem `overflow-hidden`: o fio de luz do topo já não transborda, e o
+          // recorte cortava o teclado do PIN, que é mais alto que o cartão base.
+          'relative w-[min(520px,94vw)] rounded-card border border-line-2',
           'bg-[rgb(16_25_34_/_0.55)] px-s3 py-s4 backdrop-blur-glass',
           'shadow-2 [box-shadow:var(--sh-2),inset_0_1px_0_rgb(255_255_255_/_0.07)]',
           isShaking && 'animate-shake',
+          // Glow vermelho no erro (Parte 5 §Erros).
+          hint.tone === 'error' && 'border-danger/40 [box-shadow:0_0_28px_rgba(239,68,68,.22)]',
         )}
       >
         {/* Fio de luz no topo do cartão. */}
@@ -200,7 +230,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
             'border border-accent/[.28] bg-gradient-to-br from-[#1d2f42] to-[#0a141d]',
             'text-[34px] font-light tracking-[0.06em] text-accent',
             'transition-[transform,box-shadow] duration-[240ms] ease-out',
-            'hover:scale-[1.02] hover:shadow-glow',
+            'hover:scale-[1.02] hover:rotate-[1.5deg] hover:shadow-glow',
             'compact:h-24 compact:w-24 compact:text-[28px]',
           )}
         >
@@ -223,70 +253,122 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           <InfoChip icon={Shield} text="Sessão segura" />
         </div>
 
-        <div
-          className={cn(
-            'mt-s3 flex h-14 items-center gap-2.5 rounded-input border border-line bg-white/[.03] px-4',
-            'transition-[border-color,box-shadow] duration-200',
-            'focus-within:border-accent/[.42] focus-within:shadow-[0_0_0_4px_rgba(0,207,255,.07)]',
-          )}
-        >
-          <Lock className="h-[17px] w-[17px] flex-shrink-0 text-t3" aria-hidden="true" />
-          <input
-            ref={inputRef}
-            type={isPasswordVisible ? 'text' : 'password'}
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') submit();
-            }}
-            placeholder="Palavra-passe"
-            aria-label="Palavra-passe"
-            autoComplete="current-password"
-            className="min-w-0 flex-1 bg-transparent text-[15px] tracking-[0.14em] outline-none placeholder:tracking-normal placeholder:text-t3"
+        {method === 'pin' ? (
+          <PinKeypad
+            onComplete={() => grant('Identidade confirmada.')}
+            onCancel={() => setMethod('password')}
           />
-          <button
-            type="button"
-            onClick={() => setPasswordVisible((visible) => !visible)}
-            aria-label={isPasswordVisible ? 'Esconder palavra-passe' : 'Mostrar palavra-passe'}
-            className="flex p-1 text-t3 transition-colors hover:text-accent"
-          >
-            {isPasswordVisible ? <EyeOff className="h-[17px] w-[17px]" /> : <Eye className="h-[17px] w-[17px]" />}
-          </button>
-        </div>
+        ) : (
+          <>
+            <div
+              className={cn(
+                'mt-s3 flex h-14 items-center gap-2.5 rounded-input border border-line bg-white/[.03] px-4',
+                'transition-[border-color,box-shadow] duration-200',
+                'focus-within:border-accent/[.42] focus-within:shadow-[0_0_0_4px_rgba(0,207,255,.07)]',
+              )}
+            >
+              <Lock className="h-[17px] w-[17px] flex-shrink-0 text-t3" aria-hidden="true" />
+              <input
+                ref={inputRef}
+                type={isPasswordVisible ? 'text' : 'password'}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                onKeyDown={(event) => {
+                  trackCapsLock(event);
+                  if (event.key === 'Enter') submit();
+                }}
+                onKeyUp={trackCapsLock}
+                placeholder="Palavra-passe"
+                aria-label="Palavra-passe"
+                aria-describedby="pw-strength pw-caps"
+                autoComplete="current-password"
+                className="min-w-0 flex-1 bg-transparent text-[15px] tracking-[0.14em] outline-none placeholder:tracking-normal placeholder:text-t3"
+              />
+              <button
+                type="button"
+                onClick={() => setPasswordVisible((visible) => !visible)}
+                aria-label={isPasswordVisible ? 'Esconder palavra-passe' : 'Mostrar palavra-passe'}
+                className="flex p-1 text-t3 transition-colors hover:text-accent"
+              >
+                {isPasswordVisible ? (
+                  <EyeOff className="h-[17px] w-[17px]" />
+                ) : (
+                  <Eye className="h-[17px] w-[17px]" />
+                )}
+              </button>
+            </div>
 
-        <button
-          type="button"
-          onClick={submit}
-          className={cn(
-            'mt-s2 flex h-[52px] w-full items-center justify-center gap-2.5 rounded-btn',
-            'bg-accent text-[15px] font-semibold text-[#04121A]',
-            'transition-[transform,box-shadow] duration-hover ease-out',
-            'hover:scale-[1.02] hover:shadow-[0_0_28px_rgba(0,207,255,.4)] active:scale-[.98]',
-          )}
-        >
-          <Unlock className="h-[17px] w-[17px]" aria-hidden="true" />
-          Entrar
-        </button>
+            {/* CAPS LOCK: só se anuncia quando está mesmo ligado. */}
+            <p
+              id="pw-caps"
+              aria-live="polite"
+              className={cn(
+                'mt-1.5 h-4 text-[11px] text-warn transition-opacity duration-hover',
+                isCapsLockOn ? 'opacity-100' : 'opacity-0',
+              )}
+            >
+              {isCapsLockOn ? 'CAPS LOCK está ligado' : ''}
+            </p>
+
+            {password.length > 0 && (
+              <div id="pw-strength" className="mt-1 flex items-center gap-2.5">
+                <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/[.06]">
+                  <span
+                    className={cn(
+                      'block h-full rounded-full transition-[width,background] duration-300 ease-out',
+                      strength.color === 'danger' && 'bg-danger',
+                      strength.color === 'warn' && 'bg-warn',
+                      strength.color === 'accent' && 'bg-accent',
+                      strength.color === 'ok' && 'bg-ok',
+                    )}
+                    style={{ width: `${strength.percent}%` }}
+                  />
+                </span>
+                <span className="w-[62px] text-right text-[10.5px] text-t3">{strength.label}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={submit}
+              className={cn(
+                'mt-s2 flex h-[52px] w-full items-center justify-center gap-2.5 rounded-btn',
+                'bg-accent text-[15px] font-semibold text-[#04121A]',
+                'transition-[transform,box-shadow] duration-hover ease-out',
+                'hover:scale-[1.02] hover:shadow-[0_0_28px_rgba(0,207,255,.4)] active:scale-[.98]',
+              )}
+            >
+              <Unlock className="h-[17px] w-[17px]" aria-hidden="true" />
+              Entrar
+            </button>
+          </>
+        )}
 
         <div className="mt-s3 flex justify-center gap-2.5">
           <MethodButton icon={ScanFace} label="Reconhecimento facial" onClick={runFaceScan} />
           <MethodButton icon={Fingerprint} label="Impressão digital" onClick={runFingerprintScan} />
-          <MethodButton icon={Grid3x3} label="PIN" onClick={deny} />
-          <MethodButton icon={KeyRound} label="Chave física" onClick={deny} />
+          <MethodButton icon={Grid3x3} label="PIN" onClick={() => setMethod('pin')} />
+          <MethodButton
+            icon={KeyRound}
+            label="Chave física"
+            onClick={() =>
+              setHint({ text: 'Nenhuma chave física detetada nesta porta.', tone: 'error' })
+            }
+          />
         </div>
 
-        <p
-          aria-live="polite"
-          className={cn(
-            'mt-s2 min-h-[17px] text-center text-[11.5px]',
-            hint.tone === 'error' && 'text-danger',
-            hint.tone === 'ok' && 'text-ok',
-            hint.tone === 'neutral' && 'text-t3',
-          )}
-        >
-          {hint.text}
-        </p>
+        <AssistantHint text={hint.text} tone={hint.tone} />
       </section>
+
+      {/* Atalhos do sistema (Parte 5 §Atalhos e rodapé). */}
+      <div className="flex flex-wrap justify-center gap-2">
+        <SystemAction icon={Power} label="Desligar" />
+        <SystemAction icon={RotateCcw} label="Reiniciar" />
+        <SystemAction icon={Moon} label="Suspender" />
+        <SystemAction icon={Accessibility} label="Acessibilidade" />
+        <SystemAction icon={Languages} label="Idioma" />
+        <SystemAction icon={Wifi} label="Rede" />
+      </div>
 
       <footer className="flex flex-wrap justify-center gap-s3 text-[11px] text-t3">
         <InfoChip icon={Cpu} text="v1.0.0 · Project ARC" muted />
@@ -296,6 +378,59 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
       </footer>
     </div>
   );
+}
+
+/**
+ * As frases da IA entram com efeito de digitação (Parte 5 §Mensagens da IA).
+ *
+ * A `key` no texto reinicia o typewriter a cada frase nova — sem ela, a
+ * mudança de frase apareceria de uma vez.
+ */
+function AssistantHint({
+  text,
+  tone,
+}: {
+  readonly text: string;
+  readonly tone: HintTone;
+}): React.JSX.Element {
+  return (
+    <TypedLine key={text} text={text} tone={tone} />
+  );
+}
+
+function TypedLine({
+  text,
+  tone,
+}: {
+  readonly text: string;
+  readonly tone: HintTone;
+}): React.JSX.Element {
+  const { typed } = useTypewriter(text, { speedMs: 18, jitterMs: 14 });
+
+  return (
+    <p
+      aria-live="polite"
+      className={cn(
+        'mt-s2 min-h-[17px] text-center text-[11.5px]',
+        tone === 'error' && 'text-danger',
+        tone === 'ok' && 'text-ok',
+        tone === 'neutral' && 'text-t3',
+      )}
+    >
+      {typed}
+    </p>
+  );
+}
+
+/** Fuso horário do sistema, em formato curto. */
+function localTimeZone(): string {
+  try {
+    const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return zone.split('/').at(-1)?.replace(/_/g, ' ') ?? zone;
+  } catch {
+    // Ambiente sem Intl completo — o campo simplesmente não informa.
+    return '—';
+  }
 }
 
 interface MetaItemProps {
@@ -346,11 +481,43 @@ function MethodButton({ icon: Icon, label, onClick }: MethodButtonProps): React.
       aria-label={label}
       className={cn(
         'flex h-[46px] w-[46px] items-center justify-center rounded-input border border-line text-t3',
-        'transition-all duration-hover ease-out',
+        'transition-all duration-hover ease-out active:scale-95',
         'hover:border-accent/35 hover:bg-accent/5 hover:text-accent',
       )}
     >
       <Icon className="h-[19px] w-[19px]" />
+    </button>
+  );
+}
+
+/**
+ * Atalhos de sistema no rodapé.
+ *
+ * Desligar e suspender exigiriam permissões que a capability não concede — e
+ * não devem concedê-las a partir de um ecrã de autenticação. Ficam a informar
+ * que a ação não está disponível, em vez de fingirem funcionar.
+ */
+function SystemAction({
+  icon: Icon,
+  label,
+}: {
+  readonly icon: React.ComponentType<{ className?: string }>;
+  readonly label: string;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() =>
+        notificationService.info(label, 'Esta ação faz parte da gestão de energia da Fase 2.')
+      }
+      aria-label={label}
+      title={label}
+      className={cn(
+        'flex h-9 w-9 items-center justify-center rounded-full border border-line/60 text-t3',
+        'transition-all duration-hover ease-out hover:border-accent/30 hover:text-accent',
+      )}
+    >
+      <Icon className="h-4 w-4" />
     </button>
   );
 }

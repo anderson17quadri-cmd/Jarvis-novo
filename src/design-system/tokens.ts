@@ -60,12 +60,17 @@ export const EASING = {
   inOut: 'cubic-bezier(.65,0,.35,1)',
 } as const;
 
-/** Durações, em milissegundos. Exportadas como número para o Framer Motion. */
+/**
+ * Durações, em milissegundos (Parte 9 §Durações).
+ * Exportadas como número para o Framer Motion.
+ */
 export const DURATION_MS = {
   hover: 120,
   click: 150,
   panel: 220,
   window: 280,
+  /** Troca de tema — mais rápida do que a transição entre ecrãs. */
+  theme: 500,
   screen: 600,
 } as const;
 
@@ -75,6 +80,7 @@ export const DURATION = {
   click: '150ms',
   panel: '220ms',
   window: '280ms',
+  theme: '500ms',
   screen: '600ms',
 } as const;
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { parseHexColor } from '@/components/shell/wallpaper-field';
 import { getDevicePixelRatio, useAnimationFrame } from '@/hooks/use-animation-frame';
@@ -8,6 +8,7 @@ import { themeService } from '@/services/theme-service';
 import { useThemeStore } from '@/stores/use-theme-store';
 import type { AssistantMode } from '@/types/assistant';
 import { CORE_MODES } from './ai-core-modes';
+import { pickCoreSize } from './core-size';
 import { CoreRings } from './CoreRings';
 import { CoreWaveform } from './CoreWaveform';
 import { ParticleField, pickParticleCount } from './particle-field';
@@ -16,6 +17,8 @@ interface AICoreProps {
   readonly mode: AssistantMode;
   /** Contador de pulsos — incrementá-lo dispara uma onda a partir do centro. */
   readonly pulseCount: number;
+  /** Contador de explosões — incrementá-lo dispara a celebração do sucesso. */
+  readonly burstCount: number;
   /** `true` depois da entrada em cascata do desktop. */
   readonly isVisible: boolean;
   /** `true` quando o estado abaixo do núcleo já entrou. */
@@ -23,6 +26,12 @@ interface AICoreProps {
   /** Encolhe o núcleo quando há janelas abertas, para não competir com elas. */
   readonly isShrunk: boolean;
   readonly onActivate: () => void;
+  /**
+   * `false` durante a sequência de arranque, onde o núcleo é apresentação e não
+   * um controlo: não recebe foco, não tem cursor de mão e não é anunciado como
+   * botão pelo leitor de ecrã.
+   */
+  readonly isInteractive?: boolean;
 }
 
 /**
@@ -38,15 +47,18 @@ interface AICoreProps {
 export function AICore({
   mode,
   pulseCount,
+  burstCount,
   isVisible,
   isStateVisible,
   isShrunk,
   onActivate,
+  isInteractive = true,
 }: AICoreProps): React.JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fieldRef = useRef(new ParticleField());
   const lastFrameRef = useRef(0);
+  const [size, setSize] = useState(() => pickCoreSize(window.innerWidth));
 
   const theme = useThemeStore((state) => state.theme);
   const reducedMotion = useReducedMotion();
@@ -100,6 +112,18 @@ export function AICore({
     if (pulseCount > 0) fieldRef.current.addRipple();
   }, [pulseCount]);
 
+  // E cada incremento de `burstCount` é uma tarefa concluída.
+  useEffect(() => {
+    if (burstCount > 0) fieldRef.current.burst();
+  }, [burstCount]);
+
+  // O núcleo muda de escalão quando a janela muda de tamanho.
+  useEffect(() => {
+    const onResize = (): void => setSize(pickCoreSize(window.innerWidth));
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   useAnimationFrame(
     useCallback(
       (elapsed: number) => {
@@ -120,21 +144,28 @@ export function AICore({
     <>
       <div
         ref={hostRef}
-        role="button"
-        tabIndex={0}
-        aria-label="Ativar assistente por voz"
-        onClick={onActivate}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            onActivate();
-          }
-        }}
+        {...(isInteractive
+          ? {
+              role: 'button' as const,
+              tabIndex: 0,
+              'aria-label': 'Ativar assistente por voz',
+              onClick: onActivate,
+              onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  onActivate();
+                }
+              },
+            }
+          : { 'aria-hidden': true })}
+        style={{ width: size, height: size }}
         className={cn(
-          'relative h-[420px] max-h-[78vmin] w-[420px] max-w-[78vmin] cursor-pointer',
+          'relative max-h-[78vmin] max-w-[78vmin]',
+          isInteractive && 'cursor-pointer',
           'transition-[transform,opacity] duration-[600ms] ease-out',
           isVisible ? 'opacity-100' : 'opacity-0',
           !isVisible && 'scale-[.86]',
+          // Reduz para 75% com janelas abertas, mas nunca desaparece (Parte 8).
           isVisible && (isShrunk ? 'scale-75' : 'scale-100'),
         )}
       >

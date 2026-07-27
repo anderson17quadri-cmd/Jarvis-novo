@@ -74,6 +74,7 @@ export default {
         click: DURATION.click,
         panel: DURATION.panel,
         window: DURATION.window,
+        theme: DURATION.theme,
         screen: DURATION.screen,
       },
       boxShadow: {

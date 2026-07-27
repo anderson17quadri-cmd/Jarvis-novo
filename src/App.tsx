@@ -22,6 +22,11 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { CommandActions } from '@/components/command-palette/command-registry';
 
+/** Saudação da IA ao entrar no ambiente de trabalho (Parte 5 §Transição). */
+const DESKTOP_GREETING = 'Bem-vindo. Todos os sistemas estão prontos.';
+/** Depois da cascata de entrada terminar. */
+const DESKTOP_GREETING_DELAY_MS = 1_100;
+
 /**
  * Raiz da aplicação.
  *
@@ -40,6 +45,7 @@ export function App(): React.JSX.Element {
 
   const mode = useAssistantStore((state) => state.mode);
   const pulseCount = useAssistantStore((state) => state.pulseCount);
+  const burstCount = useAssistantStore((state) => state.burstCount);
 
   const [isPaletteOpen, setPaletteOpen] = useState(false);
   const isDesktop = phase === 'desktop';
@@ -47,7 +53,7 @@ export function App(): React.JSX.Element {
   const cascade = useEntranceCascade(isDesktop);
   const { launch, restoreSavedLayout } = useAppLauncher();
   const openWindowCount = useWindowStore((state) => state.windows.length);
-  const { toggleListening } = useVoice({ onLaunchApp: launch });
+  const { toggleListening, speak } = useVoice({ onLaunchApp: launch });
 
   useEffect(() => {
     void initializePlatform().then(() => hydrateTheme());
@@ -56,12 +62,20 @@ export function App(): React.JSX.Element {
   useEffect(() => {
     if (!isDesktop) return;
 
-    notificationService.success(
-      'Ambiente carregado',
-      'Todos os módulos responderam dentro do tempo esperado.',
-    );
     void restoreSavedLayout();
-  }, [isDesktop, restoreSavedLayout]);
+
+    // A IA cumprimenta depois de a cascata de entrada terminar (Parte 5
+    // §Transição). Antes disso, falaria por cima de um ecrã ainda a montar.
+    const timer = setTimeout(() => {
+      speak(DESKTOP_GREETING);
+      notificationService.success(
+        'Ambiente carregado',
+        'Todos os módulos responderam dentro do tempo esperado.',
+      );
+    }, DESKTOP_GREETING_DELAY_MS);
+
+    return () => clearTimeout(timer);
+  }, [isDesktop, restoreSavedLayout, speak]);
 
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   const closePalette = useCallback(() => setPaletteOpen(false), []);
@@ -131,6 +145,7 @@ export function App(): React.JSX.Element {
         <AICore
           mode={mode}
           pulseCount={pulseCount}
+          burstCount={burstCount}
           isVisible={cascade.core}
           isStateVisible={cascade.coreState}
           // O núcleo recolhe quando há janelas abertas, para não competir com elas.

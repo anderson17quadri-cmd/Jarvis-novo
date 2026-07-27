@@ -14,45 +14,66 @@ export interface Viewport {
   readonly bottomInset: number;
 }
 
+/** Altura da faixa, em cada canto, que conta como quarto em vez de metade. */
+const CORNER_ZONE_PX = 120;
+
 /**
- * Que borda a janela encaixa, dada a posição do ponteiro ao largar.
+ * Onde a janela encaixa, dada a posição do ponteiro ao largar.
  *
- * Segue a convenção do Windows: topo maximiza, esquerda e direita ocupam
- * metade do ecrã.
+ * Segue a convenção do Windows: topo maximiza, laterais ocupam metade, e os
+ * cantos ocupam um quarto. Os cantos são testados primeiro — quem larga a
+ * janela no canto superior esquerdo quer o quarto, não o ecrã inteiro.
  */
 export function detectSnapEdge(pointerX: number, pointerY: number, viewport: Viewport): SnapEdge {
-  if (pointerY <= viewport.topInset + SNAP_THRESHOLD_PX) return 'top';
-  if (pointerX <= viewport.leftInset + SNAP_THRESHOLD_PX) return 'left';
-  if (pointerX >= viewport.width - SNAP_THRESHOLD_PX) return 'right';
+  const atLeft = pointerX <= viewport.leftInset + SNAP_THRESHOLD_PX;
+  const atRight = pointerX >= viewport.width - SNAP_THRESHOLD_PX;
+  const atTop = pointerY <= viewport.topInset + SNAP_THRESHOLD_PX;
+
+  const nearTop = pointerY <= viewport.topInset + CORNER_ZONE_PX;
+  const nearBottom = pointerY >= viewport.height - viewport.bottomInset - CORNER_ZONE_PX;
+
+  if (atLeft && nearTop) return 'top-left';
+  if (atRight && nearTop) return 'top-right';
+  if (atLeft && nearBottom) return 'bottom-left';
+  if (atRight && nearBottom) return 'bottom-right';
+
+  if (atTop) return 'top';
+  if (atLeft) return 'left';
+  if (atRight) return 'right';
   return 'none';
 }
 
 /** A geometria que corresponde a cada encaixe. */
 export function rectForSnapEdge(edge: SnapEdge, viewport: Viewport): WindowRect | null {
-  const availableWidth = viewport.width - viewport.leftInset;
-  const availableHeight = viewport.height - viewport.topInset - viewport.bottomInset;
+  const fullWidth = viewport.width - viewport.leftInset;
+  const fullHeight = viewport.height - viewport.topInset - viewport.bottomInset;
+  const halfWidth = Math.round(fullWidth / 2);
+  const halfHeight = Math.round(fullHeight / 2);
+
+  const left = viewport.leftInset;
+  const right = viewport.leftInset + halfWidth;
+  const top = viewport.topInset;
+  const bottom = viewport.topInset + halfHeight;
 
   switch (edge) {
     case 'top':
-      return {
-        x: viewport.leftInset,
-        y: viewport.topInset,
-        width: availableWidth,
-        height: availableHeight,
-      };
+      return { x: left, y: top, width: fullWidth, height: fullHeight };
     case 'left':
-      return {
-        x: viewport.leftInset,
-        y: viewport.topInset,
-        width: Math.round(availableWidth / 2),
-        height: availableHeight,
-      };
+      return { x: left, y: top, width: halfWidth, height: fullHeight };
     case 'right':
+      return { x: right, y: top, width: fullWidth - halfWidth, height: fullHeight };
+    case 'top-left':
+      return { x: left, y: top, width: halfWidth, height: halfHeight };
+    case 'top-right':
+      return { x: right, y: top, width: fullWidth - halfWidth, height: halfHeight };
+    case 'bottom-left':
+      return { x: left, y: bottom, width: halfWidth, height: fullHeight - halfHeight };
+    case 'bottom-right':
       return {
-        x: viewport.leftInset + Math.round(availableWidth / 2),
-        y: viewport.topInset,
-        width: Math.round(availableWidth / 2),
-        height: availableHeight,
+        x: right,
+        y: bottom,
+        width: fullWidth - halfWidth,
+        height: fullHeight - halfHeight,
       };
     case 'none':
       return null;

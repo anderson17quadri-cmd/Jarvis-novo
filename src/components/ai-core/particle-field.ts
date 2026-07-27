@@ -46,10 +46,21 @@ const SWEEP_ARC = 0.42;
 /** Quão perto o radar tem de passar para acender uma partícula. */
 const SWEEP_LIT_THRESHOLD = 0.3;
 
+/** Fração da altura que o scanner percorre por frame, a 60 FPS. */
+const SCANNER_SPEED = 0.006;
+/** Deslocamento vertical e opacidade de cada linha do scanner. */
+const SCANNER_LINES: readonly (readonly [number, number])[] = [
+  [0, 0.32],
+  [4, 0.16],
+  [9, 0.07],
+];
+
 export class ParticleField {
   private particles: OrbitalParticle[] = [];
   private ripples: Ripple[] = [];
   private sweep = 0;
+  /** Posição do scanner, de 0 (topo) a 1 (fundo). */
+  private scannerY = 0;
   private width = 0;
   private height = 0;
   private centerX = 0;
@@ -89,6 +100,23 @@ export class ParticleField {
   }
 
   /**
+   * Explosão de partículas do estado de sucesso (Parte 8 §Sucesso).
+   *
+   * Não cria partículas novas — reposiciona as existentes junto ao centro, com
+   * deriva forte para fora. Assim a contagem mantém-se estável e o custo por
+   * frame não sobe no momento em que se quer mais fluidez.
+   */
+  burst(): void {
+    this.ripples.push({ radius: this.radius * 0.1, alpha: 0.85 });
+
+    for (const particle of this.particles) {
+      particle.radius = this.radius * (0.14 + Math.random() * 0.12);
+      particle.life = 1;
+      particle.drift = Math.abs(particle.drift) * 3.2;
+    }
+  }
+
+  /**
    * Desenha um frame.
    *
    * @param deltaFrames frames decorridos a 60 FPS — mantém a velocidade
@@ -105,7 +133,53 @@ export class ParticleField {
     this.drawSweep(ctx, mode, color, deltaFrames);
     this.updateAndDrawParticles(ctx, mode, color, deltaFrames);
     this.drawLinks(ctx, color);
+    this.drawScanner(ctx, mode, color, deltaFrames);
     this.drawRipples(ctx, color, deltaFrames);
+  }
+
+  /**
+   * Camada 6 — scanner de linhas horizontais.
+   *
+   * Corre de cima a baixo com opacidade variável, como um leitor a percorrer o
+   * núcleo. Só aparece a analisar: é o sinal visual de que a IA está a
+   * processar, distinto do radar, que corre sempre.
+   */
+  private drawScanner(
+    ctx: CanvasRenderingContext2D,
+    mode: CoreModeConfig,
+    color: RGB,
+    deltaFrames: number,
+  ): void {
+    if (!mode.scanner) {
+      this.scannerY = 0;
+      return;
+    }
+
+    this.scannerY = (this.scannerY + SCANNER_SPEED * deltaFrames) % 1;
+
+    const centerBand = this.radius * 1.9;
+    const top = this.centerY - centerBand / 2;
+    const y = top + this.scannerY * centerBand;
+
+    // Três linhas com espaçamento e opacidade diferentes: uma só linha lia-se
+    // como um artefacto, três lêem-se como um varrimento.
+    for (const [offset, alpha] of SCANNER_LINES) {
+      const lineY = y + offset * this.dpr;
+      if (lineY < top || lineY > top + centerBand) continue;
+
+      // Recorta à largura do núcleo àquela altura, para o scanner não
+      // ultrapassar o círculo e ficar a flutuar no vazio.
+      const dy = lineY - this.centerY;
+      const halfWidth = Math.sqrt(Math.max(0, this.radius ** 2 - dy ** 2));
+      if (halfWidth <= 0) continue;
+
+      ctx.beginPath();
+      ctx.moveTo(this.centerX - halfWidth, lineY);
+      ctx.lineTo(this.centerX + halfWidth, lineY);
+      ctx.strokeStyle = rgba(color, alpha);
+      ctx.lineWidth = this.dpr;
+      ctx.stroke();
+    }
   }
 
   private drawSweep(

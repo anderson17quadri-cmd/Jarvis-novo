@@ -57,6 +57,7 @@
   --d-click: 150ms;
   --d-panel: 220ms;
   --d-window: 280ms;
+  --d-theme: 500ms;
   --d-screen: 600ms;
 
   /* sombra */

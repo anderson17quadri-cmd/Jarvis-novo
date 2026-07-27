@@ -1,8 +1,14 @@
 /**
- * Estados do núcleo. Cada um tem uma aparência própria no `AICore`
- * (cor, velocidade de rotação, densidade de partículas, radar) e uma etiqueta.
+ * Estados do núcleo (Parte 8 §Estados). Cada um tem uma aparência própria no
+ * `AICore` — cor, rotação, densidade de partículas, radar — e uma etiqueta.
+ *
+ * `success` é transitório: dispara um pulso e uma explosão de partículas, e
+ * regressa a `idle` sozinho. Os outros mantêm-se até alguém os mudar.
  */
-export type AssistantMode = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error';
+export type AssistantMode = 'idle' | 'listening' | 'thinking' | 'speaking' | 'error' | 'success';
+
+/** Quanto tempo o estado de sucesso dura antes de voltar a repouso. */
+export const SUCCESS_MODE_DURATION_MS = 1_400;
 
 export type MessageAuthor = 'user' | 'assistant';
 

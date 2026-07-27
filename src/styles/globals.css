@@ -3,6 +3,7 @@
 @import './cursor.css';
 @import './boot.css';
 @import './login.css';
+@import './windows.css';
 
 @tailwind base;
 @tailwind components;
@@ -22,7 +23,8 @@
 
   body {
     @apply bg-bg font-sans text-body font-normal text-t1 antialiased;
-    transition: background var(--d-screen) var(--e-io);
+    /* Troca de tema: as cores transformam-se gradualmente (Parte 9). */
+    transition: background var(--d-theme) var(--e-io);
     /* O Android desenha por baixo da barra de estado e da barra de navegação. */
     padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
       env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);

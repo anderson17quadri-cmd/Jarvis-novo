@@ -1,4 +1,5 @@
 import { getPlatformAdapter, type PlatformAdapter } from '@/platform';
+import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import type { NotificationKind } from '@/types/notification';
 
@@ -25,7 +26,16 @@ export class NotificationService {
     return this.notify(title, description, 'info');
   }
 
+  /**
+   * Sucesso. Além do toast, o núcleo celebra (Parte 8 §Sucesso).
+   *
+   * Só quando está em repouso: uma tarefa que termina a meio de uma resposta
+   * não deve interromper a fala nem o estado de análise.
+   */
   success(title: string, description: string): string {
+    if (useAssistantStore.getState().mode === 'idle') {
+      useAssistantStore.getState().celebrate();
+    }
     return this.notify(title, description, 'ok');
   }
 

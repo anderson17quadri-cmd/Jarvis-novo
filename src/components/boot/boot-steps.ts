@@ -32,13 +32,33 @@ export const BOOT_STEPS: readonly BootStep[] = [
   { id: 'desktop', label: 'A preparar ambiente de trabalho', icon: LayoutDashboard },
 ];
 
-/** As cinco etapas visuais por que a sequência passa. */
-export type BootStage = 1 | 2 | 3 | 4 | 5;
+/**
+ * As sete etapas visuais da sequência (Parte 4 §Etapas).
+ *
+ * 1. faísca com ondas concêntricas
+ * 2. a faísca transforma-se em anéis
+ * 3. linha escrita carácter a carácter
+ * 4. as 10 verificações do sistema
+ * 5. cartões de métricas
+ * 6. núcleo JARVIS grande, com radar e partículas
+ * 7. identidade do sistema, com a IA a falar
+ */
+export type BootStage = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+/** O que a IA diz ao terminar o arranque (Parte 4 §8). */
+export const BOOT_SPOKEN_LINE = 'Bom dia. Todos os sistemas foram inicializados com sucesso.';
+
+/** Texto do arranque rápido (Parte 4 §Pular boot). */
+export const BOOT_WELCOME_BACK = 'Bem-vindo de volta';
 
 /** Ritmo da sequência, em milissegundos. */
 export const BOOT_TIMING = {
-  /** Faísca inicial, antes de aparecer texto. */
+  /** Faísca inicial, antes de os anéis se formarem. */
   sparkDuration: 1_500,
+  /** Tempo em que os anéis giram sozinhos, antes do texto. */
+  ringsDuration: 1_800,
+  /** Tempo em que o núcleo grande fica em ecrã. */
+  coreDuration: 2_600,
   /** Velocidade base do typewriter, por carácter. */
   typeSpeed: 26,
   /** Pausa depois de a linha acabar de ser escrita. */

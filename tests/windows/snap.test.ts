@@ -69,6 +69,49 @@ describe('geometria do encaixe', () => {
   });
 });
 
+describe('encaixe em quartos (Parte 6.2)', () => {
+  it('deteta os quatro cantos', () => {
+    const { leftInset, topInset, width, height, bottomInset } = VIEWPORT;
+
+    expect(detectSnapEdge(leftInset + 2, topInset + 2, VIEWPORT)).toBe('top-left');
+    expect(detectSnapEdge(width - 2, topInset + 2, VIEWPORT)).toBe('top-right');
+    expect(detectSnapEdge(leftInset + 2, height - bottomInset - 10, VIEWPORT)).toBe('bottom-left');
+    expect(detectSnapEdge(width - 2, height - bottomInset - 10, VIEWPORT)).toBe('bottom-right');
+  });
+
+  it('o canto ganha ao topo — quem larga no canto quer o quarto', () => {
+    // Mesmo ponto que daria 'top' se os cantos não fossem testados primeiro.
+    expect(detectSnapEdge(VIEWPORT.leftInset + 1, VIEWPORT.topInset + 1, VIEWPORT)).toBe('top-left');
+  });
+
+  it('a meio da lateral continua a ser metade, não quarto', () => {
+    const middleY = VIEWPORT.topInset + (VIEWPORT.height - VIEWPORT.topInset) / 2;
+    expect(detectSnapEdge(VIEWPORT.leftInset + 2, middleY, VIEWPORT)).toBe('left');
+  });
+
+  it('os quatro quartos cobrem o palco sem sobrepor nem deixar buraco', () => {
+    const quarters = (['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const).map(
+      (edge) => rectForSnapEdge(edge, VIEWPORT)!,
+    );
+
+    const totalArea = quarters.reduce((sum, rect) => sum + rect.width * rect.height, 0);
+    const stageArea =
+      (VIEWPORT.width - VIEWPORT.leftInset) *
+      (VIEWPORT.height - VIEWPORT.topInset - VIEWPORT.bottomInset);
+
+    expect(totalArea).toBe(stageArea);
+  });
+
+  it('os quartos superiores encostam ao header e os inferiores ao dock', () => {
+    const topLeft = rectForSnapEdge('top-left', VIEWPORT)!;
+    const bottomLeft = rectForSnapEdge('bottom-left', VIEWPORT)!;
+
+    expect(topLeft.y).toBe(VIEWPORT.topInset);
+    expect(topLeft.y + topLeft.height).toBe(bottomLeft.y);
+    expect(bottomLeft.y + bottomLeft.height).toBe(VIEWPORT.height - VIEWPORT.bottomInset);
+  });
+});
+
 describe('a janela mantém-se alcançável', () => {
   it('não sobe acima do header', () => {
     expect(clampPosition({ x: 400, y: -500 }, VIEWPORT).y).toBe(VIEWPORT.topInset);

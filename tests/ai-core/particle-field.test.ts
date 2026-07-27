@@ -21,14 +21,26 @@ describe('a contagem de partículas adapta-se ao contexto', () => {
 });
 
 describe('os modos do núcleo', () => {
-  it('cobrem os cinco estados', () => {
+  it('cobrem os seis estados da Parte 8', () => {
     expect(Object.keys(CORE_MODES).sort()).toEqual([
       'error',
       'idle',
       'listening',
       'speaking',
+      'success',
       'thinking',
     ]);
+  });
+
+  it('o scanner só corre a analisar', () => {
+    expect(CORE_MODES.thinking.scanner).toBe(true);
+    for (const [name, config] of Object.entries(CORE_MODES)) {
+      if (name !== 'thinking') expect(config.scanner).toBe(false);
+    }
+  });
+
+  it('o sucesso empurra as partículas para fora com força', () => {
+    expect(CORE_MODES.success.drift).toBeGreaterThan(CORE_MODES.speaking.drift);
   });
 
   it('param o radar em falha', () => {

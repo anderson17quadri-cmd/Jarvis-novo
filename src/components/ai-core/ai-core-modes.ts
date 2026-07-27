@@ -22,6 +22,8 @@ export interface CoreModeConfig {
   readonly drift: number;
   /** Amplitude da pulsação do núcleo central. */
   readonly glowPulse: number;
+  /** Camada 6 — linhas horizontais a varrer o núcleo. */
+  readonly scanner: boolean;
 }
 
 export const CORE_MODES: Record<AssistantMode, CoreModeConfig> = {
@@ -33,6 +35,7 @@ export const CORE_MODES: Record<AssistantMode, CoreModeConfig> = {
     sweepSpeed: 1,
     drift: 0.2,
     glowPulse: 0.03,
+    scanner: false,
   },
   listening: {
     label: 'A ouvir',
@@ -43,15 +46,19 @@ export const CORE_MODES: Record<AssistantMode, CoreModeConfig> = {
     // As partículas colapsam para o centro — o núcleo está a absorver.
     drift: -1.6,
     glowPulse: 0.09,
+    scanner: false,
   },
   thinking: {
     label: 'A analisar',
     color: '#FBBF24',
     spin: 3.2,
     density: 1.2,
+    // Radar ao dobro da velocidade de repouso (Parte 8 §Processando).
     sweepSpeed: 2.4,
     drift: 0.2,
     glowPulse: 0.09,
+    // O scanner só corre a analisar — é o que distingue "a pensar" de "ativo".
+    scanner: true,
   },
   speaking: {
     label: 'A responder',
@@ -62,6 +69,7 @@ export const CORE_MODES: Record<AssistantMode, CoreModeConfig> = {
     // E aqui expandem — está a emitir.
     drift: 1.1,
     glowPulse: 0.09,
+    scanner: false,
   },
   error: {
     label: 'Falha',
@@ -72,5 +80,17 @@ export const CORE_MODES: Record<AssistantMode, CoreModeConfig> = {
     sweepSpeed: 0,
     drift: 0.2,
     glowPulse: 0.09,
+    scanner: false,
+  },
+  success: {
+    label: 'Concluído',
+    color: '#22C55E',
+    spin: 1.2,
+    density: 1.3,
+    sweepSpeed: 1,
+    // Explosão para fora, forte e breve.
+    drift: 2.4,
+    glowPulse: 0.14,
+    scanner: false,
   },
 };

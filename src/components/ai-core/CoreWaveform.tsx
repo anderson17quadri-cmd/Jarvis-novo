@@ -79,6 +79,9 @@ function barHeight(
       );
     case 'thinking':
       return MIN_HEIGHT_PX + (Math.sin(elapsed / 230 + index * 0.38) * 0.5 + 0.5) * 10;
+    case 'success':
+      // Um arco cheio a partir do centro — lê-se como "concluído", não como som.
+      return MIN_HEIGHT_PX + centerFalloff * 22;
     case 'idle':
     case 'error':
       return MIN_HEIGHT_PX + centerFalloff * 2;

@@ -7,8 +7,20 @@ export interface WindowRect {
   readonly height: number;
 }
 
-/** Bordas onde uma janela encaixa ao ser largada. */
-export type SnapEdge = 'left' | 'right' | 'top' | 'none';
+/**
+ * Onde uma janela encaixa ao ser largada (Parte 6.2 §Movimentação).
+ *
+ * Metades pelas laterais, ecrã inteiro pelo topo, e quartos pelos cantos.
+ */
+export type SnapEdge =
+  | 'left'
+  | 'right'
+  | 'top'
+  | 'top-left'
+  | 'top-right'
+  | 'bottom-left'
+  | 'bottom-right'
+  | 'none';
 
 export interface WindowInstance {
   readonly id: string;

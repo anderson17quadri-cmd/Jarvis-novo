@@ -18,6 +18,8 @@ describe('LoginScreen', () => {
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
   }, 15_000);
 
+  // As mensagens da IA entram com efeito de digitação, por isso o texto só está
+  // completo passados alguns frames — daí `findByText` em vez de `getByText`.
   it('recusa e avisa quando a palavra-passe está vazia', async () => {
     const user = userEvent.setup();
     const onAuthenticated = vi.fn();
@@ -26,10 +28,14 @@ describe('LoginScreen', () => {
     await user.click(screen.getByRole('button', { name: /entrar/i }));
 
     expect(
-      screen.getByText('Não foi possível verificar a identidade. Tente novamente.'),
+      await screen.findByText(
+        'Não foi possível verificar a identidade. Tente novamente.',
+        {},
+        { timeout: 5_000 },
+      ),
     ).toBeInTheDocument();
     expect(onAuthenticated).not.toHaveBeenCalled();
-  });
+  }, 15_000);
 
   it('a biometria facial autentica', async () => {
     const user = userEvent.setup();
@@ -38,7 +44,7 @@ describe('LoginScreen', () => {
     render(<LoginScreen onAuthenticated={onAuthenticated} />);
     await user.click(screen.getByRole('button', { name: 'Autenticar por reconhecimento facial' }));
 
-    expect(screen.getByText('A analisar biometria…')).toBeInTheDocument();
+    expect(await screen.findByText('A analisar biometria…', {}, { timeout: 5_000 })).toBeInTheDocument();
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 10_000 });
   }, 20_000);
 

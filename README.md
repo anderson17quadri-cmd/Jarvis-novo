@@ -155,6 +155,7 @@ Mais detalhe:
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — como adicionar um widget, uma janela, um comando Rust e um provedor de IA
 - **[PLATFORM.md](PLATFORM.md)** — o que existe em cada plataforma e como o adapter trata o que falta
+- **[SPEC.md](SPEC.md)** — mapa entre as partes da especificação e o código, incluindo as divergências assumidas
 
 ---
 

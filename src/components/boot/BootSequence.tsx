@@ -1,31 +1,38 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Check } from 'lucide-react';
 
+import { AICore } from '@/components/ai-core/AICore';
 import { useReducedMotion } from '@/hooks/use-media-query';
 import { useTypewriter } from '@/hooks/use-typewriter';
 import { cn } from '@/lib/cn';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
+import { voiceService } from '@/services/voice-service';
 import { BootChecks } from './BootChecks';
-import { BOOT_GRAPHS, BOOT_TIMING, BOOT_TYPE_LINE, type BootStage } from './boot-steps';
+import { BootRings } from './BootRings';
+import {
+  BOOT_GRAPHS,
+  BOOT_SPOKEN_LINE,
+  BOOT_TIMING,
+  BOOT_TYPE_LINE,
+  BOOT_WELCOME_BACK,
+  type BootStage,
+} from './boot-steps';
 
 interface BootSequenceProps {
   readonly onComplete: () => void;
 }
 
 /**
- * Sequência de arranque, em cinco etapas.
+ * Sequência de arranque, em sete etapas (Parte 4).
  *
- * 1. faísca com ondas concêntricas
- * 2. linha escrita carácter a carácter
- * 3. as 10 verificações do sistema
- * 4. cartões de métricas
- * 5. identidade do sistema
- *
- * Na segunda vez salta direto para a etapa 5 — ver o arranque completo uma vez
- * é uma apresentação, vê-lo todos os dias é um obstáculo. A flag fica guardada
- * pelo `StorageService`, ou seja no `store` do Tauri no desktop e no Android.
+ * Na segunda vez salta direto para a identidade, com "Bem-vindo de volta" — ver
+ * o arranque completo uma vez é uma apresentação, vê-lo todos os dias é um
+ * obstáculo. A flag fica guardada pelo `StorageService`, ou seja no `store` do
+ * Tauri no desktop e no Android.
  */
 export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Element {
   const [stage, setStage] = useState<BootStage | null>(null);
+  const [isFastBoot, setFastBoot] = useState(false);
   const [isLeaving, setLeaving] = useState(false);
   const reducedMotion = useReducedMotion();
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -42,6 +49,7 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
 
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
+    voiceService.stopSpeaking();
     setLeaving(true);
     void storageService.set(STORAGE_KEYS.booted, true);
 
@@ -56,13 +64,15 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
       if (cancelled) return;
 
       if (hasBooted || reducedMotion) {
-        setStage(5);
+        setFastBoot(true);
+        setStage(7);
         wait(finish, reducedMotion ? 0 : BOOT_TIMING.fastBootDuration);
         return;
       }
 
       setStage(1);
       wait(() => setStage(2), BOOT_TIMING.sparkDuration);
+      wait(() => setStage(3), BOOT_TIMING.sparkDuration + BOOT_TIMING.ringsDuration);
     });
 
     return () => {
@@ -72,16 +82,23 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
   }, [finish, reducedMotion, wait]);
 
   const handleTypeComplete = useCallback((): void => {
-    wait(() => setStage(3), BOOT_TIMING.typePause);
+    wait(() => setStage(4), BOOT_TIMING.typePause);
   }, [wait]);
 
   const handleChecksComplete = useCallback((): void => {
-    setStage(4);
+    setStage(5);
     wait(() => {
-      setStage(5);
-      wait(finish, BOOT_TIMING.identityDuration);
+      setStage(6);
+      wait(() => {
+        setStage(7);
+        // A IA fala na última etapa, sobre a identidade do sistema.
+        voiceService.speak(BOOT_SPOKEN_LINE);
+        wait(finish, BOOT_TIMING.identityDuration);
+      }, BOOT_TIMING.coreDuration);
     }, BOOT_TIMING.graphsDuration);
   }, [finish, wait]);
+
+  const canSkip = !isLeaving && stage !== null && !isFastBoot && stage < 7;
 
   return (
     <>
@@ -95,13 +112,15 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
         aria-label="A iniciar o sistema"
       >
         {stage === 1 && <BootSpark />}
-        {stage === 2 && <BootTypeLine onComplete={handleTypeComplete} />}
-        {stage === 3 && <BootChecks onComplete={handleChecksComplete} />}
-        {stage === 4 && <BootGraphs />}
-        {stage === 5 && <BootIdentity />}
+        {stage === 2 && <BootRings />}
+        {stage === 3 && <BootTypeLine onComplete={handleTypeComplete} />}
+        {stage === 4 && <BootChecks onComplete={handleChecksComplete} />}
+        {stage === 5 && <BootGraphs />}
+        {stage === 6 && <BootCore />}
+        {stage === 7 && <BootIdentity isFastBoot={isFastBoot} />}
       </div>
 
-      {!isLeaving && stage !== null && stage < 5 && (
+      {canSkip && (
         <button
           type="button"
           onClick={finish}
@@ -131,26 +150,57 @@ function BootSpark(): React.JSX.Element {
   );
 }
 
+/**
+ * Etapa 6 — o núcleo, em grande.
+ *
+ * É o mesmo componente do ambiente de trabalho, em modo de análise e sem
+ * interação. Reutilizar em vez de reimplementar garante que o núcleo do
+ * arranque é literalmente o núcleo do sistema, e não uma imitação que se
+ * desalinha à primeira alteração.
+ */
+function BootCore(): React.JSX.Element {
+  return (
+    <AICore
+      mode="thinking"
+      pulseCount={0}
+      burstCount={0}
+      isVisible
+      isStateVisible={false}
+      isShrunk={false}
+      isInteractive={false}
+      onActivate={() => undefined}
+    />
+  );
+}
+
 function BootTypeLine({ onComplete }: { readonly onComplete: () => void }): React.JSX.Element {
-  const { typed } = useTypewriter(BOOT_TYPE_LINE, {
+  const { typed, isComplete } = useTypewriter(BOOT_TYPE_LINE, {
     speedMs: BOOT_TIMING.typeSpeed,
     onComplete,
   });
 
   return (
-    <p className="min-h-[22px] text-desc tracking-[0.02em] text-t2">
+    <p
+      className={cn(
+        'flex min-h-[22px] items-center gap-2 text-desc tracking-[0.02em]',
+        'transition-colors duration-300',
+        // Ao concluir, a linha fica verde com um ícone de confirmação (Parte 4 §3).
+        isComplete ? 'text-ok' : 'text-t2',
+      )}
+    >
       {typed}
-      <span className="ml-[3px] inline-block h-[14px] w-[7px] translate-y-[2px] bg-accent motion-safe:animate-blink" />
+      {isComplete ? (
+        <Check className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+      ) : (
+        <span className="ml-[3px] inline-block h-[14px] w-[7px] translate-y-[2px] bg-accent motion-safe:animate-blink" />
+      )}
     </p>
   );
 }
 
 function BootGraphs(): React.JSX.Element {
   // Gerado uma vez: com `useMemo` as linhas não voltam a saltar a cada render.
-  const sparklines = useMemo(
-    () => BOOT_GRAPHS.map(() => buildSparklinePath()),
-    [],
-  );
+  const sparklines = useMemo(() => BOOT_GRAPHS.map(() => buildSparklinePath()), []);
 
   return (
     <div className="flex w-[min(560px,94vw)] flex-wrap justify-center gap-s2">
@@ -161,7 +211,11 @@ function BootGraphs(): React.JSX.Element {
         >
           <div className="text-[10px] uppercase tracking-[0.14em] text-t3">{graph.key}</div>
           <div className="mono mt-0.5 text-[19px] font-semibold">{graph.value}</div>
-          <svg viewBox="0 0 100 26" preserveAspectRatio="none" className="mt-1.5 h-[26px] w-full overflow-visible">
+          <svg
+            viewBox="0 0 100 26"
+            preserveAspectRatio="none"
+            className="mt-1.5 h-[26px] w-full overflow-visible"
+          >
             <path
               d={sparklines[index] ?? ''}
               fill="none"
@@ -187,7 +241,7 @@ function buildSparklinePath(): string {
   }).join(' ');
 }
 
-function BootIdentity(): React.JSX.Element {
+function BootIdentity({ isFastBoot }: { readonly isFastBoot: boolean }): React.JSX.Element {
   return (
     <div className="text-center">
       <div
@@ -198,9 +252,17 @@ function BootIdentity(): React.JSX.Element {
       >
         JARVIS AI
       </div>
-      <div className="mt-2.5 text-[13px] uppercase tracking-[0.24em] text-t3">
-        Artificial Intelligence Operating System
-      </div>
+
+      {isFastBoot ? (
+        <div className="mt-2.5 text-[13px] uppercase tracking-[0.24em] text-t3">
+          {BOOT_WELCOME_BACK}
+        </div>
+      ) : (
+        <div className="mt-2.5 text-[13px] uppercase tracking-[0.24em] text-t3">
+          Artificial Intelligence Operating System
+        </div>
+      )}
+
       <div className="mt-5 text-[11px] tracking-[0.18em] text-t3">VERSÃO 1.0 · PROJECT ARC</div>
     </div>
   );
