@@ -5,6 +5,7 @@ import { LoginScreen } from '@/components/auth/LoginScreen';
 import { BootSequence } from '@/components/boot/BootSequence';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { DesktopContextMenu } from '@/components/context-menu/DesktopContextMenu';
+import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { AppShell } from '@/components/shell/AppShell';
 import { CustomCursor } from '@/components/shell/CustomCursor';
@@ -13,10 +14,12 @@ import { WindowManager } from '@/components/windows/WindowManager';
 import { useAppLauncher } from '@/hooks/use-app-launcher';
 import { useEntranceCascade } from '@/hooks/use-entrance-cascade';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { notificationService } from '@/services/notification-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
+import { useNotificationStore } from '@/stores/use-notification-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
@@ -56,8 +59,14 @@ export function App(): React.JSX.Element {
   const openWindowCount = useWindowStore((state) => state.windows.length);
   const { toggleListening, speak } = useVoice({ onLaunchApp: launch });
 
+  // O email passa a produzir notificações assim que o desktop está de pé.
+  useNotificationSources(isDesktop);
+
   useEffect(() => {
-    void initializePlatform().then(() => hydrateTheme());
+    void initializePlatform().then(async () => {
+      await hydrateTheme();
+      await useNotificationStore.getState().hydrate();
+    });
   }, [hydrateTheme]);
 
   useEffect(() => {
@@ -159,12 +168,7 @@ export function App(): React.JSX.Element {
         onLaunchApp={launch}
         onOpenPalette={openPalette}
         onToggleMicrophone={toggleListening}
-        onOpenNotifications={() =>
-          notificationService.success(
-            'Automação concluída',
-            'Prospecção de 18 empresas terminada. Landing pages prontas para revisão.',
-          )
-        }
+        onOpenNotifications={() => useNotificationStore.getState().togglePanel()}
         onLogout={logout}
       >
         <AICore
@@ -189,6 +193,7 @@ export function App(): React.JSX.Element {
       />
 
       <ToastViewport />
+      <NotificationPanel />
     </>
   );
 }

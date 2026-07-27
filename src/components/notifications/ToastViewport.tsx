@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 
 import { cn } from '@/lib/cn';
 import { formatTime } from '@/lib/format';
-import { useNotificationStore } from '@/stores/use-notification-store';
+import { selectVisibleToasts, useNotificationStore } from '@/stores/use-notification-store';
 import type { JarvisNotification, NotificationKind } from '@/types/notification';
 
 const KIND_ICON: Record<NotificationKind, React.ComponentType<{ className?: string }>> = {
@@ -23,23 +24,24 @@ const KIND_STYLE: Record<NotificationKind, string> = {
 /**
  * Toasts, no canto inferior direito.
  *
- * `aria-live="polite"` anuncia-os sem interromper o que o leitor de ecrã estiver
- * a ler. Cada toast fecha-se sozinho ao fim do seu tempo, ou à mão.
+ * Passageiros por natureza: ao desaparecerem ficam no painel de notificações,
+ * não se perdem. `aria-live="polite"` anuncia-os sem interromper o que o leitor
+ * de ecrã estiver a ler.
  */
 export function ToastViewport(): React.JSX.Element {
-  const notifications = useNotificationStore((state) => state.notifications);
+  const toasts = useNotificationStore(useShallow(selectVisibleToasts));
 
   return (
     <div
       aria-live="polite"
-      aria-label="Notificações"
+      aria-label="Notificações recentes"
       className={cn(
         'fixed bottom-24 right-5 z-toast flex w-[min(340px,calc(100vw-40px))] flex-col gap-2.5',
         'compact:inset-x-3 compact:bottom-20 compact:w-auto',
       )}
       style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      {notifications.map((notification) => (
+      {toasts.map((notification) => (
         <Toast key={notification.id} notification={notification} />
       ))}
     </div>
@@ -77,6 +79,25 @@ function Toast({ notification }: { readonly notification: JarvisNotification }):
       <div className="min-w-0 flex-1">
         <div className="mb-[3px] text-[13.5px] font-semibold">{notification.title}</div>
         <div className="text-cap leading-[1.5] text-t3">{notification.description}</div>
+
+        {notification.actions.length > 0 && (
+          <div className="mt-2 flex gap-1.5">
+            {notification.actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                onClick={() => {
+                  action.run();
+                  dismiss(notification.id);
+                }}
+                className="rounded-md border border-line px-2 py-1 text-[10.5px] text-t2 transition-colors hover:border-accent/35 hover:text-accent"
+              >
+                {action.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="mt-1.5 text-[10px] tracking-[0.06em] text-t3">
           {formatTime(new Date(notification.createdAt))}
         </div>

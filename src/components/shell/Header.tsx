@@ -6,6 +6,7 @@ import { useSystemMetrics } from '@/hooks/use-system-metrics';
 import { cn } from '@/lib/cn';
 import { formatPercent, formatShortDate, formatTime } from '@/lib/format';
 import { useAssistantStore } from '@/stores/use-assistant-store';
+import { selectUnreadCount, useNotificationStore } from '@/stores/use-notification-store';
 
 interface HeaderProps {
   /** `true` quando a animação de entrada do desktop já chegou ao header. */
@@ -28,6 +29,7 @@ export function Header({
   const isTight = useIsTight();
   const mode = useAssistantStore((state) => state.mode);
   const { snapshot } = useSystemMetrics();
+  const unreadCount = useNotificationStore(selectUnreadCount);
 
   const isListening = mode === 'listening';
 
@@ -115,7 +117,15 @@ export function Header({
           <Mic />
         </IconButton>
 
-        <IconButton label="Notificações" onClick={onOpenNotifications} hasBadge>
+        <IconButton
+          label={
+            unreadCount > 0
+              ? `Notificações — ${unreadCount} por ler`
+              : 'Notificações'
+          }
+          onClick={onOpenNotifications}
+          hasBadge={unreadCount > 0}
+        >
           <Bell />
         </IconButton>
 

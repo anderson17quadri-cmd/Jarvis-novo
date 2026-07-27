@@ -20,7 +20,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 205 testes |
+| Vitest | 218 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -213,7 +213,7 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 | Command Palette | ✅ | |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
 | Múltiplos desktops (1 a 4) | ⬜ | Excluído do âmbito da Fase 1 |
-| Painel lateral de notificações com agrupamento | ⬜ | A Fase 1 tem toasts |
+| Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis são Fase 2 |
 
 ---
