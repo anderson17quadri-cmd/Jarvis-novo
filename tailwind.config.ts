@@ -14,10 +14,15 @@ export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   darkMode: ['class'],
   theme: {
+    /**
+     * Pontos de quebra em `max-width`, como no protótipo: o desktop é a base e
+     * cada variante retira coisas à medida que o ecrã encolhe. Com os `min-width`
+     * do Tailwind por omissão, `compact:` significaria "ecrã grande" — o oposto.
+     */
     screens: {
-      tight: `${BREAKPOINTS.tight}px`,
-      compact: `${BREAKPOINTS.compact}px`,
-      rail: `${BREAKPOINTS.rail}px`,
+      rail: { max: `${BREAKPOINTS.rail}px` },
+      compact: { max: `${BREAKPOINTS.compact}px` },
+      tight: { max: `${BREAKPOINTS.tight}px` },
     },
     extend: {
       colors: {

@@ -1,0 +1,66 @@
+/**
+ * Camadas do wallpaper que são CSS puro.
+ *
+ * Ficam fora do Tailwind porque são gradientes e máscaras longas — escrevê-las
+ * como classes utilitárias seria ilegível e não traria vantagem nenhuma.
+ * As partículas e as linhas holográficas são canvas, em `Wallpaper.tsx`.
+ */
+
+[data-wallpaper='nebula'] i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(110px);
+  opacity: 0.5;
+  animation: wp-drift 46s var(--e-io) infinite alternate;
+}
+
+.wp-nebula-1 {
+  width: 60vw;
+  height: 60vw;
+  left: -16vw;
+  top: -20vw;
+  background: radial-gradient(circle, rgb(0 162 255 / 0.22), transparent 68%);
+}
+
+.wp-nebula-2 {
+  width: 46vw;
+  height: 46vw;
+  right: -12vw;
+  bottom: -16vw;
+  animation-delay: -14s;
+  background: radial-gradient(circle, rgb(0 207 255 / 0.16), transparent 68%);
+}
+
+.wp-nebula-3 {
+  width: 34vw;
+  height: 34vw;
+  left: 34vw;
+  bottom: -14vw;
+  animation-delay: -28s;
+  background: radial-gradient(circle, rgb(120 80 255 / 0.1), transparent 68%);
+}
+
+@keyframes wp-drift {
+  to {
+    transform: translate3d(4vw, -3vw, 0) scale(1.12);
+  }
+}
+
+.wp-grid {
+  background-image:
+    linear-gradient(rgb(0 207 255 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(0 207 255 / 0.05) 1px, transparent 1px);
+  background-size: 72px 72px;
+  /* A máscara evita que a grelha chegue às bordas, onde ficaria dura. */
+  mask-image: radial-gradient(ellipse 78% 62% at 50% 46%, #000, transparent 100%);
+  transition: transform 1.4s var(--e-out);
+}
+
+.wp-noise {
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.wp-vignette {
+  box-shadow: inset 0 0 220px 60px rgb(0 0 0 / 0.72);
+}

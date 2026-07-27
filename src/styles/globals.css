@@ -1,4 +1,6 @@
 @import './themes.css';
+@import './wallpaper.css';
+@import './cursor.css';
 
 @tailwind base;
 @tailwind components;

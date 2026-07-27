@@ -1,0 +1,52 @@
+/**
+ * Cursor personalizado.
+ *
+ * `mix-blend-mode: screen` faz o anel brilhar sobre superfícies escuras sem
+ * tapar o que está por baixo. O componente já não se monta em `pointer: coarse`;
+ * a media query aqui é a segunda rede, para o caso de o ponteiro mudar em runtime.
+ */
+
+.cursor-ring,
+.cursor-dot {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  left: 0;
+  top: 0;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.cursor-ring {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgb(0 207 255 / 0.6);
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  transition:
+    width 0.18s var(--e-out),
+    height 0.18s var(--e-out),
+    border-color 0.18s,
+    background 0.18s;
+}
+
+.cursor-ring.is-hot {
+  width: 44px;
+  height: 44px;
+  background: rgb(0 207 255 / 0.07);
+  border-color: var(--accent);
+}
+
+.cursor-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+@media (pointer: coarse) {
+  .cursor-ring,
+  .cursor-dot {
+    display: none;
+  }
+}
