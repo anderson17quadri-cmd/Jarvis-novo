@@ -1,0 +1,48 @@
+[package]
+name = "jarvis-ai-os"
+version = "1.0.0"
+description = "JARVIS AI OS — Project ARC"
+authors = ["Anderson Quadri"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# O alvo Android carrega a aplicação como biblioteca dinâmica; o desktop usa o
+# binário em `main.rs`. Os três tipos são precisos para os dois funcionarem.
+[lib]
+name = "jarvis_ai_os_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-os = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sysinfo = "0.33"
+thiserror = "2"
+
+# Bandeja, atalho global e gestão de processos só existem no desktop.
+# Declarar por alvo evita puxar dependências que não compilam no Android — e a
+# feature `tray-icon` do Tauri só é ativada onde há mesmo bandeja.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-process = "2"
+
+[features]
+# Ativado pelo `tauri build` — não usar diretamente.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

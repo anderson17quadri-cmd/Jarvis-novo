@@ -1,0 +1,27 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.DS_Store
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Android
+src-tauri/gen/android/
+*.keystore
+local.properties
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testes
+coverage/

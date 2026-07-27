@@ -1,0 +1,32 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissões comuns a todas as plataformas. Mínimo estrito: só o que o shell da aplicação usa mesmo.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-title",
+    "core:event:default",
+    "os:allow-platform",
+    "os:allow-version",
+    "os:allow-arch",
+    "notification:default",
+    "store:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "dialog:allow-message",
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$APPDATA/**" }, { "path": "$APPCONFIG/**" }]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$APPDATA/**" }, { "path": "$APPCONFIG/**" }]
+    },
+    {
+      "identifier": "shell:allow-open",
+      "allow": [{ "url": "https://**" }, { "url": "mailto:*" }]
+    }
+  ]
+}

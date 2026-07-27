@@ -1,0 +1,109 @@
+/**
+ * Temas do sistema.
+ *
+ * `:root` é o tema base (JARVIS Classic). Cada `[data-theme]` só redefine o que
+ * muda — tudo o resto herda. É por isso que trocar de tema é instantâneo e não
+ * exige recompilar o Tailwind: as classes apontam para estas variáveis.
+ *
+ * Os valores espelham `src/design-system/tokens.ts`. O teste
+ * `tests/design-system/themes.test.ts` falha se os dois ficheiros divergirem —
+ * é o que mantém o token único mesmo com CSS à mistura.
+ */
+
+:root {
+  /* superfícies */
+  --bg: #05070a;
+  --bg2: #0b1118;
+  --card: #101922;
+  --card-hover: #162434;
+  --line: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.12);
+
+  /* texto */
+  --t1: #ffffff;
+  --t2: #c5d1df;
+  --t3: #7e91a8;
+
+  /* acento */
+  --accent: #00cfff;
+  --neon: #00a2ff;
+  --green: #22c55e;
+  --yellow: #fbbf24;
+  --red: #ef4444;
+
+  /* raios */
+  --r-btn: 16px;
+  --r-card: 20px;
+  --r-modal: 24px;
+  --r-input: 14px;
+
+  /* espaço */
+  --s1: 8px;
+  --s2: 16px;
+  --s3: 24px;
+  --s4: 32px;
+  --s5: 48px;
+  --s6: 64px;
+
+  /* estrutura */
+  --header-h: 72px;
+  --rail-w: 88px;
+  --rail-w-open: 280px;
+
+  /* movimento */
+  --e-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --d-hover: 120ms;
+  --d-click: 150ms;
+  --d-panel: 220ms;
+  --d-window: 280ms;
+  --d-screen: 600ms;
+
+  /* sombra */
+  --sh-1: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --sh-2: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --glow: 0 0 24px rgba(0, 207, 255, 0.25);
+}
+
+[data-theme='oled'] {
+  --bg: #000000;
+  --bg2: #050505;
+  --card: #0b0b0b;
+  --card-hover: #141414;
+}
+
+[data-theme='titanium'] {
+  --accent: #b8c4ce;
+  --neon: #8e9ba8;
+  --glow: 0 0 24px rgba(184, 196, 206, 0.22);
+}
+
+[data-theme='emerald'] {
+  --accent: #22e5a0;
+  --neon: #12b981;
+  --glow: 0 0 24px rgba(34, 229, 160, 0.25);
+}
+
+[data-theme='solar'] {
+  --accent: #ffb020;
+  --neon: #f59e0b;
+  --glow: 0 0 24px rgba(255, 176, 32, 0.25);
+}
+
+/* ── Responsivo estrutural ────────────────────────────────────────────────
+   O rail encolhe a 1100px e desaparece a 820px, onde passa a gaveta.
+   Está aqui e não em componentes porque são medidas do shell, não de um
+   componente em particular. */
+
+@media (max-width: 1100px) {
+  :root {
+    --rail-w: 72px;
+  }
+}
+
+@media (max-width: 820px) {
+  :root {
+    --header-h: 60px;
+    --rail-w: 0px;
+  }
+}

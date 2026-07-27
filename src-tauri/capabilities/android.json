@@ -1,0 +1,8 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "android",
+  "description": "Só Android. Sem bandeja, sem atalho global, sem controlo de janelas — a aplicação ocupa o ecrã todo e o sistema gere-a.",
+  "platforms": ["android"],
+  "windows": ["main"],
+  "permissions": ["notification:default"]
+}
