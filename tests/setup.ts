@@ -10,18 +10,23 @@ afterEach(() => {
  * O jsdom não implementa `matchMedia`, e vários hooks dependem dele
  * (`pointer: coarse`, `prefers-reduced-motion`, breakpoints). O stub responde
  * sempre `false`, que corresponde ao desktop com movimento normal.
+ *
+ * É uma função normal e não um `vi.fn()` de propósito: um teste que chame
+ * `vi.restoreAllMocks()` esvaziaria a implementação e deixaria os hooks a ler
+ * `undefined.matches`.
  */
 if (typeof window !== 'undefined' && !window.matchMedia) {
-  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  }));
+  window.matchMedia = (query: string): MediaQueryList =>
+    ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => undefined,
+      removeListener: () => undefined,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+      dispatchEvent: () => false,
+    }) as MediaQueryList;
 }
 
 /** O jsdom também não tem ResizeObserver — usado pelo AI Core e pelas janelas. */

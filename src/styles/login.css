@@ -1,0 +1,23 @@
+/** Linha de leitura facial, a percorrer o avatar de cima a baixo e de volta. */
+
+.login-face-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent);
+  box-shadow: 0 0 14px 3px rgb(0 207 255 / 0.6);
+  animation: login-face-scan 1.9s var(--e-io) infinite;
+}
+
+@keyframes login-face-scan {
+  0% {
+    top: 0;
+  }
+  50% {
+    top: 100%;
+  }
+  100% {
+    top: 0;
+  }
+}

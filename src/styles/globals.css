@@ -1,6 +1,8 @@
 @import './themes.css';
 @import './wallpaper.css';
 @import './cursor.css';
+@import './boot.css';
+@import './login.css';
 
 @tailwind base;
 @tailwind components;
