@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bot, Mic, Send, User } from 'lucide-react';
 
+import { useVoice } from '@/hooks/use-voice';
 import { cn } from '@/lib/cn';
 import { aiService } from '@/services/ai-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
@@ -10,10 +11,6 @@ import type { AssistantMessage } from '@/types/assistant';
 const GREETING =
   'Bom dia, Anderson. Todos os módulos responderam dentro do tempo esperado. Tem três emails a pedir ação e o primeiro compromisso às 10:00.';
 
-interface AssistantWindowProps {
-  readonly onToggleMicrophone?: () => void;
-}
-
 /**
  * Janela do assistente.
  *
@@ -21,12 +18,15 @@ interface AssistantWindowProps {
  * `AIService`, e quem trata do modo do núcleo é o store — a janela não decide
  * nem uma coisa nem outra.
  */
-export default function AssistantWindow({
-  onToggleMicrophone,
-}: AssistantWindowProps): React.JSX.Element {
+export default function AssistantWindow(): React.JSX.Element {
   const messages = useAssistantStore((state) => state.messages);
   const mode = useAssistantStore((state) => state.mode);
   const addMessage = useAssistantStore((state) => state.addMessage);
+
+  // Esta janela já é o assistente — uma transcrição não precisa de a abrir.
+  const { isSupported: isVoiceSupported, toggleListening } = useVoice({
+    onLaunchApp: () => undefined,
+  });
 
   const [draft, setDraft] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
@@ -79,10 +79,11 @@ export default function AssistantWindow({
           className="min-w-0 flex-1 bg-transparent text-desc outline-none placeholder:text-t3"
         />
 
-        {onToggleMicrophone && (
+        {/* O microfone só aparece onde há reconhecimento de voz. */}
+        {isVoiceSupported && (
           <button
             type="button"
-            onClick={onToggleMicrophone}
+            onClick={toggleListening}
             aria-label={mode === 'listening' ? 'Desligar microfone' : 'Ligar microfone'}
             aria-pressed={mode === 'listening'}
             className={cn(
