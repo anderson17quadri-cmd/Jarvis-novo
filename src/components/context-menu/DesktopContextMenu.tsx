@@ -159,7 +159,7 @@ export function DesktopContextMenu({
     >
       {ACTIONS.map((action, index) =>
         action === null ? (
-          // eslint-disable-next-line react/no-array-index-key -- separadores não têm identidade
+          // Separadores não têm identidade própria; o índice serve de chave.
           <div key={`sep-${index}`} className="mx-1 my-1.5 h-px bg-line" />
         ) : (
           <button

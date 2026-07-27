@@ -1,10 +1,12 @@
 use std::sync::Mutex;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use sysinfo::{Disks, Networks, ProcessesToUpdate, System};
+use sysinfo::{Disks, Networks, System};
 
+#[cfg(desktop)]
+use super::metrics::ProcessInfo;
 use super::metrics::{
-    percent, CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics, ProcessInfo, StaticSystemInfo,
+    percent, CpuMetrics, DiskMetrics, MemoryMetrics, NetworkMetrics, StaticSystemInfo,
     SystemSnapshot, VolumeMetrics,
 };
 use crate::error::{Error, Result};
@@ -175,11 +177,12 @@ impl SystemMonitor {
 
     /// Processos que mais CPU consomem.
     ///
-    /// O Android não deixa ler os processos de outras aplicações; aí o comando
-    /// nem é chamado — o `AndroidAdapter` devolve lista vazia sem tocar no IPC.
+    /// Só desktop: o Android isola as aplicações e não deixa ler os processos
+    /// das outras. Lá, o comando correspondente devolve `Error::Unsupported`.
+    #[cfg(desktop)]
     pub fn top_processes(&self, limit: usize) -> Result<Vec<ProcessInfo>> {
         let mut sys = lock(&self.system, "system")?;
-        sys.refresh_processes(ProcessesToUpdate::All, true);
+        sys.refresh_processes(sysinfo::ProcessesToUpdate::All, true);
 
         let mut processes: Vec<ProcessInfo> = sys
             .processes()

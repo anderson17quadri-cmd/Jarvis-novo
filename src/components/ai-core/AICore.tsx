@@ -57,6 +57,10 @@ export function AICore({
   // propósito, para se lerem à mesma no Solar ou no Titanium.
   const modeColor = useMemo(
     () => config.color ?? themeService.readAccentColor(),
+    // `theme` parece não ser usado, mas é: `readAccentColor` lê o CSS computado
+    // do `<html>`, que muda quando o tema muda. Sem esta dependência, o núcleo
+    // ficava com a cor do tema anterior até o modo mudar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [config.color, theme],
   );
   const rgbColor = useMemo(() => parseHexColor(modeColor), [modeColor]);

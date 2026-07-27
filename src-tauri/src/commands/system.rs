@@ -7,8 +7,10 @@ use crate::system::metrics::{ProcessInfo, StaticSystemInfo, SystemSnapshot};
 use crate::system::SystemMonitor;
 
 /// Quantos processos devolver quando a interface não especifica.
+#[cfg(desktop)]
 const DEFAULT_PROCESS_LIMIT: usize = 8;
 /// Teto rígido — impede que a interface peça uma lista de milhares.
+#[cfg(desktop)]
 const MAX_PROCESS_LIMIT: usize = 50;
 
 /// Leitura completa: CPU, memória, disco e rede.

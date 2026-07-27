@@ -24,7 +24,13 @@ export function useWindowDrag(
   rect: WindowRect,
   { onMove, onDrop, onSnapPreview, enabled }: DragCallbacks,
 ): { readonly onPointerDown: (event: React.PointerEvent<HTMLElement>) => void } {
-  const stateRef = useRef({ startX: 0, startY: 0, originX: 0, originY: 0, edge: 'none' as SnapEdge });
+  const stateRef = useRef<{
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+    edge: SnapEdge;
+  }>({ startX: 0, startY: 0, originX: 0, originY: 0, edge: 'none' });
 
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLElement>): void => {

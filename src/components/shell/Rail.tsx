@@ -77,7 +77,7 @@ export function Rail({
       >
         {RAIL_ITEMS.map((item, index) =>
           item === null ? (
-            // eslint-disable-next-line react/no-array-index-key -- separadores não têm identidade
+            // Separadores não têm identidade própria; o índice serve de chave.
             <div key={`sep-${index}`} className="mx-1 my-3 h-px bg-line" />
           ) : (
             <RailButton
