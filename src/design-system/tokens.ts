@@ -1,7 +1,7 @@
 /**
  * Design System — tokens.
  *
- * Fonte única de verdade. Extraídos do protótipo `design-reference/jarvis-ai-os.html`
+ * Fonte única de verdade. Extraídos do protótipo `docs/spec/design-reference/jarvis-ai-os.html`
  * (bloco `:root`). O `tailwind.config.ts` importa daqui, e o `themes.css` gera as
  * variáveis CSS a partir dos mesmos valores.
  *

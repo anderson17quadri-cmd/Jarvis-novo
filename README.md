@@ -156,12 +156,13 @@ Mais detalhe:
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — como adicionar um widget, uma janela, um comando Rust e um provedor de IA
 - **[PLATFORM.md](PLATFORM.md)** — o que existe em cada plataforma e como o adapter trata o que falta
 - **[SPEC.md](SPEC.md)** — mapa entre as partes da especificação e o código, incluindo as divergências assumidas
+- **[docs/spec/](docs/spec/)** — a especificação completa (Partes 1 a 17) e o protótipo visual, arquivados no repositório
 
 ---
 
 ## Design system
 
-O visual vem do protótipo em [`design-reference/jarvis-ai-os.html`](design-reference/jarvis-ai-os.html), preservado no repositório como referência.
+O visual vem do protótipo em [`docs/spec/design-reference/jarvis-ai-os.html`](docs/spec/design-reference/jarvis-ai-os.html), preservado no repositório como referência.
 
 Os tokens vivem em `src/design-system/tokens.ts` e entram no `tailwind.config.ts` como tema. Não há cores nem durações escritas à mão pelo código: as classes apontam para variáveis CSS, e é por isso que trocar de tema é instantâneo.
 

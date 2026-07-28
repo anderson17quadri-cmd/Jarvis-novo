@@ -3,6 +3,15 @@
 Mapa entre as partes do documento e o código. Serve para a Fase 2 saber onde
 continuar, e para não se perder de vista o que ficou deliberadamente por fazer.
 
+> **A especificação completa vive em [`docs/spec/jarvis-spec-completo.md`](docs/spec/jarvis-spec-completo.md)**
+> — Partes 1 a 17, sem cortes, arquivada no repositório. É a **fonte de verdade
+> da visão**. O protótipo visual está em
+> [`docs/spec/design-reference/jarvis-ai-os.html`](docs/spec/design-reference/jarvis-ai-os.html).
+>
+> Este ficheiro é outra coisa: o **estado da implementação** face a essa visão.
+> A visão não se reescreve para acompanhar o código; quando o código diverge de
+> propósito, a divergência fica registada aqui em §*Divergências assumidas*.
+
 Legenda: ✅ implementado · 🟡 parcial · ⬜ Fase 2+ · ⚠️ divergência assumida
 
 ---
@@ -116,6 +125,21 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 `assets/` — têm cada uma um `README.md` que define a fronteira. Ver
 [ARCHITECTURE.md](ARCHITECTURE.md) §*Onde pôr um ficheiro novo*.
 
+## 5. Fora de âmbito por decisão
+
+Não é falta de tempo nem esquecimento. São quatro coisas que se decidiu **não**
+construir, cada uma com a sua razão.
+
+| O quê | Porque não |
+|---|---|
+| **Workspace — múltiplos desktops e layouts guardados** | Mexe no `use-window-store` e no `use-widget-store`, as duas peças mais bem testadas do projeto. Fica **bloqueado até a Fase 1 correr no Windows e no Android**. Não é dificuldade — é onde uma regressão custaria mais a apanhar |
+| **Terminal** | Um terminal que não executa nada é estrutura a fingir. Precisa de um comando Rust e de sandbox |
+| **Motor de automações** | Sem disparadores reais — hora, evento, ficheiro — seria uma lista de regras que nunca correm |
+| **Widget de GPU** | O `sysinfo` não lê a GPU. Mostrar um número inventado é pior do que não mostrar nada, e é a mesma razão pela qual o Monitor de recursos também não tem cartão de GPU |
+
+As três primeiras entram quando houver PC. A quarta entra se e quando houver
+uma forma honesta de ler a GPU.
+
 ---
 
 ## Parte 2 — Design System
@@ -218,9 +242,9 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
-| Múltiplos desktops (1 a 4) | ⬜ | Excluído do âmbito da Fase 1 |
+| Múltiplos desktops (1 a 4) | ⬜ | Bloqueado até a Fase 1 correr no PC — ver §5 |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
-| Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis são Fase 2 |
+| Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
 | **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
 
 ---
