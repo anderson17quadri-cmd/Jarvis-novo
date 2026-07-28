@@ -17,8 +17,11 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
+import { USER_FIRST_NAME } from '@/constants/user';
 import { seedAutomations } from '@/data/automations';
 import { aiService } from '@/services/ai-service';
+import { setContextSource } from '@/services/assistant/context';
+import { memoryService } from '@/services/assistant/memory-service';
 import { automationService } from '@/services/automation-service';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
@@ -26,6 +29,7 @@ import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
 import { soundService } from '@/services/sound-service';
+import { weatherService } from '@/services/weather/weather-service';
 import { setVoiceExecutor } from '@/services/voice/executor';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
@@ -41,6 +45,7 @@ import type { CommandActions } from '@/components/command-palette/command-regist
 import type { AppId } from '@/types/app';
 import type { SystemStateId } from '@/types/system-state';
 import type { ThemeId } from '@/design-system/tokens';
+import { WEATHER_LABELS } from '@/types/weather';
 import type { WidgetId } from '@/types/widget';
 
 /** Saudação da IA ao entrar no ambiente de trabalho (Parte 5 §Transição). */
@@ -98,6 +103,8 @@ export function App(): React.JSX.Element {
       await useAppearanceStore.getState().hydrate();
       await soundService.hydrate();
       await automationService.hydrate(seedAutomations());
+      await useAssistantStore.getState().hydrate();
+      await memoryService.hydrate();
 
       const adapter = getPlatformAdapter();
       logService.log(
@@ -163,6 +170,37 @@ export function App(): React.JSX.Element {
 
     return () => clearTimeout(timer);
   }, [isDesktop, restoreSavedLayout, speak]);
+
+  /**
+   * Contexto do assistente (Parte 7.2).
+   *
+   * Montado aqui porque é aqui que se conhecem as stores todas. O serviço
+   * recebe uma função e chama-a — pelas mesmas razões do executor das
+   * automações e do de voz.
+   */
+  useEffect(() => {
+    return setContextSource(() => {
+      const weather = weatherService.current;
+
+      return {
+        now: new Date(),
+        userName: USER_FIRST_NAME,
+        weather: weather
+          ? {
+              location: weather.location,
+              temperatureC: Math.round(weather.now.temperatureC),
+              label: WEATHER_LABELS[weather.now.condition],
+            }
+          : null,
+        openWindows: useWindowStore.getState().windows.map((window) => window.title),
+        unreadNotifications: useNotificationStore
+          .getState()
+          .notifications.filter((notification) => !notification.isRead).length,
+        systemState: useSystemStateStore.getState().definition.name.toLowerCase(),
+        theme: useThemeStore.getState().theme,
+      };
+    });
+  }, []);
 
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   const closePalette = useCallback(() => {

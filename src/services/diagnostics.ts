@@ -1,4 +1,6 @@
 import { getPlatformAdapter } from '@/platform';
+import { aiService } from './ai-service';
+import { memoryService } from './assistant/memory-service';
 import { automationService } from './automation-service';
 import { logService } from './log-service';
 import { soundService } from './sound-service';
@@ -83,6 +85,13 @@ export function readDiagnostics(): Diagnostics {
         detail: soundService.isEnabled
           ? `volume a ${Math.round(soundService.currentVolume * 100)}%`
           : 'desligado nas preferências',
+      },
+      {
+        name: 'Assistente',
+        // O provedor de regras responde a sério ao contexto, mas não é um
+        // modelo de linguagem — o painel diz qual está ligado, não "IA: ativa".
+        state: 'ativo',
+        detail: `provedor ${aiService.providerName} · ${memoryService.current.recentPrompts.length} pedidos em memória`,
       },
       {
         name: 'Registo',

@@ -19,6 +19,53 @@ export interface AssistantMessage {
   readonly createdAt: number;
   /** `true` enquanto o texto ainda está a ser escrito letra a letra. */
   readonly isStreaming: boolean;
+  /** Marcada como favorita (Parte 7.1 §Histórico). Sobrevive à sessão. */
+  readonly isFavourite: boolean;
+}
+
+/**
+ * Uma conversa (Parte 7.1 §Histórico de conversas).
+ *
+ * O histórico não é uma lista infinita de mensagens: são conversas, cada uma
+ * com o seu título, que se podem fixar, exportar e apagar à parte.
+ */
+export interface AssistantConversation {
+  readonly id: string;
+  /** Tirado da primeira coisa que se escreveu. Não se inventa um título. */
+  readonly title: string;
+  readonly createdAt: number;
+  readonly updatedAt: number;
+  /** Fixada no topo da lista, imune ao limite de histórico. */
+  readonly isPinned: boolean;
+  readonly messages: readonly AssistantMessage[];
+}
+
+/** Quantas conversas não fixadas se guardam. As fixadas não contam. */
+export const CONVERSATION_LIMIT = 40;
+
+/** Título de uma conversa ainda sem nada escrito. */
+export const UNTITLED_CONVERSATION = 'Nova conversa';
+
+/** Comprimento máximo de um título tirado da primeira mensagem. */
+export const TITLE_MAX_LENGTH = 42;
+
+/**
+ * O presente, tal como o assistente o conhece (Parte 7.2 §Contexto).
+ *
+ * É montado fora dos serviços e injetado, pela mesma razão que o executor das
+ * automações: senão o `AIService` acabava a importar seis stores e a meteorologia.
+ */
+export interface AssistantContext {
+  readonly now: Date;
+  /** Nome de quem está a usar, se a sessão o souber. */
+  readonly userName: string | null;
+  /** `null` quando o provedor de meteorologia não respondeu. */
+  readonly weather: { readonly location: string; readonly temperatureC: number; readonly label: string } | null;
+  /** Títulos das janelas abertas, pela ordem em que estão. */
+  readonly openWindows: readonly string[];
+  readonly unreadNotifications: number;
+  readonly systemState: string;
+  readonly theme: string;
 }
 
 /** Um pedido ao provedor de IA. */
@@ -26,9 +73,29 @@ export interface AiRequest {
   readonly prompt: string;
   /** Histórico enviado como contexto. */
   readonly history: readonly AssistantMessage[];
+  /** O presente. `null` quando ninguém registou uma fonte de contexto. */
+  readonly context: AssistantContext | null;
+  /** O que ficou de conversas anteriores — preferências e últimos pedidos. */
+  readonly memory: AssistantMemory;
   /** Cancela o pedido a meio. */
   readonly signal?: AbortSignal;
 }
+
+/**
+ * Memória local (Parte 7.2 §Memória).
+ *
+ * Fica no dispositivo e mais nada: não há para onde a enviar, e não haveria
+ * mesmo que houvesse rede — é isto que o assistente sabe de quem o usa.
+ */
+export interface AssistantMemory {
+  /** Preferências ditas em voz alta: "trata-me por…", "moro em…". */
+  readonly preferences: Readonly<Record<string, string>>;
+  /** Últimos pedidos, do mais recente para o mais antigo, sem repetições. */
+  readonly recentPrompts: readonly string[];
+}
+
+/** Quantos pedidos a memória guarda. */
+export const MEMORY_PROMPT_LIMIT = 20;
 
 /**
  * Contrato de um provedor de IA.

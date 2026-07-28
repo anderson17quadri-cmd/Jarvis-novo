@@ -19,6 +19,8 @@ export const STORAGE_KEYS = {
   appearance: 'appearance',
   lastUser: 'last-user',
   reducedMotion: 'reduced-motion',
+  conversations: 'conversations',
+  assistantMemory: 'assistant-memory',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

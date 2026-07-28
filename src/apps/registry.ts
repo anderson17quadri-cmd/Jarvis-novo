@@ -36,7 +36,8 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     id: 'assistant',
     title: 'Assistente JARVIS',
     icon: Bot,
-    defaultSize: { width: 520, height: 440 },
+    // Larga o suficiente para a conversa e o histórico caberem lado a lado.
+    defaultSize: { width: 760, height: 520 },
     component: lazy(() => import('./assistant/AssistantWindow')),
     implemented: true,
   },

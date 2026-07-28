@@ -37,3 +37,11 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
     disconnect(): void {}
   };
 }
+
+/**
+ * Nem `Element.scrollTo` — o painel de conversas usa-o para acompanhar a
+ * resposta a ser escrita. Sem o stub, montar a janela do assistente rebenta.
+ */
+if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
+  Element.prototype.scrollTo = function scrollTo(): void {};
+}

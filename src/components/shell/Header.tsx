@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 import { formatPercent, formatShortDate, formatTime } from '@/lib/format';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { selectUnreadCount, useNotificationStore } from '@/stores/use-notification-store';
+import { USER_NAME } from '@/constants/user';
 
 interface HeaderProps {
   /** `true` quando a animação de entrada do desktop já chegou ao header. */
@@ -136,7 +137,7 @@ export function Header({
             'text-[12.5px] font-semibold text-accent transition-transform duration-hover ease-out',
             'hover:scale-105',
           )}
-          title="Anderson Quadri"
+          title={USER_NAME}
         >
           AQ
           <span className="absolute bottom-0 right-0 h-[10px] w-[10px] rounded-full border-2 border-bg2 bg-ok" />

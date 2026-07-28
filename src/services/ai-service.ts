@@ -1,6 +1,9 @@
-import { useAssistantStore } from '@/stores/use-assistant-store';
+import { selectMessages, useAssistantStore } from '@/stores/use-assistant-store';
 import type { AiProvider } from '@/types/assistant';
-import { MockProvider } from './ai-providers/ai-provider';
+import { RuleProvider } from './ai-providers/rule-provider';
+import { readContext } from './assistant/context';
+import { memoryService } from './assistant/memory-service';
+import { logService } from './log-service';
 
 /**
  * Assistente.
@@ -10,11 +13,15 @@ import { MockProvider } from './ai-providers/ai-provider';
  *
  * Trocar de provedor é `aiService.setProvider(new OpenAiProvider(chave))` —
  * nenhum componente muda, porque nenhum componente conhece o provedor.
+ *
+ * O contexto (Parte 7.2) chega por uma fonte registada de fora, e a memória
+ * pelo `memoryService`. O serviço não conhece nenhuma store além da do
+ * assistente, que é a que escreve.
  */
 export class AIService {
   private controller: AbortController | null = null;
 
-  constructor(private provider: AiProvider = new MockProvider()) {}
+  constructor(private provider: AiProvider = new RuleProvider()) {}
 
   get providerName(): string {
     return this.provider.name;
@@ -43,6 +50,10 @@ export class AIService {
     this.controller = new AbortController();
     const { signal } = this.controller;
 
+    // A memória observa antes de responder: uma preferência dita agora tem de
+    // estar guardada quando o provedor a for confirmar.
+    memoryService.observe(prompt);
+
     store.addMessage('user', prompt);
     store.setMode('thinking');
 
@@ -53,7 +64,9 @@ export class AIService {
     try {
       for await (const chunk of this.provider.stream({
         prompt,
-        history: useAssistantStore.getState().messages,
+        history: selectMessages(useAssistantStore.getState()),
+        context: readContext(),
+        memory: memoryService.current,
         signal,
       })) {
         if (signal.aborted) break;
@@ -68,7 +81,12 @@ export class AIService {
         useAssistantStore.getState().appendToMessage(messageId, chunk);
       }
     } catch (error) {
-      console.warn('[ai] o provedor falhou:', error);
+      logService.log(
+        'erro',
+        'assistente',
+        'O provedor falhou',
+        error instanceof Error ? error.message : String(error),
+      );
       useAssistantStore.getState().setMode('error');
       useAssistantStore.getState().appendToMessage(
         messageId,
@@ -83,6 +101,19 @@ export class AIService {
     this.controller = null;
 
     return full;
+  }
+
+  /**
+   * Repete o pedido que deu origem a uma resposta (Parte 7.1 §Regenerar).
+   *
+   * Apaga a resposta e o pedido, e volta a enviá-lo — o histórico fica com uma
+   * troca só, não com duas versões da mesma pergunta.
+   */
+  async regenerate(messageId: string): Promise<string> {
+    const prompt = useAssistantStore.getState().rewindToPrompt(messageId);
+    if (prompt === null) return '';
+
+    return this.send(prompt);
   }
 }
 

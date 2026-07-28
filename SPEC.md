@@ -29,12 +29,12 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 474 testes |
+| Vitest | 568 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`, e a aplicação abre offline depois da primeira visita |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador** e **Privacidade** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade** e **assistente com histórico, memória e contexto** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -295,13 +295,22 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Personalidade: elegante, objetiva, sem emojis | ✅ | `services/ai-service.ts` |
 | Sem rosto — comunicação pelo núcleo | ✅ | Parte 8 |
 | Cinco estados (ocioso, ouvindo, processando, respondendo, erro) | ✅ | `CORE_MODES` |
-| Janela com histórico | 🟡 | Há conversa e histórico da sessão. Faltam fixar, exportar, favoritos, regenerar, categorias |
+| Janela com histórico | ✅ | Conversas, não uma lista solta de mensagens: fixar, exportar em Markdown, favoritas, regenerar a última resposta e categorias por tempo (Fixadas, Hoje, Ontem, Últimos 7 dias, Mais antigas) |
 | Digitação letra a letra | ✅ | `use-typewriter.ts` |
 | Comandos naturais compreendidos | 🟡 | Abrir janelas, temas, widgets. A lista completa da spec é a Parte 10 |
-| Memória local (preferências, últimos comandos) | ⬜ | Só o tema e o utilizador persistem |
-| Contexto (hora, clima, janelas abertas, notificações) | ⬜ | Os dados existem; falta ligá-los à resposta |
-| **Provedor de IA real** | 🚫 | `AiProvider` está escrito e o serviço já o consome. Sem rede, só há o de regras — ver §2 |
+| Memória local (preferências, últimos comandos) | ✅ | `services/assistant/memory-service.ts` — só guarda o que for dito por palavras ("trata-me por…", "moro em…"). Deduzir preferências do resto da conversa seria inventar sobre uma pessoa e depois usá-lo como verdade |
+| Contexto (hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts`. A fonte é injetada pela `App`, como o executor das automações — o serviço não conhece store nenhuma |
+| **Provedor de IA real** | 🚫 | `AiProvider` está escrito e o serviço já o consome. Sem rede, só há o `RuleProvider` — ver §2 |
 | Anexos: imagens, PDF, áudio, vídeo | ⬜ | Precisa de sistema de ficheiros |
+
+> **O `RuleProvider` responde a sério ao que sabe** — hora, data, meteorologia,
+> janelas abertas, notificações por ler, estado, tema e memória. Ao que não
+> sabe, diz que não tem modelo ligado em vez de improvisar uma frase que soe
+> bem. O antigo `MockProvider`, que respondia sempre as mesmas quatro frases
+> fossem quais fossem as perguntas, foi substituído por isto.
+>
+> **Exportar descarrega para a pasta de transferências.** Escolher o destino
+> exige o plugin `dialog` — bloqueado, ver §2.
 
 ---
 

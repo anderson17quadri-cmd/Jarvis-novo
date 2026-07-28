@@ -31,6 +31,7 @@ export type LogSource =
   | 'voz'
   | 'automacao'
   | 'plugin'
+  | 'assistente'
   | 'auditoria';
 
 export const SOURCE_LABELS: Record<LogSource, string> = {
@@ -40,6 +41,7 @@ export const SOURCE_LABELS: Record<LogSource, string> = {
   voz: 'Voz',
   automacao: 'Automações',
   plugin: 'Plugins',
+  assistente: 'Assistente',
   auditoria: 'Auditoria',
 };
 

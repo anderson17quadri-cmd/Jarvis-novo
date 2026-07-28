@@ -30,10 +30,11 @@ import { formatLongDate, formatTime } from '@/lib/format';
 import { notificationService } from '@/services/notification-service';
 import { measurePasswordStrength } from './password-strength';
 import { PinKeypad } from './PinKeypad';
+import { USER_FIRST_NAME, USER_NAME } from '@/constants/user';
 
 /** Frases que o assistente vai dizendo enquanto espera pela autenticação. */
 const ASSISTANT_LINES = [
-  'Bom dia, Anderson.',
+  `Bom dia, ${USER_FIRST_NAME}.`,
   'Todos os sistemas estão operacionais.',
   'Tem três compromissos hoje.',
   'Aguardo a sua autenticação.',
@@ -243,7 +244,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
         </button>
 
         <div className="mt-s2 text-center">
-          <b className="block text-[22px] font-medium">Anderson Quadri</b>
+          <b className="block text-[22px] font-medium">{USER_NAME}</b>
           <span className="text-[13px] text-t3">Último acesso hoje, 02:14</span>
         </div>
 
