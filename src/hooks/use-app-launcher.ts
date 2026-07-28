@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'react';
 import { getAppDefinition } from '@/apps/registry';
 import { readViewport } from '@/components/windows/snap';
 import { useIsCompact } from '@/hooks/use-media-query';
+import { eventBus } from '@/services/event-bus';
 import { soundService } from '@/services/sound-service';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { AppId } from '@/types/app';
@@ -28,6 +29,7 @@ export function useAppLauncher(): {
       const definition = getAppDefinition(appId);
       open(appId, definition.title, centeredRect(definition.defaultSize));
       soundService.play('open');
+      eventBus.emit('janela:aberta', { appId });
       void persistLayout();
     },
     [open, persistLayout],

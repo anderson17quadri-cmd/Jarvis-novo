@@ -1,4 +1,5 @@
 import { getPlatformAdapter, type PlatformAdapter } from '@/platform';
+import { eventBus } from './event-bus';
 import { soundService, type SoundName } from './sound-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore, type PushOptions } from '@/stores/use-notification-store';
@@ -36,6 +37,12 @@ export class NotificationService {
      * histórico — o que se corta é a interrupção, não a informação. Dispensar
      * no mesmo tick evita qualquer piscar.
      */
+    eventBus.emit('notificacao:nova', {
+      title,
+      kind: options.kind ?? 'info',
+      category: options.category ?? 'sistema',
+    });
+
     const state = useSystemStateStore.getState().definition;
     const mayInterrupt = allowsToast(state, options.kind ?? 'info');
     if (!mayInterrupt) useNotificationStore.getState().dismiss(id);

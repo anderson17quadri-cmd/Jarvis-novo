@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 340 testes |
+| Vitest | 364 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -151,11 +151,28 @@ construir, cada uma com a sua razão.
 |---|---|
 | **Workspace — múltiplos desktops e layouts guardados** | Mexe no `use-window-store` e no `use-widget-store`, as duas peças mais bem testadas do projeto. Fica **bloqueado até a Fase 1 correr no Windows e no Android**. Não é dificuldade — é onde uma regressão custaria mais a apanhar |
 | **Terminal** | Um terminal que não executa nada é estrutura a fingir. Precisa de um comando Rust e de sandbox |
-| **Motor de automações** | Sem disparadores reais — hora, evento, ficheiro — seria uma lista de regras que nunca correm |
+| **Motor de automações** | ✅ **Feito.** A avaliação inicial estava errada: gatilhos por hora e por evento interno são reais dentro do browser. Só os do sistema — ficheiros, USB, bateria — é que exigem nativo |
 | **Widget de GPU** | O `sysinfo` não lê a GPU. Mostrar um número inventado é pior do que não mostrar nada, e é a mesma razão pela qual o Monitor de recursos também não tem cartão de GPU |
 
 As três primeiras entram quando houver PC. A quarta entra se e quando houver
 uma forma honesta de ler a GPU.
+
+---
+
+## Parte 1 — Prompt de UI/UX e visão geral
+
+Não é uma parte que se "implemente": é o critério com que as outras se julgam.
+
+| Regra | | |
+|---|:--:|---|
+| Nunca emojis, só SVG | ✅ | Lucide em todo o lado. Nenhum emoji no código nem na interface |
+| Paleta original | ✅ | `tokens.ts`, com teste que falha se o CSS divergir |
+| Tipografia Inter, 300–700 | ✅ | |
+| Sidebar, header, dock, núcleo, painéis | ✅ | Partes 6.1 e 8 |
+| Nunca parecer um site | ✅ | Janelas, dock, cursor próprio, menu contextual próprio |
+| Responsivo até ao telemóvel | ✅ | Rail → gaveta, janelas empilhadas, widgets empilhados |
+| Acessibilidade: ARIA, contraste, teclado, foco | 🟡 | ARIA e teclado em todo o lado; falta o painel de acessibilidade da Parte 15 |
+| Código modular, sem duplicação | ✅ | Registos únicos, adapters, serviços com provedores |
 
 ---
 
@@ -264,8 +281,43 @@ uma forma honesta de ler a GPU.
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
 | Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`; Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
-| Janelas: Terminal, Automações | ⬜ | Fora de âmbito por decisão — ver §5 |
+| Janela: Automações | ✅ | Motor a sério — ver Parte 13 |
+| Janela: Terminal | ⬜ | Fora de âmbito por decisão — ver §5 |
 | **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
+
+---
+
+## Parte 7.1 — Assistente JARVIS
+
+| Item | | |
+|---|:--:|---|
+| Personalidade: elegante, objetiva, sem emojis | ✅ | `services/ai-service.ts` |
+| Sem rosto — comunicação pelo núcleo | ✅ | Parte 8 |
+| Cinco estados (ocioso, ouvindo, processando, respondendo, erro) | ✅ | `CORE_MODES` |
+| Janela com histórico | 🟡 | Há conversa e histórico da sessão. Faltam fixar, exportar, favoritos, regenerar, categorias |
+| Digitação letra a letra | ✅ | `use-typewriter.ts` |
+| Comandos naturais compreendidos | 🟡 | Abrir janelas, temas, widgets. A lista completa da spec é a Parte 10 |
+| Memória local (preferências, últimos comandos) | ⬜ | Só o tema e o utilizador persistem |
+| Contexto (hora, clima, janelas abertas, notificações) | ⬜ | Os dados existem; falta ligá-los à resposta |
+| **Provedor de IA real** | 🚫 | `AiProvider` está escrito e o serviço já o consome. Sem rede, só há o de regras — ver §2 |
+| Anexos: imagens, PDF, áudio, vídeo | ⬜ | Precisa de sistema de ficheiros |
+
+---
+
+## Parte 7.2 — Voz, agentes e copiloto
+
+| Item | | |
+|---|:--:|---|
+| Reconhecimento pela Web Speech API | ✅ | `services/voice-service.ts` |
+| Indicador de estado no header | ✅ | |
+| Wake word configurável | ⬜ | Exige escuta contínua — decisão de privacidade por tomar |
+| Pipeline completo (ruído, silêncio, idioma, planeamento) | 🟡 | Transcrição → intenção → execução → síntese. Faltam as etapas do meio |
+| Agentes especializados | ⬜ | |
+| AI Orchestrator | ⬜ | Parte 12 |
+| Modo copiloto (sugestões discretas) | ⬜ | |
+| Log de ações | ⬜ | Parte 16 |
+| Permissões por plugin | 🟡 | Declaradas e mostradas na loja; falta concedê-las e revogá-las |
+| **MCP** | 🚫 | Excluído da Fase 1 pelo próprio prompt original |
 
 ---
 
@@ -312,6 +364,114 @@ uma forma honesta de ler a GPU.
 | Partículas sem trajetórias repetitivas | ✅ | |
 | Sons | ✅ | `services/sound-service.ts` — sintetizados com Web Audio, sem um único ficheiro de áudio. Desligados por omissão |
 | Estados do sistema (Normal, Foco, Apresentação, Economia, Performance) | ✅ | `types/system-state.ts` — cada um muda partículas, avisos e ritmo de sondagem. Nenhum é só uma etiqueta |
+
+---
+
+## Parte 10 — Comandos de voz
+
+| Item | | |
+|---|:--:|---|
+| Ativação manual pelo botão | ✅ | |
+| Síntese de voz com o núcleo a reagir | ✅ | |
+| Comandos de sistema e de aplicações | 🟡 | Abrir janelas e trocar temas |
+| Comandos de produtividade, pesquisa, multimédia, desktop | ⬜ | |
+| Comandos compostos ("abre X, cria Y e envia Z") | ⬜ | |
+| Confirmação obrigatória em ações críticas | ⬜ | |
+| Correção de erros (mostrar o que foi reconhecido) | ⬜ | |
+| Contexto ("amanhã", "esse ficheiro") | ⬜ | |
+| Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual |
+| Histórico de voz pesquisável | ⬜ | |
+
+---
+
+## Parte 11 — Plugins e ecossistema
+
+| Item | | |
+|---|:--:|---|
+| Plugin Manager com loja, categorias e pesquisa | ✅ | `apps/plugin-manager/` |
+| Permissões declaradas e visíveis antes de instalar | ✅ | |
+| Instalar, ativar, remover, persistido | ✅ | |
+| Manifesto e contratos | ✅ | `plugins/plugin.ts` |
+| **Carregar e executar um plugin** | 🚫 | Sandbox, assinatura e ficheiros — ver §2 |
+| Isolamento entre plugins | 🚫 | Depende do carregamento |
+| Event Bus global | ✅ | `services/event-bus.ts` — nove eventos tipados. Emitido por temas, estados, notificações, plugins, janelas, email e tarefas |
+| API do Core para plugins | ⬜ | |
+| Marketplace, SDK, atualizações, rollback | ⬜ | |
+
+---
+
+## Parte 12 — AI Orchestrator
+
+| Item | | |
+|---|:--:|---|
+| Um provedor por módulo, trocável | ✅ | O padrão já está em `services/*/providers/` |
+| Seleção automática de modelo por tarefa | ⬜ | |
+| Regras de fallback | ⬜ | |
+| **Ligação a OpenAI, Claude, Gemini, Ollama…** | 🚫 | Rede real — ver §2 |
+
+---
+
+## Parte 13 — Motor de automações
+
+| Item | | |
+|---|:--:|---|
+| Gatilho → Condições → Ações | ✅ | `services/automation-service.ts` |
+| Gatilhos por hora, intervalo, evento e manual | ✅ | O relógio guarda marcas de disparo — uma regra das 08:00 corre uma vez, não três |
+| Condições: dia da semana, faixa horária, estado do sistema | ✅ | Funções puras, testadas à parte. A faixa que atravessa a meia-noite também |
+| Ações: abrir janela, notificar, tema, estado, widget, voz | ✅ | Cumpridas por um executor injetado — o motor não conhece o WindowManager |
+| Histórico com resultado, duração e motivo | ✅ | 60 execuções, persistido |
+| Janela com ligar/desligar, executar e apagar | ✅ | `apps/automations/` |
+| Templates | 🟡 | Cinco exemplos, todos desligados por omissão |
+| Editor visual em blocos | ⬜ | |
+| Criação por linguagem natural | ⬜ | Depende do provedor de IA |
+| Execução em segundo plano com a interface fechada | 🚫 | Exige serviço nativo — hoje corre enquanto o JARVIS estiver aberto |
+| **Gatilhos do sistema** (ficheiros, USB, bateria, rede) | 🚫 | Nativo |
+
+---
+
+## Parte 14 — Segurança e privacidade
+
+| Item | | |
+|---|:--:|---|
+| Menor privilégio nas capabilities do Tauri | ✅ | `src-tauri/capabilities/` — uma por plataforma |
+| Nunca abrir a shell a comandos da interface | ✅ | `url-policy.ts` só aceita `https:` e `mailto:`, e a capability impõe o mesmo |
+| Erros tratados com `Result`, sem `unwrap()` | ✅ | `src-tauri/src/error.rs` |
+| Autenticação com bloqueio e sessão | 🟡 | Login existe; falta bloqueio por inatividade |
+| Painel de privacidade e permissões | ⬜ | **Construível sem nativo** |
+| Auditoria de ações | ⬜ | **Construível sem nativo** |
+| Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo |
+| Backups e restauro | ⬜ | |
+
+---
+
+## Parte 15 — Personalização completa
+
+| Item | | |
+|---|:--:|---|
+| Temas oficiais | 🟡 | Cinco dos dez: Classic, OLED, Titanium, Emerald, Solar. Faltam Midnight Blue, Arctic White, Cyber Red, Graphite, Aurora |
+| Troca em tempo real, sem reiniciar | ✅ | |
+| Sons por categoria | 🟡 | Existem sete sons; falta o volume por categoria |
+| Perfis de animação | 🟡 | Os estados do sistema fazem parte disto |
+| Editor de temas personalizados | ⬜ | **Construível sem nativo** |
+| Papéis de parede escolhíveis | ⬜ | **Construível sem nativo** |
+| Núcleo personalizável (cor, partículas, anéis) | ⬜ | **Construível sem nativo** |
+| Tipografia, cursor, densidade, arredondamento | ⬜ | **Construível sem nativo** |
+| Perfis completos (Trabalho, Gaming, Noite…) | ⬜ | Junta-se aos layouts guardados — ver §5 |
+| Acessibilidade (alto contraste, escala, daltonismo) | ⬜ | **Construível sem nativo** |
+| Sincronização entre dispositivos | 🚫 | Rede |
+
+---
+
+## Parte 16 — Painel de desenvolvedor
+
+| Item | | |
+|---|:--:|---|
+| Logs em tempo real, pesquisáveis | ⬜ | **Construível sem nativo** |
+| Diagnóstico do sistema | 🟡 | O Monitor de recursos cobre parte |
+| Inspetor de eventos | ⬜ | **Construível sem nativo** |
+| Desempenho (FPS, memória, tempo de arranque) | ⬜ | **Construível sem nativo** |
+| Estado dos serviços e dos adapters | ⬜ | **Construível sem nativo** |
+| Consola de comandos | ⬜ | |
 
 ---
 

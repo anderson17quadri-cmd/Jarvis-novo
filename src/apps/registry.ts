@@ -103,6 +103,14 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     component: lazy(() => import('./projects/ProjectsWindow')),
     implemented: true,
   },
+  automations: {
+    id: 'automations',
+    title: 'Automações',
+    icon: Zap,
+    defaultSize: { width: 500, height: 460 },
+    component: lazy(() => import('./automations/AutomationsWindow')),
+    implemented: true,
+  },
 
   // ── Fase 2: registadas para o dock e a paleta as mostrarem, sem implementação ──
   terminal: {
@@ -110,14 +118,6 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     title: 'Terminal',
     icon: Terminal,
     defaultSize: { width: 460, height: 300 },
-    component: NotImplemented,
-    implemented: false,
-  },
-  automations: {
-    id: 'automations',
-    title: 'Automações',
-    icon: Zap,
-    defaultSize: { width: 440, height: 320 },
     component: NotImplemented,
     implemented: false,
   },

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { DEFAULT_THEME, type ThemeId } from '@/design-system/tokens';
+import { eventBus } from '@/services/event-bus';
 import { themeService } from '@/services/theme-service';
 
 interface ThemeState {
@@ -18,6 +19,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
     themeService.apply(theme);
     void themeService.save(theme);
     set({ theme });
+    eventBus.emit('tema:alterado', { theme });
   },
 
   hydrate: async () => {

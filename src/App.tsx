@@ -17,6 +17,9 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
+import { seedAutomations } from '@/data/automations';
+import { automationService } from '@/services/automation-service';
+import { eventBus } from '@/services/event-bus';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
@@ -29,6 +32,10 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { CommandActions } from '@/components/command-palette/command-registry';
+import type { AppId } from '@/types/app';
+import type { SystemStateId } from '@/types/system-state';
+import type { ThemeId } from '@/design-system/tokens';
+import type { WidgetId } from '@/types/widget';
 
 /** Saudação da IA ao entrar no ambiente de trabalho (Parte 5 §Transição). */
 const DESKTOP_GREETING = 'Bem-vindo. Todos os sistemas estão prontos.';
@@ -73,8 +80,41 @@ export function App(): React.JSX.Element {
       await usePluginStore.getState().hydrate();
       await useSystemStateStore.getState().hydrate();
       await soundService.hydrate();
+      await automationService.hydrate(seedAutomations());
     });
   }, [hydrateTheme]);
+
+  /**
+   * Motor de automações.
+   *
+   * O executor é injetado daqui, como as ações da paleta: sem isto o motor
+   * acabaria a conhecer o WindowManager, os temas e a voz.
+   */
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    return automationService.start(
+      {
+        openWindow: (appId) => launch(appId as AppId),
+        notify: (title, description) => notificationService.info(title, description, {
+          category: 'automacao',
+        }),
+        setTheme: (theme) => setTheme(theme as ThemeId),
+        setSystemState: (state) => {
+          useSystemStateStore.getState().set(state as SystemStateId);
+          void useSystemStateStore.getState().persist();
+        },
+        setWidgetVisible: (widget, show) => {
+          const store = useWidgetStore.getState();
+          if (show) store.show(widget as WidgetId);
+          else store.hide(widget as WidgetId);
+          void store.persist();
+        },
+        speak,
+      },
+      () => ({ now: new Date(), systemState: useSystemStateStore.getState().current }),
+    );
+  }, [isDesktop, launch, setTheme, speak]);
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -84,6 +124,9 @@ export function App(): React.JSX.Element {
     // A IA cumprimenta depois de a cascata de entrada terminar (Parte 5
     // §Transição). Antes disso, falaria por cima de um ecrã ainda a montar.
     const timer = setTimeout(() => {
+      // O bus anuncia o facto; quem quiser reagir, reage. O motor de
+      // automações é o primeiro cliente.
+      eventBus.emit('desktop:carregado', {});
       speak(DESKTOP_GREETING);
       notificationService.success(
         'Ambiente carregado',

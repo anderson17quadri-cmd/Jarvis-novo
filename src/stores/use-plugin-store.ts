@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
+import { eventBus } from '@/services/event-bus';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
 /**
@@ -53,6 +54,8 @@ export const usePluginStore = create<PluginState>((set, get) => ({
     set((state) => {
       if (state.installed[id]) return state;
 
+      eventBus.emit('plugin:instalado', { pluginId: id });
+
       return {
         installed: {
           ...state.installed,
@@ -71,6 +74,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       const { [id]: removed, ...rest } = state.installed;
       if (!removed) return state;
 
+      eventBus.emit('plugin:removido', { pluginId: id });
       return { installed: rest };
     }),
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 
+import { eventBus } from '@/services/event-bus';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { useWindowStore } from '@/stores/use-window-store';
@@ -57,6 +58,7 @@ export function useNotificationSources(isActive: boolean): void {
         if (announcedRef.current.has(message.id)) continue;
         announcedRef.current.add(message.id);
 
+        eventBus.emit('email:novo', { from: message.from, subject: message.subject });
         notificationService.info(`Novo email de ${message.from}`, message.subject, {
           category: 'email',
         });

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { seedTasks } from '@/data/tasks';
 import { createId } from '@/lib/id';
+import { eventBus } from '@/services/event-bus';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { TASK_PRIORITY_ORDER, type Task, type TaskPriority } from '@/types/task';
 
@@ -54,11 +55,18 @@ export const useTaskStore = create<TaskState>((set, get) => ({
     }),
 
   toggle: (id) =>
-    set((state) => ({
-      tasks: state.tasks.map((task) =>
-        task.id === id ? { ...task, isDone: !task.isDone } : task,
-      ),
-    })),
+    set((state) => {
+      const target = state.tasks.find((task) => task.id === id);
+      if (target && !target.isDone) {
+        eventBus.emit('tarefa:concluida', { title: target.title });
+      }
+
+      return {
+        tasks: state.tasks.map((task) =>
+          task.id === id ? { ...task, isDone: !task.isDone } : task,
+        ),
+      };
+    }),
 
   toggleSubtask: (taskId, subtaskId) =>
     set((state) => ({

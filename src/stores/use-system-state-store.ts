@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { eventBus } from '@/services/event-bus';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { systemService } from '@/services/system-service';
 import { SYSTEM_STATES, type SystemStateDefinition, type SystemStateId } from '@/types/system-state';
@@ -41,7 +42,10 @@ export const useSystemStateStore = create<SystemStateStore>((set, get) => ({
   current: 'normal',
   definition: SYSTEM_STATES.normal,
 
-  set: (id) => set({ current: id, definition: apply(id) }),
+  set: (id) => {
+    set({ current: id, definition: apply(id) });
+    eventBus.emit('estado:alterado', { state: id });
+  },
 
   persist: async () => {
     await storageService.set(STORAGE_KEYS.systemState, get().current);

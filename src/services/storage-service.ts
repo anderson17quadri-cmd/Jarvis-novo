@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   tasks: 'tasks',
   systemState: 'system-state',
   sound: 'sound',
+  automations: 'automations',
   lastUser: 'last-user',
   reducedMotion: 'reduced-motion',
 } as const;
