@@ -80,7 +80,7 @@ export default function EmailsWindow(): React.JSX.Element {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Pesquisar…"
             className={cn(
-              'w-full rounded-input border border-line bg-white/[.03] px-2.5 py-2',
+              'w-full rounded-input border border-line bg-tint/[.03] px-2.5 py-2',
               'text-[12px] outline-none transition-colors duration-hover',
               'placeholder:text-t3 focus:border-accent/45',
             )}
@@ -94,7 +94,7 @@ export default function EmailsWindow(): React.JSX.Element {
             <div
               className={cn(
                 'flex items-start gap-2 rounded-input border border-transparent p-2',
-                'transition-colors duration-hover hover:border-line hover:bg-white/[.03]',
+                'transition-colors duration-hover hover:border-line hover:bg-tint/[.03]',
                 message.isRead && 'opacity-60',
               )}
             >

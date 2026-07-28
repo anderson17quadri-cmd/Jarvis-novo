@@ -57,7 +57,7 @@ export default function PluginManagerWindow(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col gap-s3">
-      <p className="flex items-start gap-2 rounded-input border border-line bg-white/[.02] p-2.5 text-cap text-t3">
+      <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         <span>
           Modo de demonstração: nenhum plugin é descarregado nem executado. Instalar regista a
@@ -87,7 +87,7 @@ export default function PluginManagerWindow(): React.JSX.Element {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Pesquisar…"
             className={cn(
-              'w-full rounded-input border border-line bg-white/[.03] py-2 pl-8 pr-2.5',
+              'w-full rounded-input border border-line bg-tint/[.03] py-2 pl-8 pr-2.5',
               'text-[12.5px] text-t1 outline-none transition-colors duration-hover',
               'placeholder:text-t3 focus:border-accent/45',
             )}

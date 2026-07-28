@@ -72,7 +72,7 @@ export default function CpuWidget(): React.JSX.Element {
               title={`Núcleo ${index + 1}: ${formatPercent(usage)}`}
               // `justify-end` faz a barra crescer de baixo para cima, que é como
               // um medidor se lê. Com `margin-top:auto` num bloco não funcionava.
-              className="flex h-6 flex-1 flex-col justify-end overflow-hidden rounded-sm bg-white/[.05]"
+              className="flex h-6 flex-1 flex-col justify-end overflow-hidden rounded-sm bg-tint/[.05]"
             >
               <span
                 className={cn(

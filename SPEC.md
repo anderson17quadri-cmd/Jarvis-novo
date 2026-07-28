@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 372 testes |
+| Vitest | 386 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -448,7 +448,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 
 | Item | | |
 |---|:--:|---|
-| Temas oficiais | 🟡 | Cinco dos dez: Classic, OLED, Titanium, Emerald, Solar. Faltam Midnight Blue, Arctic White, Cyber Red, Graphite, Aurora |
+| Temas oficiais | ✅ | **Os dez.** Classic, OLED, Titanium, Emerald, Solar, Midnight Blue, Cyber Red, Graphite, Aurora e Arctic White — este último claro |
+| Superfícies vindas dos tokens | ✅ | `tint`, `glass` e `glass-deep` em canais RGB, para o Tailwind lhes dar a opacidade. Um teste impede novos `bg-white/[…]` escritos à mão |
 | Troca em tempo real, sem reiniciar | ✅ | |
 | Sons por categoria | 🟡 | Existem sete sons; falta o volume por categoria |
 | Perfis de animação | 🟡 | Os estados do sistema fazem parte disto |

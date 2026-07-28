@@ -60,7 +60,7 @@ export function Dock({ isVisible, openAppIds, onLaunch }: DockProps): React.JSX.
       onPointerLeave={onPointerLeave}
       className={cn(
         'fixed bottom-[22px] left-1/2 z-dock flex items-end gap-[10px] rounded-card px-[15px] py-[11px]',
-        'border border-line-2 bg-[rgb(11_17_24_/_0.6)] shadow-1 backdrop-blur-glass',
+        'border border-line-2 bg-glass-deep/[.6] shadow-1 backdrop-blur-glass',
         'transition-transform duration-[550ms] ease-out',
         /*
          * No compacto deixa de ser uma ilha centrada e passa a faixa: ancorada
@@ -90,7 +90,7 @@ export function Dock({ isVisible, openAppIds, onLaunch }: DockProps): React.JSX.
             aria-label={item.label}
             className={cn(
               'group/dock relative flex h-[46px] w-[46px] flex-shrink-0 origin-bottom items-center justify-center',
-              'rounded-input border border-line bg-white/[.03] text-t2',
+              'rounded-input border border-line bg-tint/[.03] text-t2',
               'transition-[transform,color,background,border-color] duration-[220ms] ease-out',
               'hover:border-accent/30 hover:bg-accent/[.07] hover:text-accent',
               // Nunca abaixo de 44px em ecrãs de toque.
@@ -115,7 +115,7 @@ export function Dock({ isVisible, openAppIds, onLaunch }: DockProps): React.JSX.
               <span
                 className={cn(
                   'pointer-events-none absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 translate-y-1',
-                  'whitespace-nowrap rounded-[10px] border border-line bg-[rgb(16_25_34_/_0.95)] px-[10px] py-[5px]',
+                  'whitespace-nowrap rounded-[10px] border border-line bg-glass/[.95] px-[10px] py-[5px]',
                   'text-[11.5px] opacity-0 backdrop-blur-[14px] transition-[opacity,transform] duration-[180ms] ease-out',
                   'group-hover/dock:translate-y-0 group-hover/dock:opacity-100',
                 )}

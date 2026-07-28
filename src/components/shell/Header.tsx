@@ -84,7 +84,7 @@ export function Header({
           aria-keyshortcuts="Control+K"
           className={cn(
             'mx-auto flex h-[42px] min-w-0 max-w-[650px] flex-1 items-center gap-[11px] rounded-input px-[15px]',
-            'border border-line bg-white/[.03] transition-colors duration-hover ease-out',
+            'border border-line bg-tint/[.03] transition-colors duration-hover ease-out',
             'hover:border-line-2',
           )}
         >

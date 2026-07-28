@@ -18,6 +18,10 @@
   --card-hover: #162434;
   --line: rgba(255, 255, 255, 0.06);
   --line-2: rgba(255, 255, 255, 0.12);
+  /* Canais sem opacidade — o Tailwind injeta a dele. Ver tokens.ts. */
+  --tint-rgb: 255 255 255;
+  --glass-rgb: 16 25 34;
+  --glass-deep-rgb: 11 17 24;
 
   /* texto */
   --t1: #ffffff;
@@ -71,6 +75,8 @@
   --bg2: #050505;
   --card: #0b0b0b;
   --card-hover: #141414;
+  --glass-rgb: 11 11 11;
+  --glass-deep-rgb: 5 5 5;
 }
 
 [data-theme='titanium'] {
@@ -89,6 +95,92 @@
   --accent: #ffb020;
   --neon: #f59e0b;
   --glow: 0 0 24px rgba(255, 176, 32, 0.25);
+}
+
+[data-theme='midnight'] {
+  --bg: #070c18;
+  --bg2: #0c1426;
+  --card: #111c33;
+  --card-hover: #182645;
+  --accent: #4c7dff;
+  --neon: #2e5bd9;
+  --glow: 0 0 24px rgba(76, 125, 255, 0.26);
+  --glass-rgb: 17 28 51;
+  --glass-deep-rgb: 12 20 38;
+}
+
+[data-theme='cyber-red'] {
+  --bg: #0a0406;
+  --bg2: #140a0e;
+  --card: #1b0e13;
+  --card-hover: #28151c;
+  --accent: #ff3b5c;
+  --neon: #d91f42;
+  --glow: 0 0 24px rgba(255, 59, 92, 0.26);
+  --glass-rgb: 27 14 19;
+  --glass-deep-rgb: 20 10 14;
+}
+
+[data-theme='graphite'] {
+  --bg: #0d0d0f;
+  --bg2: #141417;
+  --card: #1b1b1f;
+  --card-hover: #26262b;
+  --accent: #9aa3ad;
+  --neon: #6f7883;
+  --glow: 0 0 20px rgba(154, 163, 173, 0.18);
+  --glass-rgb: 27 27 31;
+  --glass-deep-rgb: 20 20 23;
+}
+
+[data-theme='aurora'] {
+  --bg: #060b12;
+  --bg2: #0b141f;
+  --card: #0f1c2b;
+  --card-hover: #16283d;
+  --accent: #5cf2c4;
+  --neon: #7b6bff;
+  --glow: 0 0 26px rgba(92, 242, 196, 0.24);
+  --glass-rgb: 15 28 43;
+  --glass-deep-rgb: 11 20 31;
+}
+
+/* O único tema claro: o texto escurece, as linhas viram escuras e a `tint`
+   passa a preto — sem isso as superfícies levantadas ficavam invisíveis. */
+[data-theme='arctic'] {
+  --bg: #f4f7fa;
+  --bg2: #e9eef4;
+  --card: #ffffff;
+  --card-hover: #f0f4f8;
+  --line: rgba(10, 20, 30, 0.10);
+  --line-2: rgba(10, 20, 30, 0.18);
+  --t1: #0b1622;
+  --t2: #33465c;
+  --t3: #6b7c91;
+  --accent: #0088cc;
+  --neon: #0066aa;
+  --glow: 0 0 22px rgba(0, 136, 204, 0.18);
+  --tint-rgb: 10 20 30;
+  --glass-rgb: 255 255 255;
+  --glass-deep-rgb: 244 247 250;
+}
+
+/* ── O núcleo em temas claros ─────────────────────────────────────────────
+   Os anéis e as partículas são desenhados com opacidades baixas sobre o
+   acento — feitas para fundo escuro. Num tema claro desapareciam.
+
+   Em vez de mexer em dez opacidades espalhadas pelo SVG e pelo canvas, o
+   núcleo ganha a sua própria base escura: uma projeção sobre a mesa clara,
+   que é o que ele é. O disco desvanece nas bordas para não virar um selo. */
+
+[data-theme='arctic'] .ai-core-host {
+  background: radial-gradient(
+    circle,
+    rgba(8, 18, 30, 0.94) 0%,
+    rgba(8, 18, 30, 0.9) 58%,
+    rgba(8, 18, 30, 0) 73%
+  );
+  border-radius: 50%;
 }
 
 /* ── Responsivo estrutural ────────────────────────────────────────────────

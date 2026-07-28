@@ -154,7 +154,7 @@ export function DesktopContextMenu({
       style={{ left: position.x, top: position.y }}
       className={cn(
         'fixed z-context min-w-[212px] rounded-input border border-line-2 p-[7px]',
-        'bg-[rgb(16_25_34_/_0.94)] shadow-2 backdrop-blur-panel motion-safe:animate-window-in',
+        'bg-glass/[.94] shadow-2 backdrop-blur-panel motion-safe:animate-window-in',
       )}
     >
       {ACTIONS.map((action, index) =>

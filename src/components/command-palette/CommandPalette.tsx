@@ -112,7 +112,7 @@ export function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps
         'px-5 pb-5 pt-[12vh] motion-safe:animate-window-in',
       )}
     >
-      <div className="w-[min(620px,100%)] overflow-hidden rounded-modal border border-line-2 bg-[rgb(16_25_34_/_0.9)] shadow-2 backdrop-blur-glass">
+      <div className="w-[min(620px,100%)] overflow-hidden rounded-modal border border-line-2 bg-glass/[.9] shadow-2 backdrop-blur-glass">
         <div className="flex h-[58px] items-center gap-3 border-b border-line px-5">
           <Search className="h-[18px] w-[18px] flex-shrink-0 text-t3" aria-hidden="true" />
           <input

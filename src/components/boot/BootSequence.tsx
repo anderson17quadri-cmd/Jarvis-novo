@@ -126,7 +126,7 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
           onClick={finish}
           className={cn(
             'fixed bottom-[26px] right-[26px] z-[601] rounded-btn border border-line px-4 py-[9px]',
-            'bg-[rgb(11_17_24_/_0.6)] text-cap text-t3 backdrop-blur-soft',
+            'bg-glass-deep/[.6] text-cap text-t3 backdrop-blur-soft',
             'transition-all duration-hover ease-out hover:border-accent/35 hover:text-accent',
           )}
         >
@@ -207,7 +207,7 @@ function BootGraphs(): React.JSX.Element {
       {BOOT_GRAPHS.map((graph, index) => (
         <div
           key={graph.key}
-          className="min-w-[96px] flex-1 rounded-card border border-line bg-[rgb(16_25_34_/_0.6)] px-[14px] py-3"
+          className="min-w-[96px] flex-1 rounded-card border border-line bg-glass/[.6] px-[14px] py-3"
         >
           <div className="text-[10px] uppercase tracking-[0.14em] text-t3">{graph.key}</div>
           <div className="mono mt-0.5 text-[19px] font-semibold">{graph.value}</div>

@@ -69,7 +69,7 @@ export default function NewsWidget(): React.JSX.Element {
               key={article.id}
               className={cn(
                 'group/article rounded-lg border border-transparent p-2 transition-colors',
-                'hover:border-line hover:bg-white/[.03]',
+                'hover:border-line hover:bg-tint/[.03]',
                 article.isRead && 'opacity-60',
               )}
             >

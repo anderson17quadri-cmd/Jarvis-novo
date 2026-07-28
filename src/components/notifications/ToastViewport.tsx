@@ -74,7 +74,7 @@ function Toast({ notification }: { readonly notification: JarvisNotification }):
     <div
       role="status"
       className={cn(
-        'flex gap-3 rounded-input border border-line-2 bg-[rgb(16_25_34_/_0.94)] p-3.5',
+        'flex gap-3 rounded-input border border-line-2 bg-glass/[.94] p-3.5',
         'shadow-1 backdrop-blur-panel motion-safe:animate-toast-in',
         // Mais apertado no telemóvel: dois avisos com o espaçamento do desktop
         // ocupavam mais de metade do ecrã.

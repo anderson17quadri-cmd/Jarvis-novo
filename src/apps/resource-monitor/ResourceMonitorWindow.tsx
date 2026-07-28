@@ -151,7 +151,7 @@ function Metric({ label, value, percent }: MetricProps): React.JSX.Element {
         <span className="mono text-[12.5px] font-semibold">{value}</span>
       </div>
       <div
-        className="h-1 overflow-hidden rounded-full bg-white/[.06]"
+        className="h-1 overflow-hidden rounded-full bg-tint/[.06]"
         role="progressbar"
         aria-label={label}
         aria-valuenow={Math.round(clamped)}
@@ -206,7 +206,7 @@ function ChartTooltip({
   if (!active || !payload || payload.length === 0) return null;
 
   return (
-    <div className="rounded-lg border border-line bg-[rgb(16_25_34_/_0.95)] px-2.5 py-1.5 text-[11px] backdrop-blur-soft">
+    <div className="rounded-lg border border-line bg-glass/[.95] px-2.5 py-1.5 text-[11px] backdrop-blur-soft">
       {payload.map((entry) => (
         <div key={String(entry.dataKey)} className="mono">
           {entry.dataKey === 'cpu' ? 'CPU' : 'Memória'}: {formatPercent(entry.value ?? 0, 1)}

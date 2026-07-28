@@ -109,7 +109,7 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
         }
         className={cn(
           'fixed flex flex-col overflow-hidden rounded-card border border-line-2',
-          'bg-[rgb(16_25_34_/_0.72)] backdrop-blur-[34px]',
+          'bg-glass/[.72] backdrop-blur-[34px]',
           '[box-shadow:var(--sh-2),inset_0_1px_0_rgb(255_255_255_/_0.06)]',
           'motion-safe:animate-window-in',
           // No compacto: largura toda, altura limitada, sem posicionamento livre.

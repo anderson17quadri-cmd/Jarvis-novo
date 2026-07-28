@@ -89,7 +89,7 @@ export function BootChecks({ onComplete }: BootChecksProps): React.JSX.Element {
 
             <span className="flex-1">{step.label}</span>
 
-            <span className="h-[2px] w-[74px] overflow-hidden rounded-full bg-white/[.07]">
+            <span className="h-[2px] w-[74px] overflow-hidden rounded-full bg-tint/[.07]">
               <span
                 className="block h-full bg-accent shadow-[0_0_8px_rgba(0,207,255,.6)] transition-[width] duration-[420ms] ease-out"
                 style={{ width: state.entered ? '100%' : '0%' }}

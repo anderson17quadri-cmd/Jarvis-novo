@@ -31,14 +31,14 @@ function themeGroup(): HTMLElement {
 }
 
 describe('janela de Personalização', () => {
-  it('mostra os cinco temas do sistema', () => {
+  it('mostra os dez temas oficiais', () => {
     render(<PersonalizationWindow />);
 
     for (const theme of THEMES) {
       expect(screen.getByRole('radio', { name: new RegExp(theme.name, 'i') })).toBeInTheDocument();
     }
     // Só os do grupo dos temas: a janela tem outro grupo, o dos estados.
-    expect(within(themeGroup()).getAllByRole('radio')).toHaveLength(5);
+    expect(within(themeGroup()).getAllByRole('radio')).toHaveLength(THEMES.length);
   });
 
   it('marca o tema em vigor e só esse', () => {

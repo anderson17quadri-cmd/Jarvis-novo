@@ -32,6 +32,16 @@ export default {
         'card-hover': 'var(--card-hover)',
         line: 'var(--line)',
         'line-2': 'var(--line-2)',
+        /*
+         * Superfícies. Guardadas como canais RGB para o Tailwind lhes poder
+         * aplicar a opacidade — `bg-tint/[.03]`, `bg-glass/[.74]`.
+         *
+         * A `tint` vira preta no tema claro; sem ela, um `bg-white/[.03]`
+         * escrito à mão ficava branco sobre branco e desaparecia.
+         */
+        tint: 'rgb(var(--tint-rgb) / <alpha-value>)',
+        glass: 'rgb(var(--glass-rgb) / <alpha-value>)',
+        'glass-deep': 'rgb(var(--glass-deep-rgb) / <alpha-value>)',
         t1: 'var(--t1)',
         t2: 'var(--t2)',
         t3: 'var(--t3)',

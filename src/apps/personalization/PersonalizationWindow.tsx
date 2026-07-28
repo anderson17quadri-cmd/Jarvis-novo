@@ -55,7 +55,7 @@ export default function PersonalizationWindow(): React.JSX.Element {
                 {definition.swatches.map((swatch) => (
                   <span
                     key={swatch}
-                    className="h-[14px] w-[14px] rounded-[5px] border border-white/10"
+                    className="h-[14px] w-[14px] rounded-[5px] border border-tint/10"
                     style={{ background: swatch }}
                     aria-hidden="true"
                   />

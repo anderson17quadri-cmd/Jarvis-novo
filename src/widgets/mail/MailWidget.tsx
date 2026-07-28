@@ -43,7 +43,7 @@ export default function MailWidget(): React.JSX.Element {
               aria-label={`${message.isRead ? 'Marcar como não lida' : 'Marcar como lida'}: ${message.subject}`}
               className={cn(
                 'flex w-full items-start gap-2 rounded-lg border border-transparent p-2 text-left',
-                'transition-colors hover:border-line hover:bg-white/[.03]',
+                'transition-colors hover:border-line hover:bg-tint/[.03]',
                 message.isRead && 'opacity-55',
               )}
             >

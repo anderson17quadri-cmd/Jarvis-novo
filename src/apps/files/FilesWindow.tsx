@@ -99,7 +99,7 @@ export default function FilesWindow(): React.JSX.Element {
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value as SortBy)}
             className={cn(
-              'rounded-input border border-line bg-[rgb(16_25_34)] px-2 py-1.5',
+              'rounded-input border border-line bg-glass px-2 py-1.5',
               'text-[11px] text-t2 outline-none focus:border-accent/45',
             )}
           >
@@ -129,7 +129,7 @@ export default function FilesWindow(): React.JSX.Element {
                   'flex w-full items-center gap-2.5 rounded-input border border-transparent px-2 py-2 text-left',
                   'transition-colors duration-hover',
                   isFolder
-                    ? 'hover:border-line hover:bg-white/[.03]'
+                    ? 'hover:border-line hover:bg-tint/[.03]'
                     : 'cursor-default disabled:opacity-90',
                   'compact:py-2.5',
                 )}

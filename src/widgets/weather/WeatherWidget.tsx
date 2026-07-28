@@ -88,7 +88,7 @@ export default function WeatherWidget(): React.JSX.Element {
           return (
             <li
               key={day.date}
-              className="flex min-w-[38px] flex-1 flex-col items-center gap-1 rounded-lg bg-white/[.03] py-1.5"
+              className="flex min-w-[38px] flex-1 flex-col items-center gap-1 rounded-lg bg-tint/[.03] py-1.5"
             >
               <span className="text-[9.5px] uppercase text-t3">
                 {WEEKDAY.format(new Date(day.date)).replace('.', '')}

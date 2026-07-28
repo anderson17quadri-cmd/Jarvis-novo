@@ -163,7 +163,7 @@ export function AICore({
           : { 'aria-hidden': true })}
         style={{ width: size, height: size }}
         className={cn(
-          'relative max-h-[78vmin] max-w-[78vmin]',
+          'ai-core-host relative max-h-[78vmin] max-w-[78vmin]',
           isInteractive && 'cursor-pointer',
           'transition-[transform,opacity] duration-[600ms] ease-out',
           isVisible ? 'opacity-100' : 'opacity-0',

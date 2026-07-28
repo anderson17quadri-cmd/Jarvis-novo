@@ -65,7 +65,7 @@ function ProjectCard({ project }: { readonly project: Project }): React.JSX.Elem
   const percent = Math.round(project.progress * 100);
 
   return (
-    <li className="rounded-input border border-line bg-white/[.02] p-3">
+    <li className="rounded-input border border-line bg-tint/[.02] p-3">
       <div className="flex items-baseline justify-between gap-2">
         <h3 className="text-[13px] font-medium">{project.name}</h3>
         <span
@@ -79,7 +79,7 @@ function ProjectCard({ project }: { readonly project: Project }): React.JSX.Elem
       <p className="mt-1 text-[11.5px] leading-[1.5] text-t3">{project.description}</p>
 
       <div
-        className="mt-2.5 h-1 overflow-hidden rounded-full bg-white/[.06]"
+        className="mt-2.5 h-1 overflow-hidden rounded-full bg-tint/[.06]"
         role="progressbar"
         aria-label={`Progresso de ${project.name}`}
         aria-valuenow={percent}

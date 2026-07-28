@@ -60,7 +60,7 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
   return (
     <li
       className={cn(
-        'rounded-input border border-line bg-white/[.02] p-3 transition-colors duration-hover',
+        'rounded-input border border-line bg-tint/[.02] p-3 transition-colors duration-hover',
         !isAvailable && 'opacity-60',
       )}
     >

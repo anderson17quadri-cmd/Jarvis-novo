@@ -57,7 +57,7 @@ export default function AutomationsWindow(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col gap-s2">
-      <p className="flex items-start gap-2 rounded-input border border-line bg-white/[.02] p-2.5 text-cap text-t3">
+      <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         <span>
           Correm enquanto o JARVIS estiver aberto. Gatilhos de ficheiros, USB, bateria e rede
@@ -112,7 +112,7 @@ export default function AutomationsWindow(): React.JSX.Element {
           {history.map((run) => (
             <li
               key={run.id}
-              className="flex items-baseline gap-2 rounded-input border border-line bg-white/[.02] px-2.5 py-2"
+              className="flex items-baseline gap-2 rounded-input border border-line bg-tint/[.02] px-2.5 py-2"
             >
               <span className="mono flex-shrink-0 text-[10.5px] text-t3">
                 {formatTime(new Date(run.at))}
@@ -148,7 +148,7 @@ function AutomationCard({
   return (
     <li
       className={cn(
-        'rounded-input border border-line bg-white/[.02] p-3 transition-colors duration-hover',
+        'rounded-input border border-line bg-tint/[.02] p-3 transition-colors duration-hover',
         !automation.isEnabled && 'opacity-65',
       )}
     >

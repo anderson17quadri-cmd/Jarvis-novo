@@ -211,7 +211,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           // Sem `overflow-hidden`: o fio de luz do topo já não transborda, e o
           // recorte cortava o teclado do PIN, que é mais alto que o cartão base.
           'relative w-[min(520px,94vw)] rounded-card border border-line-2',
-          'bg-[rgb(16_25_34_/_0.55)] px-s3 py-s4 backdrop-blur-glass',
+          'bg-glass/[.55] px-s3 py-s4 backdrop-blur-glass',
           'shadow-2 [box-shadow:var(--sh-2),inset_0_1px_0_rgb(255_255_255_/_0.07)]',
           isShaking && 'animate-shake',
           // Glow vermelho no erro (Parte 5 §Erros).
@@ -289,7 +289,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
             <div
               className={cn(
-                'mt-s3 flex h-14 items-center gap-2.5 rounded-input border border-line bg-white/[.03] px-4',
+                'mt-s3 flex h-14 items-center gap-2.5 rounded-input border border-line bg-tint/[.03] px-4',
                 'transition-[border-color,box-shadow] duration-200',
                 'focus-within:border-accent/[.42] focus-within:shadow-[0_0_0_4px_rgba(0,207,255,.07)]',
               )}
@@ -337,7 +337,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
             {password.length > 0 && (
               <div id="pw-strength" className="mt-1 flex items-center gap-2.5">
-                <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-white/[.06]">
+                <span className="h-[3px] flex-1 overflow-hidden rounded-full bg-tint/[.06]">
                   <span
                     className={cn(
                       'block h-full rounded-full transition-[width,background] duration-300 ease-out',

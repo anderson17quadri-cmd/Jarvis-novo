@@ -89,7 +89,7 @@
 
   /* Superfície de vidro reutilizada por header, rail, dock, janelas e modais. */
   .glass {
-    background: rgb(11 17 24 / 0.55);
+    background: rgb(var(--glass-deep-rgb) / 0.55);
     border: 1px solid var(--line);
     backdrop-filter: blur(30px);
   }

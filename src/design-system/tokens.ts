@@ -17,6 +17,19 @@ export const COLORS = {
   cardHover: '#162434',
   line: 'rgba(255,255,255,.06)',
   line2: 'rgba(255,255,255,.12)',
+  /*
+   * Canais RGB, sem opacidade, para o Tailwind lhes poder aplicar a sua.
+   *
+   * `tintRgb` é a cor que se sobrepõe ao fundo para levantar uma superfície:
+   * branco nos temas escuros, preto nos claros. `glassRgb` e `glassDeepRgb`
+   * são as superfícies opacas — cartões, janelas, dock, painéis.
+   *
+   * Escritos como "16 25 34" e não como `#101922` porque é a única forma de
+   * `bg-glass/[.74]` funcionar: o Tailwind injeta a opacidade no meio.
+   */
+  tintRgb: '255 255 255',
+  glassRgb: '16 25 34',
+  glassDeepRgb: '11 17 24',
   t1: '#FFFFFF',
   t2: '#C5D1DF',
   t3: '#7E91A8',
@@ -105,7 +118,17 @@ export const BREAKPOINTS = {
 /** Alvo mínimo de toque exigido em `pointer: coarse`. */
 export const TOUCH_TARGET_MIN_PX = 44;
 
-export type ThemeId = 'classic' | 'oled' | 'titanium' | 'emerald' | 'solar';
+export type ThemeId =
+  | 'classic'
+  | 'oled'
+  | 'titanium'
+  | 'emerald'
+  | 'solar'
+  | 'midnight'
+  | 'cyber-red'
+  | 'graphite'
+  | 'aurora'
+  | 'arctic';
 
 /**
  * Um tema só pode redefinir um subconjunto de tokens — as sobreposições que o
@@ -119,6 +142,14 @@ export interface ThemeOverrides {
   readonly accent?: string;
   readonly neon?: string;
   readonly glow?: string;
+  readonly line?: string;
+  readonly line2?: string;
+  readonly t1?: string;
+  readonly t2?: string;
+  readonly t3?: string;
+  readonly tintRgb?: string;
+  readonly glassRgb?: string;
+  readonly glassDeepRgb?: string;
 }
 
 export interface ThemeDefinition {
@@ -140,7 +171,21 @@ export const THEMES: readonly ThemeDefinition[] = [
     id: 'oled',
     name: 'OLED Black',
     swatches: ['#000000', '#00CFFF', '#0A0A0A'],
-    overrides: { bg: '#000000', bg2: '#050505', card: '#0B0B0B', cardHover: '#141414' },
+    /*
+     * O vidro também escurece.
+     *
+     * Antes só o `--card` mudava, mas os cartões, janelas e dock estavam com a
+     * cor do Classic escrita à mão — num fundo preto ficavam cinzento-azulados,
+     * e o tema OLED só era OLED no papel de parede.
+     */
+    overrides: {
+      bg: '#000000',
+      bg2: '#050505',
+      card: '#0B0B0B',
+      cardHover: '#141414',
+      glassRgb: '11 11 11',
+      glassDeepRgb: '5 5 5',
+    },
   },
   {
     id: 'titanium',
@@ -159,6 +204,99 @@ export const THEMES: readonly ThemeDefinition[] = [
     name: 'Solar',
     swatches: ['#05070A', '#FFB020', '#F59E0B'],
     overrides: { accent: '#FFB020', neon: '#F59E0B', glow: '0 0 24px rgba(255,176,32,.25)' },
+  },
+  {
+    id: 'midnight',
+    name: 'Midnight Blue',
+    swatches: ['#070C18', '#4C7DFF', '#2E5BD9'],
+    overrides: {
+      bg: '#070C18',
+      bg2: '#0C1426',
+      card: '#111C33',
+      cardHover: '#182645',
+      accent: '#4C7DFF',
+      neon: '#2E5BD9',
+      glow: '0 0 24px rgba(76,125,255,.26)',
+      glassRgb: '17 28 51',
+      glassDeepRgb: '12 20 38',
+    },
+  },
+  {
+    id: 'cyber-red',
+    name: 'Cyber Red',
+    swatches: ['#0A0406', '#FF3B5C', '#D91F42'],
+    overrides: {
+      bg: '#0A0406',
+      bg2: '#140A0E',
+      card: '#1B0E13',
+      cardHover: '#28151C',
+      accent: '#FF3B5C',
+      neon: '#D91F42',
+      glow: '0 0 24px rgba(255,59,92,.26)',
+      glassRgb: '27 14 19',
+      glassDeepRgb: '20 10 14',
+    },
+  },
+  {
+    id: 'graphite',
+    name: 'Graphite',
+    swatches: ['#0D0D0F', '#9AA3AD', '#6F7883'],
+    overrides: {
+      bg: '#0D0D0F',
+      bg2: '#141417',
+      card: '#1B1B1F',
+      cardHover: '#26262B',
+      accent: '#9AA3AD',
+      neon: '#6F7883',
+      glow: '0 0 20px rgba(154,163,173,.18)',
+      glassRgb: '27 27 31',
+      glassDeepRgb: '20 20 23',
+    },
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora',
+    swatches: ['#060B12', '#5CF2C4', '#7B6BFF'],
+    overrides: {
+      bg: '#060B12',
+      bg2: '#0B141F',
+      card: '#0F1C2B',
+      cardHover: '#16283D',
+      accent: '#5CF2C4',
+      neon: '#7B6BFF',
+      glow: '0 0 26px rgba(92,242,196,.24)',
+      glassRgb: '15 28 43',
+      glassDeepRgb: '11 20 31',
+    },
+  },
+  {
+    /*
+     * O único tema claro.
+     *
+     * Obriga a virar tudo o que estava assente em "branco sobre escuro": o
+     * texto, as linhas e — sobretudo — a `tintRgb`, que passa a preto. Sem
+     * isso, as superfícies levantadas seriam branco sobre branco, invisíveis.
+     */
+    id: 'arctic',
+    name: 'Arctic White',
+    swatches: ['#F4F7FA', '#0088CC', '#0066AA'],
+    overrides: {
+      bg: '#F4F7FA',
+      bg2: '#E9EEF4',
+      card: '#FFFFFF',
+      cardHover: '#F0F4F8',
+      line: 'rgba(10,20,30,.10)',
+      line2: 'rgba(10,20,30,.18)',
+      t1: '#0B1622',
+      t2: '#33465C',
+      t3: '#6B7C91',
+      accent: '#0088CC',
+      neon: '#0066AA',
+      glow: '0 0 22px rgba(0,136,204,.18)',
+      tintRgb: '10 20 30',
+      glassRgb: '255 255 255',
+      glassDeepRgb: '244 247 250',
+    },
   },
 ] as const;
 

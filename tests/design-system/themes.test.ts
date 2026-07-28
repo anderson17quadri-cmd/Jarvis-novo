@@ -42,6 +42,9 @@ describe('themes.css espelha os tokens', () => {
     ['card-hover', COLORS.cardHover],
     ['line', COLORS.line],
     ['line-2', COLORS.line2],
+    ['tint-rgb', COLORS.tintRgb],
+    ['glass-rgb', COLORS.glassRgb],
+    ['glass-deep-rgb', COLORS.glassDeepRgb],
     ['t1', COLORS.t1],
     ['t2', COLORS.t2],
     ['t3', COLORS.t3],
@@ -90,6 +93,14 @@ describe('themes.css espelha os tokens', () => {
       accent: 'accent',
       neon: 'neon',
       glow: 'glow',
+      line: 'line',
+      line2: 'line-2',
+      t1: 't1',
+      t2: 't2',
+      t3: 't3',
+      tintRgb: 'tint-rgb',
+      glassRgb: 'glass-rgb',
+      glassDeepRgb: 'glass-deep-rgb',
     };
 
     for (const theme of THEMES) {

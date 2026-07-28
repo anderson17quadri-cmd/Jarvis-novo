@@ -63,7 +63,7 @@ export default function AssistantWindow(): React.JSX.Element {
       <div
         className={cn(
           'flex h-[52px] flex-shrink-0 items-center gap-2 rounded-input border border-line',
-          'bg-white/[.03] py-0 pl-4 pr-2 transition-[border-color,box-shadow] duration-200',
+          'bg-tint/[.03] py-0 pl-4 pr-2 transition-[border-color,box-shadow] duration-200',
           'focus-within:border-accent/[.42] focus-within:shadow-[0_0_0_4px_rgba(0,207,255,.06)]',
         )}
       >

@@ -18,7 +18,7 @@ type Filter = 'todas' | 'abertas' | 'concluidas';
 const PRIORITY_STYLE: Record<TaskPriority, string> = {
   alta: 'bg-danger/[.12] text-danger',
   media: 'bg-warn/[.12] text-warn',
-  baixa: 'bg-white/[.06] text-t3',
+  baixa: 'bg-tint/[.06] text-t3',
 };
 
 /**
@@ -80,7 +80,7 @@ export default function TasksWindow(): React.JSX.Element {
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Nova tarefa…"
             className={cn(
-              'w-full rounded-input border border-line bg-white/[.03] px-2.5 py-2',
+              'w-full rounded-input border border-line bg-tint/[.03] px-2.5 py-2',
               'text-[12.5px] outline-none transition-colors duration-hover',
               'placeholder:text-t3 focus:border-accent/45',
             )}
@@ -93,7 +93,7 @@ export default function TasksWindow(): React.JSX.Element {
             value={priority}
             onChange={(event) => setPriority(event.target.value as TaskPriority)}
             className={cn(
-              'rounded-input border border-line bg-[rgb(16_25_34)] px-2 py-2',
+              'rounded-input border border-line bg-glass px-2 py-2',
               'text-[12px] text-t2 outline-none focus:border-accent/45',
             )}
           >
@@ -186,7 +186,7 @@ function TaskRow({ task, onToggle, onToggleSubtask, onRemove }: TaskRowProps): R
   const overdue = isOverdue(task);
 
   return (
-    <li className="rounded-input border border-line bg-white/[.02] p-2.5">
+    <li className="rounded-input border border-line bg-tint/[.02] p-2.5">
       <div className="flex items-start gap-2.5">
         <button
           type="button"
@@ -232,7 +232,7 @@ function TaskRow({ task, onToggle, onToggleSubtask, onRemove }: TaskRowProps): R
           {task.subtasks.length > 0 && (
             <>
               <div
-                className="mt-2 h-[3px] overflow-hidden rounded-full bg-white/[.06]"
+                className="mt-2 h-[3px] overflow-hidden rounded-full bg-tint/[.06]"
                 role="progressbar"
                 aria-label={`Progresso de ${task.title}`}
                 aria-valuenow={Math.round(progress * 100)}

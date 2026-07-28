@@ -37,7 +37,7 @@ export default function DiskWidget(): React.JSX.Element {
       </div>
 
       <div
-        className="mt-2.5 h-1.5 flex-shrink-0 overflow-hidden rounded-full bg-white/[.06]"
+        className="mt-2.5 h-1.5 flex-shrink-0 overflow-hidden rounded-full bg-tint/[.06]"
         role="progressbar"
         aria-label="Ocupação do disco"
         aria-valuenow={Math.round(percent)}
@@ -77,7 +77,7 @@ export default function DiskWidget(): React.JSX.Element {
                   </span>
                 </div>
                 <div
-                  className="mt-1 h-[3px] overflow-hidden rounded-full bg-white/[.06]"
+                  className="mt-1 h-[3px] overflow-hidden rounded-full bg-tint/[.06]"
                   role="progressbar"
                   aria-label={`Ocupação de ${volume.name || volume.mountPoint}`}
                   aria-valuenow={volumePercent}

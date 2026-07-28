@@ -98,7 +98,7 @@ export function NotificationPanel(): React.JSX.Element | null {
         aria-label="Notificações"
         className={cn(
           'fixed bottom-0 right-0 top-header z-[151] flex w-[min(380px,100vw)] flex-col',
-          'border-l border-line-2 bg-[rgb(11_17_24_/_0.94)] shadow-2 backdrop-blur-glass',
+          'border-l border-line-2 bg-glass-deep/[.94] shadow-2 backdrop-blur-glass',
           'motion-safe:animate-toast-in',
         )}
       >
@@ -140,7 +140,7 @@ export function NotificationPanel(): React.JSX.Element | null {
         </header>
 
         <div className="flex flex-shrink-0 flex-col gap-2 border-b border-line px-s3 py-2.5">
-          <div className="flex h-9 items-center gap-2 rounded-input border border-line bg-white/[.03] px-3 focus-within:border-accent/40">
+          <div className="flex h-9 items-center gap-2 rounded-input border border-line bg-tint/[.03] px-3 focus-within:border-accent/40">
             <Search className="h-3.5 w-3.5 flex-shrink-0 text-t3" aria-hidden="true" />
             <input
               ref={searchRef}
@@ -214,7 +214,7 @@ function PanelItem({
     <li
       className={cn(
         'group/notif flex gap-2.5 rounded-lg border border-transparent p-2.5',
-        'transition-colors hover:border-line hover:bg-white/[.03]',
+        'transition-colors hover:border-line hover:bg-tint/[.03]',
         notification.isRead && 'opacity-65',
       )}
     >

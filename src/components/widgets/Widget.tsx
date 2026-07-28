@@ -50,7 +50,7 @@ export function Widget({
       aria-label={definition.name}
       className={cn(
         'group/widget flex h-full flex-col overflow-hidden rounded-card border border-line',
-        'bg-[rgb(16_25_34_/_0.74)] backdrop-blur-panel',
+        'bg-glass/[.74] backdrop-blur-panel',
         'transition-[transform,box-shadow,border-color] duration-panel ease-out',
         // Hover: eleva 4px, glow discreto, borda mais clara (Parte 6.2).
         !isDragging && 'hover:-translate-y-1 hover:border-accent/25 hover:shadow-glow',
@@ -83,7 +83,7 @@ export function Widget({
               {isSizeMenuOpen && (
                 <div
                   role="menu"
-                  className="absolute right-0 top-full z-10 mt-1 min-w-[112px] rounded-input border border-line-2 bg-[rgb(16_25_34_/_0.96)] p-1 shadow-2 backdrop-blur-panel"
+                  className="absolute right-0 top-full z-10 mt-1 min-w-[112px] rounded-input border border-line-2 bg-glass/[.96] p-1 shadow-2 backdrop-blur-panel"
                 >
                   {definition.allowedSizes.map((size) => (
                     <button
