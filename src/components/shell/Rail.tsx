@@ -51,8 +51,7 @@ export function Rail({
       {isCompact && (
         <div
           className={cn(
-            // Acima do dock (z-45): com a gaveta aberta nada por baixo é clicável.
-            'fixed inset-0 z-[46] bg-black/60 backdrop-blur-soft transition-opacity duration-panel ease-out',
+            'fixed inset-0 z-scrim bg-black/60 backdrop-blur-soft transition-opacity duration-panel ease-out',
             isDrawerOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
           )}
           onClick={onCloseDrawer}
@@ -65,13 +64,23 @@ export function Rail({
         aria-label="Navegação principal"
         aria-hidden={isCompact && !isDrawerOpen}
         className={cn(
-          'glass group fixed bottom-0 left-0 top-header z-rail overflow-y-auto overflow-x-hidden px-3 py-s2',
+          'glass group fixed bottom-0 left-0 top-header overflow-y-auto overflow-x-hidden px-3 py-s2',
           'border-r border-line transition-[width,transform] duration-panel ease-out',
+          /*
+           * O z-index vem de um ramo só, nunca dos dois.
+           *
+           * Antes havia `z-rail` na base e `z-drawer` no ramo compacto. São
+           * classes diferentes para a mesma propriedade, e o `tailwind-merge`
+           * não as reconhece como do mesmo grupo por serem chaves próprias —
+           * ficavam as duas, e quem decidia era a ordem no CSS gerado. Ganhava
+           * o `z-rail` (35), abaixo do scrim (46): a gaveta abria por trás do
+           * véu, e o ecrã inteiro ficava escuro e desfocado.
+           */
           isCompact
-            ? // Gaveta: largura fixa, entra e sai do lado esquerdo, por cima do dock.
-              ['z-[47] w-rail-open', isDrawerOpen ? 'translate-x-0' : '-translate-x-full']
+            ? // Gaveta: largura fixa, entra e sai do lado esquerdo, sobre o scrim.
+              ['z-drawer w-rail-open', isDrawerOpen ? 'translate-x-0' : '-translate-x-full']
             : // Rail: expande ao passar o rato.
-              ['w-rail hover:w-rail-open', isVisible ? 'translate-x-0' : '-translate-x-full'],
+              ['z-rail w-rail hover:w-rail-open', isVisible ? 'translate-x-0' : '-translate-x-full'],
         )}
         style={{ paddingBottom: 'calc(var(--s2) + env(safe-area-inset-bottom, 0px))' }}
       >

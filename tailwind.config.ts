@@ -108,6 +108,10 @@ export default {
         rail: '35',
         header: '40',
         dock: '45',
+        // A gaveta do compacto e o seu scrim ficam acima do dock: com a gaveta
+        // aberta, nada por baixo é clicável.
+        scrim: '46',
+        drawer: '47',
         window: '50',
         toast: '150',
         palette: '200',

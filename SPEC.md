@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 368 testes |
+| Vitest | 372 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -334,7 +334,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | 7. ~300 partículas orbitais | ✅ | 120 em ecrãs pequenos |
 | 8. Núcleo energético com respiração | ✅ | 100→103% em 5s |
 | 9. Ondas sonoras | ✅ | 44 barras |
-| 10. Logo JARVIS | ✅ | |
+| 10. Logo JARVIS | ⚠️ | Retirado do centro do núcleo por decisão do utilizador — a identidade fica no header. Ver §Divergências |
 
 | Estado | | |
 |---|:--:|---|
@@ -491,7 +491,7 @@ layouts guardados.
 
 ## Divergências assumidas
 
-Quatro pontos em que o código não segue a spec à letra. Todos deliberados.
+Cinco pontos em que o código não segue a spec à letra. Todos deliberados.
 
 ### 1. Estrutura de pastas — resolvida como híbrido
 
@@ -546,3 +546,14 @@ por elemento, no hover, sem custo mensurável.
 
 Se quiseres a regra cumprida à letra, dá-se ao rail largura fixa de 280px com
 `transform: translateX()` e compensa-se o palco — mas o resultado é pior.
+
+---
+
+### 5. Sem a palavra "JARVIS" no centro do núcleo
+
+O protótipo tem `#coreLogo` — a palavra "JARVIS" sobre a luz central, camada 10
+da Parte 8. **Retirada por decisão do utilizador.**
+
+O centro fica só com a luz. A identidade continua no header, e o núcleo lê-se
+melhor sem uma legenda a competir com o brilho. Nada mais da camada 10 mudou:
+o núcleo energético, a respiração e o halo continuam como estavam.

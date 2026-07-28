@@ -172,18 +172,15 @@ export function AICore({
           isVisible && (isShrunk ? 'scale-75' : 'scale-100'),
         )}
       >
+        {/*
+          O centro fica só com a luz.
+
+          O protótipo tinha aqui a palavra "JARVIS", mas por decisão do
+          utilizador o núcleo não leva texto: a identidade já está no header, e
+          o centro lê-se melhor sem uma legenda a competir com o brilho.
+        */}
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
         <CoreRings mode={mode} />
-
-        <div
-          className={cn(
-            'pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2',
-            'pl-[0.42em] text-[15px] font-light tracking-[0.42em] text-white',
-            '[text-shadow:0_0_18px_rgba(0,207,255,.5)]',
-          )}
-        >
-          JARVIS
-        </div>
       </div>
 
       <div
