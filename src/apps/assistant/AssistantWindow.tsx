@@ -23,10 +23,8 @@ export default function AssistantWindow(): React.JSX.Element {
   const mode = useAssistantStore((state) => state.mode);
   const addMessage = useAssistantStore((state) => state.addMessage);
 
-  // Esta janela já é o assistente — uma transcrição não precisa de a abrir.
-  const { isSupported: isVoiceSupported, toggleListening } = useVoice({
-    onLaunchApp: () => undefined,
-  });
+  // O mesmo microfone do header: o executor é um só, registado pela App.
+  const { isSupported: isVoiceSupported, toggleListening } = useVoice();
 
   const [draft, setDraft] = useState('');
   const logRef = useRef<HTMLDivElement>(null);

@@ -2,16 +2,11 @@ import { useCallback, useEffect } from 'react';
 
 import { useCapabilities } from '@/hooks/use-platform';
 import { useIsVisible } from '@/hooks/use-platform';
-import { aiService } from '@/services/ai-service';
 import { notificationService } from '@/services/notification-service';
 import { voiceService } from '@/services/voice-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
-import type { AppId } from '@/types/app';
-
-interface UseVoiceOptions {
-  /** Abre a janela do assistente quando chega uma transcrição. */
-  readonly onLaunchApp: (appId: AppId) => void;
-}
+import { runIntent } from '@/services/voice/executor';
+import { describeIntent, isCritical, parseSpeech } from '@/services/voice/intents';
 
 /**
  * Liga a voz ao núcleo e ao assistente.
@@ -20,7 +15,7 @@ interface UseVoiceOptions {
  * `listening`, uma transcrição manda-o para `thinking` através do `AIService`, e
  * a leitura da resposta põe-no em `speaking`.
  */
-export function useVoice({ onLaunchApp }: UseVoiceOptions): {
+export function useVoice(): {
   readonly isSupported: boolean;
   readonly toggleListening: () => void;
   readonly speak: (text: string) => void;
@@ -65,13 +60,48 @@ export function useVoice({ onLaunchApp }: UseVoiceOptions): {
         setTimeout(() => setMode('idle'), 2_000);
       },
       onTranscript: (text) => {
-        onLaunchApp('assistant');
-        void aiService.send(text).then((reply) => {
-          if (reply.length > 0) speak(reply);
-        });
+        const parsed = parseSpeech(text);
+
+        for (const intent of parsed.intents) {
+          /*
+           * Ações que não se desfazem esperam por confirmação (Parte 10).
+           *
+           * A confirmação é uma notificação com ação, e não um diálogo: já
+           * existe, aparece sem tapar o ecrã, e se o utilizador a ignorar o
+           * comando simplesmente não acontece — que é o resultado seguro.
+           */
+          if (isCritical(intent)) {
+            notificationService.warn('Confirma?', `Ouvi: "${text}". ${describeIntent(intent)}.`, {
+              category: 'assistente',
+              durationMs: null,
+              actions: [
+                {
+                  id: 'confirmar',
+                  label: 'Confirmar',
+                  run: () => runIntent(intent),
+                },
+              ],
+            });
+            continue;
+          }
+
+          runIntent(intent);
+        }
+
+        /*
+         * O que foi reconhecido fica à vista (Parte 10 §Correção de erros).
+         * Sem isto, um comando mal ouvido executa outra coisa e ninguém
+         * percebe porquê. As perguntas não entram: a resposta já é o eco.
+         */
+        const commands = parsed.intents.filter((intent) => intent.kind !== 'perguntar');
+        if (commands.length > 0) {
+          notificationService.info(`"${text}"`, commands.map(describeIntent).join(' · '), {
+            category: 'assistente',
+          });
+        }
       },
     });
-  }, [isSupported, onLaunchApp, pulse, setMode, speak]);
+  }, [isSupported, pulse, setMode]);
 
   // Falar com a aplicação em segundo plano é ruído sem contexto.
   useEffect(() => {

@@ -18,17 +18,21 @@ import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { seedAutomations } from '@/data/automations';
+import { aiService } from '@/services/ai-service';
 import { automationService } from '@/services/automation-service';
 import { eventBus } from '@/services/event-bus';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
+import { musicService } from '@/services/music/music-service';
 import { soundService } from '@/services/sound-service';
+import { setVoiceExecutor } from '@/services/voice/executor';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
+import { useTaskStore } from '@/stores/use-task-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
@@ -64,12 +68,14 @@ export function App(): React.JSX.Element {
   const burstCount = useAssistantStore((state) => state.burstCount);
 
   const [isPaletteOpen, setPaletteOpen] = useState(false);
+  /** Texto com que a paleta abre — usado pelo comando de voz "procura…". */
+  const [paletteQuery, setPaletteQuery] = useState('');
   const isDesktop = phase === 'desktop';
 
   const cascade = useEntranceCascade(isDesktop);
   const { launch, restoreSavedLayout } = useAppLauncher();
   const openWindowCount = useWindowStore((state) => state.windows.length);
-  const { toggleListening, speak } = useVoice({ onLaunchApp: launch });
+  const { toggleListening, speak } = useVoice();
 
   // O email passa a produzir notificações assim que o desktop está de pé.
   useNotificationSources(isDesktop);
@@ -143,9 +149,70 @@ export function App(): React.JSX.Element {
   }, [isDesktop, restoreSavedLayout, speak]);
 
   const openPalette = useCallback(() => setPaletteOpen(true), []);
-  const closePalette = useCallback(() => setPaletteOpen(false), []);
+  const closePalette = useCallback(() => {
+    setPaletteOpen(false);
+    // A pesquisa por voz vale para uma abertura só.
+    setPaletteQuery('');
+  }, []);
 
   useKeyboardShortcut({ key: 'k', ctrlOrMeta: true }, openPalette, isDesktop);
+
+  /**
+   * Comandos de voz (Parte 10).
+   *
+   * O interpretador é uma função pura sobre strings; isto é o que os
+   * transforma em ações. Mesma injeção das automações e da paleta.
+   */
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    return setVoiceExecutor({
+      openWindow: launch,
+      closeAllWindows: () => {
+        const store = useWindowStore.getState();
+        for (const window of [...store.windows]) store.close(window.id);
+        void store.persistLayout();
+      },
+      setTheme,
+      setSystemState: (state) => {
+        useSystemStateStore.getState().set(state);
+        void useSystemStateStore.getState().persist();
+      },
+      setWidgetVisible: (widget, show) => {
+        const store = useWidgetStore.getState();
+        if (show) store.show(widget);
+        else store.hide(widget);
+        void store.persist();
+      },
+      hideAllWidgets: () => {
+        const store = useWidgetStore.getState();
+        for (const widget of store.widgets) store.hide(widget.id);
+        void store.persist();
+      },
+      createTask: (title) => {
+        useTaskStore.getState().add(title, 'media');
+        void useTaskStore.getState().persist();
+        launch('tasks');
+      },
+      search: (query) => {
+        setPaletteQuery(query);
+        openPalette();
+      },
+      music: (action) => {
+        if (action === 'proxima') void musicService.next();
+        else if (action === 'anterior') void musicService.previous();
+        else void musicService.togglePlay();
+      },
+      restartInterface: () => void restartBootSequence(),
+      ask: (text) => {
+        launch('assistant');
+        void aiService.send(text).then((reply) => {
+          if (reply.length > 0) speak(reply);
+        });
+      },
+    });
+  }, [isDesktop, launch, openPalette, restartBootSequence, setTheme, speak]);
+
 
   /**
    * Atalho global do sistema (CTRL+ALT+J no desktop).
@@ -250,7 +317,12 @@ export function App(): React.JSX.Element {
 
       {isDesktop && <WindowManager />}
 
-      <CommandPalette isOpen={isPaletteOpen} onClose={closePalette} actions={commandActions} />
+      <CommandPalette
+        isOpen={isPaletteOpen}
+        onClose={closePalette}
+        actions={commandActions}
+        initialQuery={paletteQuery}
+      />
 
       <DesktopContextMenu
         isEnabled={isDesktop && !isPaletteOpen}

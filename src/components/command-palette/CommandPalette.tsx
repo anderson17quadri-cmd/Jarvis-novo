@@ -14,6 +14,13 @@ interface CommandPaletteProps {
   readonly isOpen: boolean;
   readonly onClose: () => void;
   readonly actions: CommandActions;
+  /**
+   * Texto com que a paleta abre.
+   *
+   * Usado pelo comando de voz "procura…": em vez de abrir vazia e obrigar a
+   * escrever o que se acabou de dizer, abre já com a pesquisa feita.
+   */
+  readonly initialQuery?: string;
 }
 
 /**
@@ -22,7 +29,12 @@ interface CommandPaletteProps {
  * Navegável só com o teclado: setas para percorrer, Enter para executar, Escape
  * para sair. A seleção acompanha o scroll, para não se perder de vista.
  */
-export function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps): React.JSX.Element | null {
+export function CommandPalette({
+  isOpen,
+  onClose,
+  actions,
+  initialQuery = '',
+}: CommandPaletteProps): React.JSX.Element | null {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -45,13 +57,14 @@ export function CommandPalette({ isOpen, onClose, actions }: CommandPaletteProps
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
 
   // Cada abertura começa do zero — reabrir com a pesquisa anterior confunde.
+  // A exceção é quem a abriu já com um texto, como o comando de voz.
   useEffect(() => {
     if (!isOpen) return;
-    setQuery('');
+    setQuery(initialQuery);
     setSelectedIndex(0);
     const timer = setTimeout(() => inputRef.current?.focus(), 40);
     return () => clearTimeout(timer);
-  }, [isOpen]);
+  }, [initialQuery, isOpen]);
 
   // Uma pesquisa nova pode encurtar a lista abaixo do índice selecionado.
   useEffect(() => {

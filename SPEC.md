@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 404 testes |
+| Vitest | 438 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -373,14 +373,14 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 |---|:--:|---|
 | Ativação manual pelo botão | ✅ | |
 | Síntese de voz com o núcleo a reagir | ✅ | |
-| Comandos de sistema e de aplicações | 🟡 | Abrir janelas e trocar temas |
-| Comandos de produtividade, pesquisa, multimédia, desktop | ⬜ | |
-| Comandos compostos ("abre X, cria Y e envia Z") | ⬜ | |
-| Confirmação obrigatória em ações críticas | ⬜ | |
-| Correção de erros (mostrar o que foi reconhecido) | ⬜ | |
-| Contexto ("amanhã", "esse ficheiro") | ⬜ | |
-| Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual |
-| Histórico de voz pesquisável | ⬜ | |
+| Comandos de sistema, aplicações, produtividade, pesquisa, multimédia e desktop | ✅ | `services/voice/intents.ts` — as seis famílias da spec |
+| Comandos compostos | ✅ | "Abre os emails, mostra os projetos e pausa" dá três ações. Só divide se todos os pedaços derem comando, senão um "e" dentro de um título partia a frase |
+| Confirmação obrigatória em ações críticas | ✅ | Fechar as janelas e reiniciar a interface. O critério: dá para desfazer? |
+| Correção de erros (mostrar o que foi reconhecido) | 🟡 | A frase ouvida e o que se percebeu dela aparecem numa notificação. Falta poder editar e voltar a executar |
+| Não decorar comandos exatos | 🟡 | Várias formas de dizer o mesmo, sem acentos nem pontuação. Não há modelo de linguagem — e o ficheiro diz isso |
+| Contexto ("amanhã", "esse ficheiro") | ⬜ | Depende do provedor de IA |
+| Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual. A escuta contínua é uma decisão de privacidade por tomar |
+| Histórico de voz pesquisável | 🟡 | Fica no painel de notificações, na categoria do assistente |
 
 ---
 
