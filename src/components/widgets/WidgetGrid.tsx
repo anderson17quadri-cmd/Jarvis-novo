@@ -8,12 +8,18 @@ import {
   COMPACT_ROW_HEIGHT,
   GRID_COLUMNS,
   GRID_ROW_HEIGHT,
-  GRID_ROWS,
   type WidgetId,
   type WidgetPlacement,
   type WidgetSizeName,
 } from '@/types/widget';
-import { createMetrics, gridHeight, pixelsToCell, placementToPixels, stackedHeight } from './grid';
+import {
+  createMetrics,
+  gridHeight,
+  pixelsToCell,
+  placementToPixels,
+  stackedHeight,
+  usedRows,
+} from './grid';
 import { Widget } from './Widget';
 
 interface DragState {
@@ -48,7 +54,6 @@ export function WidgetGrid(): React.JSX.Element | null {
 
   const isCompact = useIsCompact();
   const widgets = useWidgetStore(useShallow(selectVisibleWidgets));
-  const hydrate = useWidgetStore((state) => state.hydrate);
   const hide = useWidgetStore((state) => state.hide);
   const move = useWidgetStore((state) => state.move);
   const resize = useWidgetStore((state) => state.resize);
@@ -62,10 +67,6 @@ export function WidgetGrid(): React.JSX.Element | null {
     columns,
     isCompact ? COMPACT_ROW_HEIGHT : GRID_ROW_HEIGHT,
   );
-
-  useEffect(() => {
-    void hydrate();
-  }, [hydrate]);
 
   // A largura da grelha acompanha o palco; as colunas são fluidas.
   useEffect(() => {
@@ -201,7 +202,7 @@ export function WidgetGrid(): React.JSX.Element | null {
     <div
       ref={containerRef}
       className="relative w-full"
-      style={{ height: gridHeight(GRID_ROWS, metrics) }}
+      style={{ height: gridHeight(usedRows(widgets.map((widget) => widget.placement)), metrics) }}
       aria-label="Widgets do ambiente de trabalho"
     >
       {/* Guias da grelha, só enquanto se arrasta (Parte 6.2 §Arrastar). */}

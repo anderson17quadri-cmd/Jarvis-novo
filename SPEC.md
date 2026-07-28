@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 364 testes |
+| Vitest | 368 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -260,7 +260,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Header 72px, pesquisa 650px, CTRL+K | ✅ | |
 | Sidebar 88/280 com expansão no hover | ✅ | |
 | Dock com magnificação | ✅ | |
-| Núcleo ao centro | ✅ | |
+| Núcleo ao centro | ✅ | Primeiro no palco e sempre visível. Os widgets descem para baixo dele — nunca por cima |
 | Menu contextual com os 8 itens | ✅ | |
 | Camadas de profundidade | ✅ | |
 | Sons | ✅ | `services/sound-service.ts` — sintetizados com Web Audio, sem um único ficheiro de áudio. Desligados por omissão |
@@ -344,7 +344,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Outro | | |
 |---|:--:|---|
 | Dimensões 420/360/280/220 | ✅ | `core-size.ts` |
-| Reduz a 75% com janelas abertas | ✅ | |
+| Reduz a 75% com janelas abertas | ✅ | É a **única** redução prevista. Não é esbatido por haver widgets — `tests/shell/stage.test.tsx` guarda isso |
 | Inclinação máx. 6° com o cursor | ✅ | |
 | Ligações temporárias entre partículas | ✅ | |
 | WebGL / Three.js / shaders | ⚠️ | Canvas 2D + SVG. Ver abaixo |

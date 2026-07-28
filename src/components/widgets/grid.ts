@@ -207,6 +207,26 @@ export function stackedHeight(rowSpan: number, metrics?: GridMetrics): number {
   return rowSpan * rowHeight + (rowSpan - 1) * gap;
 }
 
+/**
+ * Quantas linhas a grelha precisa de ter.
+ *
+ * A mais baixa ocupada, mais duas de folga para haver onde largar um widget
+ * ao arrastá-lo para baixo. Doze fixas deixavam mais de mil pixels de vazio
+ * por baixo dos widgets, e o palco a rolar sem nada para ver.
+ */
+export function usedRows(
+  placements: readonly WidgetPlacement[],
+  spare = 2,
+  minimum = 4,
+): number {
+  const lowest = placements.reduce(
+    (deepest, placement) => Math.max(deepest, placement.row + placement.rowSpan),
+    0,
+  );
+
+  return Math.min(GRID_ROWS, Math.max(minimum, lowest + spare));
+}
+
 /** Altura total da grelha, em pixels. */
 export function gridHeight(rows = GRID_ROWS, metrics?: GridMetrics): number {
   const rowHeight = metrics?.rowHeight ?? GRID_ROW_HEIGHT;

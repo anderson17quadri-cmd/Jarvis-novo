@@ -5,7 +5,7 @@ import { cn } from '@/lib/cn';
 import { selectVisibleWidgets, useWidgetStore } from '@/stores/use-widget-store';
 
 interface StageProps {
-  /** O AI Core. Fica ao centro, por trás dos widgets. */
+  /** O AI Core. É o centro do ambiente de trabalho, não um fundo. */
   readonly children: React.ReactNode;
 }
 
@@ -15,8 +15,15 @@ interface StageProps {
  * O `left` acompanha `--rail-w`, que a media query dos 820px põe a zero — no
  * compacto o palco passa a ocupar a largura toda sem o componente saber de nada.
  *
- * Com widgets visíveis, o núcleo passa para segundo plano em vez de sair: a
- * Parte 8 diz que "nunca desaparece completamente".
+ * **O núcleo vem primeiro e ocupa o seu próprio espaço.** No protótipo o palco
+ * é só ele, centrado; a grelha de widgets foi acrescentada depois e não pode
+ * tomar-lhe o lugar. Sem widgets, o núcleo fica centrado no palco, como no
+ * protótipo. Com widgets, encosta ao topo e a grelha desce para baixo dele —
+ * nunca por cima. As Partes 6.1 e 8 são explícitas: o núcleo é o elemento
+ * principal e permanece sempre visível.
+ *
+ * A única redução prevista é a das janelas abertas (75%), tratada no próprio
+ * `AICore`.
  */
 export function Stage({ children }: StageProps): React.JSX.Element {
   const hasWidgets = useWidgetStore(useShallow(selectVisibleWidgets)).length > 0;
@@ -28,20 +35,26 @@ export function Stage({ children }: StageProps): React.JSX.Element {
         'overflow-y-auto overflow-x-hidden',
       )}
     >
-      {/* Núcleo: centrado e sempre presente, atrás da grelha. */}
-      <div
-        className={cn(
-          'pointer-events-none absolute inset-0 flex flex-col items-center justify-center',
-          'transition-opacity duration-screen ease-out',
-          hasWidgets && 'opacity-[.18]',
-        )}
-      >
-        {/* Reativa os eventos só no núcleo, não na camada inteira. */}
-        <div className="pointer-events-auto flex flex-col items-center">{children}</div>
-      </div>
+      <div className="flex min-h-full flex-col">
+        <div
+          className={cn(
+            // Coluna, não linha: o `AICore` devolve o núcleo e a etiqueta de
+            // estado como irmãos, e em linha disputavam a largura — o núcleo
+            // encolhia para caber ao lado da etiqueta.
+            'flex flex-shrink-0 flex-col items-center justify-center',
+            // Sem widgets, o núcleo toma o palco todo e fica ao centro.
+            // Com widgets, fica no cimo, com folga à volta.
+            hasWidgets ? 'py-s3' : 'flex-1',
+          )}
+        >
+          {children}
+        </div>
 
-      <div className="relative z-10 px-s3 py-s3 pb-[120px]">
-        <WidgetGrid />
+        {hasWidgets && (
+          <div className="px-s3 pb-[120px]">
+            <WidgetGrid />
+          </div>
+        )}
       </div>
     </div>
   );

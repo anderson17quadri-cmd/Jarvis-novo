@@ -77,6 +77,9 @@ export function App(): React.JSX.Element {
     void initializePlatform().then(async () => {
       await hydrateTheme();
       await useNotificationStore.getState().hydrate();
+      // A grelha só monta quando há widgets — hidratar lá dentro nunca
+      // chegaria a correr na primeira vez.
+      await useWidgetStore.getState().hydrate();
       await usePluginStore.getState().hydrate();
       await useSystemStateStore.getState().hydrate();
       await soundService.hydrate();
