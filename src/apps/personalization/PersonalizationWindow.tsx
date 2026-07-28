@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { notificationService } from '@/services/notification-service';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { AppearanceSettings } from './AppearanceSettings';
 import { SoundSettings } from './SoundSettings';
 import { SystemStatePicker } from './SystemStatePicker';
 
@@ -70,6 +71,10 @@ export default function PersonalizationWindow(): React.JSX.Element {
           );
         })}
       </div>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <AppearanceSettings />
+      </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Estado do sistema</p>

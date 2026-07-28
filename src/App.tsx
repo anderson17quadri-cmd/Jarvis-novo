@@ -23,6 +23,7 @@ import { eventBus } from '@/services/event-bus';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
@@ -82,6 +83,7 @@ export function App(): React.JSX.Element {
       await useWidgetStore.getState().hydrate();
       await usePluginStore.getState().hydrate();
       await useSystemStateStore.getState().hydrate();
+      await useAppearanceStore.getState().hydrate();
       await soundService.hydrate();
       await automationService.hydrate(seedAutomations());
     });

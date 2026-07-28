@@ -95,16 +95,22 @@ export function Wallpaper(): React.JSX.Element {
 
   return (
     <div aria-hidden="true">
-      <div className="layer z-wallpaper" data-wallpaper="nebula">
+      {/* Cada camada leva `wp-layer` e um nome próprio: é por esses nomes que
+          `appearance.css` liga e desliga as variantes do papel de parede. */}
+      <div className="layer wp-layer wp-nebula z-wallpaper">
         <i className="wp-nebula-1" />
         <i className="wp-nebula-2" />
         <i className="wp-nebula-3" />
       </div>
 
-      <div ref={gridRef} className="layer wp-grid" style={{ zIndex: 1 }} />
+      <div ref={gridRef} className="layer wp-layer wp-grid" style={{ zIndex: 1 }} />
 
-      <canvas ref={particleRef} className="layer" style={{ zIndex: 2 }} />
-      <canvas ref={lineRef} className="layer opacity-50" style={{ zIndex: 3 }} />
+      <canvas ref={particleRef} className="layer wp-layer wp-particles" style={{ zIndex: 2 }} />
+      <canvas
+        ref={lineRef}
+        className="layer wp-layer wp-lines opacity-50"
+        style={{ zIndex: 3 }}
+      />
 
       <div className="layer wp-noise" style={{ zIndex: 4 }} />
       <div className="layer wp-vignette" style={{ zIndex: 5 }} />

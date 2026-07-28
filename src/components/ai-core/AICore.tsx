@@ -5,6 +5,7 @@ import { getDevicePixelRatio, useAnimationFrame } from '@/hooks/use-animation-fr
 import { useReducedMotion } from '@/hooks/use-media-query';
 import { cn } from '@/lib/cn';
 import { themeService } from '@/services/theme-service';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import type { AssistantMode } from '@/types/assistant';
@@ -63,8 +64,12 @@ export function AICore({
 
   const theme = useThemeStore((state) => state.theme);
   const reducedMotion = useReducedMotion();
-  // Estados do sistema (Parte 9): Economia e Foco aliviam o núcleo.
-  const particleScale = useSystemStateStore((state) => state.definition.particleScale);
+  // Duas coisas mexem na contagem de partículas, e multiplicam-se: o estado
+  // do sistema (Parte 9) e a preferência de aparência (Parte 15). Quem põe o
+  // sistema em Economia e o núcleo no mínimo quer as duas reduções.
+  const stateScale = useSystemStateStore((state) => state.definition.particleScale);
+  const preferenceScale = useAppearanceStore((state) => state.appearance.coreParticles);
+  const particleScale = stateScale * preferenceScale;
   const config = CORE_MODES[mode];
 
   // O canvas precisa da cor resolvida: `var(--accent)` não lhe diz nada.

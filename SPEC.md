@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 386 testes |
+| Vitest | 404 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -453,12 +453,15 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Troca em tempo real, sem reiniciar | ✅ | |
 | Sons por categoria | 🟡 | Existem sete sons; falta o volume por categoria |
 | Perfis de animação | 🟡 | Os estados do sistema fazem parte disto |
+| Centro de Personalização | ✅ | Temas, aparência, estado do sistema, som e arranque numa janela só |
+| Papéis de parede escolhíveis | ✅ | Quatro variantes — Nebulosa, Grelha, Partículas, Liso — com intensidade |
+| Núcleo personalizável | 🟡 | Contagem de partículas, que se multiplica com o estado do sistema. Cor, anéis e velocidade ficam para depois |
+| Escala, arredondamento e cursor | ✅ | `types/appearance.ts` — três estilos de cursor, três de arredondamento, escala de 90% a 130% |
+| Acessibilidade (alto contraste, reduzir transparência) | ✅ | A redução de movimento vem do sistema operativo e já era respeitada |
 | Editor de temas personalizados | ⬜ | **Construível sem nativo** |
-| Papéis de parede escolhíveis | ⬜ | **Construível sem nativo** |
-| Núcleo personalizável (cor, partículas, anéis) | ⬜ | **Construível sem nativo** |
-| Tipografia, cursor, densidade, arredondamento | ⬜ | **Construível sem nativo** |
+| Tipografia (família e pesos à escolha) | ⬜ | A escala já existe; falta trocar de fonte |
 | Perfis completos (Trabalho, Gaming, Noite…) | ⬜ | Junta-se aos layouts guardados — ver §5 |
-| Acessibilidade (alto contraste, escala, daltonismo) | ⬜ | **Construível sem nativo** |
+| Daltonismo | ⬜ | **Construível sem nativo** |
 | Sincronização entre dispositivos | 🚫 | Rede |
 
 ---

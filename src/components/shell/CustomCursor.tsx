@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import { useIsCoarsePointer, useReducedMotion } from '@/hooks/use-media-query';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
 
 /** Elementos que fazem o anel crescer. */
 const INTERACTIVE_SELECTOR =
@@ -22,7 +23,10 @@ export function CustomCursor(): React.JSX.Element | null {
   const dotRef = useRef<HTMLDivElement>(null);
   const isCoarsePointer = useIsCoarsePointer();
   const reducedMotion = useReducedMotion();
-  const disabled = isCoarsePointer || reducedMotion;
+  const cursor = useAppearanceStore((state) => state.appearance.cursor);
+  // Com o cursor do sistema não há nada para desenhar nem para seguir: o
+  // componente sai de cena inteiro, sem listener nenhum registado.
+  const disabled = isCoarsePointer || reducedMotion || cursor === 'sistema';
 
   useEffect(() => {
     if (disabled) return;

@@ -6,7 +6,7 @@
  * As partículas e as linhas holográficas são canvas, em `Wallpaper.tsx`.
  */
 
-[data-wallpaper='nebula'] i {
+.wp-nebula i {
   position: absolute;
   border-radius: 50%;
   filter: blur(110px);
@@ -47,9 +47,10 @@
 }
 
 .wp-grid {
+  /* A grelha segue o acento do tema, em vez do ciano fixo do Classic. */
   background-image:
-    linear-gradient(rgb(0 207 255 / 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(0 207 255 / 0.05) 1px, transparent 1px);
+    linear-gradient(rgb(var(--tint-rgb) / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--tint-rgb) / 0.05) 1px, transparent 1px);
   background-size: 72px 72px;
   /* A máscara evita que a grelha chegue às bordas, onde ficaria dura. */
   mask-image: radial-gradient(ellipse 78% 62% at 50% 46%, #000, transparent 100%);
@@ -62,5 +63,7 @@
 }
 
 .wp-vignette {
-  box-shadow: inset 0 0 220px 60px rgb(0 0 0 / 0.72);
+  /* A cor sai de um token: num tema claro uma vinheta preta transformava o
+     fundo branco em cinzento lavado. Ver `appearance.css`. */
+  box-shadow: inset 0 0 220px 60px var(--vignette);
 }

@@ -1,6 +1,6 @@
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
-import { RADIUS, SPACING, LAYOUT, EASING, DURATION, SHADOW, BREAKPOINTS } from './src/design-system/tokens';
+import { SPACING, LAYOUT, EASING, DURATION, SHADOW, BREAKPOINTS } from './src/design-system/tokens';
 
 /**
  * Tema do Tailwind gerado a partir de `src/design-system/tokens.ts`.
@@ -51,11 +51,20 @@ export default {
         warn: 'var(--yellow)',
         danger: 'var(--red)',
       },
+      /*
+       * Os raios passam pela variável, não pelo literal.
+       *
+       * O valor continua a vir de `tokens.ts` — é ele que escreve o `:root` em
+       * `themes.css`, e o teste de coerência garante que não divergem. A
+       * diferença é que a preferência de arredondamento (Parte 15) consegue
+       * multiplicá-los em tempo real; com o literal aqui, `rounded-card` ficava
+       * preso aos 20px e a preferência não fazia nada.
+       */
       borderRadius: {
-        btn: RADIUS.btn,
-        card: RADIUS.card,
-        modal: RADIUS.modal,
-        input: RADIUS.input,
+        btn: 'var(--r-btn)',
+        card: 'var(--r-card)',
+        modal: 'var(--r-modal)',
+        input: 'var(--r-input)',
       },
       spacing: {
         s1: SPACING.s1,
