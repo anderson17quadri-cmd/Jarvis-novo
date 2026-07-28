@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { eventBus } from '@/services/event-bus';
+import { logService } from '@/services/log-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
 /**
@@ -25,8 +26,18 @@ export interface InstalledPlugin {
 
 interface PluginState {
   readonly installed: Readonly<Record<string, InstalledPlugin>>;
+  /**
+   * Permissões recusadas, por plugin (Parte 14).
+   *
+   * Guardam-se as recusas e não as concessões: um plugin instalado começa com
+   * o que declarou no manifesto, e a lista só cresce quando alguém tira algo.
+   * Assim uma permissão nova numa versão futura não fica silenciosamente
+   * concedida por omissão do ficheiro guardado.
+   */
+  readonly deniedPermissions: Readonly<Record<string, readonly string[]>>;
 
   install: (id: string) => void;
+  setPermission: (pluginId: string, permission: string, allow: boolean) => void;
   uninstall: (id: string) => void;
   setEnabled: (id: string, isEnabled: boolean) => void;
   toggleEnabled: (id: string) => void;
@@ -49,12 +60,14 @@ function builtInState(): Record<string, InstalledPlugin> {
 
 export const usePluginStore = create<PluginState>((set, get) => ({
   installed: builtInState(),
+  deniedPermissions: {},
 
   install: (id) =>
     set((state) => {
       if (state.installed[id]) return state;
 
       eventBus.emit('plugin:instalado', { pluginId: id });
+      logService.audit(`Instalar o plugin ${id}`, 'executado');
 
       return {
         installed: {
@@ -75,7 +88,23 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       if (!removed) return state;
 
       eventBus.emit('plugin:removido', { pluginId: id });
+      logService.audit(`Remover o plugin ${id}`, 'executado');
       return { installed: rest };
+    }),
+
+  setPermission: (pluginId, permission, allow) =>
+    set((state) => {
+      const current = state.deniedPermissions[pluginId] ?? [];
+      const next = allow
+        ? current.filter((entry) => entry !== permission)
+        : [...new Set([...current, permission])];
+
+      logService.audit(
+        `Permissão "${permission}" de ${pluginId}`,
+        allow ? 'permitido' : 'recusado',
+      );
+
+      return { deniedPermissions: { ...state.deniedPermissions, [pluginId]: next } };
     }),
 
   setEnabled: (id, isEnabled) =>
@@ -93,11 +122,21 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   },
 
   persist: async () => {
-    await storageService.set(STORAGE_KEYS.plugins, Object.values(get().installed));
+    await storageService.set(STORAGE_KEYS.plugins, {
+      installed: Object.values(get().installed),
+      deniedPermissions: get().deniedPermissions,
+    });
   },
 
   hydrate: async () => {
-    const saved = await storageService.get<InstalledPlugin[]>(STORAGE_KEYS.plugins, []);
+    const raw = await storageService.get<
+      InstalledPlugin[] | { installed: InstalledPlugin[]; deniedPermissions: Record<string, string[]> }
+    >(STORAGE_KEYS.plugins, []);
+
+    // O formato antigo era só a lista. Ler os dois evita que quem já tinha
+    // plugins instalados os perca ao atualizar.
+    const saved = Array.isArray(raw) ? raw : raw.installed;
+    const deniedPermissions = Array.isArray(raw) ? {} : raw.deniedPermissions;
 
     // Um plugin guardado que já não exista no catálogo é descartado — acontece
     // quando um plugin sai da loja, e sem isto ficaria instalado e invisível.
@@ -109,7 +148,7 @@ export const usePluginStore = create<PluginState>((set, get) => ({
       installed[entry.id] = entry;
     }
 
-    set({ installed });
+    set({ installed, deniedPermissions });
   },
 }));
 

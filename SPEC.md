@@ -29,12 +29,12 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 438 testes |
+| Vitest | 474 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`, e a aplicação abre offline depois da primeira visita |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador** e **Privacidade** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -171,7 +171,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Sidebar, header, dock, núcleo, painéis | ✅ | Partes 6.1 e 8 |
 | Nunca parecer um site | ✅ | Janelas, dock, cursor próprio, menu contextual próprio |
 | Responsivo até ao telemóvel | ✅ | Rail → gaveta, janelas empilhadas, widgets empilhados |
-| Acessibilidade: ARIA, contraste, teclado, foco | 🟡 | ARIA e teclado em todo o lado; falta o painel de acessibilidade da Parte 15 |
+| Acessibilidade: ARIA, contraste, teclado, foco | ✅ | ARIA e teclado em todo o lado, e o painel da Parte 15 com alto contraste e redução de transparência |
 | Código modular, sem duplicação | ✅ | Registos únicos, adapters, serviços com provedores |
 
 ---
@@ -282,6 +282,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
 | Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`; Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
 | Janela: Automações | ✅ | Motor a sério — ver Parte 13 |
+| Janelas: Centro de Programador e Privacidade | ✅ | Partes 16 e 14 |
 | Janela: Terminal | ⬜ | Fora de âmbito por decisão — ver §5 |
 | **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
 
@@ -315,8 +316,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Agentes especializados | ⬜ | |
 | AI Orchestrator | ⬜ | Parte 12 |
 | Modo copiloto (sugestões discretas) | ⬜ | |
-| Log de ações | ⬜ | Parte 16 |
-| Permissões por plugin | 🟡 | Declaradas e mostradas na loja; falta concedê-las e revogá-las |
+| Log de ações | ✅ | `services/log-service.ts`, visível no Centro de Programador e na aba de auditoria da Privacidade |
+| Permissões por plugin | 🟡 | Declaradas, mostradas e **recusáveis** na janela de Privacidade, com a decisão persistida. Recusar ainda não impede nada, porque nenhum plugin executa código — e a interface di-lo por escrito |
 | **MCP** | 🚫 | Excluído da Fase 1 pelo próprio prompt original |
 
 ---
@@ -437,10 +438,16 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Nunca abrir a shell a comandos da interface | ✅ | `url-policy.ts` só aceita `https:` e `mailto:`, e a capability impõe o mesmo |
 | Erros tratados com `Result`, sem `unwrap()` | ✅ | `src-tauri/src/error.rs` |
 | Autenticação com bloqueio e sessão | 🟡 | Login existe; falta bloqueio por inatividade |
-| Painel de privacidade e permissões | ⬜ | **Construível sem nativo** |
-| Auditoria de ações | ⬜ | **Construível sem nativo** |
+| Painel de privacidade e permissões | ✅ | `apps/privacy/` — três abas: permissões por plugin, auditoria e o que cada capacidade da plataforma vê de facto |
+| Auditoria de ações | ✅ | `logService.audit()`. Regista temas, estados do sistema, comandos de voz, automações e decisões de permissões — venham da paleta, da voz ou de uma regra |
 | Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo |
 | Backups e restauro | ⬜ | |
+
+> **A auditoria vive em memória, e é de propósito.** Escrever num ficheiro exige
+> o plugin `fs` — bloqueado. E um registo de auditoria em `localStorage`, onde
+> qualquer script da página o pode reescrever, seria pior do que não haver
+> registo nenhum: dava a aparência de prova sem a ser. Fica na sessão até haver
+> escrita nativa.
 
 ---
 
@@ -470,12 +477,12 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 
 | Item | | |
 |---|:--:|---|
-| Logs em tempo real, pesquisáveis | ⬜ | **Construível sem nativo** |
-| Diagnóstico do sistema | 🟡 | O Monitor de recursos cobre parte |
-| Inspetor de eventos | ⬜ | **Construível sem nativo** |
-| Desempenho (FPS, memória, tempo de arranque) | ⬜ | **Construível sem nativo** |
-| Estado dos serviços e dos adapters | ⬜ | **Construível sem nativo** |
-| Consola de comandos | ⬜ | |
+| Logs em tempo real, pesquisáveis | ✅ | `apps/developer-center/` — filtros por nível e por origem, pesquisa que também entra no detalhe |
+| Diagnóstico do sistema | ✅ | `services/diagnostics.ts` — plataforma, adapter e capacidades, além do Monitor de recursos |
+| Inspetor de eventos | ✅ | `logService.watchEventBus()` escuta o Event Bus inteiro e mostra o nome e a carga de cada evento |
+| Desempenho (memória, tempo de arranque) | 🟡 | Arranque e `performance.memory`. **A memória só existe no Chromium** — noutros browsers mostra-se ausente em vez de um número inventado. FPS fica para depois |
+| Estado dos serviços e dos adapters | ✅ | Plataforma, métricas, automações, som e registo, cada um com o que está mesmo a fazer |
+| Consola de comandos | ⬜ | A Command Palette já executa; falta a consola livre |
 
 ---
 
@@ -487,8 +494,9 @@ notícias, email, música), que entraram com o sistema de widgets.
 
 Da Fase 2, entraram as peças que não precisam do nativo: pesquisa global na
 paleta, painel de notificações com categorias e a interface do Plugin Manager.
-Ficam de fora, por dependerem de coisas ainda não validadas: execução de
-plugins, MCP, motor de automações, Developer Center, múltiplos desktops e
+Entraram depois o motor de automações e o **Centro de Programador**, ambos
+reavaliados: nenhum precisava de nativo. Ficam de fora, por dependerem de
+coisas ainda não validadas: execução de plugins, MCP, múltiplos desktops e
 layouts guardados.
 
 ---

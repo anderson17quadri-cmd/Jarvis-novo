@@ -1,0 +1,94 @@
+import { getPlatformAdapter } from '@/platform';
+import { automationService } from './automation-service';
+import { logService } from './log-service';
+import { soundService } from './sound-service';
+import { systemService } from './system-service';
+
+/**
+ * Diagnóstico (Parte 16).
+ *
+ * Lê o estado real das peças em vez de o inventar. Onde o browser não sabe
+ * responder — a memória do processo, por exemplo — devolve `null`, e a
+ * interface diz "não disponível" em vez de mostrar um zero.
+ */
+
+export interface ServiceStatus {
+  readonly name: string;
+  readonly state: 'ativo' | 'parado' | 'indisponível';
+  readonly detail: string;
+}
+
+export interface Diagnostics {
+  /** Milissegundos desde que a página abriu. */
+  readonly uptimeMs: number;
+  /** Tempo até o primeiro pintar, em ms. `null` se o browser não o expuser. */
+  readonly firstPaintMs: number | null;
+  /** Memória do heap em bytes. Só no Chromium; `null` nos outros. */
+  readonly heapUsedBytes: number | null;
+  readonly heapLimitBytes: number | null;
+  readonly services: readonly ServiceStatus[];
+}
+
+interface MemoryInfo {
+  readonly usedJSHeapSize: number;
+  readonly jsHeapSizeLimit: number;
+}
+
+function readMemory(): MemoryInfo | null {
+  if (typeof performance === 'undefined') return null;
+  // `performance.memory` é do Chromium e não está nos tipos padrão.
+  const memory = (performance as Performance & { memory?: MemoryInfo }).memory;
+  return memory ?? null;
+}
+
+function readFirstPaint(): number | null {
+  if (typeof performance === 'undefined' || typeof performance.getEntriesByType !== 'function') {
+    return null;
+  }
+
+  const [paint] = performance.getEntriesByType('paint');
+  return paint ? Math.round(paint.startTime) : null;
+}
+
+export function readDiagnostics(): Diagnostics {
+  const memory = readMemory();
+  const adapter = getPlatformAdapter();
+
+  return {
+    uptimeMs: typeof performance === 'undefined' ? 0 : Math.round(performance.now()),
+    firstPaintMs: readFirstPaint(),
+    heapUsedBytes: memory?.usedJSHeapSize ?? null,
+    heapLimitBytes: memory?.jsHeapSizeLimit ?? null,
+    services: [
+      {
+        name: 'Plataforma',
+        state: 'ativo',
+        detail: `${adapter.info.kind}${adapter.info.osName ? ` · ${adapter.info.osName}` : ''}`,
+      },
+      {
+        name: 'Métricas do sistema',
+        state: systemService.isSupported ? 'ativo' : 'indisponível',
+        detail: systemService.isSupported
+          ? `sondagem a cada ${systemService.pollIntervalMs / 1000}s`
+          : 'a plataforma não as expõe',
+      },
+      {
+        name: 'Automações',
+        state: automationService.list.some((rule) => rule.isEnabled) ? 'ativo' : 'parado',
+        detail: `${automationService.list.filter((rule) => rule.isEnabled).length} de ${automationService.list.length} ligadas`,
+      },
+      {
+        name: 'Som',
+        state: soundService.isEnabled ? 'ativo' : 'parado',
+        detail: soundService.isEnabled
+          ? `volume a ${Math.round(soundService.currentVolume * 100)}%`
+          : 'desligado nas preferências',
+      },
+      {
+        name: 'Registo',
+        state: 'ativo',
+        detail: `${logService.list.length} entradas em memória`,
+      },
+    ],
+  };
+}

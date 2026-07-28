@@ -21,6 +21,7 @@ import { seedAutomations } from '@/data/automations';
 import { aiService } from '@/services/ai-service';
 import { automationService } from '@/services/automation-service';
 import { eventBus } from '@/services/event-bus';
+import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
@@ -81,6 +82,11 @@ export function App(): React.JSX.Element {
   useNotificationSources(isDesktop);
 
   useEffect(() => {
+    // O registo escuta o Event Bus a partir daqui — é o inspetor de eventos
+    // do Centro de programador, sem mecanismo novo nenhum.
+    const stopWatching = logService.watchEventBus();
+    logService.log('info', 'sistema', 'Interface a arrancar');
+
     void initializePlatform().then(async () => {
       await hydrateTheme();
       await useNotificationStore.getState().hydrate();
@@ -92,7 +98,17 @@ export function App(): React.JSX.Element {
       await useAppearanceStore.getState().hydrate();
       await soundService.hydrate();
       await automationService.hydrate(seedAutomations());
+
+      const adapter = getPlatformAdapter();
+      logService.log(
+        'info',
+        'plataforma',
+        `Plataforma pronta: ${adapter.info.kind}`,
+        adapter.info.osName ?? undefined,
+      );
     });
+
+    return stopWatching;
   }, [hydrateTheme]);
 
   /**
@@ -167,9 +183,13 @@ export function App(): React.JSX.Element {
     if (!isDesktop) return;
 
     return setVoiceExecutor({
-      openWindow: launch,
+      openWindow: (appId) => {
+        logService.audit(`Abrir a janela ${appId} por voz`, 'executado');
+        launch(appId);
+      },
       closeAllWindows: () => {
         const store = useWindowStore.getState();
+        logService.audit(`Fechar ${store.windows.length} janelas por voz`, 'executado');
         for (const window of [...store.windows]) store.close(window.id);
         void store.persistLayout();
       },

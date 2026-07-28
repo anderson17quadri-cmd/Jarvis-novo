@@ -11,6 +11,7 @@ import {
   Music,
   Palette,
   Puzzle,
+  ShieldCheck,
   Terminal,
   Zap,
 } from 'lucide-react';
@@ -69,6 +70,22 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     icon: Puzzle,
     defaultSize: { width: 520, height: 460 },
     component: lazy(() => import('./plugin-manager/PluginManagerWindow')),
+    implemented: true,
+  },
+  developer: {
+    id: 'developer',
+    title: 'Centro de programador',
+    icon: Terminal,
+    defaultSize: { width: 560, height: 480 },
+    component: lazy(() => import('./developer-center/DeveloperCenterWindow')),
+    implemented: true,
+  },
+  privacy: {
+    id: 'privacy',
+    title: 'Privacidade',
+    icon: ShieldCheck,
+    defaultSize: { width: 520, height: 460 },
+    component: lazy(() => import('./privacy/PrivacyWindow')),
     implemented: true,
   },
   files: {

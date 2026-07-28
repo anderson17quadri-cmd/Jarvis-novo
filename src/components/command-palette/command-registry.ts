@@ -90,7 +90,7 @@ export interface SearchableContent {
 const EMPTY_CONTENT: SearchableContent = { mail: [], news: [], notifications: [] };
 
 /** Janelas que são configuração do próprio sistema, não aplicações do dia a dia. */
-const SYSTEM_APPS: ReadonlySet<AppId> = new Set<AppId>(['system', 'themes', 'plugins']);
+const SYSTEM_APPS: ReadonlySet<AppId> = new Set<AppId>(['system', 'themes', 'plugins', 'developer', 'privacy']);
 
 /**
  * Constrói a lista de comandos.

@@ -1,5 +1,6 @@
 import { createId } from '@/lib/id';
 import { eventBus, type SystemEventName } from './event-bus';
+import { logService } from './log-service';
 import { storageService, STORAGE_KEYS } from './storage-service';
 import {
   RUN_HISTORY_LIMIT,
@@ -330,6 +331,12 @@ export class AutomationService {
           : candidate,
       );
     }
+
+    logService.audit(
+      `Automação "${automation.name}"`,
+      outcome.result === 'ok' ? 'executado' : 'recusado',
+      outcome.message,
+    );
 
     this.emit();
     void this.persist();

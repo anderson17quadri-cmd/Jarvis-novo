@@ -15,7 +15,9 @@ export type AppId =
   | 'automations'
   | 'music'
   | 'browser'
-  | 'plugins';
+  | 'plugins'
+  | 'developer'
+  | 'privacy';
 
 /**
  * Definição de uma janela.

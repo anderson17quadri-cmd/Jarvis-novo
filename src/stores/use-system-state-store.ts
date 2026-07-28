@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { eventBus } from '@/services/event-bus';
+import { logService } from '@/services/log-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { systemService } from '@/services/system-service';
 import { SYSTEM_STATES, type SystemStateDefinition, type SystemStateId } from '@/types/system-state';
@@ -45,6 +46,7 @@ export const useSystemStateStore = create<SystemStateStore>((set, get) => ({
   set: (id) => {
     set({ current: id, definition: apply(id) });
     eventBus.emit('estado:alterado', { state: id });
+    logService.audit(`Passar ao modo ${SYSTEM_STATES[id].name}`, 'executado');
   },
 
   persist: async () => {
