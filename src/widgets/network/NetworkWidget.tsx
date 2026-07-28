@@ -56,13 +56,13 @@ export default function NetworkWidget(): React.JSX.Element {
       <div className="flex flex-shrink-0 items-baseline gap-3">
         <span className="flex items-baseline gap-1">
           <ArrowDown className="h-3.5 w-3.5 self-center text-accent" aria-hidden="true" />
-          <span className="mono text-[17px] font-light leading-none">
+          <span className="mono text-[17px] font-light leading-none compact:text-[15px]">
             {formatBytesPerSecond(network.downloadBytesPerSec)}
           </span>
         </span>
         <span className="flex items-baseline gap-1">
           <ArrowUp className="h-3.5 w-3.5 self-center text-neon" aria-hidden="true" />
-          <span className="mono text-[17px] font-light leading-none text-t2">
+          <span className="mono text-[17px] font-light leading-none text-t2 compact:text-[15px]">
             {formatBytesPerSecond(network.uploadBytesPerSec)}
           </span>
         </span>

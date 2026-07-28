@@ -30,7 +30,7 @@ export default function CpuWidget(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-baseline justify-between">
-        <span className="mono text-[26px] font-light leading-none">
+        <span className="mono text-[26px] font-light leading-none compact:text-[20px]">
           {formatPercent(snapshot.cpu.usagePercent)}
         </span>
         <span className="text-[10.5px] text-t3">

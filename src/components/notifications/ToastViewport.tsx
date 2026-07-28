@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AlertTriangle, Check, Info, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { useIsCompact } from '@/hooks/use-media-query';
 import { cn } from '@/lib/cn';
 import { formatTime } from '@/lib/format';
 import { selectVisibleToasts, useNotificationStore } from '@/stores/use-notification-store';
@@ -28,8 +29,19 @@ const KIND_STYLE: Record<NotificationKind, string> = {
  * não se perdem. `aria-live="polite"` anuncia-os sem interromper o que o leitor
  * de ecrã estiver a ler.
  */
+/**
+ * Quantos cabem sem tapar o ecrã.
+ *
+ * Num telemóvel de 830px, quatro avisos empilhados ocupavam mais de metade da
+ * altura e escondiam o que estava por baixo. Os que não cabem não se perdem —
+ * ficam no painel de notificações, como todos os outros.
+ */
+const COMPACT_LIMIT = 2;
+
 export function ToastViewport(): React.JSX.Element {
-  const toasts = useNotificationStore(useShallow(selectVisibleToasts));
+  const all = useNotificationStore(useShallow(selectVisibleToasts));
+  const isCompact = useIsCompact();
+  const toasts = isCompact ? all.slice(0, COMPACT_LIMIT) : all;
 
   return (
     <div
@@ -64,6 +76,9 @@ function Toast({ notification }: { readonly notification: JarvisNotification }):
       className={cn(
         'flex gap-3 rounded-input border border-line-2 bg-[rgb(16_25_34_/_0.94)] p-3.5',
         'shadow-1 backdrop-blur-panel motion-safe:animate-toast-in',
+        // Mais apertado no telemóvel: dois avisos com o espaçamento do desktop
+        // ocupavam mais de metade do ecrã.
+        'compact:gap-2.5 compact:p-3',
       )}
     >
       <span
@@ -78,7 +93,11 @@ function Toast({ notification }: { readonly notification: JarvisNotification }):
 
       <div className="min-w-0 flex-1">
         <div className="mb-[3px] text-[13.5px] font-semibold">{notification.title}</div>
-        <div className="text-cap leading-[1.5] text-t3">{notification.description}</div>
+        {/* Cortada a duas linhas no compacto — a descrição inteira fica no
+            painel de notificações, que é onde se vai lê-la com calma. */}
+        <div className="text-cap leading-[1.5] text-t3 compact:line-clamp-2">
+          {notification.description}
+        </div>
 
         {notification.actions.length > 0 && (
           <div className="mt-2 flex gap-1.5">
@@ -98,7 +117,9 @@ function Toast({ notification }: { readonly notification: JarvisNotification }):
           </div>
         )}
 
-        <div className="mt-1.5 text-[10px] tracking-[0.06em] text-t3">
+        {/* A hora não entra no telemóvel: um aviso que acabou de aparecer não
+            precisa de dizer que horas são. Fica no painel. */}
+        <div className="mt-1.5 text-[10px] tracking-[0.06em] text-t3 compact:hidden">
           {formatTime(new Date(notification.createdAt))}
         </div>
       </div>

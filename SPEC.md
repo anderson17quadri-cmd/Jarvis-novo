@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 334 testes |
+| Vitest | 340 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -258,7 +258,7 @@ uma forma honesta de ler a GPU.
 | Encaixe: metades, quartos, ecrã inteiro | ✅ | `components/windows/snap.ts` |
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
-| **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
+| **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. No compacto **empilham-se a largura toda**, com linhas mais baixas. `components/widgets/` e `widgets/` |
 | Widgets previstos | 🟡 | Nove dos treze: Relógio, CPU, RAM, **Disco**, **Rede**, Clima, Notícias, Email, Música. Faltam Calendário, Tarefas e IA como widgets — as janelas existem. **GPU não entra**: ver §5 |
 | Múltiplos desktops (1 a 4) | ⬜ | Bloqueado até a Fase 1 correr no PC — ver §5 |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |

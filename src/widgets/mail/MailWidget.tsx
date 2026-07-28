@@ -25,7 +25,7 @@ export default function MailWidget(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col">
       <div className="mb-2 flex flex-shrink-0 items-baseline gap-2">
-        <span className="mono text-[22px] font-light leading-none">{data.unreadCount}</span>
+        <span className="mono text-[22px] font-light leading-none compact:text-[18px]">{data.unreadCount}</span>
         <span className="text-[11px] text-t2">por ler</span>
         {data.actionCount > 0 && (
           <span className="ml-auto rounded-full bg-warn/[.12] px-2 py-0.5 text-[10px] text-warn">

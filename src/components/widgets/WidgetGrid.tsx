@@ -5,17 +5,16 @@ import { useIsCompact } from '@/hooks/use-media-query';
 import { selectVisibleWidgets, useWidgetStore } from '@/stores/use-widget-store';
 import { getWidgetDefinition } from '@/widgets/registry';
 import {
+  COMPACT_ROW_HEIGHT,
   GRID_COLUMNS,
+  GRID_ROW_HEIGHT,
   GRID_ROWS,
   type WidgetId,
   type WidgetPlacement,
   type WidgetSizeName,
 } from '@/types/widget';
-import { createMetrics, gridHeight, pixelsToCell, placementToPixels } from './grid';
+import { createMetrics, gridHeight, pixelsToCell, placementToPixels, stackedHeight } from './grid';
 import { Widget } from './Widget';
-
-/** No compacto a grelha estreita para 4 colunas — 12 seriam ilegíveis. */
-const COMPACT_COLUMNS = 4;
 
 interface DragState {
   readonly id: WidgetId;
@@ -32,8 +31,8 @@ interface DragState {
  * Doze colunas fluidas e linhas de altura fixa (Parte 2 §Grid). Os widgets
  * encaixam em células, arrastam-se com Pointer Events e o arranjo persiste.
  *
- * Em ecrãs compactos a grelha passa a quatro colunas e o arrasto desliga-se —
- * reordenar por arrasto num telemóvel compete com o scroll da página.
+ * Em ecrãs compactos deixa de haver grelha: os widgets empilham-se a largura
+ * toda, pela ordem em que estavam no desktop, e o arrasto desliga-se.
  */
 export function WidgetGrid(): React.JSX.Element | null {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -55,8 +54,14 @@ export function WidgetGrid(): React.JSX.Element | null {
   const resize = useWidgetStore((state) => state.resize);
   const persist = useWidgetStore((state) => state.persist);
 
-  const columns = isCompact ? COMPACT_COLUMNS : GRID_COLUMNS;
-  const metrics = createMetrics(width, columns);
+  const columns = GRID_COLUMNS;
+  // No compacto as linhas são mais baixas: empilhados, os widgets com a altura
+  // do desktop enchiam o ecrã com dois.
+  const metrics = createMetrics(
+    width,
+    columns,
+    isCompact ? COMPACT_ROW_HEIGHT : GRID_ROW_HEIGHT,
+  );
 
   useEffect(() => {
     void hydrate();
@@ -153,6 +158,44 @@ export function WidgetGrid(): React.JSX.Element | null {
     },
     [persist, resize],
   );
+
+  /*
+   * No compacto os widgets empilham-se, um por linha, a largura toda.
+   *
+   * Não é uma escolha de estilo — é a única leitura correta. As posições
+   * guardadas estão em colunas de doze; desenhá-las contra quatro colunas
+   * atirava metade dos widgets para fora do ecrã, e um widget de 6 colunas
+   * ficava com uma vez e meia a largura do telemóvel. A ordem respeita o
+   * arranjo do desktop: primeiro a linha, depois a coluna.
+   */
+  if (isCompact) {
+    const stacked = [...widgets].sort(
+      (a, b) => a.placement.row - b.placement.row || a.placement.col - b.placement.col,
+    );
+
+    return (
+      <div
+        ref={containerRef}
+        className="flex w-full flex-col gap-s2"
+        aria-label="Widgets do ambiente de trabalho"
+      >
+        {stacked.map((widget) => (
+          <div
+            key={widget.id}
+            style={{ height: stackedHeight(widget.placement.rowSpan, metrics) }}
+          >
+            <Widget
+              definition={getWidgetDefinition(widget.id)}
+              isDragging={false}
+              onHide={() => handleHide(widget.id)}
+              onResize={(size) => handleResize(widget.id, size)}
+              // Sem `onPointerDown`: o arrasto competiria com o scroll da página.
+            />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div

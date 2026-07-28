@@ -30,8 +30,12 @@ export interface PixelRect {
   readonly height: number;
 }
 
-export function createMetrics(width: number, columns = GRID_COLUMNS): GridMetrics {
-  return { width, columns, rowHeight: GRID_ROW_HEIGHT, gap: GRID_GAP };
+export function createMetrics(
+  width: number,
+  columns = GRID_COLUMNS,
+  rowHeight = GRID_ROW_HEIGHT,
+): GridMetrics {
+  return { width, columns, rowHeight, gap: GRID_GAP };
 }
 
 /** Largura de uma coluna, já com os espaços descontados. */
@@ -189,6 +193,18 @@ export function resolveDrop(
     findNearestFreeSlot(others, moving.colSpan, moving.rowSpan, desired, columns, rows) ??
     moving
   );
+}
+
+/**
+ * Altura de um widget empilhado, em pixels.
+ *
+ * Usada no compacto, onde não há colunas: a largura é a do ecrã e só a altura
+ * vem do `rowSpan`, para um widget grande continuar a ser grande.
+ */
+export function stackedHeight(rowSpan: number, metrics?: GridMetrics): number {
+  const rowHeight = metrics?.rowHeight ?? GRID_ROW_HEIGHT;
+  const gap = metrics?.gap ?? GRID_GAP;
+  return rowSpan * rowHeight + (rowSpan - 1) * gap;
 }
 
 /** Altura total da grelha, em pixels. */

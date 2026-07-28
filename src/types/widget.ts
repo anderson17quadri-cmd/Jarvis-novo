@@ -95,6 +95,14 @@ export interface PersistedWidgetLayout {
 export const GRID_COLUMNS = 12;
 /** Altura de uma linha, em pixels. */
 export const GRID_ROW_HEIGHT = 84;
+/**
+ * Altura de uma linha no compacto.
+ *
+ * Menor de propósito: no telemóvel os widgets empilham-se, e com a altura do
+ * desktop cabiam dois no ecrã inteiro. A largura já é a máxima possível, por
+ * isso o conteúdo continua a respirar mesmo com menos altura.
+ */
+export const COMPACT_ROW_HEIGHT = 60;
 /** Espaço entre células — corresponde ao token `--s2`. */
 export const GRID_GAP = 16;
 /**

@@ -12,7 +12,11 @@ interface WidgetProps {
   readonly isDragging: boolean;
   readonly onHide: () => void;
   readonly onResize: (size: WidgetSizeName) => void;
-  readonly onPointerDown: (event: React.PointerEvent<HTMLElement>) => void;
+  /**
+   * Pega para arrastar. Ausente no compacto, onde os widgets se empilham e o
+   * arrasto competiria com o scroll da página.
+   */
+  readonly onPointerDown?: (event: React.PointerEvent<HTMLElement>) => void;
 }
 
 /**
@@ -57,14 +61,16 @@ export function Widget({
         onPointerDown={onPointerDown}
         className={cn(
           'flex h-9 flex-shrink-0 select-none items-center gap-2 border-b border-line px-3',
-          isDragging ? 'cursor-grabbing' : 'cursor-grab',
+          isDragging && 'cursor-grabbing',
+          !isDragging && onPointerDown && 'cursor-grab',
         )}
       >
         <Icon className="h-[15px] w-[15px] flex-shrink-0 text-accent" aria-hidden="true" />
         <span className="flex-1 truncate text-[12px] font-medium">{definition.name}</span>
 
-        {/* As ações só aparecem no hover, para o cabeçalho respirar. */}
-        <div className="flex gap-0.5 opacity-0 transition-opacity duration-hover group-hover/widget:opacity-100 focus-within:opacity-100">
+        {/* Só no hover, para o cabeçalho respirar — mas sempre visíveis no
+            compacto, onde não há hover e ficariam inalcançáveis. */}
+        <div className="flex gap-0.5 opacity-0 transition-opacity duration-hover group-hover/widget:opacity-100 focus-within:opacity-100 compact:opacity-100">
           {definition.allowedSizes.length > 1 && (
             <div className="relative">
               <WidgetAction

@@ -12,7 +12,7 @@ export default function ClockWidget(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col justify-center">
-      <div className="mono text-[clamp(28px,7vw,40px)] font-light leading-none tracking-tight">
+      <div className="mono text-[clamp(24px,7vw,40px)] font-light leading-none tracking-tight">
         {formatTime(now)}
       </div>
 
