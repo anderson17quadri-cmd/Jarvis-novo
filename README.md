@@ -71,6 +71,50 @@ npm run android:dev
 
 ---
 
+## Instalar no telemóvel como PWA
+
+Enquanto o build Android do Tauri não estiver confirmado, dá para instalar o
+JARVIS no ecrã principal do telemóvel a partir do browser. Fica com ícone
+próprio e abre sem a barra do navegador — é a mesma interface, servida pelo
+`WebAdapter`.
+
+**No telemóvel (Termux):**
+
+```bash
+npm run build
+npm run preview
+```
+
+Abrir no browser do telemóvel: **`http://localhost:4173`**
+
+> **Tem de ser `localhost`.** O `http://192.168.x.x` também serve a página, mas
+> os browsers só permitem service workers em contexto seguro — `https` ou
+> `localhost`. Sem service worker não aparece a opção de instalar. Se o
+> servidor corre no próprio telemóvel, `localhost` é o endereço certo; se corre
+> noutra máquina, é preciso `https`.
+
+**Depois, no browser:**
+
+1. Tocar no menu do browser — os três pontos, no canto superior direito
+2. Escolher **"Adicionar ao ecrã principal"** (no Chrome pode aparecer como
+   **"Instalar aplicação"**)
+3. Confirmar o nome e tocar em **Adicionar**
+
+O ícone fica no ecrã principal. A partir daí a aplicação abre em ecrã inteiro,
+sem barra de endereço, e continua a abrir mesmo sem rede depois da primeira
+visita.
+
+**O que a PWA não faz**, e só o build nativo fará: bandeja do sistema, atalho
+global, métricas reais do sistema, notificações do sistema operativo e leitura
+de ficheiros. Tudo isso está desligado nas capacidades do `WebAdapter`, e a
+interface adapta-se sozinha — ver [PLATFORM.md](PLATFORM.md).
+
+Os ficheiros envolvidos: `public/manifest.webmanifest`, `public/sw.js` e
+`src/pwa.ts`. Os ícones são gerados por `node scripts/generate-icons.mjs`, que
+escreve tanto os do Tauri como os do manifesto a partir do mesmo desenho.
+
+---
+
 ## Compilar
 
 ```bash

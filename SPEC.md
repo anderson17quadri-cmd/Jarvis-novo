@@ -29,10 +29,11 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 324 testes |
+| Vitest | 334 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
+| **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`, e a aplicação abre offline depois da primeira visita |
 | Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
@@ -42,6 +43,17 @@ O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 **Nada disto foi alguma vez executado.** O código compila para estes alvos, mas
 compilar não é correr. Fica por verificar até haver um PC com Windows e um
 dispositivo Android.
+
+> **Já há forma de instalar no telemóvel.** A PWA é a via disponível até o
+> build Android do Tauri ser confirmado: `npm run build && npm run preview`, e
+> depois "Adicionar ao ecrã principal" a partir de **`http://localhost:4173`**
+> (tem de ser `localhost` — sem contexto seguro não há service worker, e sem
+> service worker não há convite para instalar). Passos no
+> [README](README.md#instalar-no-telemóvel-como-pwa).
+>
+> O que a PWA **não** traz continua a ser exatamente o que está na tabela
+> abaixo: bandeja, atalho global, métricas reais, notificações do sistema e
+> ficheiros.
 
 ### Primeiro teste a correr, antes de tudo o resto
 
@@ -77,6 +89,7 @@ npm run tauri android dev      # dispositivo Android
 | Diálogos nativos de ficheiro | plugin `dialog` | ⚠️ por testar |
 | Build Windows (MSI e NSIS) | `npm run tauri build` | ⚠️ por testar |
 | Build Android (APK e AAB) | `npm run android:build` | ⚠️ por testar |
+| Instalação como aplicação nativa | Tauri | ⚠️ por testar — **a PWA já cobre isto** no telemóvel |
 
 > No browser, tudo isto está desligado nas capacidades do `WebAdapter` e
 > substituído por simulação ou por vazio. Ver [PLATFORM.md](PLATFORM.md).

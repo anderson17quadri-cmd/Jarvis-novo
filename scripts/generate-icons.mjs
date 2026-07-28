@@ -2,8 +2,15 @@
  * Gera os ícones da aplicação sem dependências externas.
  *
  * Desenha o núcleo do JARVIS — fundo escuro, anéis concêntricos em ciano e um
- * ponto central — com as cores de `src/design-system/tokens.ts`, e escreve os
- * PNG e o ICO que o Tauri exige em `src-tauri/icons/`.
+ * ponto central — com as cores de `src/design-system/tokens.ts`, e escreve:
+ *
+ * - `src-tauri/icons/` — os PNG e o ICO que o Tauri exige
+ * - `public/` — os PNG do manifesto da PWA (192, 512 e a versão `maskable`)
+ *
+ * Sem dependências de propósito: um gerador de ícones que precisasse de
+ * ImageMagick ou de um browser deixava de correr no primeiro ambiente onde
+ * eles não existissem, e os ícones ficavam desatualizados sem ninguém dar por
+ * isso. Aqui é PNG escrito à mão — cabeçalho, `deflate` e CRC.
  *
  * Correr com: `node scripts/generate-icons.mjs`
  */
@@ -12,7 +19,9 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'src-tauri', 'icons');
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const OUT_DIR = join(ROOT, 'src-tauri', 'icons');
+const PUBLIC_DIR = join(ROOT, 'public');
 
 // Tokens do design system (COLORS.bg, COLORS.accent, COLORS.neon).
 const BG = [0x05, 0x07, 0x0a];
@@ -54,9 +63,17 @@ function blend(bg, fg, a) {
   ];
 }
 
-function renderIcon(size) {
+/**
+ * Desenha um ícone.
+ *
+ * `fullBleed` enche o quadrado com o fundo em vez de deixar os cantos
+ * transparentes, e `coreScale` encolhe o desenho — as duas coisas de que a
+ * variante `maskable` do Android precisa, porque o sistema recorta o ícone à
+ * forma que quiser e só garante os 80% centrais.
+ */
+function renderIcon(size, { fullBleed = false, coreScale = 1 } = {}) {
   const center = (size - 1) / 2;
-  const radius = size / 2;
+  const radius = (size / 2) * coreScale;
   // RGBA, uma linha de filtro (0) por scanline.
   const raw = Buffer.alloc(size * (size * 4 + 1));
 
@@ -72,8 +89,10 @@ function renderIcon(size) {
       let color = BG;
       let alpha = 0;
 
-      // Disco de fundo, com uma borda suave para não ficar serrilhado.
-      if (dist <= 1) alpha = Math.min(1, (1 - dist) * size * 0.5);
+      // Disco de fundo, com uma borda suave para não ficar serrilhado. Em
+      // `fullBleed` não há borda nenhuma: o fundo vai até aos cantos.
+      if (fullBleed) alpha = 1;
+      else if (dist <= 1) alpha = Math.min(1, (1 - dist) * size * 0.5);
 
       if (alpha > 0) {
         for (const [r, thickness, opacity, ringColor] of RINGS) {
@@ -168,4 +187,18 @@ writeFileSync(
   buildIco([16, 32, 48, 256].map((size) => ({ size, data: renderIcon(size) }))),
 );
 
-console.log(`Ícones escritos em ${OUT_DIR}`);
+/*
+ * Ícones do manifesto da PWA.
+ *
+ * Os dois `any` mantêm os cantos transparentes — é assim que ficam bem numa
+ * barra de tarefas. O `maskable` enche o quadrado e encolhe o núcleo para 62%,
+ * dentro da zona segura de 80% que o Android garante.
+ */
+writeFileSync(join(PUBLIC_DIR, 'icon-192.png'), renderIcon(192));
+writeFileSync(join(PUBLIC_DIR, 'icon-512.png'), renderIcon(512));
+writeFileSync(
+  join(PUBLIC_DIR, 'icon-maskable-512.png'),
+  renderIcon(512, { fullBleed: true, coreScale: 0.62 }),
+);
+
+console.log(`Ícones escritos em ${OUT_DIR} e em ${PUBLIC_DIR}`);
