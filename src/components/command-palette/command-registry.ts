@@ -12,10 +12,12 @@ import {
 import { ALL_APPS } from '@/apps/registry';
 import { THEMES } from '@/design-system/tokens';
 import { ALL_WIDGETS } from '@/widgets/registry';
+import { ALL_SYSTEM_STATES } from '@/types/system-state';
 import { normalizeSearch as normalize } from '@/utils/text';
 import type { AppId } from '@/types/app';
 import type { ThemeId } from '@/design-system/tokens';
 import type { WidgetId } from '@/types/widget';
+import type { SystemStateId } from '@/types/system-state';
 import type { MailMessage } from '@/types/mail';
 import type { NewsArticle } from '@/types/news';
 import type { JarvisNotification } from '@/types/notification';
@@ -33,6 +35,7 @@ export type CommandGroup =
   | 'Aplicações'
   | 'Widgets'
   | 'Sistema'
+  | 'Estados'
   | 'Temas';
 
 const GROUP_ORDER: readonly CommandGroup[] = [
@@ -42,6 +45,7 @@ const GROUP_ORDER: readonly CommandGroup[] = [
   'Aplicações',
   'Widgets',
   'Sistema',
+  'Estados',
   'Temas',
 ];
 
@@ -73,6 +77,7 @@ export interface CommandActions {
   readonly openNotifications: () => void;
   readonly openExternal: (url: string) => void;
   readonly markMailRead: (messageId: string) => void;
+  readonly setSystemState: (stateId: SystemStateId) => void;
 }
 
 /** Conteúdo pesquisável, injetado por quem monta a paleta. */
@@ -112,6 +117,16 @@ export function buildCommands(content: SearchableContent = EMPTY_CONTENT): reado
     hint: 'Widget',
     keywords: widget.description,
     run: (actions) => actions.toggleWidget(widget.id),
+  }));
+
+  const stateCommands: Command[] = ALL_SYSTEM_STATES.map((definition) => ({
+    id: `state:${definition.id}`,
+    group: 'Estados',
+    label: `Modo ${definition.name}`,
+    icon: definition.icon,
+    hint: 'Estado',
+    keywords: definition.description,
+    run: (actions) => actions.setSystemState(definition.id),
   }));
 
   const themeCommands: Command[] = THEMES.map((theme) => ({
@@ -200,6 +215,7 @@ export function buildCommands(content: SearchableContent = EMPTY_CONTENT): reado
     ...appCommands,
     ...widgetCommands,
     ...systemCommands,
+    ...stateCommands,
     ...themeCommands,
   ].sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));
 }

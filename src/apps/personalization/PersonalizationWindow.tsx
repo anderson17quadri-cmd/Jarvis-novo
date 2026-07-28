@@ -5,6 +5,8 @@ import { cn } from '@/lib/cn';
 import { notificationService } from '@/services/notification-service';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { SoundSettings } from './SoundSettings';
+import { SystemStatePicker } from './SystemStatePicker';
 
 /**
  * Personalização.
@@ -68,6 +70,20 @@ export default function PersonalizationWindow(): React.JSX.Element {
           );
         })}
       </div>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Estado do sistema</p>
+        <p className="mb-3 text-[11.5px] leading-[1.5] text-t3">
+          Cada estado muda o que interrompe, quantas partículas o núcleo desenha e a que
+          ritmo o sistema se sonda a si próprio.
+        </p>
+        <SystemStatePicker />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Som</p>
+        <SoundSettings />
+      </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Arranque</p>

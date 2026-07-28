@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   notifications: 'notifications',
   plugins: 'plugins',
   tasks: 'tasks',
+  systemState: 'system-state',
+  sound: 'sound',
   lastUser: 'last-user',
   reducedMotion: 'reduced-motion',
 } as const;

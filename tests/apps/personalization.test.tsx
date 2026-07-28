@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -25,6 +25,11 @@ beforeEach(() => {
   });
 });
 
+/** O grupo dos temas, distinto do grupo dos estados do sistema. */
+function themeGroup(): HTMLElement {
+  return screen.getByRole('radiogroup', { name: 'Temas do sistema' });
+}
+
 describe('janela de Personalização', () => {
   it('mostra os cinco temas do sistema', () => {
     render(<PersonalizationWindow />);
@@ -32,14 +37,17 @@ describe('janela de Personalização', () => {
     for (const theme of THEMES) {
       expect(screen.getByRole('radio', { name: new RegExp(theme.name, 'i') })).toBeInTheDocument();
     }
-    expect(screen.getAllByRole('radio')).toHaveLength(5);
+    // Só os do grupo dos temas: a janela tem outro grupo, o dos estados.
+    expect(within(themeGroup()).getAllByRole('radio')).toHaveLength(5);
   });
 
   it('marca o tema em vigor e só esse', () => {
     useThemeStore.setState({ theme: 'emerald' });
     render(<PersonalizationWindow />);
 
-    const checked = screen.getAllByRole('radio').filter((el) => el.getAttribute('aria-checked') === 'true');
+    const checked = within(themeGroup())
+      .getAllByRole('radio')
+      .filter((el) => el.getAttribute('aria-checked') === 'true');
     expect(checked).toHaveLength(1);
     expect(checked[0]).toHaveAccessibleName(/emerald/i);
   });

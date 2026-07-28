@@ -19,10 +19,12 @@ import { useVoice } from '@/hooks/use-voice';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
+import { soundService } from '@/services/sound-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSessionStore } from '@/stores/use-session-store';
+import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
@@ -69,6 +71,8 @@ export function App(): React.JSX.Element {
       await hydrateTheme();
       await useNotificationStore.getState().hydrate();
       await usePluginStore.getState().hydrate();
+      await useSystemStateStore.getState().hydrate();
+      await soundService.hydrate();
     });
   }, [hydrateTheme]);
 
@@ -157,6 +161,13 @@ export function App(): React.JSX.Element {
       openNotifications: () => useNotificationStore.getState().setPanelOpen(true),
       openExternal: (url) => void getPlatformAdapter().openExternal(url),
       markMailRead: (messageId) => void mailService.markRead(messageId),
+      setSystemState: (stateId) => {
+        useSystemStateStore.getState().set(stateId);
+        void useSystemStateStore.getState().persist();
+
+        const definition = useSystemStateStore.getState().definition;
+        notificationService.info(`Modo ${definition.name}`, definition.description);
+      },
     }),
     [launch, restartBootSequence, setTheme, toggleListening],
   );

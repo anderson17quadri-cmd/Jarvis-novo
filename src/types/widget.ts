@@ -2,7 +2,16 @@ import type { LucideIcon } from 'lucide-react';
 import type { ComponentType, LazyExoticComponent } from 'react';
 
 /** Identificador de um widget. */
-export type WidgetId = 'clock' | 'cpu' | 'ram' | 'weather' | 'news' | 'mail' | 'music';
+export type WidgetId =
+  | 'clock'
+  | 'cpu'
+  | 'ram'
+  | 'disk'
+  | 'network'
+  | 'weather'
+  | 'news'
+  | 'mail'
+  | 'music';
 
 /** Categorias da Parte 6.2, para agrupar na paleta e no futuro marketplace. */
 export type WidgetCategory = 'sistema' | 'produtividade' | 'informacao' | 'media';
@@ -91,8 +100,8 @@ export const GRID_GAP = 16;
 /**
  * Linhas da grelha.
  *
- * Doze, não oito: os sete widgets registados somam 102 células, e com oito
- * linhas (96) não cabiam todos. Pior — mesmo com área suficiente, faltava um
+ * Doze, não oito: os widgets registados somam mais do que as 96 células que
+ * oito linhas dariam. Pior — mesmo com área suficiente, faltava um
  * bloco contíguo para os widgets grandes, e mostrá-los pela paleta falhava sem
  * o utilizador perceber porquê. O palco já faz scroll vertical.
  */

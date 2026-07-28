@@ -1,5 +1,15 @@
 import { lazy } from 'react';
-import { Clock, CloudSun, Cpu, Mail, MemoryStick, Music, Newspaper } from 'lucide-react';
+import {
+  Clock,
+  CloudSun,
+  Cpu,
+  HardDrive,
+  Mail,
+  MemoryStick,
+  Music,
+  Newspaper,
+  Wifi,
+} from 'lucide-react';
 
 import type { WidgetDefinition, WidgetId } from '@/types/widget';
 
@@ -51,6 +61,32 @@ export const WIDGET_REGISTRY: Readonly<Record<WidgetId, WidgetDefinition>> = {
     allowedSizes: ['small', 'medium', 'wide'],
     showByDefault: false,
     component: lazy(() => import('./ram/RamWidget')),
+  },
+
+  disk: {
+    id: 'disk',
+    name: 'Disco',
+    description: 'Espaço usado e livre, por volume.',
+    icon: HardDrive,
+    category: 'sistema',
+    permissions: { systemMetrics: true, network: false, storage: false },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./disk/DiskWidget')),
+  },
+
+  network: {
+    id: 'network',
+    name: 'Rede',
+    description: 'Descarga, envio e histórico recente.',
+    icon: Wifi,
+    category: 'sistema',
+    permissions: { systemMetrics: true, network: false, storage: false },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./network/NetworkWidget')),
   },
 
   /*

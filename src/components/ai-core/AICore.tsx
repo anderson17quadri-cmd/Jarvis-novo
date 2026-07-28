@@ -5,6 +5,7 @@ import { getDevicePixelRatio, useAnimationFrame } from '@/hooks/use-animation-fr
 import { useReducedMotion } from '@/hooks/use-media-query';
 import { cn } from '@/lib/cn';
 import { themeService } from '@/services/theme-service';
+import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import type { AssistantMode } from '@/types/assistant';
 import { CORE_MODES } from './ai-core-modes';
@@ -62,6 +63,8 @@ export function AICore({
 
   const theme = useThemeStore((state) => state.theme);
   const reducedMotion = useReducedMotion();
+  // Estados do sistema (Parte 9): Economia e Foco aliviam o núcleo.
+  const particleScale = useSystemStateStore((state) => state.definition.particleScale);
   const config = CORE_MODES[mode];
 
   // O canvas precisa da cor resolvida: `var(--accent)` não lhe diz nada.
@@ -93,9 +96,9 @@ export function AICore({
       canvas.width,
       canvas.height,
       dpr,
-      pickParticleCount(window.innerWidth, reducedMotion),
+      pickParticleCount(window.innerWidth, reducedMotion, particleScale),
     );
-  }, [reducedMotion]);
+  }, [particleScale, reducedMotion]);
 
   useEffect(() => {
     const host = hostRef.current;

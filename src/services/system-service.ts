@@ -25,7 +25,7 @@ export class SystemService {
 
   constructor(
     private readonly adapter: PlatformAdapter = getPlatformAdapter(),
-    private readonly intervalMs: number = DEFAULT_POLL_INTERVAL_MS,
+    private intervalMs: number = DEFAULT_POLL_INTERVAL_MS,
   ) {}
 
   get isSupported(): boolean {
@@ -65,6 +65,27 @@ export class SystemService {
     } else if (this.listeners.size > 0) {
       this.start();
     }
+  }
+
+  /**
+   * Muda o ritmo da sondagem (estados do sistema, Parte 9).
+   *
+   * Reinicia o temporizador se já estiver a correr — sem isto, o novo intervalo
+   * só valeria na próxima vez que alguém subscrevesse.
+   */
+  setInterval(intervalMs: number): void {
+    if (this.intervalMs === intervalMs) return;
+    this.intervalMs = intervalMs;
+
+    if (this.timer !== null) {
+      this.stop();
+      this.start();
+    }
+  }
+
+  /** O ritmo em vigor, em milissegundos. */
+  get pollIntervalMs(): number {
+    return this.intervalMs;
   }
 
   async getStaticInfo(): Promise<StaticSystemInfo | null> {

@@ -1,11 +1,15 @@
 /**
- * Barra de progresso arrastável do widget de música.
+ * Controlos deslizantes.
  *
  * O `input[type=range]` nativo não herda o design system em lado nenhum, e cada
  * motor desenha-o à sua maneira. Aqui é reconstruído com os tokens.
+ *
+ * `.music-range` é o do widget de música; `.jarvis-range` é o mesmo desenho
+ * para os restantes (volume dos sons, por agora).
  */
 
-.music-range {
+.music-range,
+.jarvis-range {
   -webkit-appearance: none;
   appearance: none;
   height: 3px;
@@ -15,7 +19,8 @@
   outline: none;
 }
 
-.music-range::-webkit-slider-thumb {
+.music-range::-webkit-slider-thumb,
+.jarvis-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
   width: 10px;
@@ -26,7 +31,8 @@
   transition: transform var(--d-hover) var(--e-out);
 }
 
-.music-range::-moz-range-thumb {
+.music-range::-moz-range-thumb,
+.jarvis-range::-moz-range-thumb {
   width: 10px;
   height: 10px;
   border: none;
@@ -36,11 +42,14 @@
 }
 
 .music-range:hover::-webkit-slider-thumb,
-.music-range:active::-webkit-slider-thumb {
+.music-range:active::-webkit-slider-thumb,
+.jarvis-range:hover::-webkit-slider-thumb,
+.jarvis-range:active::-webkit-slider-thumb {
   transform: scale(1.25);
 }
 
-.music-range:focus-visible {
+.music-range:focus-visible,
+.jarvis-range:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
 }

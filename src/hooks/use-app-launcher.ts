@@ -3,6 +3,7 @@ import { useCallback, useEffect } from 'react';
 import { getAppDefinition } from '@/apps/registry';
 import { readViewport } from '@/components/windows/snap';
 import { useIsCompact } from '@/hooks/use-media-query';
+import { soundService } from '@/services/sound-service';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { AppId } from '@/types/app';
 import type { WindowRect } from '@/types/window';
@@ -26,6 +27,7 @@ export function useAppLauncher(): {
     (appId: AppId): void => {
       const definition = getAppDefinition(appId);
       open(appId, definition.title, centeredRect(definition.defaultSize));
+      soundService.play('open');
       void persistLayout();
     },
     [open, persistLayout],

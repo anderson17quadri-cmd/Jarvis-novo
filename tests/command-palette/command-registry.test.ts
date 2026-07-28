@@ -17,6 +17,7 @@ function createActions(): CommandActions & { calls: string[] } {
     openNotifications: () => calls.push('notificacoes'),
     openExternal: (url) => calls.push(`abrir:${url}`),
     markMailRead: (id) => calls.push(`lido:${id}`),
+    setSystemState: (stateId) => calls.push(`estado:${stateId}`),
   };
 }
 

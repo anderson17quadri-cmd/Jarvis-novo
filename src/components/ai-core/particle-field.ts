@@ -302,8 +302,20 @@ function normalizeAngle(angle: number): number {
   return ((angle % twoPi) + twoPi) % twoPi;
 }
 
-/** Escolhe a contagem de partículas conforme o ecrã e a preferência de movimento. */
-export function pickParticleCount(logicalWidth: number, reducedMotion: boolean): number {
+/**
+ * Escolhe a contagem de partículas conforme o ecrã, a preferência de movimento
+ * e o estado do sistema.
+ *
+ * A escala nunca chega a zero: um núcleo sem uma única partícula parece
+ * avariado, não económico. O mínimo são as `reduced`.
+ */
+export function pickParticleCount(
+  logicalWidth: number,
+  reducedMotion: boolean,
+  scale = 1,
+): number {
   if (reducedMotion) return PARTICLE_COUNTS.reduced;
-  return logicalWidth <= 820 ? PARTICLE_COUNTS.small : PARTICLE_COUNTS.full;
+
+  const base = logicalWidth <= 820 ? PARTICLE_COUNTS.small : PARTICLE_COUNTS.full;
+  return Math.max(PARTICLE_COUNTS.reduced, Math.round(base * scale));
 }

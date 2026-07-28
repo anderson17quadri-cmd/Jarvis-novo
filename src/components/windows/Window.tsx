@@ -5,6 +5,7 @@ import { CoreLoader } from '@/components/ui/CoreLoader';
 import { useIsCompact } from '@/hooks/use-media-query';
 import { useWindowDrag, useWindowResize } from '@/hooks/use-window-drag';
 import { cn } from '@/lib/cn';
+import { soundService } from '@/services/sound-service';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { AppDefinition } from '@/types/app';
 import type { SnapEdge, WindowInstance, WindowRect } from '@/types/window';
@@ -145,7 +146,14 @@ export function Window({ instance, definition }: WindowProps): React.JSX.Element
               </ControlButton>
             )}
 
-            <ControlButton label="Fechar" onClick={() => close(instance.id)} isDanger>
+            <ControlButton
+              label="Fechar"
+              onClick={() => {
+                soundService.play('close');
+                close(instance.id);
+              }}
+              isDanger
+            >
               <X />
             </ControlButton>
           </div>

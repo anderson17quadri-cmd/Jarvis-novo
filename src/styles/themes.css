@@ -108,3 +108,22 @@
     --rail-w: 0px;
   }
 }
+
+/* ── Estados do sistema (Parte 9) ─────────────────────────────────────────
+   Só a Economia mexe no aspeto: corta o glow e encurta as transições, que é
+   onde está o custo de desenho. Os outros estados mudam comportamento —
+   partículas, avisos e ritmo de sondagem — e não precisam de CSS.
+
+   O estado normal não escreve atributo nenhum, como o tema base. */
+
+[data-system-state='economia'] {
+  /* `--glow` é a única sombra que passa por variável; as outras vêm dos tokens
+     diretamente para o Tailwind, e por isso não se sobrepõem daqui. */
+  --glow: none;
+}
+
+[data-system-state='economia'] * {
+  /* Não desliga a animação — encurta-a. Um sistema imóvel parece pendurado. */
+  animation-duration: 50% !important;
+  transition-duration: 90ms !important;
+}

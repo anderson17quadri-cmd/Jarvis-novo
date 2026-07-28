@@ -29,11 +29,11 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 295 testes |
+| Vitest | 324 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, **Emails, Tarefas, Projetos e Arquivos** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -233,7 +233,7 @@ uma forma honesta de ler a GPU.
 | Núcleo ao centro | ✅ | |
 | Menu contextual com os 8 itens | ✅ | |
 | Camadas de profundidade | ✅ | |
-| Sons | ⬜ | |
+| Sons | ✅ | `services/sound-service.ts` — sintetizados com Web Audio, sem um único ficheiro de áudio. Desligados por omissão |
 
 ---
 
@@ -246,6 +246,7 @@ uma forma honesta de ler a GPU.
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. `components/widgets/` e `widgets/` |
+| Widgets previstos | 🟡 | Nove dos treze: Relógio, CPU, RAM, **Disco**, **Rede**, Clima, Notícias, Email, Música. Faltam Calendário, Tarefas e IA como widgets — as janelas existem. **GPU não entra**: ver §5 |
 | Múltiplos desktops (1 a 4) | ⬜ | Bloqueado até a Fase 1 correr no PC — ver §5 |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
@@ -296,8 +297,8 @@ uma forma honesta de ler a GPU.
 | Pausar em segundo plano | ✅ | `useAnimationFrame` |
 | **Nunca animar `width`/`height`/`top`/`left`** | ⚠️ | Ver abaixo |
 | Partículas sem trajetórias repetitivas | ✅ | |
-| Sons | ⬜ | |
-| Estados do sistema (Foco, Apresentação…) | ⬜ | Fase 2 |
+| Sons | ✅ | `services/sound-service.ts` — sintetizados com Web Audio, sem um único ficheiro de áudio. Desligados por omissão |
+| Estados do sistema (Normal, Foco, Apresentação, Economia, Performance) | ✅ | `types/system-state.ts` — cada um muda partículas, avisos e ritmo de sondagem. Nenhum é só uma etiqueta |
 
 ---
 

@@ -1,7 +1,18 @@
 import { getPlatformAdapter, type PlatformAdapter } from '@/platform';
+import { soundService, type SoundName } from './sound-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore, type PushOptions } from '@/stores/use-notification-store';
-import type { NotificationCategory } from '@/types/notification';
+import { useSystemStateStore } from '@/stores/use-system-state-store';
+import { allowsToast } from '@/types/system-state';
+import type { NotificationCategory, NotificationKind } from '@/types/notification';
+
+/** Que som corresponde a cada severidade. */
+const SOUND_BY_KIND: Record<NotificationKind, SoundName> = {
+  info: 'notify',
+  ok: 'success',
+  warn: 'notify',
+  err: 'error',
+};
 
 /** Opções sem a severidade — cada atalho já a fixa. */
 type ShortcutOptions = Omit<PushOptions, 'kind'>;
@@ -19,8 +30,22 @@ export class NotificationService {
   notify(title: string, description: string, options: PushOptions = {}): string {
     const id = useNotificationStore.getState().push(title, description, options);
 
-    // A nativa é um extra: falhar não altera o que o utilizador vê.
-    void this.adapter.sendNativeNotification(title, description);
+    /*
+     * Estados do sistema (Parte 9): em Foco e Economia só o que for grave
+     * interrompe; em Apresentação, nada. A notificação entra na mesma no
+     * histórico — o que se corta é a interrupção, não a informação. Dispensar
+     * no mesmo tick evita qualquer piscar.
+     */
+    const state = useSystemStateStore.getState().definition;
+    const mayInterrupt = allowsToast(state, options.kind ?? 'info');
+    if (!mayInterrupt) useNotificationStore.getState().dismiss(id);
+
+    // A nativa é um extra: falhar não altera o que o utilizador vê. Não se
+    // envia — nem se toca — o que o estado do sistema acabou de mandar calar.
+    if (mayInterrupt) {
+      void this.adapter.sendNativeNotification(title, description);
+      soundService.play(SOUND_BY_KIND[options.kind ?? 'info']);
+    }
 
     return id;
   }
