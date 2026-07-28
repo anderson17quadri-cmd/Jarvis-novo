@@ -3,6 +3,7 @@ import {
   LayoutGrid,
   Mail,
   Mic,
+  Monitor,
   Newspaper,
   Palette,
   RotateCcw,
@@ -21,6 +22,8 @@ import type { SystemStateId } from '@/types/system-state';
 import type { MailMessage } from '@/types/mail';
 import type { NewsArticle } from '@/types/news';
 import type { JarvisNotification } from '@/types/notification';
+import type { SavedLayout } from '@/types/workspace';
+import { DESKTOP_IDS, type DesktopId } from '@/types/workspace';
 
 /**
  * Grupos, pela ordem em que aparecem.
@@ -35,6 +38,8 @@ export type CommandGroup =
   | 'Aplicações'
   | 'Widgets'
   | 'Sistema'
+  | 'Desktops'
+  | 'Layouts'
   | 'Estados'
   | 'Temas';
 
@@ -45,6 +50,8 @@ const GROUP_ORDER: readonly CommandGroup[] = [
   'Aplicações',
   'Widgets',
   'Sistema',
+  'Desktops',
+  'Layouts',
   'Estados',
   'Temas',
 ];
@@ -78,6 +85,8 @@ export interface CommandActions {
   readonly openExternal: (url: string) => void;
   readonly markMailRead: (messageId: string) => void;
   readonly setSystemState: (stateId: SystemStateId) => void;
+  readonly goToDesktop: (desktop: DesktopId) => void;
+  readonly applyLayout: (layoutId: string) => void;
 }
 
 /** Conteúdo pesquisável, injetado por quem monta a paleta. */
@@ -99,7 +108,10 @@ const SYSTEM_APPS: ReadonlySet<AppId> = new Set<AppId>(['system', 'themes', 'plu
  * acrescentar um deles fá-lo aparecer aqui sem editar este ficheiro. O
  * conteúdo vem de fora, porque muda a cada sondagem.
  */
-export function buildCommands(content: SearchableContent = EMPTY_CONTENT): readonly Command[] {
+export function buildCommands(
+  content: SearchableContent = EMPTY_CONTENT,
+  layouts: readonly SavedLayout[] = [],
+): readonly Command[] {
   const appCommands: Command[] = ALL_APPS.map((app) => ({
     id: `app:${app.id}`,
     group: SYSTEM_APPS.has(app.id) ? 'Sistema' : 'Aplicações',
@@ -127,6 +139,26 @@ export function buildCommands(content: SearchableContent = EMPTY_CONTENT): reado
     hint: 'Estado',
     keywords: definition.description,
     run: (actions) => actions.setSystemState(definition.id),
+  }));
+
+  const desktopCommands: Command[] = DESKTOP_IDS.map((id) => ({
+    id: `desktop:${id}`,
+    group: 'Desktops',
+    label: `Ir para o desktop ${id}`,
+    icon: Monitor,
+    hint: 'Desktop',
+    keywords: 'espaço de trabalho área',
+    run: (actions) => actions.goToDesktop(id),
+  }));
+
+  const layoutCommands: Command[] = layouts.map((layout) => ({
+    id: `layout:${layout.id}`,
+    group: 'Layouts',
+    label: `Layout ${layout.name}`,
+    icon: LayoutGrid,
+    hint: 'Aplicar',
+    keywords: layout.description,
+    run: (actions) => actions.applyLayout(layout.id),
   }));
 
   const themeCommands: Command[] = THEMES.map((theme) => ({
@@ -215,6 +247,8 @@ export function buildCommands(content: SearchableContent = EMPTY_CONTENT): reado
     ...appCommands,
     ...widgetCommands,
     ...systemCommands,
+    ...desktopCommands,
+    ...layoutCommands,
     ...stateCommands,
     ...themeCommands,
   ].sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));

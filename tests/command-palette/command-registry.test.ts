@@ -18,6 +18,8 @@ function createActions(): CommandActions & { calls: string[] } {
     openExternal: (url) => calls.push(`abrir:${url}`),
     markMailRead: (id) => calls.push(`lido:${id}`),
     setSystemState: (stateId) => calls.push(`estado:${stateId}`),
+    goToDesktop: (desktop) => calls.push(`desktop:${desktop}`),
+    applyLayout: (layoutId) => calls.push(`layout:${layoutId}`),
   };
 }
 

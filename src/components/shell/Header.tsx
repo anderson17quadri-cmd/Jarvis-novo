@@ -8,6 +8,7 @@ import { formatPercent, formatShortDate, formatTime } from '@/lib/format';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { selectUnreadCount, useNotificationStore } from '@/stores/use-notification-store';
 import { USER_NAME } from '@/constants/user';
+import { DesktopSwitcher } from './DesktopSwitcher';
 
 interface HeaderProps {
   /** `true` quando a animação de entrada do desktop já chegou ao header. */
@@ -100,6 +101,11 @@ export function Header({
       )}
 
       <div className="ml-auto flex flex-shrink-0 items-center gap-s2 compact:gap-s1">
+        {/* Fora do compacto: quatro marcas de 18px ao lado do relógio ainda
+            cabem num telemóvel, mas roubariam o espaço ao microfone e ao
+            avatar, que se usam muito mais. */}
+        {!isCompact && <DesktopSwitcher />}
+
         {!isCompact && (
           <>
             <Stat value={formatTime(now)} label={formatShortDate(now)} mono />

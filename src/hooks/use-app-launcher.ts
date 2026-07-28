@@ -61,8 +61,13 @@ export function useAppLauncher(): {
   return { launch, restoreSavedLayout };
 }
 
-/** Centra a janela no palco, com o rail e o header já descontados. */
-function centeredRect(size: { readonly width: number; readonly height: number }): WindowRect {
+/**
+ * Centra a janela no palco, com o rail e o header já descontados.
+ *
+ * Exportada para o `use-workspace` a poder usar ao repor um desktop: duas
+ * cópias da mesma conta divergiriam à primeira mudança no rail.
+ */
+export function centeredRect(size: { readonly width: number; readonly height: number }): WindowRect {
   const viewport = readViewport();
   const availableWidth = viewport.width - viewport.leftInset;
   const availableHeight = viewport.height - viewport.topInset - viewport.bottomInset;

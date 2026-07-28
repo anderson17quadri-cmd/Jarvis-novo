@@ -8,6 +8,7 @@ import { useDataService } from '@/hooks/use-data-service';
 import { mailService } from '@/services/mail/mail-service';
 import { newsService } from '@/services/news/news-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
+import { useWorkspaceStore } from '@/stores/use-workspace-store';
 import { buildCommands, filterCommands, type CommandActions } from './command-registry';
 
 interface CommandPaletteProps {
@@ -45,14 +46,19 @@ export function CommandPalette({
   const { data: feed } = useDataService(newsService);
   const notifications = useNotificationStore(useShallow((state) => state.notifications));
 
+  const layouts = useWorkspaceStore((state) => state.layouts);
+
   const commands = useMemo(
     () =>
-      buildCommands({
-        mail: mailbox?.messages ?? [],
-        news: feed?.articles ?? [],
-        notifications,
-      }),
-    [feed, mailbox, notifications],
+      buildCommands(
+        {
+          mail: mailbox?.messages ?? [],
+          news: feed?.articles ?? [],
+          notifications,
+        },
+        layouts,
+      ),
+    [feed, layouts, mailbox, notifications],
   );
   const results = useMemo(() => filterCommands(commands, query), [commands, query]);
 

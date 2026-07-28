@@ -29,12 +29,12 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 568 testes |
+| Vitest | 619 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`, e a aplicação abre offline depois da primeira visita |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade** e **assistente com histórico, memória e contexto** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade** **assistente com histórico, memória e contexto**, e **quatro desktops com layouts guardados** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -144,18 +144,18 @@ As cinco que já existem — `constants/`, `utils/`, `animations/`, `workers/`,
 
 ## 5. Fora de âmbito por decisão
 
-Não é falta de tempo nem esquecimento. São quatro coisas que se decidiu **não**
-construir, cada uma com a sua razão.
+Não é falta de tempo nem esquecimento. São coisas que se decidiu **não**
+construir, cada uma com a sua razão — e duas em que a decisão foi revista.
 
 | O quê | Porque não |
 |---|---|
-| **Workspace — múltiplos desktops e layouts guardados** | Mexe no `use-window-store` e no `use-widget-store`, as duas peças mais bem testadas do projeto. Fica **bloqueado até a Fase 1 correr no Windows e no Android**. Não é dificuldade — é onde uma regressão custaria mais a apanhar |
+| **Workspace — múltiplos desktops e layouts guardados** | ✅ **Feito.** O receio era mexer no `use-window-store` e no `use-widget-store`, as duas peças mais bem testadas do projeto. A solução foi **não lhes tocar**: o `workspace-service` lê o que elas já expõem e escreve pelas ações que elas já têm. Os 568 testes que existiam antes continuam a passar sem uma linha alterada |
 | **Terminal** | Um terminal que não executa nada é estrutura a fingir. Precisa de um comando Rust e de sandbox |
 | **Motor de automações** | ✅ **Feito.** A avaliação inicial estava errada: gatilhos por hora e por evento interno são reais dentro do browser. Só os do sistema — ficheiros, USB, bateria — é que exigem nativo |
 | **Widget de GPU** | O `sysinfo` não lê a GPU. Mostrar um número inventado é pior do que não mostrar nada, e é a mesma razão pela qual o Monitor de recursos também não tem cartão de GPU |
 
-As três primeiras entram quando houver PC. A quarta entra se e quando houver
-uma forma honesta de ler a GPU.
+O Terminal entra quando houver PC. O widget de GPU entra se e quando houver uma
+forma honesta de ler a GPU.
 
 ---
 
@@ -277,9 +277,9 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. No compacto **empilham-se a largura toda**, com linhas mais baixas. `components/widgets/` e `widgets/` |
 | Widgets previstos | 🟡 | Nove dos treze: Relógio, CPU, RAM, **Disco**, **Rede**, Clima, Notícias, Email, Música. Faltam Calendário, Tarefas e IA como widgets — as janelas existem. **GPU não entra**: ver §5 |
-| Múltiplos desktops (1 a 4) | ⬜ | Bloqueado até a Fase 1 correr no PC — ver §5 |
+| Múltiplos desktops (1 a 4) | ✅ | Cada um com janelas, widgets, tema e papel de parede próprios. Quatro marcas no header. Um desktop por estrear **herda** o que está no ecrã em vez de abrir um vazio |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
-| Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
+| Layouts guardados (Produtividade, Programação…) | ✅ | Os seis da especificação, mais os que se guardarem. Cada um repõe janelas, widgets e onde estão, tema e papel de parede. Os do sistema vêm do código a cada arranque, para uma correção chegar a quem já os tinha |
 | Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`; Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
 | Janela: Automações | ✅ | Motor a sério — ver Parte 13 |
 | Janelas: Centro de Programador e Privacidade | ✅ | Partes 16 e 14 |
@@ -476,7 +476,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Acessibilidade (alto contraste, reduzir transparência) | ✅ | A redução de movimento vem do sistema operativo e já era respeitada |
 | Editor de temas personalizados | ⬜ | **Construível sem nativo** |
 | Tipografia (família e pesos à escolha) | ⬜ | A escala já existe; falta trocar de fonte |
-| Perfis completos (Trabalho, Gaming, Noite…) | ⬜ | Junta-se aos layouts guardados — ver §5 |
+| Perfis completos (Trabalho, Gaming, Noite…) | 🟡 | Os layouts guardam janelas, widgets, tema e papel de parede. Faltam volume, animações e plugins ativos |
 | Daltonismo | ⬜ | **Construível sem nativo** |
 | Sincronização entre dispositivos | 🚫 | Rede |
 

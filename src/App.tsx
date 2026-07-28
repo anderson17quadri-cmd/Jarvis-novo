@@ -16,6 +16,7 @@ import { useEntranceCascade } from '@/hooks/use-entrance-cascade';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
+import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { USER_FIRST_NAME } from '@/constants/user';
 import { seedAutomations } from '@/data/automations';
@@ -41,6 +42,7 @@ import { useTaskStore } from '@/stores/use-task-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
+import { useWorkspaceStore } from '@/stores/use-workspace-store';
 import type { CommandActions } from '@/components/command-palette/command-registry';
 import type { AppId } from '@/types/app';
 import type { SystemStateId } from '@/types/system-state';
@@ -80,6 +82,7 @@ export function App(): React.JSX.Element {
 
   const cascade = useEntranceCascade(isDesktop);
   const { launch, restoreSavedLayout } = useAppLauncher();
+  const { goToDesktop, applyLayout } = useWorkspace();
   const openWindowCount = useWindowStore((state) => state.windows.length);
   const { toggleListening, speak } = useVoice();
 
@@ -105,6 +108,7 @@ export function App(): React.JSX.Element {
       await automationService.hydrate(seedAutomations());
       await useAssistantStore.getState().hydrate();
       await memoryService.hydrate();
+      await useWorkspaceStore.getState().hydrate();
 
       const adapter = getPlatformAdapter();
       logService.log(
@@ -341,8 +345,15 @@ export function App(): React.JSX.Element {
         const definition = useSystemStateStore.getState().definition;
         notificationService.info(`Modo ${definition.name}`, definition.description);
       },
+      goToDesktop,
+      applyLayout: (layoutId) => {
+        const layout = useWorkspaceStore.getState().getLayout(layoutId);
+        if (!applyLayout(layoutId) || !layout) return;
+
+        notificationService.success('Layout aplicado', `${layout.name} está agora no ecrã.`);
+      },
     }),
-    [launch, restartBootSequence, setTheme, toggleListening],
+    [applyLayout, goToDesktop, launch, restartBootSequence, setTheme, toggleListening],
   );
 
   return (

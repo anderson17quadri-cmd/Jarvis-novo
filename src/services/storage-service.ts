@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   reducedMotion: 'reduced-motion',
   conversations: 'conversations',
   assistantMemory: 'assistant-memory',
+  workspace: 'workspace',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

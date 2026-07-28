@@ -22,6 +22,8 @@ export interface SystemEvents {
   'plugin:removido': { readonly pluginId: string };
   'janela:aberta': { readonly appId: string };
   'tarefa:concluida': { readonly title: string };
+  'desktop:mudou': { readonly desktop: number };
+  'layout:aplicado': { readonly layout: string };
 }
 
 export type SystemEventName = keyof SystemEvents;
@@ -37,6 +39,8 @@ export const EVENT_LABELS: Record<SystemEventName, string> = {
   'plugin:removido': 'Remover um plugin',
   'janela:aberta': 'Abrir uma janela',
   'tarefa:concluida': 'Concluir uma tarefa',
+  'desktop:mudou': 'Mudar de desktop',
+  'layout:aplicado': 'Aplicar um layout guardado',
 };
 
 export const ALL_EVENTS = Object.keys(EVENT_LABELS) as readonly SystemEventName[];
