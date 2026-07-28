@@ -12,6 +12,7 @@ export const STORAGE_KEYS = {
   widgetLayout: 'widget-layout',
   notifications: 'notifications',
   plugins: 'plugins',
+  tasks: 'tasks',
   lastUser: 'last-user',
   reducedMotion: 'reduced-motion',
 } as const;

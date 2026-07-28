@@ -10,6 +10,8 @@ export interface MailMessage {
   readonly fromAddress: string;
   readonly subject: string;
   readonly preview: string;
+  /** Corpo da mensagem, para a janela de leitura. */
+  readonly body: string;
   readonly folder: MailFolder;
   readonly priority: MailPriority;
   /** Milissegundos desde a época Unix. */

@@ -29,11 +29,11 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 251 testes |
+| Vitest | 295 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, **pesquisa global na paleta**, **painel de notificações**, **loja de plugins** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, **Emails, Tarefas, Projetos e Arquivos** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -67,6 +67,7 @@ npm run tauri android dev      # dispositivo Android
 | **Rede real** — meteorologia, notícias, email | `services/{weather,news,mail}/providers/` | 🚫 bloqueado |
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
+| **Leitura real do disco** — explorador de ficheiros | `apps/files/`, `data/files.ts` | 🚫 bloqueado |
 | Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ⚠️ por testar |
 | Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
 | Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
@@ -96,6 +97,9 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
   provedor HTTP é escrever uma classe e registá-la — nenhum componente muda
 - **Reprodução de áudio.** O widget de música controla e mostra o estado; tocar
   som exigiria ficheiros locais ou integração com o Spotify
+- **Leitura do disco.** O explorador tem navegação, migalhas e ordenação
+  prontas e testadas, sobre uma árvore inventada. Ler o disco a sério exige o
+  plugin `fs` e diálogos nativos
 - **Execução de plugins.** A loja está feita — catálogo, categorias, pesquisa,
   permissões à vista, instalar, ativar, remover, tudo persistido. Instalar
   escreve num `Record` e nada mais: **nenhum código é descarregado nem
@@ -116,7 +120,7 @@ fingir.
 | `src/app/` | Houver router com mais do que uma rota. Hoje `main.tsx` e `App.tsx` estão na raiz de `src/` |
 | `src/contexts/` | Houver estado que o Zustand não sirva bem. Hoje não há Context nenhum |
 | `src/api/` | Houver chamadas de rede — provedores de IA reais, meteorologia, calendário |
-| `src/data/` | Os dados de exemplo saírem de dentro das janelas |
+| `src/data/` | ✅ criada — sementes de tarefas, projetos e árvore de ficheiros |
 | `src/components/layouts/` | — nome da Parte 3 para o que hoje é `components/shell/` |
 | `src/components/pages/` | Houver rotas a que corresponda uma página |
 | `src/components/widgets/` | ✅ criada — grelha, moldura e estados |
@@ -245,6 +249,8 @@ uma forma honesta de ler a GPU.
 | Múltiplos desktops (1 a 4) | ⬜ | Bloqueado até a Fase 1 correr no PC — ver §5 |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ⬜ | O layout das janelas persiste; os perfis ficam bloqueados com os desktops — ver §5 |
+| Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`; Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
+| Janelas: Terminal, Automações | ⬜ | Fora de âmbito por decisão — ver §5 |
 | **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
 
 ---
