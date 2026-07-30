@@ -11,7 +11,10 @@ export type WidgetId =
   | 'weather'
   | 'news'
   | 'mail'
-  | 'music';
+  | 'music'
+  | 'calendar'
+  | 'tasks'
+  | 'ai';
 
 /** Categorias da Parte 6.2, para agrupar na paleta e no futuro marketplace. */
 export type WidgetCategory = 'sistema' | 'produtividade' | 'informacao' | 'media';

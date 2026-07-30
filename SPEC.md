@@ -29,12 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 619 testes |
+| Vitest | 653 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
-| **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`, e a aplicação abre offline depois da primeira visita |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade** **assistente com histórico, memória e contexto**, e **quatro desktops com layouts guardados** |
+| **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
+| **Zero pedidos para fora** | Medido em Chromium: nenhum pedido sai do `localhost`. Era falso até a fonte passar a local |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, e os **widgets de Calendário, Tarefas e IA** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -167,7 +168,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 |---|:--:|---|
 | Nunca emojis, só SVG | ✅ | Lucide em todo o lado. Nenhum emoji no código nem na interface |
 | Paleta original | ✅ | `tokens.ts`, com teste que falha se o CSS divergir |
-| Tipografia Inter, 300–700 | ✅ | |
+| Tipografia Inter, 300–700 | ✅ | **No repositório**, não no Google Fonts: a fonte variável cobre os cinco pesos, e a PWA abre offline com a tipografia do design em vez de uma de sistema |
 | Sidebar, header, dock, núcleo, painéis | ✅ | Partes 6.1 e 8 |
 | Nunca parecer um site | ✅ | Janelas, dock, cursor próprio, menu contextual próprio |
 | Responsivo até ao telemóvel | ✅ | Rail → gaveta, janelas empilhadas, widgets empilhados |
@@ -276,7 +277,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |
 | **Sistema de widgets** | ✅ | Grelha de 12 colunas, arrastar, encaixe, redimensionar e persistência. No compacto **empilham-se a largura toda**, com linhas mais baixas. `components/widgets/` e `widgets/` |
-| Widgets previstos | 🟡 | Nove dos treze: Relógio, CPU, RAM, **Disco**, **Rede**, Clima, Notícias, Email, Música. Faltam Calendário, Tarefas e IA como widgets — as janelas existem. **GPU não entra**: ver §5 |
+| Widgets previstos | ✅ | Doze: Relógio, CPU, RAM, Disco, Rede, Clima, Notícias, Email, Música, **Calendário**, **Tarefas** e **IA**. O de Tarefas mexe nas mesmas tarefas da janela, e o de Calendário lê a mesma agenda. **GPU não entra**: ver §5 |
 | Múltiplos desktops (1 a 4) | ✅ | Cada um com janelas, widgets, tema e papel de parede próprios. Quatro marcas no header. Um desktop por estrear **herda** o que está no ecrã em vez de abrir um vazio |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ✅ | Os seis da especificação, mais os que se guardarem. Cada um repõe janelas, widgets e onde estão, tema e papel de parede. Os do sistema vêm do código a cada arranque, para uma correção chegar a quem já os tinha |

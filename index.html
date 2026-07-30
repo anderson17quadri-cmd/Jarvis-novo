@@ -18,11 +18,17 @@
     <meta name="apple-mobile-web-app-title" content="JARVIS" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>JARVIS AI OS — Project ARC</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      O Inter vem do repositório, não do Google Fonts: a PWA instalada tem de
+      abrir offline com a tipografia do design, e não com uma de sistema. O
+      `preload` do subconjunto latino evita o salto de fonte no primeiro paint.
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
-      rel="stylesheet"
+      rel="preload"
+      href="/fonts/inter-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
     />
     <script>
       // Aplica o tema guardado antes do primeiro paint, para não haver flash.

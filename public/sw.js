@@ -19,10 +19,20 @@
  */
 
 /** Mudar a versão invalida tudo o que ficou para trás. */
-const CACHE = 'jarvis-v1';
+const CACHE = 'jarvis-v2';
 
 /** O suficiente para o primeiro pintar. O resto entra à medida que é pedido. */
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icon-192.png'];
+const SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/icon-192.png',
+  // As fontes entram no casco: sem elas, a primeira abertura offline mostrava
+  // o sistema inteiro numa fonte de sistema.
+  '/fonts/inter-latin.woff2',
+  '/fonts/inter-latin-ext.woff2',
+];
 
 self.addEventListener('install', (event) => {
   // `addAll` falha inteiro se um recurso falhar; daí o `catch`. Um casco

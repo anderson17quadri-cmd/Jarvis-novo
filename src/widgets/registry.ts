@@ -1,5 +1,8 @@
 import { lazy } from 'react';
 import {
+  Bot,
+  CalendarDays,
+  CheckSquare,
   Clock,
   CloudSun,
   Cpu,
@@ -144,6 +147,47 @@ export const WIDGET_REGISTRY: Readonly<Record<WidgetId, WidgetDefinition>> = {
     allowedSizes: ['wide', 'medium', 'large'],
     showByDefault: true,
     component: lazy(() => import('./music/MusicWidget')),
+  },
+
+  calendar: {
+    id: 'calendar',
+    name: 'Calendário',
+    description: 'O que está a decorrer, o que vem a seguir e o resto do dia.',
+    icon: CalendarDays,
+    category: 'produtividade',
+    // A agenda é local hoje; um provedor real precisará de rede.
+    permissions: { systemMetrics: false, network: true, storage: false },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./calendar/CalendarWidget')),
+  },
+
+  tasks: {
+    id: 'tasks',
+    name: 'Tarefas',
+    description: 'As que faltam, por urgência, com as atrasadas assinaladas.',
+    icon: CheckSquare,
+    category: 'produtividade',
+    // As tarefas nascem e morrem no dispositivo.
+    permissions: { systemMetrics: false, network: false, storage: true },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./tasks/TasksWidget')),
+  },
+
+  ai: {
+    id: 'ai',
+    name: 'IA',
+    description: 'Estado do assistente, provedor ligado e últimos pedidos.',
+    icon: Bot,
+    category: 'sistema',
+    permissions: { systemMetrics: false, network: false, storage: true },
+    defaultSize: 'medium',
+    allowedSizes: ['small', 'medium', 'wide', 'large'],
+    showByDefault: false,
+    component: lazy(() => import('./ai/AiWidget')),
   },
 };
 

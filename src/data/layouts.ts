@@ -1,3 +1,4 @@
+import { getWidgetDefinition } from '@/widgets/registry';
 import { WIDGET_SIZES, type PersistedWidgetLayout, type WidgetId } from '@/types/widget';
 import type { PersistedWindowLayout } from '@/types/window';
 import type { SavedLayout, WorkspaceSnapshot } from '@/types/workspace';
@@ -32,7 +33,7 @@ function widgets(...ids: readonly WidgetId[]): readonly PersistedWidgetLayout[] 
   let tallest = 0;
 
   for (const id of ids) {
-    const size = WIDGET_SIZES[defaultSizeOf(id)];
+    const size = WIDGET_SIZES[getWidgetDefinition(id).defaultSize];
 
     if (col + size.colSpan > 12) {
       col = 0;
@@ -46,24 +47,6 @@ function widgets(...ids: readonly WidgetId[]): readonly PersistedWidgetLayout[] 
   }
 
   return placed;
-}
-
-/** O tamanho com que cada widget entra num layout. */
-function defaultSizeOf(id: WidgetId): keyof typeof WIDGET_SIZES {
-  switch (id) {
-    case 'clock':
-    case 'cpu':
-    case 'ram':
-    case 'disk':
-    case 'network':
-      return 'small';
-    case 'weather':
-    case 'music':
-      return 'medium';
-    case 'news':
-    case 'mail':
-      return 'wide';
-  }
 }
 
 function layout(
