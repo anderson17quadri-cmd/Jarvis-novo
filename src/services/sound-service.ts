@@ -22,6 +22,46 @@ export type SoundName =
   | 'error'
   | 'scanner';
 
+/**
+ * Categorias de som (Parte 15 §Sons personalizáveis).
+ *
+ * Três, não sete: separar cada som com o seu cursor daria um painel com sete
+ * barras que ninguém acerta. O que se quer mesmo é calar a interface sem calar
+ * os avisos, e é isso que estas três permitem.
+ */
+export type SoundCategory = 'interface' | 'avisos' | 'sistema';
+
+export const SOUND_CATEGORY_LABELS: Record<SoundCategory, string> = {
+  interface: 'Interface',
+  avisos: 'Avisos',
+  sistema: 'Sistema',
+};
+
+export const SOUND_CATEGORY_DESCRIPTIONS: Record<SoundCategory, string> = {
+  interface: 'Clique, abrir e fechar janelas.',
+  avisos: 'Notificações, sucesso e erro.',
+  sistema: 'Arranque e leitura biométrica.',
+};
+
+/** A que categoria pertence cada som. */
+export const SOUND_CATEGORIES: Record<SoundName, SoundCategory> = {
+  click: 'interface',
+  open: 'interface',
+  close: 'interface',
+  notify: 'avisos',
+  success: 'avisos',
+  error: 'avisos',
+  scanner: 'sistema',
+};
+
+export type CategoryVolumes = Record<SoundCategory, number>;
+
+const DEFAULT_CATEGORY_VOLUMES: CategoryVolumes = {
+  interface: 1,
+  avisos: 1,
+  sistema: 1,
+};
+
 interface Tone {
   /** Frequência inicial, em hertz. */
   readonly from: number;
@@ -64,6 +104,7 @@ export class SoundService {
   private context: AudioContext | null = null;
   private enabled = false;
   private volume = 0.5;
+  private categoryVolumes: CategoryVolumes = { ...DEFAULT_CATEGORY_VOLUMES };
 
   get isEnabled(): boolean {
     return this.enabled;
@@ -71,6 +112,27 @@ export class SoundService {
 
   get currentVolume(): number {
     return this.volume;
+  }
+
+  get volumes(): CategoryVolumes {
+    return this.categoryVolumes;
+  }
+
+  /**
+   * Volume efetivo de um som: o geral multiplicado pelo da sua categoria.
+   *
+   * Multiplicar em vez de escolher o menor mantém o cursor geral a valer para
+   * tudo — baixá-lo a meio baixa mesmo tudo a meio, categoria a categoria.
+   */
+  volumeFor(name: SoundName): number {
+    return this.volume * this.categoryVolumes[SOUND_CATEGORIES[name]];
+  }
+
+  setCategoryVolume(category: SoundCategory, volume: number): void {
+    this.categoryVolumes = {
+      ...this.categoryVolumes,
+      [category]: Math.max(0, Math.min(1, volume)),
+    };
   }
 
   setEnabled(enabled: boolean): void {
@@ -100,8 +162,18 @@ export class SoundService {
       // Um contexto suspenso volta a si com a primeira interação real.
       if (context.state === 'suspended') void context.resume();
 
+      const volume = this.volumeFor(name);
+      // Uma categoria a zero é silêncio: não vale a pena criar osciladores
+      // para não se ouvir nada.
+      if (volume <= 0) return;
+
       TONES[name].forEach((tone, index) => {
-        this.playTone(context, tone, context.currentTime + (index * SEQUENCE_GAP_MS) / 1_000);
+        this.playTone(
+          context,
+          tone,
+          context.currentTime + (index * SEQUENCE_GAP_MS) / 1_000,
+          volume,
+        );
       });
     } catch {
       // Sem som e sem drama.
@@ -112,11 +184,16 @@ export class SoundService {
     await storageService.set(STORAGE_KEYS.sound, {
       enabled: this.enabled,
       volume: this.volume,
+      categoryVolumes: this.categoryVolumes,
     });
   }
 
   async hydrate(): Promise<void> {
-    const saved = await storageService.get<{ enabled: boolean; volume: number }>(
+    const saved = await storageService.get<{
+      enabled: boolean;
+      volume: number;
+      categoryVolumes?: Partial<CategoryVolumes>;
+    }>(
       STORAGE_KEYS.sound,
       // Desligado por omissão: um sistema que começa a apitar sem ser pedido
       // é um sistema que se desliga uma vez e nunca mais se liga.
@@ -125,6 +202,9 @@ export class SoundService {
 
     this.enabled = saved.enabled;
     this.setVolume(saved.volume);
+    // O formato antigo não tinha categorias. Ler os dois evita que quem já
+    // tinha som configurado o perca ao atualizar.
+    this.categoryVolumes = { ...DEFAULT_CATEGORY_VOLUMES, ...saved.categoryVolumes };
   }
 
   /** Liberta o contexto. Usado ao desligar o som e nos testes. */
@@ -144,11 +224,11 @@ export class SoundService {
     return this.context;
   }
 
-  private playTone(context: AudioContext, tone: Tone, startAt: number): void {
+  private playTone(context: AudioContext, tone: Tone, startAt: number, volume: number): void {
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     const seconds = tone.durationMs / 1_000;
-    const peak = tone.peak * this.volume;
+    const peak = tone.peak * volume;
 
     oscillator.type = tone.type;
     oscillator.frequency.setValueAtTime(tone.from, startAt);

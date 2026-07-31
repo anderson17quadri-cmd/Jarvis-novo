@@ -2,7 +2,20 @@ import { useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
-import { soundService } from '@/services/sound-service';
+import {
+  soundService,
+  SOUND_CATEGORY_DESCRIPTIONS,
+  SOUND_CATEGORY_LABELS,
+  type SoundCategory,
+  type SoundName,
+} from '@/services/sound-service';
+
+/** O som que cada categoria toca ao largar o cursor. */
+const PREVIEW_SOUND: Record<SoundCategory, SoundName> = {
+  interface: 'click',
+  avisos: 'notify',
+  sistema: 'scanner',
+};
 
 /**
  * Sons do sistema (Parte 9 §Som).
@@ -14,6 +27,7 @@ import { soundService } from '@/services/sound-service';
 export function SoundSettings(): React.JSX.Element {
   const [isEnabled, setEnabled] = useState(() => soundService.isEnabled);
   const [volume, setVolume] = useState(() => soundService.currentVolume);
+  const [volumes, setVolumes] = useState(() => soundService.volumes);
 
   return (
     <div>
@@ -69,6 +83,46 @@ export function SoundSettings(): React.JSX.Element {
             {Math.round(volume * 100)}%
           </span>
         </label>
+      )}
+
+      {isEnabled && (
+        <div className="mt-3 border-t border-line pt-2.5">
+          <p className="t-label mb-2">Por categoria</p>
+
+          {(Object.keys(SOUND_CATEGORY_LABELS) as SoundCategory[]).map((category) => (
+            <label key={category} className="mt-1.5 flex items-center gap-2.5 first:mt-0">
+              <span className="w-[70px] flex-shrink-0 text-[11.5px] text-t3">
+                {SOUND_CATEGORY_LABELS[category]}
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={Math.round((volumes[category] ?? 1) * 100)}
+                aria-label={`Volume de ${SOUND_CATEGORY_LABELS[category]}`}
+                onChange={(event) => {
+                  soundService.setCategoryVolume(category, Number(event.target.value) / 100);
+                  setVolumes(soundService.volumes);
+                }}
+                // Ao largar toca um som da própria categoria: ouve-se o efeito
+                // do que se acabou de mexer, não um genérico.
+                onPointerUp={() => {
+                  soundService.play(PREVIEW_SOUND[category]);
+                  void soundService.persist();
+                }}
+                className="jarvis-range flex-1"
+              />
+              <span className="mono w-[34px] flex-shrink-0 text-right text-[11px] text-t3">
+                {Math.round((volumes[category] ?? 1) * 100)}%
+              </span>
+            </label>
+          ))}
+
+          <p className="mt-2 text-cap text-t3">
+            {SOUND_CATEGORY_DESCRIPTIONS.interface} {SOUND_CATEGORY_DESCRIPTIONS.avisos}{' '}
+            {SOUND_CATEGORY_DESCRIPTIONS.sistema}
+          </p>
+        </div>
       )}
 
       <p className="mt-2 text-cap text-t3">

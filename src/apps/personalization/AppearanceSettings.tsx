@@ -5,10 +5,13 @@ import { useAppearanceStore } from '@/stores/use-appearance-store';
 import {
   APPEARANCE_RANGES,
   CURSOR_LABELS,
+  DALTONISM_DESCRIPTIONS,
+  DALTONISM_LABELS,
   RADIUS_LABELS,
   WALLPAPER_DESCRIPTIONS,
   WALLPAPER_LABELS,
   type CursorKind,
+  type DaltonismKind,
   type RadiusKind,
   type WallpaperKind,
 } from '@/types/appearance';
@@ -140,6 +143,27 @@ export function AppearanceSettings(): React.JSX.Element {
             title="Reduzir transparência"
             description="Tira o desfoque das superfícies. Ajuda a ler, e é o maior alívio para máquinas lentas."
           />
+        </div>
+
+        <p className="mb-2 mt-3 text-[11.5px] text-t3">
+          Correção de daltonismo — aplica-se a tudo, incluindo o núcleo e os gráficos.
+        </p>
+
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))' }}
+          role="radiogroup"
+          aria-label="Correção de daltonismo"
+        >
+          {(Object.keys(DALTONISM_LABELS) as DaltonismKind[]).map((kind) => (
+            <Option
+              key={kind}
+              isActive={appearance.daltonism === kind}
+              onClick={() => change('daltonism', kind)}
+              title={DALTONISM_LABELS[kind]}
+              description={DALTONISM_DESCRIPTIONS[kind]}
+            />
+          ))}
         </div>
 
         <p className="mt-2.5 text-cap text-t3">

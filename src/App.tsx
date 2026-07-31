@@ -8,11 +8,13 @@ import { DesktopContextMenu } from '@/components/context-menu/DesktopContextMenu
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { AppShell } from '@/components/shell/AppShell';
+import { ColourFilters } from '@/components/shell/ColourFilters';
 import { CustomCursor } from '@/components/shell/CustomCursor';
 import { Wallpaper } from '@/components/shell/Wallpaper';
 import { WindowManager } from '@/components/windows/WindowManager';
 import { useAppLauncher } from '@/hooks/use-app-launcher';
 import { useEntranceCascade } from '@/hooks/use-entrance-cascade';
+import { useIdleLock } from '@/hooks/use-idle-lock';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
@@ -83,6 +85,7 @@ export function App(): React.JSX.Element {
   const cascade = useEntranceCascade(isDesktop);
   const { launch, restoreSavedLayout } = useAppLauncher();
   const { goToDesktop, applyLayout } = useWorkspace();
+  const idleLockMinutes = useAppearanceStore((state) => state.appearance.idleLockMinutes);
   const openWindowCount = useWindowStore((state) => state.windows.length);
   const { toggleListening, speak } = useVoice();
 
@@ -205,6 +208,27 @@ export function App(): React.JSX.Element {
       };
     });
   }, []);
+
+  /**
+   * Bloqueio por inatividade (Parte 14).
+   *
+   * Fecha o que estiver aberto antes de voltar ao login: deixar as janelas de
+   * pé por trás do ecrã de bloqueio dava a ver o conteúdo a quem passasse.
+   */
+  useIdleLock({
+    timeoutMinutes: idleLockMinutes,
+    isActive: isDesktop,
+    onLock: () => {
+      useNotificationStore.getState().setPanelOpen(false);
+      setPaletteOpen(false);
+      logout();
+      logService.audit('Bloquear a sessão por inatividade', 'executado');
+      notificationService.info(
+        'Sessão bloqueada',
+        `Sem atividade durante ${idleLockMinutes} minutos.`,
+      );
+    },
+  });
 
   const openPalette = useCallback(() => setPaletteOpen(true), []);
   const closePalette = useCallback(() => {
@@ -358,6 +382,7 @@ export function App(): React.JSX.Element {
 
   return (
     <>
+      <ColourFilters />
       <Wallpaper />
       <CustomCursor />
 

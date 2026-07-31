@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 653 testes |
+| Vitest | 684 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: nenhum pedido sai do `localhost`. Era falso até a fonte passar a local |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, e os **widgets de Calendário, Tarefas e IA** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria** e o **bloqueio por inatividade** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -447,7 +447,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Menor privilégio nas capabilities do Tauri | ✅ | `src-tauri/capabilities/` — uma por plataforma |
 | Nunca abrir a shell a comandos da interface | ✅ | `url-policy.ts` só aceita `https:` e `mailto:`, e a capability impõe o mesmo |
 | Erros tratados com `Result`, sem `unwrap()` | ✅ | `src-tauri/src/error.rs` |
-| Autenticação com bloqueio e sessão | 🟡 | Login existe; falta bloqueio por inatividade |
+| Autenticação com bloqueio e sessão | ✅ | Bloqueio por inatividade de 1 a 60 minutos, ou desligado, na janela de Privacidade. Conta em relógio de parede: um portátil suspenso não continua a contar em segundo plano |
 | Painel de privacidade e permissões | ✅ | `apps/privacy/` — três abas: permissões por plugin, auditoria e o que cada capacidade da plataforma vê de facto |
 | Auditoria de ações | ✅ | `logService.audit()`. Regista temas, estados do sistema, comandos de voz, automações e decisões de permissões — venham da paleta, da voz ou de uma regra |
 | Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo |
@@ -468,17 +468,17 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Temas oficiais | ✅ | **Os dez.** Classic, OLED, Titanium, Emerald, Solar, Midnight Blue, Cyber Red, Graphite, Aurora e Arctic White — este último claro |
 | Superfícies vindas dos tokens | ✅ | `tint`, `glass` e `glass-deep` em canais RGB, para o Tailwind lhes dar a opacidade. Um teste impede novos `bg-white/[…]` escritos à mão |
 | Troca em tempo real, sem reiniciar | ✅ | |
-| Sons por categoria | 🟡 | Existem sete sons; falta o volume por categoria |
+| Sons por categoria | ✅ | Três categorias — Interface, Avisos, Sistema — cada uma com o seu volume, que multiplica o geral. Largar o cursor toca um som da própria categoria |
 | Perfis de animação | 🟡 | Os estados do sistema fazem parte disto |
 | Centro de Personalização | ✅ | Temas, aparência, estado do sistema, som e arranque numa janela só |
 | Papéis de parede escolhíveis | ✅ | Quatro variantes — Nebulosa, Grelha, Partículas, Liso — com intensidade |
 | Núcleo personalizável | 🟡 | Contagem de partículas, que se multiplica com o estado do sistema. Cor, anéis e velocidade ficam para depois |
 | Escala, arredondamento e cursor | ✅ | `types/appearance.ts` — três estilos de cursor, três de arredondamento, escala de 90% a 130% |
-| Acessibilidade (alto contraste, reduzir transparência) | ✅ | A redução de movimento vem do sistema operativo e já era respeitada |
+| Acessibilidade (alto contraste, reduzir transparência) | ✅ | Mais a correção de daltonismo. A redução de movimento vem do sistema operativo e já era respeitada |
 | Editor de temas personalizados | ⬜ | **Construível sem nativo** |
 | Tipografia (família e pesos à escolha) | ⬜ | A escala já existe; falta trocar de fonte |
 | Perfis completos (Trabalho, Gaming, Noite…) | 🟡 | Os layouts guardam janelas, widgets, tema e papel de parede. Faltam volume, animações e plugins ativos |
-| Daltonismo | ⬜ | **Construível sem nativo** |
+| Daltonismo | ✅ | Protanopia, deuteranopia e tritanopia, por `feColorMatrix` no `<html>`. **Corrige, não simula**, e alcança também os `<canvas>` do núcleo e dos gráficos — o que uma solução só de variáveis CSS não faria |
 | Sincronização entre dispositivos | 🚫 | Rede |
 
 ---

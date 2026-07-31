@@ -55,6 +55,12 @@ export function applyAppearance(appearance: Appearance): void {
   if (appearance.reduceTransparency) root.dataset['transparency'] = 'reduzida';
   else delete root.dataset['transparency'];
 
+  // O filtro entra direto no elemento, e não por uma classe: o CSS não pode
+  // compor um `url(#…)` a partir de um atributo, e o filtro tem de valer
+  // também para os canvas do núcleo e dos gráficos.
+  root.style.filter =
+    appearance.daltonism === 'nenhum' ? '' : `url(#daltonismo-${appearance.daltonism})`;
+
   root.style.setProperty('--wp-intensity', String(appearance.wallpaperIntensity));
   root.style.setProperty('--ui-scale', String(appearance.uiScale));
 

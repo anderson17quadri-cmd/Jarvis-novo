@@ -4,6 +4,8 @@ import { Info, ShieldCheck, ShieldOff } from 'lucide-react';
 import { PERMISSION_LABELS, PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
+import { IDLE_LOCK_OPTIONS, idleLockLabel } from '@/types/appearance';
 import { formatTime } from '@/lib/format';
 import { logService } from '@/services/log-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
@@ -185,6 +187,8 @@ function Access(): React.JSX.Element {
 
   return (
     <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
+      <SessionLock />
+
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         <span>
@@ -221,6 +225,53 @@ function Access(): React.JSX.Element {
         );
       })}
     </div>
+  );
+}
+
+/**
+ * Bloqueio por inatividade (Parte 14 §Autenticação).
+ *
+ * Vive na Privacidade e não na Personalização porque não é uma preferência de
+ * gosto: é a diferença entre uma sessão que se fecha sozinha e uma que fica
+ * aberta a quem passar.
+ */
+function SessionLock(): React.JSX.Element {
+  const minutes = useAppearanceStore((state) => state.appearance.idleLockMinutes);
+  const set = useAppearanceStore((state) => state.set);
+  const persist = useAppearanceStore((state) => state.persist);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-2.5">
+      <p className="t-label mb-1.5">Bloquear a sessão</p>
+      <p className="mb-2 text-cap leading-relaxed text-t3">
+        {minutes === 0
+          ? 'Desligado: a sessão fica aberta até se terminar à mão.'
+          : `Sem atividade durante ${idleLockLabel(minutes).toLowerCase()}, volta ao ecrã de bloqueio.`}
+      </p>
+
+      <div role="radiogroup" aria-label="Bloquear por inatividade" className="flex flex-wrap gap-1">
+        {IDLE_LOCK_OPTIONS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="radio"
+            aria-checked={option === minutes}
+            onClick={() => {
+              set('idleLockMinutes', option);
+              void persist();
+            }}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-[10.5px] transition-all duration-hover ease-out',
+              option === minutes
+                ? 'border-accent bg-accent/[.1] text-accent'
+                : 'border-line text-t3 hover:border-accent/35 hover:text-t2',
+            )}
+          >
+            {idleLockLabel(option)}
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }
 
