@@ -44,7 +44,7 @@ describe('matrizes de cor', () => {
 
   it('cada linha soma perto de 1 — corrigir não é escurecer nem queimar a imagem', () => {
     for (const kind of KINDS) {
-      const matrix = DALTONISM_MATRICES[kind]!;
+      const matrix = DALTONISM_MATRICES[kind];
 
       for (let row = 0; row < 3; row += 1) {
         const sum = matrix.slice(row * 5, row * 5 + 3).reduce((total, value) => total + value, 0);

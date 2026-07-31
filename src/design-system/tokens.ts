@@ -118,7 +118,8 @@ export const BREAKPOINTS = {
 /** Alvo mínimo de toque exigido em `pointer: coarse`. */
 export const TOUCH_TARGET_MIN_PX = 44;
 
-export type ThemeId =
+/** Os que vêm com o sistema. */
+export type OfficialThemeId =
   | 'classic'
   | 'oled'
   | 'titanium'
@@ -129,6 +130,14 @@ export type ThemeId =
   | 'graphite'
   | 'aurora'
   | 'arctic';
+
+/**
+ * Um tema, oficial ou feito pelo utilizador.
+ *
+ * Os personalizados levam `custom:` à frente — assim nunca colidem com um
+ * oficial, e quem lê um identificador sabe de imediato de onde ele vem.
+ */
+export type ThemeId = OfficialThemeId | `custom:${string}`;
 
 /**
  * Um tema só pode redefinir um subconjunto de tokens — as sobreposições que o
@@ -153,7 +162,7 @@ export interface ThemeOverrides {
 }
 
 export interface ThemeDefinition {
-  readonly id: ThemeId;
+  readonly id: OfficialThemeId;
   readonly name: string;
   /** As três amostras mostradas no seletor de temas. */
   readonly swatches: readonly [string, string, string];

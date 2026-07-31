@@ -111,6 +111,7 @@ const SYSTEM_APPS: ReadonlySet<AppId> = new Set<AppId>(['system', 'themes', 'plu
 export function buildCommands(
   content: SearchableContent = EMPTY_CONTENT,
   layouts: readonly SavedLayout[] = [],
+  customThemes: readonly { readonly id: ThemeId; readonly name: string }[] = [],
 ): readonly Command[] {
   const appCommands: Command[] = ALL_APPS.map((app) => ({
     id: `app:${app.id}`,
@@ -161,13 +162,16 @@ export function buildCommands(
     run: (actions) => actions.applyLayout(layout.id),
   }));
 
-  const themeCommands: Command[] = THEMES.map((theme) => ({
+  const themeCommands: Command[] = [
+    ...THEMES.map((theme) => ({ id: theme.id, name: theme.name })),
+    ...customThemes,
+  ].map((theme) => ({
     id: `theme:${theme.id}`,
-    group: 'Temas',
+    group: 'Temas' as const,
     label: `Tema ${theme.name}`,
     icon: Palette,
     hint: 'Aplicar',
-    run: (actions) => actions.setTheme(theme.id),
+    run: (actions: CommandActions) => actions.setTheme(theme.id),
   }));
 
   // ── Conteúdo ────────────────────────────────────────────────────────────

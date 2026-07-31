@@ -22,6 +22,7 @@ export const STORAGE_KEYS = {
   conversations: 'conversations',
   assistantMemory: 'assistant-memory',
   workspace: 'workspace',
+  customThemes: 'custom-themes',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

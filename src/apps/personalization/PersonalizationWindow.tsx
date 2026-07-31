@@ -8,6 +8,7 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { AppearanceSettings } from './AppearanceSettings';
 import { LayoutSettings } from './LayoutSettings';
 import { SoundSettings } from './SoundSettings';
+import { ThemeEditor } from './ThemeEditor';
 import { SystemStatePicker } from './SystemStatePicker';
 
 /**
@@ -72,6 +73,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
           );
         })}
       </div>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Tema personalizado</p>
+        <ThemeEditor />
+      </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
         <AppearanceSettings />

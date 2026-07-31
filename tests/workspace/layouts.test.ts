@@ -9,7 +9,7 @@ import { GRID_COLUMNS } from '@/types/widget';
 import { ALL_WIDGETS } from '@/widgets/registry';
 
 const LAYOUTS = builtInLayouts();
-const THEME_IDS = new Set(THEMES.map((theme) => theme.id));
+const THEME_IDS = new Set<string>(THEMES.map((theme) => theme.id));
 const WIDGET_IDS = new Set(ALL_WIDGETS.map((widget) => widget.id));
 
 describe('layouts do sistema', () => {
@@ -28,6 +28,7 @@ describe('layouts do sistema', () => {
         expect(WIDGET_IDS.has(widget.id)).toBe(true);
       }
 
+      // Um layout do sistema aponta sempre para um tema do sistema.
       expect(THEME_IDS.has(layout.snapshot.theme)).toBe(true);
       expect(layout.snapshot.wallpaper in WALLPAPER_LABELS).toBe(true);
     },
