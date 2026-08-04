@@ -5,6 +5,7 @@ import { cn } from '@/lib/cn';
 import { notificationService } from '@/services/notification-service';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { LayoutSettings } from './LayoutSettings';
 import { SoundSettings } from './SoundSettings';
@@ -73,6 +74,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
           );
         })}
       </div>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Assistente</p>
+        <AiSettings />
+      </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Tema personalizado</p>

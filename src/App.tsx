@@ -34,6 +34,7 @@ import { musicService } from '@/services/music/music-service';
 import { soundService } from '@/services/sound-service';
 import { weatherService } from '@/services/weather/weather-service';
 import { setVoiceExecutor } from '@/services/voice/executor';
+import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
@@ -112,6 +113,8 @@ export function App(): React.JSX.Element {
       await useAssistantStore.getState().hydrate();
       await memoryService.hydrate();
       await useWorkspaceStore.getState().hydrate();
+      // Depois da memória: o provedor construído já vai com tudo o que precisa.
+      await useAiSettingsStore.getState().hydrate();
 
       const adapter = getPlatformAdapter();
       logService.log(

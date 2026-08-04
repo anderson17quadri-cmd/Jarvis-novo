@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 720 testes |
+| Vitest | 761 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
-| **Zero pedidos para fora** | Medido em Chromium: nenhum pedido sai do `localhost`. Era falso até a fonte passar a local |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade** e o **editor de temas** |
+| **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas** e a **DeepSeek ligada ao assistente** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -78,6 +78,7 @@ npm run tauri android dev      # dispositivo Android
 | Funcionalidade | Onde vive | Estado |
 |---|---|:--:|
 | **Rede real** — meteorologia, notícias, email | `services/{weather,news,mail}/providers/` | 🚫 bloqueado |
+| ~~Provedor de IA~~ | `services/ai-providers/deepseek-provider.ts` | ✅ **desbloqueado pelo utilizador** — ver Parte 7.1 |
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
 | **Leitura real do disco** — explorador de ficheiros | `apps/files/`, `data/files.ts` | 🚫 bloqueado |
@@ -301,7 +302,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Comandos naturais compreendidos | 🟡 | Abrir janelas, temas, widgets. A lista completa da spec é a Parte 10 |
 | Memória local (preferências, últimos comandos) | ✅ | `services/assistant/memory-service.ts` — só guarda o que for dito por palavras ("trata-me por…", "moro em…"). Deduzir preferências do resto da conversa seria inventar sobre uma pessoa e depois usá-lo como verdade |
 | Contexto (hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts`. A fonte é injetada pela `App`, como o executor das automações — o serviço não conhece store nenhuma |
-| **Provedor de IA real** | 🚫 | `AiProvider` está escrito e o serviço já o consome. Sem rede, só há o `RuleProvider` — ver §2 |
+| **Provedor de IA real** | ✅ | **DeepSeek ligada.** `deepseek-provider.ts` — API compatível com a da OpenAI, streaming pedaço a pedaço, cancelável. Trocar de provedor é uma linha; nenhum componente muda. A chave é escrita pelo utilizador na Personalização e fica no dispositivo |
 | Anexos: imagens, PDF, áudio, vídeo | ⬜ | Precisa de sistema de ficheiros |
 
 > **O `RuleProvider` responde a sério ao que sabe** — hora, data, meteorologia,
@@ -450,7 +451,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Autenticação com bloqueio e sessão | ✅ | Bloqueio por inatividade de 1 a 60 minutos, ou desligado, na janela de Privacidade. Conta em relógio de parede: um portátil suspenso não continua a contar em segundo plano |
 | Painel de privacidade e permissões | ✅ | `apps/privacy/` — três abas: permissões por plugin, auditoria e o que cada capacidade da plataforma vê de facto |
 | Auditoria de ações | ✅ | `logService.audit()`. Regista temas, estados do sistema, comandos de voz, automações e decisões de permissões — venham da paleta, da voz ou de uma regra |
-| Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo |
+| Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo. **A chave da API está por isto**: hoje vive em armazenamento local, e a janela di-lo por escrito em vez de a fazer passar por guardada com cuidado |
 | Backups e restauro | ⬜ | |
 
 > **A auditoria vive em memória, e é de propósito.** Escrever num ficheiro exige

@@ -23,6 +23,7 @@ export const STORAGE_KEYS = {
   assistantMemory: 'assistant-memory',
   workspace: 'workspace',
   customThemes: 'custom-themes',
+  aiSettings: 'ai-settings',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
