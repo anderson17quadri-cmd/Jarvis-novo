@@ -44,6 +44,13 @@ interface AssistantState {
   finishMessage: (id: string) => void;
   toggleFavourite: (id: string) => void;
   /**
+   * Tira uma mensagem da conversa.
+   *
+   * Usada quando o modelo pede ferramentas sem dizer nada: a mensagem fica
+   * vazia, e uma linha em branco no histórico é lixo visível.
+   */
+  removeMessage: (id: string) => void;
+  /**
    * Apaga uma resposta e o pedido que a originou, e devolve esse pedido.
    * É o que o `AIService.regenerate` usa. `null` se não houver pedido antes.
    */
@@ -224,6 +231,15 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
     }));
 
     void get().persist();
+  },
+
+  removeMessage: (id) => {
+    set((state) => ({
+      conversations: mapActive(state, (conversation) => ({
+        ...conversation,
+        messages: conversation.messages.filter((message) => message.id !== id),
+      })),
+    }));
   },
 
   rewindToPrompt: (messageId) => {

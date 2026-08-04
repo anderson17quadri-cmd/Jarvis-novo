@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 761 testes |
+| Vitest | 794 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas** e a **DeepSeek ligada ao assistente** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas** a **DeepSeek ligada ao assistente** e o **assistente a executar ações a sério** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -299,7 +299,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Cinco estados (ocioso, ouvindo, processando, respondendo, erro) | ✅ | `CORE_MODES` |
 | Janela com histórico | ✅ | Conversas, não uma lista solta de mensagens: fixar, exportar em Markdown, favoritas, regenerar a última resposta e categorias por tempo (Fixadas, Hoje, Ontem, Últimos 7 dias, Mais antigas) |
 | Digitação letra a letra | ✅ | `use-typewriter.ts` |
-| Comandos naturais compreendidos | 🟡 | Abrir janelas, temas, widgets. A lista completa da spec é a Parte 10 |
+| Comandos naturais compreendidos | ✅ | Com a DeepSeek ligada, **o modelo escolhe as ações** de um catálogo de 21 ferramentas, e encadeia-as: um pedido pode abrir uma janela, criar uma tarefa e mudar de tema de uma vez. Sem modelo, continua o interpretador de padrões |
 | Memória local (preferências, últimos comandos) | ✅ | `services/assistant/memory-service.ts` — só guarda o que for dito por palavras ("trata-me por…", "moro em…"). Deduzir preferências do resto da conversa seria inventar sobre uma pessoa e depois usá-lo como verdade |
 | Contexto (hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts`. A fonte é injetada pela `App`, como o executor das automações — o serviço não conhece store nenhuma |
 | **Provedor de IA real** | ✅ | **DeepSeek ligada.** `deepseek-provider.ts` — API compatível com a da OpenAI, streaming pedaço a pedaço, cancelável. Trocar de provedor é uma linha; nenhum componente muda. A chave é escrita pelo utilizador na Personalização e fica no dispositivo |
@@ -324,7 +324,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Indicador de estado no header | ✅ | |
 | Wake word configurável | ⬜ | Exige escuta contínua — decisão de privacidade por tomar |
 | Pipeline completo (ruído, silêncio, idioma, planeamento) | 🟡 | Transcrição → intenção → execução → síntese. Faltam as etapas do meio |
-| Agentes especializados | ⬜ | |
+| Agentes especializados | 🟡 | Um só agente, com 21 ferramentas sobre o sistema inteiro. Especializá-los em vários é o passo seguinte |
 | AI Orchestrator | ⬜ | Parte 12 |
 | Modo copiloto (sugestões discretas) | ⬜ | |
 | Log de ações | ✅ | `services/log-service.ts`, visível no Centro de Programador e na aba de auditoria da Privacidade |

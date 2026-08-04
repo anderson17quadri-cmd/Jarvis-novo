@@ -1,5 +1,7 @@
 import type { AiProvider, AiRequest, AssistantContext, AssistantMemory } from '@/types/assistant';
 import { AI_PROVIDERS, type DeepSeekModelId } from '@/types/ai-provider-settings';
+import { toolsAsJsonSchema } from '../assistant/tools';
+import type { ToolCall } from '../assistant/tool-runner';
 import { describeContext } from '../assistant/context';
 import { MEMORY_LABELS } from '../assistant/memory-service';
 
@@ -26,10 +28,30 @@ const HISTORY_LIMIT = 12;
 /** Quanto tempo se espera antes de desistir. */
 const TIMEOUT_MS = 60_000;
 
-interface StreamChunk {
-  readonly choices?: readonly {
-    readonly delta?: { readonly content?: string; readonly reasoning_content?: string };
+/** O pedaço que a API manda em cada evento. */
+interface StreamDelta {
+  readonly content?: string;
+  readonly reasoning_content?: string;
+  readonly tool_calls?: readonly {
+    readonly index: number;
+    readonly id?: string;
+    readonly function?: { readonly name?: string; readonly arguments?: string };
   }[];
+}
+
+interface StreamChunk {
+  readonly choices?: readonly { readonly delta?: StreamDelta }[];
+}
+
+/**
+ * O que veio de uma passagem: texto para mostrar, e ferramentas a correr.
+ *
+ * As duas coisas podem vir juntas — o modelo costuma dizer "vou abrir isso" e
+ * pedir a ferramenta no mesmo fôlego.
+ */
+export interface StreamResult {
+  readonly text: string;
+  readonly toolCalls: readonly ToolCall[];
 }
 
 export class DeepSeekProvider implements AiProvider {
@@ -53,6 +75,73 @@ export class DeepSeekProvider implements AiProvider {
 
   setModel(model: DeepSeekModelId): void {
     this.model = model;
+  }
+
+  /**
+   * Uma passagem completa, com ferramentas.
+   *
+   * O `stream` continua a existir para quem só quer texto; isto é o que o
+   * `AIService` usa quando há ferramentas em jogo. `onText` entrega os pedaços
+   * à medida que chegam, para a interface os escrever letra a letra.
+   */
+  async run(
+    request: AiRequest,
+    messages: readonly unknown[],
+    onText: (chunk: string) => void,
+  ): Promise<StreamResult> {
+    if (!this.isConfigured()) {
+      const message = 'Falta a chave da API. Abra a Personalização e cole-a em Assistente.';
+      onText(message);
+      return { text: message, toolCalls: [] };
+    }
+
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
+    const onAbort = (): void => timeout.abort();
+    request.signal?.addEventListener('abort', onAbort, { once: true });
+
+    try {
+      const response = await this.fetchImpl(AI_PROVIDERS.deepseek.endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          stream: true,
+          messages,
+          tools: toolsAsJsonSchema(),
+        }),
+        signal: timeout.signal,
+      });
+
+      if (!response.ok) {
+        const message = describeHttpError(response.status);
+        onText(message);
+        return { text: message, toolCalls: [] };
+      }
+
+      if (!response.body) {
+        const message = 'O servidor respondeu sem conteúdo.';
+        onText(message);
+        return { text: message, toolCalls: [] };
+      }
+
+      return await collect(response.body, timeout.signal, onText);
+    } catch (error) {
+      if (request.signal?.aborted) return { text: '', toolCalls: [] };
+
+      const message = timeout.signal.aborted
+        ? 'O pedido demorou demasiado e foi cancelado.'
+        : 'Não consegui chegar à DeepSeek. Verifique a ligação à rede.';
+      onText(message);
+      void error;
+      return { text: message, toolCalls: [] };
+    } finally {
+      clearTimeout(timer);
+      request.signal?.removeEventListener('abort', onAbort);
+    }
   }
 
   async *stream(request: AiRequest): AsyncIterable<string> {
@@ -108,6 +197,98 @@ export class DeepSeekProvider implements AiProvider {
       clearTimeout(timer);
       request.signal?.removeEventListener('abort', onAbort);
     }
+  }
+}
+
+/**
+ * Lê uma resposta inteira, separando texto de pedidos de ferramenta.
+ *
+ * Os argumentos de uma ferramenta chegam **partidos por vários eventos** — o
+ * modelo escreve o JSON aos bocados. Só se pode interpretar no fim, e é por
+ * isso que aqui se acumula em vez de se tentar ler a cada pedaço.
+ */
+export async function collect(
+  body: ReadableStream<Uint8Array>,
+  signal: AbortSignal | undefined,
+  onText: (chunk: string) => void,
+): Promise<StreamResult> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+
+  let buffer = '';
+  let text = '';
+  const pending = new Map<number, { id: string; name: string; args: string }>();
+
+  try {
+    while (!signal?.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const delta = parseDelta(line);
+        if (!delta) continue;
+
+        if (delta.content) {
+          text += delta.content;
+          onText(delta.content);
+        }
+
+        for (const call of delta.tool_calls ?? []) {
+          const entry = pending.get(call.index) ?? { id: '', name: '', args: '' };
+
+          pending.set(call.index, {
+            id: call.id ?? entry.id,
+            name: call.function?.name ?? entry.name,
+            args: entry.args + (call.function?.arguments ?? ''),
+          });
+        }
+      }
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined);
+  }
+
+  return { text, toolCalls: [...pending.values()].map(toToolCall).filter(isCall) };
+}
+
+function toToolCall(entry: { id: string; name: string; args: string }): ToolCall | null {
+  if (entry.name.length === 0) return null;
+
+  try {
+    return {
+      id: entry.id.length > 0 ? entry.id : entry.name,
+      name: entry.name,
+      args: entry.args.trim().length > 0
+        ? (JSON.parse(entry.args) as Record<string, unknown>)
+        : {},
+    };
+  } catch {
+    // Argumentos que não são JSON válido: o pedido perde-se, e é melhor do que
+    // executar uma ferramenta com valores a metade.
+    return null;
+  }
+}
+
+function isCall(call: ToolCall | null): call is ToolCall {
+  return call !== null;
+}
+
+/** O `delta` de uma linha, ou `null`. */
+function parseDelta(line: string): StreamDelta | null {
+  const trimmed = line.trim();
+  if (!trimmed.startsWith('data:')) return null;
+
+  const payload = trimmed.slice(5).trim();
+  if (payload.length === 0 || payload === '[DONE]') return null;
+
+  try {
+    return (JSON.parse(payload) as StreamChunk).choices?.[0]?.delta ?? null;
+  } catch {
+    return null;
   }
 }
 

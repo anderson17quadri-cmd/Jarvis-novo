@@ -33,6 +33,7 @@ import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
 import { soundService } from '@/services/sound-service';
 import { weatherService } from '@/services/weather/weather-service';
+import { setToolExecutor } from '@/services/assistant/tool-runner';
 import { setVoiceExecutor } from '@/services/voice/executor';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
@@ -52,6 +53,9 @@ import type { SystemStateId } from '@/types/system-state';
 import type { ThemeId } from '@/design-system/tokens';
 import { WEATHER_LABELS } from '@/types/weather';
 import type { WidgetId } from '@/types/widget';
+import type { TaskPriority } from '@/types/task';
+import type { WallpaperKind } from '@/types/appearance';
+import type { DesktopId } from '@/types/workspace';
 
 /** Saudação da IA ao entrar no ambiente de trabalho (Parte 5 §Transição). */
 const DESKTOP_GREETING = 'Bem-vindo. Todos os sistemas estão prontos.';
@@ -329,6 +333,122 @@ export function App(): React.JSX.Element {
       unsubscribe?.();
     };
   }, [isDesktop, openPalette]);
+
+  /**
+   * Ferramentas do assistente (Parte 7.2 §Agentes).
+   *
+   * Mesma injeção da paleta, das automações e da voz. É aqui que o modelo
+   * ganha alcance sobre o sistema — e o alcance é exatamente este, nem mais
+   * nem menos: o que estiver escrito abaixo.
+   */
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    return setToolExecutor({
+      openWindow: (app) => launch(app as AppId),
+      closeWindow: (app) => {
+        const store = useWindowStore.getState();
+        const target = store.windows.find((window) => window.appId === app);
+        if (target) store.close(target.id);
+        void store.persistLayout();
+      },
+      closeAllWindows: () => {
+        const store = useWindowStore.getState();
+        for (const window of [...store.windows]) store.close(window.id);
+        void store.persistLayout();
+      },
+      setTheme: (theme) => setTheme(theme as ThemeId),
+      setWallpaper: (wallpaper) => {
+        useAppearanceStore.getState().set('wallpaper', wallpaper as WallpaperKind);
+        void useAppearanceStore.getState().persist();
+      },
+      setSystemState: (state) => {
+        useSystemStateStore.getState().set(state as SystemStateId);
+        void useSystemStateStore.getState().persist();
+      },
+      setWidgetVisible: (widget, show) => {
+        const store = useWidgetStore.getState();
+        if (show) store.show(widget as WidgetId);
+        else store.hide(widget as WidgetId);
+        void store.persist();
+      },
+      goToDesktop: (desktop) => goToDesktop(desktop as DesktopId),
+      applyLayout: (name) => {
+        // O modelo diz o nome; aqui procura-se o identificador. Pedir-lhe um
+        // identificador seria pedir-lhe para adivinhar.
+        const layout = useWorkspaceStore
+          .getState()
+          .layouts.find(
+            (entry) =>
+              entry.id === name || entry.name.toLowerCase() === name.toLowerCase().trim(),
+          );
+
+        return layout ? applyLayout(layout.id) : false;
+      },
+      saveLayout: (name) => useWorkspaceStore.getState().saveLayout(name),
+      createTask: (title, priority) => {
+        useTaskStore.getState().add(title, priority as TaskPriority);
+        void useTaskStore.getState().persist();
+      },
+      completeTask: (title) => {
+        const store = useTaskStore.getState();
+        const needle = title.toLowerCase().trim();
+        const target = store.tasks.find(
+          (task) => !task.isDone && task.title.toLowerCase().includes(needle),
+        );
+
+        if (!target) return false;
+
+        store.toggle(target.id);
+        void store.persist();
+        return true;
+      },
+      clearDoneTasks: () => {
+        const store = useTaskStore.getState();
+        const count = store.tasks.filter((task) => task.isDone).length;
+        store.clearDone();
+        void store.persist();
+        return count;
+      },
+      notify: (title, description) =>
+        notificationService.info(title, description, { category: 'assistente' }),
+      search: (query) => {
+        setPaletteQuery(query);
+        openPalette();
+      },
+      music: (action) => {
+        if (action === 'proxima') void musicService.next();
+        else if (action === 'anterior') void musicService.previous();
+        else void musicService.togglePlay();
+      },
+      speak,
+      setAutomationEnabled: (name, enabled) => {
+        const target = automationService.list.find(
+          (entry) => entry.name.toLowerCase() === name.toLowerCase().trim(),
+        );
+        if (!target) return false;
+
+        automationService.setEnabled(target.id, enabled);
+        return true;
+      },
+      runAutomation: (name) => {
+        const target = automationService.list.find(
+          (entry) => entry.name.toLowerCase() === name.toLowerCase().trim(),
+        );
+        if (!target) return false;
+
+        automationService.run(target.id, true);
+        return true;
+      },
+      clearConversations: () => useAssistantStore.getState().reset(),
+      forgetMemory: () => memoryService.clear(),
+      resetWidgets: () => {
+        useWidgetStore.getState().reset();
+        void useWidgetStore.getState().persist();
+      },
+    });
+  }, [applyLayout, goToDesktop, isDesktop, launch, openPalette, setTheme, speak]);
+
 
   const commandActions = useMemo<CommandActions>(
     () => ({

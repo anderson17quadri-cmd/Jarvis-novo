@@ -1,6 +1,8 @@
 import { selectMessages, useAssistantStore } from '@/stores/use-assistant-store';
-import type { AiProvider } from '@/types/assistant';
+import type { AiProvider, AiRequest } from '@/types/assistant';
+import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
 import { RuleProvider } from './ai-providers/rule-provider';
+import { runTool, type ToolCall } from './assistant/tool-runner';
 import { readContext } from './assistant/context';
 import { memoryService } from './assistant/memory-service';
 import { logService } from './log-service';
@@ -18,6 +20,15 @@ import { logService } from './log-service';
  * pelo `memoryService`. O serviço não conhece nenhuma store além da do
  * assistente, que é a que escreve.
  */
+/** Quantas idas ao modelo se permitem antes de se parar. */
+const TOOL_ROUNDS = 5;
+
+/** Uma ferramenta destrutiva à espera de resposta. */
+export interface PendingConfirmation {
+  readonly call: ToolCall;
+  readonly question: string;
+}
+
 export class AIService {
   private controller: AbortController | null = null;
 
@@ -101,6 +112,120 @@ export class AIService {
     this.controller = null;
 
     return full;
+  }
+
+  /**
+   * Ciclo com ferramentas (Parte 7.2 §Agentes).
+   *
+   * O modelo pede ferramentas, executam-se, e o resultado volta para ele
+   * decidir o passo seguinte. Corre até ele parar de pedir, ou até ao limite —
+   * um modelo que se engane pode pedir a mesma coisa em círculo, e sem tecto
+   * ficava a gastar dinheiro para sempre.
+   *
+   * Devolve as confirmações pendentes, se houver: nada destrutivo corre sem
+   * alguém dizer que sim, e quem pergunta é a interface.
+   */
+  async sendWithTools(prompt: string): Promise<readonly PendingConfirmation[]> {
+    const provider = this.provider;
+
+    // Só a DeepSeek sabe pedir ferramentas. Com o provedor local, isto é um
+    // envio normal — e é o que deve ser, porque ele não decide nada.
+    if (!(provider instanceof DeepSeekProvider)) {
+      await this.send(prompt);
+      return [];
+    }
+
+    this.cancel();
+    this.controller = new AbortController();
+    const { signal } = this.controller;
+
+    memoryService.observe(prompt);
+    const store = useAssistantStore.getState();
+    store.addMessage('user', prompt);
+    store.setMode('thinking');
+
+    const request: AiRequest = {
+      prompt,
+      history: selectMessages(useAssistantStore.getState()),
+      context: readContext(),
+      memory: memoryService.current,
+      signal,
+    };
+
+    const messages: unknown[] = [...buildMessages(request)];
+    const pending: PendingConfirmation[] = [];
+
+    for (let round = 0; round < TOOL_ROUNDS; round += 1) {
+      const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
+      let hasStartedSpeaking = false;
+
+      const result = await provider.run(request, messages, (chunk) => {
+        if (!hasStartedSpeaking) {
+          hasStartedSpeaking = true;
+          useAssistantStore.getState().setMode('speaking');
+        }
+        useAssistantStore.getState().appendToMessage(messageId, chunk);
+      });
+
+      useAssistantStore.getState().finishMessage(messageId);
+
+      if (signal.aborted) break;
+
+      // Sem ferramentas pedidas, a resposta é a resposta.
+      if (result.toolCalls.length === 0) {
+        // Uma passagem que só serviu para pedir ferramentas deixa uma mensagem
+        // vazia no histórico. Tira-se.
+        if (result.text.trim().length === 0) {
+          useAssistantStore.getState().removeMessage(messageId);
+        }
+        break;
+      }
+
+      if (result.text.trim().length === 0) {
+        useAssistantStore.getState().removeMessage(messageId);
+      }
+
+      messages.push({
+        role: 'assistant',
+        content: result.text,
+        tool_calls: result.toolCalls.map((call) => ({
+          id: call.id,
+          type: 'function',
+          function: { name: call.name, arguments: JSON.stringify(call.args) },
+        })),
+      });
+
+      for (const call of result.toolCalls) {
+        const outcome = runTool(call);
+
+        if (outcome.status === 'confirmar') {
+          pending.push({ call, question: outcome.message });
+        }
+
+        messages.push({
+          role: 'tool',
+          tool_call_id: call.id,
+          content:
+            outcome.status === 'confirmar'
+              ? `À espera de confirmação: ${outcome.message}`
+              : outcome.message,
+        });
+      }
+    }
+
+    useAssistantStore.getState().setMode(pending.length > 0 ? 'idle' : 'success');
+    this.controller = null;
+    return pending;
+  }
+
+  /**
+   * Executa uma ferramenta que estava à espera de confirmação.
+   *
+   * Só a interface chama isto, e só depois de a pessoa ter dito que sim.
+   */
+  confirmTool(call: ToolCall): void {
+    const outcome = runTool(call, true);
+    useAssistantStore.getState().addMessage('assistant', outcome.message);
   }
 
   /**

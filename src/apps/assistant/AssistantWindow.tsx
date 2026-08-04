@@ -1,12 +1,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bot, Download, History, Mic, Plus, RefreshCw, Send, Star, User } from 'lucide-react';
+import {
+  AlertTriangle,
+  Bot,
+  Download,
+  History,
+  Mic,
+  Plus,
+  RefreshCw,
+  Send,
+  Star,
+  User,
+} from 'lucide-react';
 
 import { USER_FIRST_NAME } from '@/constants/user';
 import { useElementWidth } from '@/hooks/use-element-width';
 import { useVoice } from '@/hooks/use-voice';
 import { cn } from '@/lib/cn';
-import { aiService } from '@/services/ai-service';
+import { aiService, type PendingConfirmation } from '@/services/ai-service';
 import { greetingFor, readContext } from '@/services/assistant/context';
+import { notificationService } from '@/services/notification-service';
 import { memoryService } from '@/services/assistant/memory-service';
 import {
   selectActiveConversation,
@@ -64,11 +76,32 @@ export default function AssistantWindow(): React.JSX.Element {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
+  /** Ferramentas destrutivas à espera de resposta. */
+  const [pending, setPending] = useState<readonly PendingConfirmation[]>([]);
+
   const send = useCallback((): void => {
     const text = draft.trim();
     if (text.length === 0) return;
+
     setDraft('');
-    void aiService.send(text);
+    // `sendWithTools` cai num envio normal quando o provedor não sabe pedir
+    // ferramentas — a janela não precisa de saber qual está ligado.
+    void aiService.sendWithTools(text).then((waiting) => {
+      setPending(waiting);
+
+      // A pergunta vive dentro desta janela, e esta janela pode ter ficado
+      // atrás de outra. Um aviso aparece por cima de tudo — sem ele, uma ação
+      // destrutiva ficava à espera sem ninguém saber.
+      if (waiting.length > 0) {
+        notificationService.warn(
+          'O assistente está à espera de si',
+          waiting.length === 1
+            ? 'Há uma ação que não se pode desfazer por confirmar.'
+            : `Há ${waiting.length} ações que não se podem desfazer por confirmar.`,
+          { category: 'assistente' },
+        );
+      }
+    });
   }, [draft]);
 
   const isBusy = mode === 'thinking' || mode === 'speaking';
@@ -147,6 +180,24 @@ export default function AssistantWindow(): React.JSX.Element {
               />
             ))}
           </div>
+
+          {pending.length > 0 && (
+            <div className="mb-s2 flex flex-shrink-0 flex-col gap-1.5">
+              {pending.map((entry) => (
+                <ConfirmRow
+                  key={entry.call.id}
+                  question={entry.question}
+                  onConfirm={() => {
+                    aiService.confirmTool(entry.call);
+                    setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id));
+                  }}
+                  onCancel={() =>
+                    setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id))
+                  }
+                />
+              ))}
+            </div>
+          )}
 
           <div
             className={cn(
@@ -311,6 +362,52 @@ function ChatMessage({
         </p>
       </div>
     </article>
+  );
+}
+
+/**
+ * Uma ferramenta que perde dados, à espera de resposta.
+ *
+ * Fica **por cima do campo de escrita**, e não num diálogo por cima de tudo:
+ * um diálogo modal interrompe; isto espera. E deixa-se ignorar — não responder
+ * é não fazer, que é o resultado mais seguro.
+ */
+function ConfirmRow({
+  question,
+  onConfirm,
+  onCancel,
+}: {
+  readonly question: string;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}): React.JSX.Element {
+  return (
+    <div
+      role="alertdialog"
+      aria-label="Confirmar ação"
+      className="flex items-start gap-2 rounded-input border border-warn/40 bg-warn/[.07] p-2.5"
+    >
+      <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0 text-warn" aria-hidden="true" />
+
+      <span className="min-w-0 flex-1 text-[11.5px] leading-relaxed text-t2">{question}</span>
+
+      <span className="flex flex-shrink-0 gap-1">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-btn border border-line px-2.5 py-1 text-[11px] text-t2 transition-colors duration-hover hover:text-t1"
+        >
+          Não
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="rounded-btn border border-danger/50 bg-danger/[.12] px-2.5 py-1 text-[11px] text-danger transition-colors duration-hover hover:bg-danger/20"
+        >
+          Sim, fazer
+        </button>
+      </span>
+    </div>
   );
 }
 
