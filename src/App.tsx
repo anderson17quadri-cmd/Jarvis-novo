@@ -22,25 +22,22 @@ import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { USER_FIRST_NAME } from '@/constants/user';
-import { seedAutomations } from '@/data/automations';
 import { aiService } from '@/services/ai-service';
 import { setContextSource } from '@/services/assistant/context';
 import { memoryService } from '@/services/assistant/memory-service';
 import { automationService } from '@/services/automation-service';
 import { eventBus } from '@/services/event-bus';
+import { hydrateAll } from '@/services/hydrate-all';
 import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
-import { soundService } from '@/services/sound-service';
 import { weatherService } from '@/services/weather/weather-service';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
 import { setVoiceExecutor } from '@/services/voice/executor';
-import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
-import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useTaskStore } from '@/stores/use-task-store';
@@ -76,7 +73,6 @@ export function App(): React.JSX.Element {
   const logout = useSessionStore((state) => state.logout);
   const restartBootSequence = useSessionStore((state) => state.restartBootSequence);
 
-  const hydrateTheme = useThemeStore((state) => state.hydrate);
   const setTheme = useThemeStore((state) => state.setTheme);
 
   const mode = useAssistantStore((state) => state.mode);
@@ -105,21 +101,10 @@ export function App(): React.JSX.Element {
     logService.log('info', 'sistema', 'Interface a arrancar');
 
     void initializePlatform().then(async () => {
-      await hydrateTheme();
-      await useNotificationStore.getState().hydrate();
-      // A grelha só monta quando há widgets — hidratar lá dentro nunca
-      // chegaria a correr na primeira vez.
-      await useWidgetStore.getState().hydrate();
-      await usePluginStore.getState().hydrate();
-      await useSystemStateStore.getState().hydrate();
-      await useAppearanceStore.getState().hydrate();
-      await soundService.hydrate();
-      await automationService.hydrate(seedAutomations());
-      await useAssistantStore.getState().hydrate();
-      await memoryService.hydrate();
-      await useWorkspaceStore.getState().hydrate();
-      // Depois da memória: o provedor construído já vai com tudo o que precisa.
-      await useAiSettingsStore.getState().hydrate();
+      // A sequência vive no `hydrate-all`, e não aqui: o restauro de uma cópia
+      // de segurança precisa exatamente da mesma, e duas listas eram a maneira
+      // de uma store nova entrar numa e ficar de fora da outra.
+      await hydrateAll();
 
       const adapter = getPlatformAdapter();
       logService.log(
@@ -131,7 +116,7 @@ export function App(): React.JSX.Element {
     });
 
     return stopWatching;
-  }, [hydrateTheme]);
+  }, []);
 
   /**
    * Motor de automações.

@@ -2,6 +2,7 @@ import { useMemo, useState, useSyncExternalStore } from 'react';
 import { Info, ShieldCheck, ShieldOff } from 'lucide-react';
 
 import { PERMISSION_LABELS, PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
+import { BackupPanel } from './BackupPanel';
 import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
@@ -12,7 +13,7 @@ import { usePluginStore } from '@/stores/use-plugin-store';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
 import type { PluginPermissions } from '@/plugins/plugin';
 
-type Tab = 'permissoes' | 'auditoria' | 'acesso';
+type Tab = 'permissoes' | 'auditoria' | 'acesso' | 'copias';
 
 /**
  * Privacidade e permissões (Parte 14).
@@ -27,6 +28,8 @@ type Tab = 'permissoes' | 'auditoria' | 'acesso';
  * 3. **Acesso** — o que esta plataforma consegue mesmo alcançar. É a
  *    informação mais honesta de todas sobre privacidade: no browser, quase
  *    nada.
+ * 4. **Cópias** — descarregar tudo o que está guardado, e voltar a pôr. Sem
+ *    isto, limpar os dados do browser apagava o sistema inteiro.
  */
 export default function PrivacyWindow(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('permissoes');
@@ -53,11 +56,15 @@ export default function PrivacyWindow(): React.JSX.Element {
         <TabButton isActive={tab === 'acesso'} onClick={() => setTab('acesso')}>
           Acesso
         </TabButton>
+        <TabButton isActive={tab === 'copias'} onClick={() => setTab('copias')}>
+          Cópias
+        </TabButton>
       </div>
 
       {tab === 'permissoes' && <Permissions />}
       {tab === 'auditoria' && <Audit entries={audit} />}
       {tab === 'acesso' && <Access />}
+      {tab === 'copias' && <BackupPanel />}
     </div>
   );
 }

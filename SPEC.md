@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 835 testes |
+| Vitest | 853 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, e a **correção do que a voz ouviu** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu** e as **cópias de segurança** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -452,7 +452,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Painel de privacidade e permissões | ✅ | `apps/privacy/` — três abas: permissões por plugin, auditoria e o que cada capacidade da plataforma vê de facto |
 | Auditoria de ações | ✅ | `logService.audit()`. Regista temas, estados do sistema, comandos de voz, automações e decisões de permissões — venham da paleta, da voz ou de uma regra |
 | Cofre de segredos, criptografia, WebAuthn, 2FA | 🚫 | Nativo. **A chave da API está por isto**: hoje vive em armazenamento local, e a janela di-lo por escrito em vez de a fazer passar por guardada com cuidado |
-| Backups e restauro | ⬜ | |
+| Backups e restauro | ✅ | Aba **Cópias** na janela de Privacidade. Descarrega um JSON legível com tudo o que está no armazenamento local, e repõe-no com confirmação e a lista do que vai substituir. **A chave da API nunca entra na cópia** — o campo é apagado, não posto a vazio, para quem repõe ver que falta em vez de julgar que está definida. Repor só escreve as chaves que a cópia traz: uma cópia antiga é um passo atrás, não um recomeço. A reposição volta a hidratar as stores, e por isso vê-se na hora, sem recarregar |
 
 > **A auditoria vive em memória, e é de propósito.** Escrever num ficheiro exige
 > o plugin `fs` — bloqueado. E um registo de auditoria em `localStorage`, onde
