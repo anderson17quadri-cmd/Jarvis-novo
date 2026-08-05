@@ -203,4 +203,13 @@ describe('robustez', () => {
       expect(describeIntent(first(frase)).length, frase).toBeGreaterThan(0);
     }
   });
+
+  it('descreve com nomes, e não com identificadores internos', () => {
+    // Os identificadores são minúsculos e sem acentos; os nomes não. Cada uma
+    // destas linhas já saiu do sistema com o `id` cru lá dentro.
+    expect(describeIntent(first('Abre os emails'))).toBe('Abrir Emails');
+    expect(describeIntent(first('Abre a personalização'))).toBe('Abrir Personalização');
+    expect(describeIntent(first('Muda para o tema oled'))).toBe('Aplicar o tema OLED Black');
+    expect(describeIntent(first('Mostra o widget de cpu'))).toBe('Mostrar o widget CPU');
+  });
 });

@@ -9,6 +9,7 @@ import { NotificationPanel } from '@/components/notifications/NotificationPanel'
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { AppShell } from '@/components/shell/AppShell';
 import { ColourFilters } from '@/components/shell/ColourFilters';
+import { VoiceCorrection } from '@/components/voice/VoiceCorrection';
 import { CustomCursor } from '@/components/shell/CustomCursor';
 import { Wallpaper } from '@/components/shell/Wallpaper';
 import { WindowManager } from '@/components/windows/WindowManager';
@@ -545,6 +546,8 @@ export function App(): React.JSX.Element {
         isEnabled={isDesktop && !isPaletteOpen}
         handlers={{ launchApp: launch, openPalette }}
       />
+
+      <VoiceCorrection />
 
       <ToastViewport />
       <NotificationPanel />

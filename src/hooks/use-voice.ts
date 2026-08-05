@@ -5,6 +5,7 @@ import { useIsVisible } from '@/hooks/use-platform';
 import { notificationService } from '@/services/notification-service';
 import { voiceService } from '@/services/voice-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
+import { useVoiceCorrectionStore } from '@/stores/use-voice-correction-store';
 import { runIntent } from '@/services/voice/executor';
 import { describeIntent, isCritical, parseSpeech } from '@/services/voice/intents';
 
@@ -80,6 +81,13 @@ export function useVoice(): {
                   label: 'Confirmar',
                   run: () => runIntent(intent),
                 },
+                // Se o comando que não se desfaz nem sequer é o que se pediu,
+                // a saída não pode ser só "ignorar e repetir em voz alta".
+                {
+                  id: 'corrigir',
+                  label: 'Corrigir',
+                  run: () => useVoiceCorrectionStore.getState().open(text),
+                },
               ],
             });
             continue;
@@ -89,14 +97,22 @@ export function useVoice(): {
         }
 
         /*
-         * O que foi reconhecido fica à vista (Parte 10 §Correção de erros).
-         * Sem isto, um comando mal ouvido executa outra coisa e ninguém
-         * percebe porquê. As perguntas não entram: a resposta já é o eco.
+         * O que foi reconhecido fica à vista, e emendável (Parte 10 §Correção
+         * de erros). Sem isto, um comando mal ouvido executa outra coisa e
+         * ninguém percebe porquê. As perguntas não entram: a resposta já é o
+         * eco.
          */
         const commands = parsed.intents.filter((intent) => intent.kind !== 'perguntar');
         if (commands.length > 0) {
           notificationService.info(`"${text}"`, commands.map(describeIntent).join(' · '), {
             category: 'assistente',
+            actions: [
+              {
+                id: 'corrigir',
+                label: 'Corrigir',
+                run: () => useVoiceCorrectionStore.getState().open(text),
+              },
+            ],
           });
         }
       },

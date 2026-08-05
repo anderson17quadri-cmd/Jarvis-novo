@@ -1,3 +1,4 @@
+import { getAppDefinition } from '@/apps/registry';
 import { normalizeSearch } from '@/utils/text';
 import { THEMES, type ThemeId } from '@/design-system/tokens';
 import { ALL_WIDGETS } from '@/widgets/registry';
@@ -47,13 +48,22 @@ export function isCritical(intent: VoiceIntent): boolean {
   return CRITICAL.has(intent.kind);
 }
 
-/** O que a interpretação devolve. */
+/**
+ * O que a interpretação devolve.
+ *
+ * Não há aqui uma lista de "pedaços que não percebi", e a ausência é
+ * deliberada: o `splitCommands` só divide a frase quando **todos** os pedaços
+ * dão comando, e caso contrário trata a frase inteira como um só. Não existe
+ * portanto um estado em que uma parte casa e outra sobra — e um campo que
+ * nunca tem nada dentro é interface a fingir que informa.
+ *
+ * A regra do `splitCommands` é o que faz "criar tarefa comprar leite e pão"
+ * ser uma tarefa e não duas. É por isso que se mantém.
+ */
 export interface ParsedSpeech {
   /** A frase tal como foi ouvida. */
   readonly transcript: string;
   readonly intents: readonly VoiceIntent[];
-  /** Pedaços que não deram intenção nenhuma. */
-  readonly unmatched: readonly string[];
 }
 
 // ── Dicionário ─────────────────────────────────────────────────────────────
@@ -123,29 +133,23 @@ export function parseSpeech(transcript: string): ParsedSpeech {
   const normalized = trimPunctuation(normalizeSearch(transcript));
 
   if (normalized.length === 0) {
-    return { transcript, intents: [], unmatched: [] };
+    return { transcript, intents: [] };
   }
 
   const intents: VoiceIntent[] = [];
-  const unmatched: string[] = [];
 
   for (const part of splitCommands(normalized)) {
     const intent = matchIntent(trimPunctuation(part));
     if (intent) intents.push(intent);
-    else unmatched.push(part);
   }
 
   // Nada reconhecido: em vez de dizer "não percebi", passa-se ao assistente.
   // Perguntar alguma coisa é o comando mais natural de todos.
   if (intents.length === 0) {
-    return {
-      transcript,
-      intents: [{ kind: 'perguntar', text: transcript }],
-      unmatched: [],
-    };
+    return { transcript, intents: [{ kind: 'perguntar', text: transcript }] };
   }
 
-  return { transcript, intents, unmatched };
+  return { transcript, intents };
 }
 
 /** Interpreta um comando só. `null` quando não reconhece. */
@@ -270,19 +274,40 @@ function matchApp(text: string): AppId | null {
 
 // ── Descrição ──────────────────────────────────────────────────────────────
 
-/** Descreve uma intenção em português, para a confirmação e o histórico. */
+/**
+ * O nome de um tema, ou o identificador quando é personalizado.
+ *
+ * Os temas do utilizador não estão em `THEMES` — vivem noutro store, e ir lá
+ * buscá-los daqui punha uma função pura a depender de estado.
+ */
+function themeName(theme: ThemeId): string {
+  return THEMES.find((entry) => entry.id === theme)?.name ?? theme;
+}
+
+function widgetName(widget: WidgetId): string {
+  return ALL_WIDGETS.find((entry) => entry.id === widget)?.name ?? widget;
+}
+
+/**
+ * Descreve uma intenção em português, para a confirmação e o histórico.
+ *
+ * Nomes, não identificadores. "Abrir emails" e "o widget cpu" eram o nome
+ * interno a escapar-se para o ecrã — passa despercebido numa notificação de
+ * dois segundos, mas a caixa de correção mostra isto enquanto se escreve, e aí
+ * uma linha em minúsculas sem acentos denuncia-se.
+ */
 export function describeIntent(intent: VoiceIntent): string {
   switch (intent.kind) {
     case 'abrir-janela':
-      return `Abrir ${intent.appId}`;
+      return `Abrir ${getAppDefinition(intent.appId).title}`;
     case 'fechar-janelas':
       return 'Fechar todas as janelas';
     case 'tema':
-      return `Aplicar o tema ${intent.theme}`;
+      return `Aplicar o tema ${themeName(intent.theme)}`;
     case 'estado':
       return `Passar ao modo ${SYSTEM_STATES[intent.state].name}`;
     case 'widget':
-      return `${intent.show ? 'Mostrar' : 'Esconder'} o widget ${intent.widget}`;
+      return `${intent.show ? 'Mostrar' : 'Esconder'} o widget ${widgetName(intent.widget)}`;
     case 'esconder-widgets':
       return 'Esconder os widgets';
     case 'criar-tarefa':

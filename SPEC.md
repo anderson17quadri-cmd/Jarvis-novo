@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 821 testes |
+| Vitest | 835 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério** e os **perfis completos**, com som e plugins |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, e a **correção do que a voz ouviu** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -388,7 +388,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Comandos de sistema, aplicações, produtividade, pesquisa, multimédia e desktop | ✅ | `services/voice/intents.ts` — as seis famílias da spec |
 | Comandos compostos | ✅ | "Abre os emails, mostra os projetos e pausa" dá três ações. Só divide se todos os pedaços derem comando, senão um "e" dentro de um título partia a frase |
 | Confirmação obrigatória em ações críticas | ✅ | Fechar as janelas e reiniciar a interface. O critério: dá para desfazer? |
-| Correção de erros (mostrar o que foi reconhecido) | 🟡 | A frase ouvida e o que se percebeu dela aparecem numa notificação. Falta poder editar e voltar a executar |
+| Correção de erros (mostrar o que foi reconhecido) | ✅ | A frase ouvida aparece numa notificação com um botão **Corrigir**, que abre uma caixa com o texto emendável. O que vai acontecer aparece **enquanto se escreve** — `components/voice/VoiceCorrection.tsx`. Também está na confirmação dos comandos que não se desfazem: se o que se ouviu nem era o que se pediu, a saída deixa de ser só ignorar e repetir em voz alta |
 | Não decorar comandos exatos | 🟡 | Várias formas de dizer o mesmo, sem acentos nem pontuação. Não há modelo de linguagem — e o ficheiro diz isso |
 | Contexto ("amanhã", "esse ficheiro") | ⬜ | Depende do provedor de IA |
 | Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual. A escuta contínua é uma decisão de privacidade por tomar |
