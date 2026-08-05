@@ -1,9 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  AiFailure,
+  AI_FAILURE_REASONS,
+  failureFromStatus,
+  type AiFailureKind,
+} from '@/types/ai-failure';
+
+import {
   buildMessages,
   DeepSeekProvider,
-  describeHttpError,
   parseEventLine,
   readStream,
   systemPrompt,
@@ -197,28 +203,44 @@ describe('o que se envia', () => {
 
 describe('erros', () => {
   it.each([
-    [401, /chave não foi aceite/],
-    [402, /não tem saldo/],
-    [429, /Demasiados pedidos/],
-    [503, /está com problemas/],
-  ])('o código %i explica-se por palavras', (status, expected) => {
-    expect(describeHttpError(status)).toMatch(expected);
+    [401, 'chave'],
+    [403, 'chave'],
+    [402, 'saldo'],
+    [429, 'limite'],
+    [503, 'servidor'],
+  ])('o código %i vira a falha "%s"', (status, kind) => {
+    expect(failureFromStatus(status).kind).toBe(kind);
   });
 
-  it('um código desconhecido ainda diz qual foi', () => {
-    expect(describeHttpError(418)).toContain('418');
+  it('um código desconhecido conta como problema do servidor', () => {
+    // A leitura mais provável, e a que leva a tentar outra vez em vez de
+    // mandar a pessoa mexer numa chave que está boa.
+    expect(failureFromStatus(418).kind).toBe('servidor');
+  });
+
+  it('toda a falha tem uma frase em português', () => {
+    for (const kind of Object.keys(AI_FAILURE_REASONS) as AiFailureKind[]) {
+      expect(new AiFailure(kind).message).toBe(AI_FAILURE_REASONS[kind]);
+      expect(AI_FAILURE_REASONS[kind].length).toBeGreaterThan(0);
+    }
   });
 });
 
+/** Consome um stream até ao fim, para se poder afirmar que ele lança. */
+async function drain(stream: AsyncIterable<string>): Promise<string> {
+  let text = '';
+  for await (const part of stream) text += part;
+  return text;
+}
+
 describe('o provedor', () => {
-  it('sem chave não liga a lado nenhum, e diz o que falta', async () => {
+  it('sem chave não liga a lado nenhum, e falha em vez de fingir uma resposta', async () => {
     const fetchImpl = vi.fn();
     const provider = new DeepSeekProvider('', 'deepseek-chat', fetchImpl);
 
-    const parts: string[] = [];
-    for await (const part of provider.stream(request())) parts.push(part);
-
-    expect(parts.join('')).toContain('Falta a chave');
+    await expect(drain(provider.stream(request()))).rejects.toMatchObject({
+      kind: 'configuracao',
+    });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
@@ -244,28 +266,25 @@ describe('o provedor', () => {
     expect(body.stream).toBe(true);
   });
 
-  it('uma recusa do servidor vira uma frase, não um número solto', async () => {
+  it('uma recusa do servidor lança, em vez de entrar na conversa como resposta', async () => {
     const provider = new DeepSeekProvider(
       'sk-teste12345',
       'deepseek-chat',
       fakeFetch({ ok: false, status: 401 }),
     );
 
-    const parts: string[] = [];
-    for await (const part of provider.stream(request())) parts.push(part);
-
-    expect(parts.join('')).toContain('chave não foi aceite');
+    // Antes, isto escrevia "A chave não foi aceite" no histórico com o mesmo
+    // aspeto de tudo o resto, e ninguém a jusante sabia que nada tinha
+    // corrido bem. Uma falha tem de se distinguir de uma resposta.
+    await expect(drain(provider.stream(request()))).rejects.toMatchObject({ kind: 'chave' });
   });
 
-  it('a rede em baixo não rebenta — explica-se', async () => {
+  it('a rede em baixo lança como falha de rede', async () => {
     const provider = new DeepSeekProvider('sk-teste12345', 'deepseek-chat', () => {
       throw new Error('ECONNREFUSED');
     });
 
-    const parts: string[] = [];
-    for await (const part of provider.stream(request())) parts.push(part);
-
-    expect(parts.join('')).toContain('ligação à rede');
+    await expect(drain(provider.stream(request()))).rejects.toMatchObject({ kind: 'rede' });
   });
 
   it('cancelar não produz mensagem de erro nenhuma', async () => {

@@ -6,6 +6,7 @@ import { runTool, type ToolCall } from './assistant/tool-runner';
 import { readContext } from './assistant/context';
 import { memoryService } from './assistant/memory-service';
 import { logService } from './log-service';
+import { AiFailure, planFallback } from '@/types/ai-failure';
 
 /**
  * Assistente.
@@ -92,19 +93,18 @@ export class AIService {
         useAssistantStore.getState().appendToMessage(messageId, chunk);
       }
     } catch (error) {
-      logService.log(
-        'erro',
-        'assistente',
-        'O provedor falhou',
-        error instanceof Error ? error.message : String(error),
-      );
-      useAssistantStore.getState().setMode('error');
-      useAssistantStore.getState().appendToMessage(
+      return await this.recover(error, {
         messageId,
-        'Não consegui completar o pedido. Tente novamente.',
-      );
-      useAssistantStore.getState().finishMessage(messageId);
-      return full;
+        request: {
+          prompt,
+          history: selectMessages(useAssistantStore.getState()),
+          context: readContext(),
+          memory: memoryService.current,
+          signal,
+        },
+        text: full,
+        isAborted: signal.aborted,
+      });
     }
 
     useAssistantStore.getState().finishMessage(messageId);
@@ -159,13 +159,31 @@ export class AIService {
       const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
       let hasStartedSpeaking = false;
 
-      const result = await provider.run(request, messages, (chunk) => {
-        if (!hasStartedSpeaking) {
-          hasStartedSpeaking = true;
-          useAssistantStore.getState().setMode('speaking');
-        }
-        useAssistantStore.getState().appendToMessage(messageId, chunk);
-      });
+      let text = '';
+      let result;
+
+      try {
+        result = await provider.run(request, messages, (chunk) => {
+          if (!hasStartedSpeaking) {
+            hasStartedSpeaking = true;
+            useAssistantStore.getState().setMode('speaking');
+          }
+          text += chunk;
+          useAssistantStore.getState().appendToMessage(messageId, chunk);
+        });
+      } catch (error) {
+        /*
+         * As mesmas regras do envio simples.
+         *
+         * `isLocal` é `false` de propósito: chegou-se aqui porque o provedor é
+         * a DeepSeek, e o local existe para onde cair — só não sabe pedir
+         * ferramentas, o que é exatamente a razão de o pedido passar a ser
+         * respondido sem elas.
+         */
+        await this.recover(error, { messageId, request, text, isAborted: signal.aborted });
+        this.controller = null;
+        return pending;
+      }
 
       useAssistantStore.getState().finishMessage(messageId);
 
@@ -216,6 +234,90 @@ export class AIService {
     useAssistantStore.getState().setMode(pending.length > 0 ? 'idle' : 'success');
     this.controller = null;
     return pending;
+  }
+
+  /**
+   * O que se faz quando o provedor falha (Parte 12 §Regras de fallback).
+   *
+   * As regras estão no `planFallback`, que é uma função pura sobre a falha e o
+   * estado da resposta — assim testam-se sem rede, sem stores e sem relógio.
+   * Aqui só se cumpre o plano.
+   *
+   * O que **não** acontece nunca: cair para o provedor local sem o dizer. Uma
+   * resposta mais fraca sem explicação faz a pessoa achar que o assistente
+   * piorou, quando o que aconteceu foi a chave deixar de servir.
+   */
+  private async recover(
+    error: unknown,
+    state: {
+      readonly messageId: string;
+      readonly request: AiRequest;
+      readonly text: string;
+      readonly isAborted: boolean;
+    },
+  ): Promise<string> {
+    const store = (): ReturnType<typeof useAssistantStore.getState> =>
+      useAssistantStore.getState();
+
+    const failure = error instanceof AiFailure ? error : new AiFailure('rede');
+
+    logService.log(
+      'erro',
+      'assistente',
+      `O provedor falhou: ${failure.kind}`,
+      error instanceof Error ? error.message : String(error),
+    );
+
+    const plan = planFallback({
+      failure,
+      isAborted: state.isAborted,
+      hasText: state.text.trim().length > 0,
+      isLocal: this.provider instanceof RuleProvider,
+    });
+
+    if (plan.action === 'nada') {
+      store().finishMessage(state.messageId);
+      store().setMode('idle');
+      return state.text;
+    }
+
+    if (plan.action === 'nota') {
+      store().appendToMessage(state.messageId, plan.note);
+      store().finishMessage(state.messageId);
+      store().setMode('error');
+      return state.text + plan.note;
+    }
+
+    if (plan.action === 'erro') {
+      store().appendToMessage(state.messageId, plan.note);
+      store().finishMessage(state.messageId);
+      store().setMode('error');
+      return plan.note;
+    }
+
+    // Queda para o local. A nota vai primeiro, e o sinal é o do pedido
+    // original: cancelar durante o fallback continua a cancelar.
+    store().appendToMessage(state.messageId, plan.note);
+    let full = plan.note;
+
+    try {
+      for await (const chunk of new RuleProvider().stream(state.request)) {
+        if (state.request.signal?.aborted) break;
+        full += chunk;
+        store().appendToMessage(state.messageId, chunk);
+      }
+    } catch {
+      // O local não fala com ninguém, e por isso isto não devia acontecer. Se
+      // acontecer, fica a nota — que já diz o que correu mal.
+    }
+
+    store().finishMessage(state.messageId);
+    // `error` e não `idle`: alguma coisa correu mal, e o núcleo deve dizê-lo
+    // mesmo que tenha havido resposta.
+    store().setMode('error');
+    logService.audit(`Assistente caiu para o provedor local (${failure.kind})`, 'executado');
+
+    return full;
   }
 
   /**

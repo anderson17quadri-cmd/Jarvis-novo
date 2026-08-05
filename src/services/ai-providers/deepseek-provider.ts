@@ -1,3 +1,4 @@
+import { AiFailure, failureFromStatus } from '@/types/ai-failure';
 import type { AiProvider, AiRequest, AssistantContext, AssistantMemory } from '@/types/assistant';
 import { AI_PROVIDERS, type DeepSeekModelId } from '@/types/ai-provider-settings';
 import { toolsAsJsonSchema } from '../assistant/tools';
@@ -89,11 +90,7 @@ export class DeepSeekProvider implements AiProvider {
     messages: readonly unknown[],
     onText: (chunk: string) => void,
   ): Promise<StreamResult> {
-    if (!this.isConfigured()) {
-      const message = 'Falta a chave da API. Abra a Personalização e cole-a em Assistente.';
-      onText(message);
-      return { text: message, toolCalls: [] };
-    }
+    if (!this.isConfigured()) throw new AiFailure('configuracao');
 
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
@@ -116,28 +113,17 @@ export class DeepSeekProvider implements AiProvider {
         signal: timeout.signal,
       });
 
-      if (!response.ok) {
-        const message = describeHttpError(response.status);
-        onText(message);
-        return { text: message, toolCalls: [] };
-      }
-
-      if (!response.body) {
-        const message = 'O servidor respondeu sem conteúdo.';
-        onText(message);
-        return { text: message, toolCalls: [] };
-      }
+      if (!response.ok) throw failureFromStatus(response.status);
+      if (!response.body) throw new AiFailure('vazio');
 
       return await collect(response.body, timeout.signal, onText);
     } catch (error) {
       if (request.signal?.aborted) return { text: '', toolCalls: [] };
 
-      const message = timeout.signal.aborted
-        ? 'O pedido demorou demasiado e foi cancelado.'
-        : 'Não consegui chegar à DeepSeek. Verifique a ligação à rede.';
-      onText(message);
-      void error;
-      return { text: message, toolCalls: [] };
+      // Uma falha já tipada passa tal como está: só se traduz o que ainda não
+      // foi traduzido.
+      if (error instanceof AiFailure) throw error;
+      throw new AiFailure(timeout.signal.aborted ? 'demora' : 'rede');
     } finally {
       clearTimeout(timer);
       request.signal?.removeEventListener('abort', onAbort);
@@ -145,10 +131,7 @@ export class DeepSeekProvider implements AiProvider {
   }
 
   async *stream(request: AiRequest): AsyncIterable<string> {
-    if (!this.isConfigured()) {
-      yield 'Falta a chave da API. Abra a Personalização e cole-a em Assistente.';
-      return;
-    }
+    if (!this.isConfigured()) throw new AiFailure('configuracao');
 
     // Um pedido sem limite de tempo fica pendurado para sempre numa rede má, e
     // o núcleo ficava a "analisar" sem nunca responder.
@@ -174,25 +157,16 @@ export class DeepSeekProvider implements AiProvider {
         signal: timeout.signal,
       });
 
-      if (!response.ok) {
-        yield describeHttpError(response.status);
-        return;
-      }
-
-      if (!response.body) {
-        yield 'O servidor respondeu sem conteúdo.';
-        return;
-      }
+      if (!response.ok) throw failureFromStatus(response.status);
+      if (!response.body) throw new AiFailure('vazio');
 
       yield* readStream(response.body, timeout.signal);
     } catch (error) {
       // Cancelar não é falhar: quem cancelou já sabe que cancelou.
       if (request.signal?.aborted) return;
 
-      yield timeout.signal.aborted
-        ? 'O pedido demorou demasiado e foi cancelado.'
-        : 'Não consegui chegar à DeepSeek. Verifique a ligação à rede.';
-      void error;
+      if (error instanceof AiFailure) throw error;
+      throw new AiFailure(timeout.signal.aborted ? 'demora' : 'rede');
     } finally {
       clearTimeout(timer);
       request.signal?.removeEventListener('abort', onAbort);
@@ -411,21 +385,3 @@ export function systemPrompt(
   return lines.join('\n');
 }
 
-/** Diz o que correu mal em vez de mostrar um número. */
-export function describeHttpError(status: number): string {
-  switch (status) {
-    case 401:
-    case 403:
-      return 'A chave não foi aceite. Verifique-a na Personalização.';
-    case 402:
-      return 'A conta da DeepSeek não tem saldo.';
-    case 429:
-      return 'Demasiados pedidos seguidos. Espere um pouco e tente de novo.';
-    case 500:
-    case 502:
-    case 503:
-      return 'A DeepSeek está com problemas. Não é do seu lado.';
-    default:
-      return `A DeepSeek recusou o pedido (código ${status}).`;
-  }
-}
