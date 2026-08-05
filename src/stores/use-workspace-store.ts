@@ -8,10 +8,13 @@ import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { captureWorkspace } from '@/services/workspace-service';
 import {
   defaultDesktops,
+  normaliseSnapshot,
   SAVED_LAYOUT_LIMIT,
   type Desktop,
   type DesktopId,
   type SavedLayout,
+  type StoredDesktop,
+  type StoredLayout,
   type WorkspaceSnapshot,
 } from '@/types/workspace';
 
@@ -49,11 +52,18 @@ interface WorkspaceState {
   hydrate: () => Promise<void>;
 }
 
+/**
+ * O que está em disco.
+ *
+ * As fotografias leem-se como `Stored*` e não como as definitivas: um layout
+ * guardado por uma versão anterior não tem os campos novos, e ler para o tipo
+ * completo era o compilador a garantir uma coisa que o ficheiro não cumpre.
+ */
 interface PersistedWorkspace {
-  readonly desktops: readonly Desktop[];
+  readonly desktops: readonly StoredDesktop[];
   readonly current: DesktopId;
   /** Só os do utilizador. Os do sistema vêm do código, e podem mudar entre versões. */
-  readonly layouts: readonly SavedLayout[];
+  readonly layouts: readonly StoredLayout[];
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
@@ -159,13 +169,24 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const known = new Set(defaultDesktops().map((desktop) => desktop.id));
 
     set({
-      desktops: defaultDesktops().map(
-        (fallback) => saved.desktops.find((desktop) => desktop.id === fallback.id) ?? fallback,
-      ),
+      desktops: defaultDesktops().map((fallback) => {
+        const stored = saved.desktops.find((desktop) => desktop.id === fallback.id);
+        if (!stored) return fallback;
+
+        return {
+          ...stored,
+          snapshot: stored.snapshot === null ? null : normaliseSnapshot(stored.snapshot),
+        };
+      }),
       current: known.has(saved.current) ? saved.current : 1,
       // Os do sistema vêm sempre do código: assim uma correção num layout
       // predefinido chega a quem já tinha a versão antiga guardada.
-      layouts: [...builtInLayouts(), ...saved.layouts.filter((entry) => !entry.isBuiltIn)],
+      layouts: [
+        ...builtInLayouts(),
+        ...saved.layouts
+          .filter((entry) => !entry.isBuiltIn)
+          .map((entry) => ({ ...entry, snapshot: normaliseSnapshot(entry.snapshot) })),
+      ],
     });
   },
 }));

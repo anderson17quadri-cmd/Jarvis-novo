@@ -54,13 +54,34 @@ export const SOUND_CATEGORIES: Record<SoundName, SoundCategory> = {
   scanner: 'sistema',
 };
 
+/**
+ * Ordem em que as categorias se mostram e se percorrem.
+ *
+ * Existe para não haver `Object.keys(...) as SoundCategory[]` espalhado: essa
+ * conversão diz ao compilador que confie, e é precisamente o sítio onde uma
+ * categoria nova passaria despercebida.
+ */
+export const SOUND_CATEGORY_ORDER: readonly SoundCategory[] = ['interface', 'avisos', 'sistema'];
+
 export type CategoryVolumes = Record<SoundCategory, number>;
 
-const DEFAULT_CATEGORY_VOLUMES: CategoryVolumes = {
+export const DEFAULT_CATEGORY_VOLUMES: CategoryVolumes = {
   interface: 1,
   avisos: 1,
   sistema: 1,
 };
+
+/**
+ * O som como fica guardado num perfil (Parte 15 §Perfis).
+ *
+ * É o mesmo que se grava em disco. Ter um tipo só evita que o perfil e o disco
+ * guardem coisas diferentes com o mesmo nome.
+ */
+export interface SoundSnapshot {
+  readonly isEnabled: boolean;
+  readonly volume: number;
+  readonly categoryVolumes: CategoryVolumes;
+}
 
 interface Tone {
   /** Frequência inicial, em hertz. */
@@ -133,6 +154,27 @@ export class SoundService {
       ...this.categoryVolumes,
       [category]: Math.max(0, Math.min(1, volume)),
     };
+  }
+
+  /** O estado atual, para guardar num perfil. */
+  snapshot(): SoundSnapshot {
+    return {
+      isEnabled: this.enabled,
+      volume: this.volume,
+      // Cópia, e não a referência: um perfil guardado não pode mudar de valor
+      // porque alguém mexeu no cursor depois de o guardar.
+      categoryVolumes: { ...this.categoryVolumes },
+    };
+  }
+
+  /** Repõe o som a partir de um perfil. Os limites são os mesmos da interface. */
+  applySnapshot(snapshot: SoundSnapshot): void {
+    this.setEnabled(snapshot.isEnabled);
+    this.setVolume(snapshot.volume);
+
+    for (const category of SOUND_CATEGORY_ORDER) {
+      this.setCategoryVolume(category, snapshot.categoryVolumes[category]);
+    }
   }
 
   setEnabled(enabled: boolean): void {

@@ -30,7 +30,7 @@ describe('layouts do sistema', () => {
 
       // Um layout do sistema aponta sempre para um tema do sistema.
       expect(THEME_IDS.has(layout.snapshot.theme)).toBe(true);
-      expect(layout.snapshot.wallpaper in WALLPAPER_LABELS).toBe(true);
+      expect(layout.snapshot.ambience.wallpaper in WALLPAPER_LABELS).toBe(true);
     },
   );
 

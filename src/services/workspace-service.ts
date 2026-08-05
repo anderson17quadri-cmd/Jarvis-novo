@@ -1,12 +1,15 @@
 import { getAppDefinition } from '@/apps/registry';
 import { clampPlacement } from '@/components/widgets/grid';
+import { soundService } from '@/services/sound-service';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
+import { usePluginStore } from '@/stores/use-plugin-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import { ALL_WIDGETS } from '@/widgets/registry';
+import { ambienceOf } from '@/types/appearance';
 import type { WindowRect } from '@/types/window';
-import type { WorkspaceSnapshot } from '@/types/workspace';
+import type { WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
 
 /**
  * Capturar e repor um espaço de trabalho (Partes 6.2 e 15).
@@ -43,7 +46,14 @@ export function captureWorkspace(): WorkspaceSnapshot {
       isVisible: widget.isVisible,
     })),
     theme: useThemeStore.getState().theme,
-    wallpaper: useAppearanceStore.getState().appearance.wallpaper,
+    ambience: ambienceOf(useAppearanceStore.getState().appearance),
+    sound: soundService.snapshot(),
+    // Ordenado por identificador: uma fotografia tirada duas vezes seguidas
+    // tem de dar o mesmo ficheiro, e a ordem de inserção de um objeto não é
+    // coisa em que se confie para isso.
+    plugins: Object.values(usePluginStore.getState().installed)
+      .map((plugin) => ({ id: plugin.id, isEnabled: plugin.isEnabled }))
+      .sort((a, b) => a.id.localeCompare(b.id)),
   };
 }
 
@@ -53,10 +63,15 @@ export function captureWorkspace(): WorkspaceSnapshot {
  * `rectFor` decide onde cada janela vai parar: quem chama passa a geometria
  * guardada no desktop, ou uma centrada quando o ecrã é estreito de mais para a
  * respeitar. Sem isto o serviço precisava de saber o que é um telemóvel.
+ *
+ * `scope` decide até onde vai a reposição. Janelas, widgets, tema e ambiente
+ * são o espaço de trabalho e repõem-se sempre; som e plugins são definições, e
+ * essas só se repõem quando se aplica um perfil de propósito.
  */
 export function applyWorkspace(
   snapshot: WorkspaceSnapshot,
   rectFor: (entry: WorkspaceSnapshot['windows'][number]) => WindowRect,
+  scope: WorkspaceScope = 'desktop',
 ): void {
   const windowStore = useWindowStore.getState();
 
@@ -83,5 +98,21 @@ export function applyWorkspace(
   });
 
   useThemeStore.getState().setTheme(snapshot.theme);
-  useAppearanceStore.getState().set('wallpaper', snapshot.wallpaper);
+  useAppearanceStore.getState().applyAmbience(snapshot.ambience);
+  void useAppearanceStore.getState().persist();
+
+  if (scope !== 'perfil') return;
+
+  if (snapshot.sound) {
+    soundService.applySnapshot(snapshot.sound);
+    void soundService.persist();
+  }
+
+  if (snapshot.plugins.length > 0) {
+    const plugins = usePluginStore.getState();
+    // `setEnabled` ignora identificadores que não conhece, e é o que se quer:
+    // um plugin removido da loja entre versões não pode partir a reposição.
+    for (const entry of snapshot.plugins) plugins.setEnabled(entry.id, entry.isEnabled);
+    void usePluginStore.getState().persist();
+  }
 }

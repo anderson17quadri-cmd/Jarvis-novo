@@ -8,7 +8,7 @@ import { applyWorkspace } from '@/services/workspace-service';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import { useWorkspaceStore } from '@/stores/use-workspace-store';
-import type { DesktopId, WorkspaceSnapshot } from '@/types/workspace';
+import type { DesktopId, WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
 import { centeredRect } from './use-app-launcher';
 import { useIsCompact } from './use-media-query';
 
@@ -19,6 +19,9 @@ import { useIsCompact } from './use-media-query';
  * conhece o ecrã, e por isso é quem decide onde cada janela cabe. No compacto
  * a geometria guardada não se aplica — as janelas empilham-se com a largura
  * toda, e repor posições de um monitor daria um resultado sem sentido.
+ *
+ * É também aqui que se decide o âmbito: saltar de desktop repõe o espaço de
+ * trabalho, aplicar um layout repõe também o som e os plugins ativos.
  */
 export function useWorkspace(): {
   readonly goToDesktop: (id: DesktopId) => void;
@@ -27,15 +30,19 @@ export function useWorkspace(): {
   const isCompact = useIsCompact();
 
   const restore = useCallback(
-    (snapshot: WorkspaceSnapshot): void => {
-      applyWorkspace(snapshot, (entry) => {
-        const definition = getAppDefinition(entry.appId);
+    (snapshot: WorkspaceSnapshot, scope: WorkspaceScope): void => {
+      applyWorkspace(
+        snapshot,
+        (entry) => {
+          const definition = getAppDefinition(entry.appId);
 
-        // Um layout predefinido vem sem geometria — a posição calcula-se aqui,
-        // com o ecrã que há.
-        const hasGeometry = entry.rect.width > 0 && entry.rect.height > 0;
-        return isCompact || !hasGeometry ? centeredRect(definition.defaultSize) : entry.rect;
-      });
+          // Um layout predefinido vem sem geometria — a posição calcula-se
+          // aqui, com o ecrã que há.
+          const hasGeometry = entry.rect.width > 0 && entry.rect.height > 0;
+          return isCompact || !hasGeometry ? centeredRect(definition.defaultSize) : entry.rect;
+        },
+        scope,
+      );
 
       void useWindowStore.getState().persistLayout();
       void useWidgetStore.getState().persist();
@@ -49,7 +56,7 @@ export function useWorkspace(): {
 
       // `null` quer dizer "já lá estava" ou "nunca foi visitado". Nos dois
       // casos não há nada a repor, e o ecrã fica como está.
-      if (snapshot !== null) restore(snapshot);
+      if (snapshot !== null) restore(snapshot, 'desktop');
       soundService.play('open');
     },
     [restore],
@@ -60,7 +67,7 @@ export function useWorkspace(): {
       const layout = useWorkspaceStore.getState().getLayout(layoutId);
       if (!layout) return false;
 
-      restore(layout.snapshot);
+      restore(layout.snapshot, 'perfil');
       // O layout passa a ser o conteúdo do desktop atual — senão, mudar de
       // desktop e voltar desfazia-o.
       useWorkspaceStore.getState().syncCurrent();

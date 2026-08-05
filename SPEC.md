@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 794 testes |
+| Vitest | 821 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas** a **DeepSeek ligada ao assistente** e o **assistente a executar ações a sério** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério** e os **perfis completos**, com som e plugins |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -479,7 +479,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Acessibilidade (alto contraste, reduzir transparência) | ✅ | Mais a correção de daltonismo. A redução de movimento vem do sistema operativo e já era respeitada |
 | Editor de temas personalizados | ✅ | Três escolhas — acento, fundo e base clara ou escura — e os outros doze tokens derivam daí, com as proporções dos temas oficiais. Um formulário com os quinze daria combinações ilegíveis. Avisa quando o contraste não chega, sem impedir |
 | Tipografia (família e pesos à escolha) | ⬜ | A escala já existe; falta trocar de fonte |
-| Perfis completos (Trabalho, Gaming, Noite…) | 🟡 | Os layouts guardam janelas, widgets, tema e papel de parede. Faltam volume, animações e plugins ativos |
+| Perfis completos (Trabalho, Gaming, Noite…) | ✅ | Um perfil guarda janelas, widgets, tema, **ambiente** (papel de parede e intensidade, partículas do núcleo, cursor, arredondamento), **som** (geral e por categoria) e que **plugins** estavam ativos. Não guarda a acessibilidade — ver a divergência assumida em baixo. Os seis do sistema trazem som a sério: "Estudos" é silêncio completo, "Programação" cala os cliques e mantém os avisos |
 | Daltonismo | ✅ | Protanopia, deuteranopia e tritanopia, por `feColorMatrix` no `<html>`. **Corrige, não simula**, e alcança também os `<canvas>` do núcleo e dos gráficos — o que uma solução só de variáveis CSS não faria |
 | Sincronização entre dispositivos | 🚫 | Rede |
 
@@ -515,7 +515,7 @@ layouts guardados.
 
 ## Divergências assumidas
 
-Cinco pontos em que o código não segue a spec à letra. Todos deliberados.
+Seis pontos em que o código não segue a spec à letra. Todos deliberados.
 
 ### 1. Estrutura de pastas — resolvida como híbrido
 
@@ -581,3 +581,24 @@ da Parte 8. **Retirada por decisão do utilizador.**
 O centro fica só com a luz. A identidade continua no header, e o núcleo lê-se
 melhor sem uma legenda a competir com o brilho. Nada mais da camada 10 mudou:
 o núcleo energético, a respiração e o halo continuam como estavam.
+
+### 6. Um perfil não leva a acessibilidade
+
+A Parte 15 pede perfis completos, e a leitura literal seria guardar a
+aparência inteira — incluindo alto contraste, transparência reduzida, correção
+de daltonismo, escala da interface e bloqueio por inatividade.
+
+**Decisão:** um perfil guarda o **ambiente** e não a acessibilidade. A lista
+está em `AMBIENCE_KEYS` (`types/appearance.ts`), e o tipo `Ambience` torna a
+regra impossível de contornar por distração: o que não está lá não chega ao
+serviço que repõe.
+
+**Porquê:** quem precisa de correção de daltonismo precisa dela em todos os
+perfis. Um perfil "Jogos" que a desligasse ao ser aplicado era o sistema a
+tirar à pessoa aquilo de que ela depende para o ver. O bloqueio por
+inatividade fica de fora pela mesma ordem de razões — é uma decisão de
+segurança (Parte 14), não de decoração.
+
+Pela mesma lógica, **saltar de desktop não repõe som nem plugins**: mudar de
+espaço não é mudar de definições. Só um perfil guardado com um nome, aplicado
+de propósito, o faz. A distinção é o `WorkspaceScope`.

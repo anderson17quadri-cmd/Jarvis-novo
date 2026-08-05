@@ -6,6 +6,7 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { WindowRect } from '@/types/window';
+import { normaliseSnapshot } from '@/types/workspace';
 
 const RECT: WindowRect = { x: 0, y: 0, width: 500, height: 400 };
 const rectFor = (): WindowRect => RECT;
@@ -28,7 +29,7 @@ describe('capturar', () => {
 
     expect(snapshot.windows.map((entry) => entry.appId)).toEqual(['emails']);
     expect(snapshot.theme).toBe('oled');
-    expect(snapshot.wallpaper).toBe('liso');
+    expect(snapshot.ambience.wallpaper).toBe('liso');
     expect(snapshot.widgets.length).toBeGreaterThan(0);
   });
 
@@ -101,7 +102,7 @@ describe('aplicar', () => {
     useWindowStore.getState().open('emails', 'Emails', RECT);
 
     applyWorkspace(
-      { windows: [], widgets: [], theme: 'classic', wallpaper: 'nebulosa' },
+      normaliseSnapshot({ theme: 'classic' }),
       rectFor,
     );
 

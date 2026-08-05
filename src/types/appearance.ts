@@ -137,6 +137,52 @@ export const DEFAULT_APPEARANCE: Appearance = {
   idleLockMinutes: 15,
 };
 
+/**
+ * O que viaja num perfil, e o que nunca viaja (Parte 15 §Perfis).
+ *
+ * Um perfil leva o **ambiente**: papel de parede e a sua intensidade,
+ * partículas do núcleo, cursor e arredondamento. Não leva a
+ * **acessibilidade** — contraste alto, transparência reduzida, correção de
+ * daltonismo, escala da interface e bloqueio por inatividade ficam onde estão.
+ *
+ * A razão não é técnica. Quem precisa de correção de daltonismo precisa dela
+ * em todos os perfis; um perfil "Jogos" que a desligasse ao ser aplicado era o
+ * sistema a tirar à pessoa aquilo de que ela depende para o ver. O mesmo vale
+ * para o bloqueio por inatividade, que é uma decisão de segurança e não de
+ * decoração.
+ */
+export const AMBIENCE_KEYS = [
+  'wallpaper',
+  'wallpaperIntensity',
+  'coreParticles',
+  'cursor',
+  'radius',
+] as const;
+
+export type AmbienceKey = (typeof AMBIENCE_KEYS)[number];
+
+export type Ambience = Pick<Appearance, AmbienceKey>;
+
+/**
+ * Tira o ambiente de uma aparência completa.
+ *
+ * Escrito campo a campo de propósito: `Pick` obriga a que estejam cá todos, e
+ * por isso acrescentar uma chave a `AMBIENCE_KEYS` sem a copiar aqui não
+ * compila. Um ciclo sobre as chaves precisava de uma conversão de tipo, e essa
+ * calava exatamente o erro que se quer ver.
+ */
+export function ambienceOf(appearance: Appearance): Ambience {
+  return {
+    wallpaper: appearance.wallpaper,
+    wallpaperIntensity: appearance.wallpaperIntensity,
+    coreParticles: appearance.coreParticles,
+    cursor: appearance.cursor,
+    radius: appearance.radius,
+  };
+}
+
+export const DEFAULT_AMBIENCE: Ambience = ambienceOf(DEFAULT_APPEARANCE);
+
 /** Limites de cada valor contínuo, para a interface e para o store. */
 export const APPEARANCE_RANGES = {
   wallpaperIntensity: { min: 0, max: 1, step: 0.05 },

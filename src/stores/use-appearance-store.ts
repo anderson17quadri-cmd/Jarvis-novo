@@ -6,6 +6,7 @@ import {
   clampAppearance,
   DEFAULT_APPEARANCE,
   RADIUS_SCALE,
+  type Ambience,
   type Appearance,
 } from '@/types/appearance';
 
@@ -25,6 +26,14 @@ interface AppearanceState {
   readonly appearance: Appearance;
 
   set: <K extends keyof Appearance>(key: K, value: Appearance[K]) => void;
+  /**
+   * Aplica o ambiente de um perfil de uma vez (Parte 15 §Perfis).
+   *
+   * Não é açúcar sobre cinco chamadas ao `set`: cinco chamadas eram cinco
+   * escritas no `<html>` e cinco desenhos. E a acessibilidade não entra aqui
+   * por construção — o tipo `Ambience` não a tem.
+   */
+  applyAmbience: (ambience: Ambience) => void;
   reset: () => void;
   persist: () => Promise<void>;
   hydrate: () => Promise<void>;
@@ -77,6 +86,13 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
   set: (key, value) =>
     set((state) => {
       const next: Appearance = { ...state.appearance, [key]: value };
+      applyAppearance(next);
+      return { appearance: next };
+    }),
+
+  applyAmbience: (ambience) =>
+    set((state) => {
+      const next: Appearance = { ...state.appearance, ...ambience };
       applyAppearance(next);
       return { appearance: next };
     }),

@@ -6,6 +6,7 @@ import {
   soundService,
   SOUND_CATEGORY_DESCRIPTIONS,
   SOUND_CATEGORY_LABELS,
+  SOUND_CATEGORY_ORDER,
   type SoundCategory,
   type SoundName,
 } from '@/services/sound-service';
@@ -89,7 +90,7 @@ export function SoundSettings(): React.JSX.Element {
         <div className="mt-3 border-t border-line pt-2.5">
           <p className="t-label mb-2">Por categoria</p>
 
-          {(Object.keys(SOUND_CATEGORY_LABELS) as SoundCategory[]).map((category) => (
+          {SOUND_CATEGORY_ORDER.map((category) => (
             <label key={category} className="mt-1.5 flex items-center gap-2.5 first:mt-0">
               <span className="w-[70px] flex-shrink-0 text-[11.5px] text-t3">
                 {SOUND_CATEGORY_LABELS[category]}

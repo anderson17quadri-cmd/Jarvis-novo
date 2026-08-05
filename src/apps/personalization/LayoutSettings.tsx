@@ -5,13 +5,20 @@ import { useWorkspace } from '@/hooks/use-workspace';
 import { cn } from '@/lib/cn';
 import { notificationService } from '@/services/notification-service';
 import { useWorkspaceStore } from '@/stores/use-workspace-store';
+import type { SoundSnapshot } from '@/services/sound-service';
 import type { SavedLayout } from '@/types/workspace';
 
 /**
  * Layouts guardados (Parte 6.2 §Layouts salvos e Parte 15 §Perfis).
  *
  * Um layout é uma fotografia do espaço de trabalho — janelas abertas, widgets
- * e as suas posições, tema e papel de parede. Aplicá-lo repõe as quatro coisas.
+ * e as suas posições, tema, ambiente, som e plugins ativos. Aplicá-lo repõe
+ * tudo isso, e **não** repõe a acessibilidade: ver `AMBIENCE_KEYS`.
+ *
+ * O texto em cima diz exatamente o que a fotografia leva. Uma pessoa que
+ * carrega em "Produtividade" e vê o volume mudar tem de conseguir saber
+ * porquê antes de carregar, e não depois.
+ *
  * Os seis que vêm com o sistema não se apagam: voltariam no arranque seguinte,
  * vindos do código, e a interface parecia ignorar o pedido.
  */
@@ -30,7 +37,9 @@ export function LayoutSettings(): React.JSX.Element {
       'Layout guardado',
       `"${saved.name}" guarda ${saved.snapshot.windows.length} ${
         saved.snapshot.windows.length === 1 ? 'janela' : 'janelas'
-      } e ${saved.snapshot.widgets.filter((widget) => widget.isVisible).length} widgets.`,
+      }, ${saved.snapshot.widgets.filter((widget) => widget.isVisible).length} widgets e ${soundSummary(
+        saved.snapshot.sound,
+      )}.`,
     );
   };
 
@@ -39,9 +48,13 @@ export function LayoutSettings(): React.JSX.Element {
 
   return (
     <>
+      <p className="mb-2 text-[11.5px] leading-[1.5] text-t3">
+        Cada layout guarda as janelas abertas, os widgets e onde estão, o tema, o ambiente (papel de
+        parede, cursor, partículas do núcleo), o som e que plugins estavam ativos.
+      </p>
       <p className="mb-3 text-[11.5px] leading-[1.5] text-t3">
-        Cada layout guarda as janelas abertas, os widgets e onde estão, o tema e o papel de parede.
-        Aplicar repõe as quatro coisas de uma vez.
+        Não guarda a acessibilidade: contraste alto, correção de daltonismo, escala da interface e
+        bloqueio por inatividade ficam sempre como os deixou.
       </p>
 
       <div className="mb-s3 flex gap-2">
@@ -104,6 +117,18 @@ export function LayoutSettings(): React.JSX.Element {
   );
 }
 
+/**
+ * Como se descreve o som de um perfil numa linha.
+ *
+ * `null` é o caso de um layout guardado antes de os perfis levarem som: dizer
+ * "sem som" era mentira — o que ele faz é não mexer no que está.
+ */
+function soundSummary(sound: SoundSnapshot | null): string {
+  if (sound === null) return 'não mexe no som';
+  if (!sound.isEnabled) return 'som desligado';
+  return `som a ${Math.round(sound.volume * 100)}%`;
+}
+
 function LayoutRow({
   layout,
   onApply,
@@ -131,7 +156,7 @@ function LayoutRow({
           <span className="block truncate text-[11px] text-t3">
             {layout.description.length > 0
               ? layout.description
-              : `${layout.snapshot.windows.length} janelas · ${visibleWidgets} widgets · tema ${layout.snapshot.theme}`}
+              : `${layout.snapshot.windows.length} janelas · ${visibleWidgets} widgets · ${soundSummary(layout.snapshot.sound)}`}
           </span>
         </span>
       </button>
