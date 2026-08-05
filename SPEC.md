@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 891 testes |
+| Vitest | 911 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança** a **queda para o provedor local** quando a DeepSeek falha e a **escolha de modelo por pedido** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha a **escolha de modelo por pedido** e o **modo copiloto** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -326,7 +326,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Pipeline completo (ruído, silêncio, idioma, planeamento) | 🟡 | Transcrição → intenção → execução → síntese. Faltam as etapas do meio |
 | Agentes especializados | 🟡 | Um só agente, com 21 ferramentas sobre o sistema inteiro. Especializá-los em vários é o passo seguinte |
 | AI Orchestrator | ⬜ | Parte 12 |
-| Modo copiloto (sugestões discretas) | ⬜ | |
+| Modo copiloto (sugestões discretas) | ✅ | `services/assistant/copilot.ts`, no widget de IA. **Cada sugestão parte de uma contagem e propõe uma ferramenta que já existe** — tarefas fora do prazo, tarefas de hoje, janelas a mais. Nenhuma é uma frase de encorajamento, e um teste percorre-as a exigir que o facto tenha um número e que a ferramenta aceite os argumentos. O ficheiro lista o que ficou de fora e porquê: notificações por ler (já está no ecrã), estado pela carga do processador (no browser a métrica é simulada), hora tardia (não há ação a propor). Dispensa-se, e não volta na mesma sessão |
 | Log de ações | ✅ | `services/log-service.ts`, visível no Centro de Programador e na aba de auditoria da Privacidade |
 | Permissões por plugin | 🟡 | Declaradas, mostradas e **recusáveis** na janela de Privacidade, com a decisão persistida. Recusar ainda não impede nada, porque nenhum plugin executa código — e a interface di-lo por escrito |
 | **MCP** | 🚫 | Excluído da Fase 1 pelo próprio prompt original |
