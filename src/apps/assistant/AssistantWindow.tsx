@@ -320,6 +320,18 @@ function ChatMessage({
             {isAssistant ? 'Jarvis' : USER_FIRST_NAME}
           </span>
 
+          {/*
+            Que modelo respondeu (Parte 12 §Seleção automática).
+
+            Discreto, mas sempre à vista: com a escolha por pedido ligada, é a
+            única forma de saber que uma resposta foi ao modelo caro.
+          */}
+          {message.model !== undefined && (
+            <span className="truncate text-[10px] text-t3" title={message.model}>
+              {message.model}
+            </span>
+          )}
+
           <span
             className={cn(
               'flex items-center gap-px transition-opacity duration-hover',

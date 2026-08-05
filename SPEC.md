@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 867 testes |
+| Vitest | 891 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança** e a **queda para o provedor local** quando a DeepSeek falha |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança** a **queda para o provedor local** quando a DeepSeek falha e a **escolha de modelo por pedido** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -417,7 +417,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Item | | |
 |---|:--:|---|
 | Um provedor por módulo, trocável | ✅ | O padrão já está em `services/*/providers/` |
-| Seleção automática de modelo por tarefa | ⬜ | |
+| Seleção automática de modelo por tarefa | ✅ | `services/ai-providers/model-choice.ts`. Código, pedidos que peçam raciocínio e textos longos vão ao Reasoner; o resto vai ao Chat, que é mais rápido e mais barato — e **também desce** de modelo, não só sobe. **Não é um classificador aprendido**, e o ficheiro di-lo: é a mesma regra de palavras dos comandos de voz. Por isso erra, e por isso cada resposta mostra que modelo respondeu e porquê. Desligado por omissão: quem escolheu um modelo escolheu-o |
 | Regras de fallback | ✅ | `types/ai-failure.ts`. Quando o remoto falha, responde o provedor local — e **nunca em silêncio**: a nota diz o motivo e, quando há arranjo, diz qual. Se a resposta já tinha começado não se troca a meio: fica o que chegou, mais uma linha a dizer que se perdeu. Cancelar não é falha. Já no local, não há para onde cair, e diz-se |
 | **Ligação a OpenAI, Claude, Gemini, Ollama…** | 🚫 | Rede real — ver §2 |
 

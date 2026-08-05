@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Trash2, Wand2 } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
+import { LONG_PROMPT_CHARS } from '@/services/ai-providers/model-choice';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import {
   AI_PROVIDERS,
@@ -27,6 +28,7 @@ export function AiSettings(): React.JSX.Element {
   const setProvider = useAiSettingsStore((state) => state.setProvider);
   const setApiKey = useAiSettingsStore((state) => state.setApiKey);
   const setModel = useAiSettingsStore((state) => state.setModel);
+  const setAutoModel = useAiSettingsStore((state) => state.setAutoModel);
   const forgetKey = useAiSettingsStore((state) => state.forgetKey);
 
   const [draft, setDraft] = useState('');
@@ -182,7 +184,42 @@ export function AiSettings(): React.JSX.Element {
 
           <div>
             <p className="t-label mb-1.5">Modelo</p>
-            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Modelo">
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={settings.autoModel}
+              onClick={() => setAutoModel(!settings.autoModel)}
+              className={cn(
+                'mb-2 flex w-full items-center gap-2.5 rounded-input border px-3 py-2 text-left',
+                'transition-all duration-hover ease-out',
+                settings.autoModel
+                  ? 'border-accent/40 bg-accent/[.06]'
+                  : 'border-line hover:border-accent/25',
+              )}
+            >
+              <Wand2
+                className={cn('h-3.5 w-3.5 flex-shrink-0', settings.autoModel ? 'text-accent' : 'text-t3')}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[12px] font-medium">Escolher o modelo por pedido</span>
+                <span className="block text-cap leading-relaxed text-t3">
+                  Perguntas sobre código, pedidos que peçam raciocínio e textos com mais de{' '}
+                  {LONG_PROMPT_CHARS} caracteres vão ao Reasoner. O resto vai ao Chat, que é mais
+                  rápido e mais barato. Cada resposta diz qual respondeu.
+                </span>
+              </span>
+            </button>
+
+            <div
+              className={cn(
+                'flex flex-wrap gap-1 transition-opacity duration-hover',
+                settings.autoModel && 'opacity-45',
+              )}
+              role="radiogroup"
+              aria-label="Modelo"
+            >
               {DEEPSEEK_MODELS.map((model) => (
                 <button
                   key={model.id}
@@ -203,7 +240,9 @@ export function AiSettings(): React.JSX.Element {
               ))}
             </div>
             <p className="mt-1.5 text-cap text-t3">
-              {DEEPSEEK_MODELS.find((model) => model.id === settings.model)?.description}
+              {settings.autoModel
+                ? 'Com a escolha por pedido ligada, isto passa a ser só o modelo de recurso — o usado quando nada denuncia a tarefa.'
+                : DEEPSEEK_MODELS.find((model) => model.id === settings.model)?.description}
             </p>
           </div>
         </>

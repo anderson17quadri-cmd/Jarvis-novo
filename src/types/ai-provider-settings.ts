@@ -66,6 +66,14 @@ export interface AiSettings {
   readonly provider: AiProviderId;
   readonly apiKey: string;
   readonly model: DeepSeekModelId;
+  /**
+   * Deixar o sistema escolher o modelo por pedido (Parte 12).
+   *
+   * Desligado por omissão: quem escolheu um modelo escolheu-o, e passar por
+   * cima disso sem avisar era o sistema a gastar dinheiro por conta própria.
+   * A janela explica a regra antes de se ligar.
+   */
+  readonly autoModel: boolean;
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
@@ -74,6 +82,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   provider: 'regras',
   apiKey: '',
   model: 'deepseek-chat',
+  autoModel: false,
 };
 
 /**

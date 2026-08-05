@@ -21,6 +21,13 @@ export interface AssistantMessage {
   readonly isStreaming: boolean;
   /** Marcada como favorita (Parte 7.1 §Histórico). Sobrevive à sessão. */
   readonly isFavourite: boolean;
+  /**
+   * Que modelo respondeu, e porquê — "Reasoner · a pergunta pede raciocínio".
+   *
+   * Só existe quando houve escolha a registar. Uma resposta do provedor local
+   * não tem modelo nenhum a declarar, e inventar-lhe um rótulo era ruído.
+   */
+  readonly model?: string;
 }
 
 /**

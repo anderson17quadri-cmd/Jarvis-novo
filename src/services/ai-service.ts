@@ -1,6 +1,7 @@
 import { selectMessages, useAssistantStore } from '@/stores/use-assistant-store';
 import type { AiProvider, AiRequest } from '@/types/assistant';
 import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
+import { describeChoice } from './ai-providers/model-choice';
 import { RuleProvider } from './ai-providers/rule-provider';
 import { runTool, type ToolCall } from './assistant/tool-runner';
 import { readContext } from './assistant/context';
@@ -107,6 +108,7 @@ export class AIService {
       });
     }
 
+    this.noteModel(messageId);
     useAssistantStore.getState().finishMessage(messageId);
     useAssistantStore.getState().setMode('idle');
     this.controller = null;
@@ -185,6 +187,7 @@ export class AIService {
         return pending;
       }
 
+      this.noteModel(messageId);
       useAssistantStore.getState().finishMessage(messageId);
 
       if (signal.aborted) break;
@@ -234,6 +237,22 @@ export class AIService {
     useAssistantStore.getState().setMode(pending.length > 0 ? 'idle' : 'success');
     this.controller = null;
     return pending;
+  }
+
+  /**
+   * Deixa escrito que modelo respondeu (Parte 12 §Seleção automática).
+   *
+   * Só o provedor sabe o que acabou por usar, porque a escolha é por pedido.
+   * O provedor local não declara nada — não tem modelo nenhum a declarar, e
+   * inventar-lhe um rótulo era ruído.
+   */
+  private noteModel(messageId: string): void {
+    if (!(this.provider instanceof DeepSeekProvider)) return;
+
+    const choice = this.provider.choice;
+    if (!choice) return;
+
+    useAssistantStore.getState().noteModel(messageId, describeChoice(choice));
   }
 
   /**

@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { aiService } from '@/services/ai-service';
 import { RuleProvider } from '@/services/ai-providers/rule-provider';
 import { DeepSeekProvider } from '@/services/ai-providers/deepseek-provider';
+import { chooseModel } from '@/services/ai-providers/model-choice';
 import { logService } from '@/services/log-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import {
@@ -29,6 +30,7 @@ interface AiSettingsState {
   setProvider: (provider: AiProviderId) => void;
   setApiKey: (apiKey: string) => void;
   setModel: (model: DeepSeekModelId) => void;
+  setAutoModel: (autoModel: boolean) => void;
   /** Esquece a chave e volta ao provedor local. */
   forgetKey: () => void;
 
@@ -39,7 +41,11 @@ interface AiSettingsState {
 /** Constrói e liga o provedor descrito pelas preferências. */
 function applySettings(settings: AiSettings): void {
   if (settings.provider === 'deepseek' && settings.apiKey.trim().length > 0) {
-    aiService.setProvider(new DeepSeekProvider(settings.apiKey, settings.model));
+    aiService.setProvider(
+      new DeepSeekProvider(settings.apiKey, settings.model, undefined, (prompt) =>
+        chooseModel(prompt, settings.model, settings.autoModel),
+      ),
+    );
     return;
   }
 
@@ -68,6 +74,18 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
     // Sem a chave no detalhe. Regista-se o facto, não o segredo.
     logService.audit(
       apiKey.trim().length > 0 ? 'Guardar a chave da API' : 'Apagar a chave da API',
+      'executado',
+    );
+    void get().persist();
+  },
+
+  setAutoModel: (autoModel) => {
+    const settings = { ...get().settings, autoModel };
+    set({ settings });
+    applySettings(settings);
+
+    logService.audit(
+      autoModel ? 'Ligar a escolha automática de modelo' : 'Desligar a escolha automática de modelo',
       'executado',
     );
     void get().persist();

@@ -44,6 +44,13 @@ interface AssistantState {
   finishMessage: (id: string) => void;
   toggleFavourite: (id: string) => void;
   /**
+   * Diz que modelo respondeu — "Reasoner · a pergunta pede raciocínio".
+   *
+   * Não persiste sozinho: quem chama é o `AIService`, mesmo antes de fechar a
+   * mensagem, e é o `finishMessage` que grava.
+   */
+  noteModel: (id: string, model: string) => void;
+  /**
    * Tira uma mensagem da conversa.
    *
    * Usada quando o modelo pede ferramentas sem dizer nada: a mensagem fica
@@ -232,6 +239,16 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
 
     void get().persist();
   },
+
+  noteModel: (id, model) =>
+    set((state) => ({
+      conversations: mapActive(state, (conversation) => ({
+        ...conversation,
+        messages: conversation.messages.map((message) =>
+          message.id === id ? { ...message, model } : message,
+        ),
+      })),
+    })),
 
   removeMessage: (id) => {
     set((state) => ({

@@ -1,4 +1,5 @@
 import { AiFailure, failureFromStatus } from '@/types/ai-failure';
+import type { ModelChoice } from './model-choice';
 import type { AiProvider, AiRequest, AssistantContext, AssistantMemory } from '@/types/assistant';
 import { AI_PROVIDERS, type DeepSeekModelId } from '@/types/ai-provider-settings';
 import { toolsAsJsonSchema } from '../assistant/tools';
@@ -59,12 +60,36 @@ export class DeepSeekProvider implements AiProvider {
   readonly id = 'deepseek';
   readonly name = 'DeepSeek';
 
+  /**
+   * A escolha da última resposta (Parte 12 §Seleção automática).
+   *
+   * O provedor não decide a política — recebe-a em `pickModel`. Guarda só o
+   * que usou, para quem escreve a resposta poder dizê-lo. Sem isto, ligar a
+   * escolha automática era o sistema a gastar mais dinheiro em silêncio.
+   */
+  private lastChoice: ModelChoice | null = null;
+
   constructor(
     private apiKey: string,
     private model: DeepSeekModelId = 'deepseek-chat',
     /** Injetável para os testes correrem sem rede. */
     private readonly fetchImpl: typeof fetch = globalThis.fetch.bind(globalThis),
+    /**
+     * Que modelo usar para cada pedido.
+     *
+     * Por omissão, sempre o mesmo — é o comportamento de quem escolheu um
+     * modelo à mão, e é o que mantém este provedor previsível nos testes.
+     */
+    private readonly pickModel: (prompt: string) => ModelChoice = () => ({
+      model: this.model,
+      reason: 'fixo',
+    }),
   ) {}
+
+  /** O modelo que respondeu da última vez, e porquê. `null` antes da primeira. */
+  get choice(): ModelChoice | null {
+    return this.lastChoice;
+  }
 
   isConfigured(): boolean {
     return this.apiKey.trim().length > 0;
@@ -92,6 +117,9 @@ export class DeepSeekProvider implements AiProvider {
   ): Promise<StreamResult> {
     if (!this.isConfigured()) throw new AiFailure('configuracao');
 
+    const choice = this.pickModel(request.prompt);
+    this.lastChoice = choice;
+
     const timeout = new AbortController();
     const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
     const onAbort = (): void => timeout.abort();
@@ -105,7 +133,7 @@ export class DeepSeekProvider implements AiProvider {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: choice.model,
           stream: true,
           messages,
           tools: toolsAsJsonSchema(),
@@ -133,6 +161,9 @@ export class DeepSeekProvider implements AiProvider {
   async *stream(request: AiRequest): AsyncIterable<string> {
     if (!this.isConfigured()) throw new AiFailure('configuracao');
 
+    const choice = this.pickModel(request.prompt);
+    this.lastChoice = choice;
+
     // Um pedido sem limite de tempo fica pendurado para sempre numa rede má, e
     // o núcleo ficava a "analisar" sem nunca responder.
     const timeout = new AbortController();
@@ -150,7 +181,7 @@ export class DeepSeekProvider implements AiProvider {
           Authorization: `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: choice.model,
           stream: true,
           messages: buildMessages(request),
         }),
