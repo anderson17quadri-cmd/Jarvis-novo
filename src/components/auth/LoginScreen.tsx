@@ -28,6 +28,7 @@ import { useTypewriter } from '@/hooks/use-typewriter';
 import { cn } from '@/lib/cn';
 import { formatLongDate, formatTime } from '@/lib/format';
 import { notificationService } from '@/services/notification-service';
+import { soundService } from '@/services/sound-service';
 import { measurePasswordStrength } from './password-strength';
 import { PinKeypad } from './PinKeypad';
 import { USER_FIRST_NAME, USER_NAME } from '@/constants/user';
@@ -113,6 +114,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
       if (isResolvedRef.current) return;
       isResolvedRef.current = true;
 
+      soundService.play('success');
       setHint({ text: message, tone: 'ok' });
       timersRef.current.push(
         setTimeout(
@@ -130,6 +132,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
   );
 
   const deny = useCallback((): void => {
+    soundService.play('error');
     setShaking(true);
     timersRef.current.push(setTimeout(() => setShaking(false), 440));
     setHint({
@@ -149,6 +152,10 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
   const runFaceScan = useCallback((): void => {
     setScanningFace(true);
+    // A categoria "sistema" já se descrevia como "arranque e leitura
+    // biométrica" (Parte 15 §Sons) sem nunca ter tocado nada — nem aqui, nem
+    // no arranque.
+    soundService.play('scanner');
     setHint({ text: 'A analisar biometria…', tone: 'neutral' });
     timersRef.current.push(
       setTimeout(
@@ -167,6 +174,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
       return;
     }
 
+    soundService.play('scanner');
     let progress = 0;
     const timer = setInterval(() => {
       progress += 8 + Math.random() * 10;

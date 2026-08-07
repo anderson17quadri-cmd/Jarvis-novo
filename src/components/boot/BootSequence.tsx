@@ -5,6 +5,7 @@ import { AICore } from '@/components/ai-core/AICore';
 import { useReducedMotion } from '@/hooks/use-media-query';
 import { useTypewriter } from '@/hooks/use-typewriter';
 import { cn } from '@/lib/cn';
+import { soundService } from '@/services/sound-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import { voiceService } from '@/services/voice-service';
 import { BootChecks } from './BootChecks';
@@ -66,12 +67,25 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
       if (hasBooted || reducedMotion) {
         setFastBoot(true);
         setStage(7);
+
+        /*
+         * Sem som quando é por redução de movimento: essa preferência pede
+         * menos estímulo, e a saída aqui é quase instantânea — não haveria
+         * tempo de perceber o som como um sinal, só como um sobressalto.
+         */
+        if (hasBooted && !reducedMotion) soundService.play('open');
+
         wait(finish, reducedMotion ? 0 : BOOT_TIMING.fastBootDuration);
         return;
       }
 
       setStage(1);
-      wait(() => setStage(2), BOOT_TIMING.sparkDuration);
+      wait(() => {
+        setStage(2);
+        // A categoria "sistema" já se descrevia como "arranque e leitura
+        // biométrica" (Parte 15 §Sons); o arranque nunca lhe tinha tocado.
+        soundService.play('scanner');
+      }, BOOT_TIMING.sparkDuration);
       wait(() => setStage(3), BOOT_TIMING.sparkDuration + BOOT_TIMING.ringsDuration);
     });
 
@@ -93,6 +107,9 @@ export function BootSequence({ onComplete }: BootSequenceProps): React.JSX.Eleme
         setStage(7);
         // A IA fala na última etapa, sobre a identidade do sistema.
         voiceService.speak(BOOT_SPOKEN_LINE);
+        // O arranque completo termina com sucesso — e não com o "open"
+        // genérico do arranque rápido, que não verificou nada.
+        soundService.play('success');
         wait(finish, BOOT_TIMING.identityDuration);
       }, BOOT_TIMING.coreDuration);
     }, BOOT_TIMING.graphsDuration);

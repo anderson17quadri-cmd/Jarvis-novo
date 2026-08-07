@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 911 testes |
+| Vitest | 920 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha a **escolha de modelo por pedido** e o **modo copiloto** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha, a **escolha de modelo por pedido**, o **modo copiloto** e os **sons do arranque e do login biométrico** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -228,7 +228,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | 10. Desktop em cascata | ✅ | `useEntranceCascade` |
 | Arranque rápido com "Bem-vindo de volta" | ✅ | |
 | Duração 6–10s | ✅ | ~9s |
-| Efeitos sonoros | ⬜ | Sem recursos de áudio na Fase 1 |
+| Efeitos sonoros | ✅ | A nota dizia "sem recursos de áudio na Fase 1" — já não é verdade desde que o `soundService` passou a sintetizar sem ficheiros (Bloco H). A categoria "sistema" já se descrevia como "arranque e leitura biométrica", e nenhum código lhe tocava: `scanner` ao formarem-se os anéis, um `click` por verificação, `success` na identidade final. O arranque rápido soa a `open`, não a `success` — não verificou nada, não merece a fanfarra. Com redução de movimento, silêncio: a saída é quase instantânea |
 | Modo de erro simulado | ⬜ | Marcado como opcional na spec |
 | Botão "Mostrar sequência completa" nas configurações | ✅ | Na janela de Personalização e na Command Palette; a ação vive no `useSessionStore`, sem duplicação |
 

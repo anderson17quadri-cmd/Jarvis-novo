@@ -3,6 +3,7 @@ import { Check, Circle } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { useReducedMotion } from '@/hooks/use-media-query';
+import { soundService } from '@/services/sound-service';
 import { BOOT_STEPS, BOOT_TIMING } from './boot-steps';
 
 interface CheckState {
@@ -55,6 +56,9 @@ export function BootChecks({ onComplete }: BootChecksProps): React.JSX.Element {
                   i === index ? { ...state, done: true, durationMs } : state,
                 ),
               );
+              // Um clique por verificação — dez, a 190ms de distância uma da
+              // outra, é o ritmo da própria checklist a marcar passagem.
+              soundService.play('click');
 
               if (index === BOOT_STEPS.length - 1) {
                 timers.push(setTimeout(onComplete, 400));
