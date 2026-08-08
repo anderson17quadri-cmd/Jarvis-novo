@@ -4,6 +4,14 @@
  * Degrada com elegância a sério: num ambiente sem a API, `isSupported` devolve
  * `false` e a interface esconde o microfone, em vez de mostrar um botão que não
  * faz nada ou lançar um erro.
+ *
+ * **O reconhecimento precisa de um serviço de voz por trás**, não só do
+ * construtor existir. O Chrome tem-no porque fala com os servidores da
+ * Google; o WebView2 (o motor do Tauri no Windows) é Chromium mas não traz
+ * esse serviço — por isso o botão pode reagir e o microfone nunca chegar a
+ * ouvir nada, sem erro nenhum visível. É por isto que o código de erro do
+ * navegador (`event.error`) se regista sempre: sem ele, "não funciona" fica
+ * sem forma de se distinguir de "não tem permissão" ou "não há serviço".
  */
 
 /** O reconhecimento de voz não está nos tipos padrão do DOM. */
@@ -18,13 +26,27 @@ interface SpeechRecognitionEventLike {
   };
 }
 
+/**
+ * O código de erro do navegador, tal como a especificação o define:
+ * `'no-speech'`, `'aborted'`, `'audio-capture'`, `'network'`,
+ * `'not-allowed'`, `'service-not-allowed'`, `'bad-grammar'` ou
+ * `'language-not-supported'` — mas em `string`, para não depender do
+ * `SpeechRecognitionErrorCode` do DOM real, que varia consoante a `lib` do
+ * TypeScript configurada.
+ */
+export type SpeechRecognitionErrorKind = string;
+
+interface SpeechRecognitionErrorEventLike {
+  readonly error: SpeechRecognitionErrorKind;
+}
+
 interface SpeechRecognitionLike {
   lang: string;
   continuous: boolean;
   interimResults: boolean;
   onresult: ((event: SpeechRecognitionEventLike) => void) | null;
   onend: (() => void) | null;
-  onerror: (() => void) | null;
+  onerror: ((event: SpeechRecognitionErrorEventLike) => void) | null;
   start(): void;
   stop(): void;
 }
@@ -46,7 +68,8 @@ export interface VoiceCallbacks {
   readonly onTranscript: (text: string) => void;
   readonly onStart?: () => void;
   readonly onEnd?: () => void;
-  readonly onError?: () => void;
+  /** O código que o navegador deu, quando há um — nunca inventado. */
+  readonly onError?: (kind: SpeechRecognitionErrorKind | null) => void;
 }
 
 export class VoiceService {
@@ -96,10 +119,10 @@ export class VoiceService {
         callbacks.onEnd?.();
       };
 
-      recognition.onerror = (): void => {
+      recognition.onerror = (event): void => {
         this.listening = false;
         this.recognition = null;
-        callbacks.onError?.();
+        callbacks.onError?.(event?.error ?? null);
       };
 
       recognition.start();
@@ -107,10 +130,17 @@ export class VoiceService {
       this.listening = true;
       callbacks.onStart?.();
       return true;
-    } catch {
-      // O browser pode recusar sem permissão de microfone.
+    } catch (error) {
+      /*
+       * O `start()` pode recusar de forma síncrona — sem permissão de
+       * microfone, ou sem o serviço de reconhecimento por trás do construtor
+       * (o caso do WebView2, ver a nota no topo do ficheiro). Sem chamar
+       * `onError` aqui, isto era um botão que não faz nada, sem pista
+       * nenhuma de porquê — o próprio defeito que se estava a corrigir.
+       */
       this.listening = false;
       this.recognition = null;
+      callbacks.onError?.(error instanceof Error ? error.message : 'start-falhou');
       return false;
     }
   }

@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 1031 testes |
+| Vitest | 1035 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
