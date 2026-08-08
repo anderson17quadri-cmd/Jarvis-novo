@@ -301,7 +301,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Digitação letra a letra | ✅ | `use-typewriter.ts` |
 | Comandos naturais compreendidos | ✅ | Com a DeepSeek ligada, **o modelo escolhe as ações** de um catálogo de 21 ferramentas, e encadeia-as: um pedido pode abrir uma janela, criar uma tarefa e mudar de tema de uma vez. Sem modelo, continua o interpretador de padrões |
 | Memória local (preferências, últimos comandos) | ✅ | `services/assistant/memory-service.ts` — só guarda o que for dito por palavras ("trata-me por…", "moro em…"). Deduzir preferências do resto da conversa seria inventar sobre uma pessoa e depois usá-lo como verdade |
-| Contexto (hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts`. A fonte é injetada pela `App`, como o executor das automações — o serviço não conhece store nenhuma |
+| Contexto (hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts`. A fonte é injetada pela `App`, como o executor das automações — o serviço não conhece store nenhuma. O tema chegava por identificador (`oled`) em vez de nome (`OLED Black`), a mesma família de defeito das automações e da voz — corrigido com `lib/names.ts` em `App.tsx` |
 | **Provedor de IA real** | ✅ | **DeepSeek ligada.** `deepseek-provider.ts` — API compatível com a da OpenAI, streaming pedaço a pedaço, cancelável. Trocar de provedor é uma linha; nenhum componente muda. A chave é escrita pelo utilizador na Personalização e fica no dispositivo |
 | Anexos: imagens, PDF, áudio, vídeo | ⬜ | Precisa de sistema de ficheiros |
 

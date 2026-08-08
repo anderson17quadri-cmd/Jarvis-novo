@@ -71,7 +71,9 @@ export interface AssistantContext {
   /** Títulos das janelas abertas, pela ordem em que estão. */
   readonly openWindows: readonly string[];
   readonly unreadNotifications: number;
+  /** Já é o nome a mostrar ("Foco", "Apresentação"), não o identificador. */
   readonly systemState: string;
+  /** Já é o nome a mostrar ("OLED Black"), não o identificador ("oled"). */
   readonly theme: string;
 }
 

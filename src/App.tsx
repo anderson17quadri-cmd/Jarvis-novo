@@ -22,6 +22,7 @@ import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { USER_FIRST_NAME } from '@/constants/user';
+import { themeName } from '@/lib/names';
 import { aiService } from '@/services/ai-service';
 import { setContextSource } from '@/services/assistant/context';
 import { memoryService } from '@/services/assistant/memory-service';
@@ -197,7 +198,9 @@ export function App(): React.JSX.Element {
           .getState()
           .notifications.filter((notification) => !notification.isRead).length,
         systemState: useSystemStateStore.getState().definition.name.toLowerCase(),
-        theme: useThemeStore.getState().theme,
+        // `themeName` cai no identificador só para temas personalizados, que
+        // não têm entrada em `THEMES` — o mesmo limite que a voz já tinha.
+        theme: themeName(useThemeStore.getState().theme),
       };
     });
   }, []);
