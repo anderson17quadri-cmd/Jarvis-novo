@@ -39,11 +39,37 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
+## 1.1 Confirmado no Windows nativo — 08/08/2026
+
+**Primeira execução a sério, fora do contentor Linux.** `npm run tauri dev`
+correu num PC com Windows, e abriu como aplicação nativa — não browser: tem
+o seu próprio ícone na barra de tarefas do Windows, distinto do Chrome ou do
+Edge. Visto na hora, com prints: arranque, login, desktop com widgets, troca
+de tema em tempo real ("Arctic White está agora ativo").
+
+**A prova de que as métricas são reais, não simuladas:** o widget de CPU
+mostrou **12 núcleos · 4.0 GHz** — números que só podem vir de uma leitura a
+sério do processador da máquina (`sysinfo`, em Rust), não de um valor
+inventado no browser. Isto confirma, sozinho, que a ponte
+`invoke() → Rust → sysinfo` funciona no nativo a sério.
+
+**O que isto desbloqueia:** este era o pré-requisito combinado desde o
+início do projeto para haver comandos Rust novos — "sem comandos nativos
+novos até a Fase 1 estar confirmada no PC real". Está confirmada. Passa a
+haver via livre para a Fase 3 (`docs/spec/fase-3-controlo-direto.md`) e para
+ligar o orquestrador multi-provedor à interface
+(`docs/spec/orquestrador-multi-provedor.md`).
+
+**O que isto ainda não confirma**, porque não apareceu nos prints e não foi
+testado à parte: bandeja e menu, atalho global, notificações nativas do
+sistema, diálogos de ficheiro, persistência via plugin `store`, e os
+builds de instalação (MSI/NSIS). Continuam na tabela abaixo, como estavam.
+
 ## 2. Por confirmar — só com Tauri nativo
 
-**Nada disto foi alguma vez executado.** O código compila para estes alvos, mas
-compilar não é correr. Fica por verificar até haver um PC com Windows e um
-dispositivo Android.
+O essencial já correu a sério (ver §1.1) — o que falta abaixo é o resto do
+nativo que ainda não apareceu num ecrã: bandeja, atalho global, notificações
+do sistema, diálogos de ficheiro, persistência, e os builds de instalação.
 
 > **Já há forma de instalar no telemóvel.** A PWA é a via disponível até o
 > build Android do Tauri ser confirmado: `npm run build && npm run preview`, e
@@ -82,7 +108,7 @@ npm run tauri android dev      # dispositivo Android
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
 | **Leitura real do disco** — explorador de ficheiros | `apps/files/`, `data/files.ts` | 🚫 bloqueado |
-| Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ⚠️ por testar |
+| Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ✅ **confirmado 08/08/2026** — CPU real no Windows, ver §1.1. RAM, disco e rede vêm da mesma leitura, ainda sem print à parte |
 | Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
 | Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
 | Atalho global `CTRL+ALT+J` | `src-tauri/src/shortcuts.rs` | ⚠️ por testar |

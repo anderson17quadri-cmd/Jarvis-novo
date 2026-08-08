@@ -121,4 +121,6 @@ Falta, para a próxima etapa:
    da DeepSeek (Parte 14).
 
 Nenhum destes seis pontos precisa de nativo — é tudo browser e configuração,
-o mesmo tipo de trabalho que já pôs a DeepSeek a funcionar.
+o mesmo tipo de trabalho que já pôs a DeepSeek a funcionar. E mesmo que
+precisasse, a Fase 1 já está validada no PC real desde 08/08/2026 (`SPEC.md`
+§1.1) — o portão que faltava para qualquer trabalho nativo está aberto.

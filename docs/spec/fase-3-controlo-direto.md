@@ -5,8 +5,10 @@
 > outros: não "mais uma janela do sistema", mas o JARVIS a operar o computador
 > como uma pessoa operaria, com a mão no rato e no teclado.
 >
-> **Estado: só desenho. Nenhuma linha de código nativo escrita.** Depende de
-> dois pré-requisitos que ainda não se cumpriram — ver §0.
+> **Estado: só desenho. Nenhuma linha de código nativo escrita.** O primeiro
+> pré-requisito (Fase 1 validada no PC real) **cumpriu-se em 08/08/2026** —
+> ver `SPEC.md` §1.1. Falta o segundo: a ativação explícita na Privacidade.
+> Ver §0.
 >
 > **Princípio único, do qual tudo o resto deriva:** um agente com controlo do
 > rato e do teclado tem, na prática, o mesmo alcance que a pessoa sentada à
@@ -21,11 +23,11 @@
 
 ## 0. Pré-requisitos, sem exceção
 
-1. **Fase 1 validada no PC real.** Combinado desde o início do projeto: sem
-   comandos Rust novos até isso acontecer — e este é, de longe, o maior
-   conjunto de comandos Rust novos alguma vez proposto aqui. Construir por
-   cima de uma base ainda não confirmada só torna mais difícil saber, quando
-   algo correr mal, se a culpa é do alicerce ou do andar novo.
+1. ~~**Fase 1 validada no PC real.**~~ **Cumprido em 08/08/2026** —
+   `npm run tauri dev` a correr a sério no Windows, com métricas de CPU reais
+   (ver `SPEC.md` §1.1). Este continua a ser, de longe, o maior conjunto de
+   comandos Rust novos alguma vez proposto aqui — por isso vale a pena ir por
+   sub-fases (§5) mesmo com o portão aberto, em vez de tudo de uma vez.
 2. **Ativação explícita, por fora do código.** Mesmo depois de escrito, o
    controlo direto começa **desligado**. Uma pessoa tem de ir à janela de
    Privacidade e ligá-lo deliberadamente — a mesma filosofia das permissões de
