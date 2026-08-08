@@ -1,3 +1,4 @@
+import { appTitle, stateName, themeName, widgetName } from '@/lib/names';
 import { EVENT_LABELS, type SystemEventName } from '@/services/event-bus';
 import type { AppId } from './app';
 import type { SystemStateId } from './system-state';
@@ -174,19 +175,27 @@ export function describeTrigger(trigger: AutomationTrigger): string {
   }
 }
 
-/** Descreve uma ação em português. */
+/**
+ * Descreve uma ação em português.
+ *
+ * Nomes, não identificadores — a mesma regra dos comandos de voz (ver
+ * `lib/names.ts`). Os cinco exemplos que vêm com o sistema usam identificadores
+ * a sério (`oled`, `economia`, `news`…), e sem isto "Modo noite" mostrava-se
+ * como "Aplicar o tema oled · Passar ao modo economia" na própria janela de
+ * automações — o defeito que a voz já tinha tido.
+ */
 export function describeAction(action: AutomationAction): string {
   switch (action.kind) {
     case 'abrir-janela':
-      return `Abrir a janela ${action.appId}`;
+      return `Abrir a janela ${appTitle(action.appId)}`;
     case 'notificar':
       return `Avisar: "${action.title}"`;
     case 'tema':
-      return `Aplicar o tema ${action.theme}`;
+      return `Aplicar o tema ${themeName(action.theme)}`;
     case 'estado-sistema':
-      return `Passar ao modo ${action.state}`;
+      return `Passar ao modo ${stateName(action.state)}`;
     case 'widget':
-      return `${action.show ? 'Mostrar' : 'Esconder'} o widget ${action.widget}`;
+      return `${action.show ? 'Mostrar' : 'Esconder'} o widget ${widgetName(action.widget)}`;
     case 'falar':
       return `Dizer em voz alta: "${action.text}"`;
   }
@@ -200,6 +209,6 @@ export function describeCondition(condition: AutomationCondition): string {
     case 'faixa-horaria':
       return `Só entre as ${condition.fromHour}h e as ${condition.toHour}h`;
     case 'estado-sistema':
-      return `Só no modo ${condition.state}`;
+      return `Só no modo ${stateName(condition.state)}`;
   }
 }

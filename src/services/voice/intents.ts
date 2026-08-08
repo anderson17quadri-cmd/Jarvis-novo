@@ -1,4 +1,4 @@
-import { getAppDefinition } from '@/apps/registry';
+import { appTitle, stateName, themeName, widgetName } from '@/lib/names';
 import { normalizeSearch } from '@/utils/text';
 import { THEMES, type ThemeId } from '@/design-system/tokens';
 import { ALL_WIDGETS } from '@/widgets/registry';
@@ -275,20 +275,6 @@ function matchApp(text: string): AppId | null {
 // ── Descrição ──────────────────────────────────────────────────────────────
 
 /**
- * O nome de um tema, ou o identificador quando é personalizado.
- *
- * Os temas do utilizador não estão em `THEMES` — vivem noutro store, e ir lá
- * buscá-los daqui punha uma função pura a depender de estado.
- */
-function themeName(theme: ThemeId): string {
-  return THEMES.find((entry) => entry.id === theme)?.name ?? theme;
-}
-
-function widgetName(widget: WidgetId): string {
-  return ALL_WIDGETS.find((entry) => entry.id === widget)?.name ?? widget;
-}
-
-/**
  * Descreve uma intenção em português, para a confirmação e o histórico.
  *
  * Nomes, não identificadores. "Abrir emails" e "o widget cpu" eram o nome
@@ -299,13 +285,13 @@ function widgetName(widget: WidgetId): string {
 export function describeIntent(intent: VoiceIntent): string {
   switch (intent.kind) {
     case 'abrir-janela':
-      return `Abrir ${getAppDefinition(intent.appId).title}`;
+      return `Abrir ${appTitle(intent.appId)}`;
     case 'fechar-janelas':
       return 'Fechar todas as janelas';
     case 'tema':
       return `Aplicar o tema ${themeName(intent.theme)}`;
     case 'estado':
-      return `Passar ao modo ${SYSTEM_STATES[intent.state].name}`;
+      return `Passar ao modo ${stateName(intent.state)}`;
     case 'widget':
       return `${intent.show ? 'Mostrar' : 'Esconder'} o widget ${widgetName(intent.widget)}`;
     case 'esconder-widgets':

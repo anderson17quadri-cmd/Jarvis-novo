@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 977 testes |
+| Vitest | 989 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -430,7 +430,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Gatilho → Condições → Ações | ✅ | `services/automation-service.ts` |
 | Gatilhos por hora, intervalo, evento e manual | ✅ | O relógio guarda marcas de disparo — uma regra das 08:00 corre uma vez, não três |
 | Condições: dia da semana, faixa horária, estado do sistema | ✅ | Funções puras, testadas à parte. A faixa que atravessa a meia-noite também |
-| Ações: abrir janela, notificar, tema, estado, widget, voz | ✅ | Cumpridas por um executor injetado — o motor não conhece o WindowManager |
+| Ações: abrir janela, notificar, tema, estado, widget, voz | ✅ | Cumpridas por um executor injetado — o motor não conhece o WindowManager. As frases que as descrevem mostravam identificadores crus (`oled`, `economia`, `news`) até se partilhar `lib/names.ts` com os comandos de voz, que já tinham tido o mesmo defeito. Sem teste nenhum sobre o ficheiro, ninguém tinha reparado |
 | Histórico com resultado, duração e motivo | ✅ | 60 execuções, persistido |
 | Janela com ligar/desligar, executar e apagar | ✅ | `apps/automations/` |
 | Templates | 🟡 | Cinco exemplos, todos desligados por omissão |
