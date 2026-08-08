@@ -39,8 +39,8 @@ Nenhuma secção abaixo é implementada enquanto o §0 não estiver cumprido.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  PRESENÇA        há alguém à frente do ecrã?             │
-│  (webcam)         → sem isto, nada corre                 │
+│  PRESENÇA        disseste a palavra-passe nos últimos     │
+│  (voz)            30 minutos?  → sem isto, nada corre     │
 ├─────────────────────────────────────────────────────────┤
 │  PERCEÇÃO        o que está no ecrã agora?                │
 │  (captura)        → efémera, indicador sempre visível     │
@@ -56,29 +56,57 @@ Nenhuma secção abaixo é implementada enquanto o §0 não estiver cumprido.
 Cada camada é independente e testável sozinha. Nenhuma é decorativa — se uma
 falhar ou estiver desligada, a camada acima também não corre.
 
-### 1.1 Presença (câmara)
+### 1.1 Presença (palavra-passe falada)
 
-**O que é.** Deteção simples de "há uma pessoa à frente do ecrã", por um
-modelo leve a correr **localmente, na máquina** — nunca um vídeo enviado para
-fora. Não é reconhecimento facial, não sabe quem és, só que há alguém.
+**Mudança face à primeira versão deste desenho.** A ideia original usava a
+câmara para detetar presença. Foi substituída por uma palavra-passe dita em
+voz alta — e é estritamente melhor para o que interessa aqui: a câmara só
+provava que havia *alguém* à frente do ecrã; a palavra-passe prova que é
+**alguém que sabe o segredo**. É autenticação a sério, não só presença — e
+não pede câmara nenhuma.
 
-**O que isto não é — e tem de ficar dito por escrito na própria interface,
-não só aqui.** Presença não é autenticação. Um convidado, um filho, alguém
-que pegou no portátil destrancado — todos passam neste teste. O que a
-presença resolve é outro problema, real mas diferente: impede o JARVIS de
-agir **sem ninguém a ver**, o que fecha a janela de "ele fez uma coisa
-enquanto eu não estava a olhar e só reparei depois". Quem quiser autenticação
-a sério continua a precisar do bloqueio por inatividade que já existe (Parte
-14) e, no nativo, de algo como Windows Hello — isso é outro pré-requisito
-⬜ já registado no `SPEC.md`, não este.
+**Como funciona:**
+- Uma frase à tua escolha, configurada uma vez na janela de Privacidade.
+  Guardada como **hash**, nunca em texto simples — o mesmo cuidado que já se
+  aplica à chave da API (Parte 14): nunca no backup, nunca no registo de
+  auditoria, nunca visível depois de escrita.
+- Dita por voz, através do reconhecimento que já existe (Parte 7.2). Ao ser
+  reconhecida, abre uma **sessão de controlo direto de 30 minutos**
+  (duração configurável).
+- Durante os 30 minutos, as ações de controlo direto não voltam a pedir a
+  palavra — mas continuam, sempre, a pedir confirmação por passo (§1.3).
+  A palavra abre o portão da sessão; não substitui a confirmação de cada
+  ação.
+- Ao fim da janela, fecha sozinha. A próxima ação de controlo direto pede a
+  palavra outra vez.
+- **Liga-se ao bloqueio por inatividade que já existe** (Parte 14): se o
+  ecrã bloquear por inatividade a meio dos 30 minutos, a sessão de controlo
+  fecha imediatamente também, sem esperar pelo temporizador próprio — cobre
+  o caso de teres saído do sítio.
+- Indicador sempre visível enquanto a sessão está ativa — por exemplo
+  "Controlo direto ativo · 18 min" no header, nunca escondido.
 
-**Regras:**
-- Indicador visível sempre que a câmara está ativa — um ícone no header, sem
-  exceção, sem modo silencioso.
-- Se a presença desaparecer a meio de uma tarefa, a tarefa **pausa**, não
-  cancela — retoma com uma confirmação nova quando a presença voltar.
-- A câmara só liga durante uma tarefa de controlo direto. Fora disso, está
-  desligada — não é vigilância contínua.
+**Dois avisos honestos:**
+1. **Uma palavra dita em voz alta pode ser ouvida** — por alguém por perto,
+   ou gravada e reproduzida depois. É mais fraca do que uma password escrita,
+   pela própria natureza de ser áudio. Para um sistema pessoal isto costuma
+   ser um risco aceitável, mas é diferente de "só eu sei" — é "só quem
+   estiver a ouvir quando eu disser" também sabe. Se quiseres mais força, dá
+   para exigir a palavra escrita em vez de falada, ou as duas — decisão tua,
+   ver §6.
+2. **O reconhecimento de voz do browser normalmente processa o áudio num
+   servidor externo**, não localmente — isto já é verdade para todo o
+   sistema de voz existente, não é introduzido por esta funcionalidade, mas
+   vale a pena saberes: a palavra-passe dita em voz alta passa por aí antes
+   de chegar ao JARVIS. Não fica guardada por nós, mas sai da máquina no
+   caminho.
+
+**Vantagem técnica que também é boa notícia:** ao contrário da câmara, isto
+**não precisa de nenhum comando Rust novo**. O reconhecimento de voz já
+existe, o temporizador de sessão é lógica normal em TypeScript, o hash é uma
+função do browser. Não há crate nova, não há capability nova. Por isso esta
+camada entra na sub-fase 3.1 (§5), a única que não espera pela Fase 1 no PC
+— pode começar a construir-se já.
 
 ### 1.2 Perceção (captura de ecrã)
 
@@ -144,8 +172,8 @@ depois — é a camada que transforma "confia em mim" em "vê tu mesmo".
 
 > "Abre o Photoshop e roda esta imagem 90 graus."
 
-1. **Presença.** Confirma câmara ligada e alguém à frente. Sem isto, pára
-   aqui, com um aviso.
+1. **Presença.** Confirma se a sessão de 30 minutos ainda está ativa. Se não
+   estiver, pede a palavra-passe por voz antes de continuar.
 2. **Plano em português**, mostrado antes de qualquer clique: "1. Abrir
    Photoshop · 2. Abrir o ficheiro X · 3. Rodar 90° · 4. Guardar". Aceitas o
    plano inteiro ou passo a passo — escolha tua, guardada como preferência.
@@ -158,7 +186,7 @@ depois — é a camada que transforma "confia em mim" em "vê tu mesmo".
 6. Repete 3–5 até ao fim do plano. "Guardar" é passo irreversível — pede
    confirmação própria, mesmo que tenhas aceitado o resto em bloco.
 
-Se em qualquer ponto a presença falhar, tocares no rato, ou carregares no
+Se em qualquer ponto a sessão expirar, tocares no rato, ou carregares no
 travão de mão: pára onde está, sem terminar o passo a meio.
 
 ---
@@ -167,9 +195,11 @@ travão de mão: pára onde está, sem terminar o passo a meio.
 
 - **Não corre em segundo plano.** Mesma regra das automações: só enquanto o
   JARVIS estiver aberto e visível.
-- **Não guarda vídeo de câmara nem prints em disco por omissão.** Efémero por
-  definição, não por configuração esquecida.
-- **Não é reconhecimento de identidade.** É presença. Ver §1.1.
+- **Não guarda a palavra-passe em texto simples nem prints em disco por
+  omissão.** A palavra vive como hash; os prints são efémeros por definição,
+  não por configuração esquecida.
+- **Não usa câmara.** A camada de presença ficou resolvida por um segredo
+  falado, não por vigilância. Ver §1.1.
 - **Não abre uma shell.** As ações são cliques e teclas simuladas ao nível do
   sistema operativo — nunca um comando de texto interpretado livremente. A
   regra de segurança mais antiga do projeto continua inteira: a interface
@@ -186,25 +216,34 @@ PlatformAdapter → invoke() → Rust`. Nenhum componente passa a conhecer o
 sistema operativo diretamente — só o `PlatformAdapter`.
 
 **Serviço novo:** `services/direct-control-service.ts` — dono do plano,
-passo atual, e do pedido de confirmação. Não sabe o que é `enigo` nem o que é
-uma câmara; só fala com o `PlatformAdapter`.
+passo atual, e do pedido de confirmação. Não sabe o que é `enigo`; só fala
+com o `PlatformAdapter`.
 
-**Comandos Rust novos** (`src-tauri/src/commands/control.rs`), cada um
-`Result`-based, cada um validado antes de agir (coordenadas dentro dos
-limites do ecrã, texto sanitizado, nunca `unwrap()`):
+**Camada de presença — sem Rust nenhum.** Vive inteira no browser:
+`services/direct-control-session.ts` guarda o hash da palavra-passe
+(`crypto.subtle.digest`, como já se faz noutros sítios do projeto para
+não guardar segredos em claro), o temporizador dos 30 minutos, e ouve o
+`idleLockMinutes` já existente (Parte 14) para fechar a sessão em conjunto
+com o bloqueio por inatividade. A comparação do que a voz reconheceu contra
+o hash guardado também é lógica pura — nenhum comando novo.
+
+**Comandos Rust novos** (`src-tauri/src/commands/control.rs`), só para as
+sub-fases que mexem mesmo no sistema operativo — cada um `Result`-based,
+cada um validado antes de agir (coordenadas dentro dos limites do ecrã,
+texto sanitizado, nunca `unwrap()`):
 
 | Comando | Faz |
 |---|---|
-| `check_presence` | Uma leitura da câmara, devolve só um booleano — nunca a imagem |
 | `capture_screen` | Um print, devolvido para a camada de perceção decidir, nunca escrito em disco |
 | `move_mouse_to` / `click_at` | Coordenadas explícitas, dentro dos limites do ecrã |
 | `type_text` | Texto explícito, nunca interpretado como comando |
 | `open_path` | Abre um ficheiro ou aplicação pelo caminho, via o abridor do próprio sistema operativo — não é execução arbitrária, é o equivalente a um duplo-clique |
 
 **Candidatos a crate** (a confirmar quando chegar a altura, não fixados
-agora): `enigo` para rato e teclado, `xcap` para captura de ecrã, `nokhwa`
-para a câmara. Todos cross-platform, todos com precedente em ferramentas de
-automação estabelecidas — não inventar isto de raiz.
+agora): `enigo` para rato e teclado, `xcap` para captura de ecrã. Ambos
+cross-platform, ambos com precedente em ferramentas de automação
+estabelecidas — não inventar isto de raiz. Sem câmara, já não é preciso
+`nokhwa` nem equivalente.
 
 **Modelo de visão:** a abstração `AiProvider` já existe e já suporta troca de
 provedor numa linha (é assim que a DeepSeek entrou). Falta um provider que
@@ -222,27 +261,29 @@ seguem.
 
 | Sub-fase | O quê | Precisa de nativo? |
 |---|:--:|:--:|
-| 3.1 | Auditoria + overlay de confirmação, com ações simuladas | Não — testável já, em browser |
+| 3.1 | Auditoria + overlay de confirmação + portão por palavra-passe (sessão de 30 min) | Não — testável já, em browser |
 | 3.2 | Abrir aplicações e ficheiros por caminho | Sim, mas é o comando de menor risco |
 | 3.3 | Captura de ecrã, indicador visível, zonas sensíveis | Sim |
 | 3.4 | Rato e teclado, com o travão de mão e a confirmação por passo | Sim |
-| 3.5 | Presença por câmara como camada extra | Sim |
-| 3.6 | Modelo de visão a interpretar o ecrã e propor os passos | Sim + provider multimodal |
+| 3.5 | Modelo de visão a interpretar o ecrã e propor os passos | Sim + provider multimodal |
 
 3.1 é a única que não depende de nada nativo — dá para construir o
-overlay de confirmação, a classificação de risco e a auditoria já, com
-ações de teste, e ter a experiência toda pronta e testada antes de ligar a
-primeira ação real.
+overlay de confirmação, a classificação de risco, o portão por
+palavra-passe e a auditoria já, com ações de teste, e ter a experiência
+toda pronta e testada antes de ligar a primeira ação real.
 
 ---
 
 ## 6. Decisões que ainda faltam, e que não são minhas para tomar sozinho
 
-1. **Visão local ou na nuvem.** Local é mais privado e mais fraco; na nuvem é
-   mais capaz e manda o ecrã para fora. Pergunto quando chegar a 3.6.
-2. **Retenção do registo de auditoria com prints** — quanto tempo fica
+1. **Falada, escrita, ou as duas.** A versão simples é só por voz; mais forte
+   é exigir também escrita, ou dar a escolher. Decide-se ao construir a 3.1.
+2. **Duração da sessão** — 30 minutos é a proposta; muda-se numa linha.
+3. **Visão local ou na nuvem.** Local é mais privado e mais fraco; na nuvem é
+   mais capaz e manda o ecrã para fora. Pergunto quando chegar a 3.5.
+4. **Retenção do registo de auditoria com prints** — quanto tempo fica
    guardado, se é para ficar.
-3. **A tecla do travão de mão** — a omissão proposta é `Esc` duas vezes;
+5. **A tecla do travão de mão** — a omissão proposta é `Esc` duas vezes;
    pode ser outra.
 
 Estas ficam para quando cada sub-fase começar a sério, não antes.

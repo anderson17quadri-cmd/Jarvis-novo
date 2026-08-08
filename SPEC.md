@@ -514,10 +514,10 @@ layouts guardados.
 ### Fase 3 — Controlo direto ⬜ (só desenho)
 
 Pedido à parte do resto da spec: o JARVIS a mexer no rato e no teclado como
-uma pessoa, com "olhos" (câmara, para só agir com alguém à frente) e visão do
-ecrã (para saber onde estão as coisas). Desenho completo — camadas de
-presença, perceção, ação e auditoria; travão de mão; classificação de risco;
-faseamento interno 3.1–3.6 — em
+uma pessoa, com uma palavra-passe falada como portão de presença (sessão de
+30 minutos, sem câmara) e visão do ecrã para saber onde estão as coisas.
+Desenho completo — camadas de presença, perceção, ação e auditoria; travão
+de mão; classificação de risco; faseamento interno 3.1–3.5 — em
 [`docs/spec/fase-3-controlo-direto.md`](docs/spec/fase-3-controlo-direto.md).
 **Nenhuma linha de código nativo escrita.** Depende de dois pré-requisitos:
 a Fase 1 validada no PC real, e a ativação explícita e desligada por omissão
