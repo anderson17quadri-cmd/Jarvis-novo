@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 920 testes |
+| Vitest | 954 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia Inter carrega**, porque deixou de vir do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha, a **escolha de modelo por pedido**, o **modo copiloto** e os **sons do arranque e do login biométrico** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha, a **escolha de modelo por pedido**, o **modo copiloto**, os **sons do arranque e do login biométrico** e a **consola de comandos** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -494,7 +494,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Inspetor de eventos | ✅ | `logService.watchEventBus()` escuta o Event Bus inteiro e mostra o nome e a carga de cada evento |
 | Desempenho (memória, tempo de arranque) | 🟡 | Arranque e `performance.memory`. **A memória só existe no Chromium** — noutros browsers mostra-se ausente em vez de um número inventado. FPS fica para depois |
 | Estado dos serviços e dos adapters | ✅ | Plataforma, métricas, automações, som e registo, cada um com o que está mesmo a fazer |
-| Consola de comandos | ⬜ | A Command Palette já executa; falta a consola livre |
+| Consola de comandos | ✅ | Aba **Consola** no Centro de Programador. `ferramenta chave=valor` corre pelo mesmo `runTool` que o assistente usa — o catálogo inteiro de 23 ferramentas, incluindo as que a voz e a paleta nunca alcançam (`guardar_layout`, `ligar_automacao`, as destrutivas…). `ajuda` lista o catálogo, `ajuda <nome>` detalha parâmetros, `limpar` esvazia. As destrutivas pedem confirmação em linha, como no assistente — não correm sozinhas mesmo escritas à mão |
 
 ---
 

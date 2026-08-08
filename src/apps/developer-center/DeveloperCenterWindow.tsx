@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Activity, ScrollText, Trash2 } from 'lucide-react';
+import { Activity, ScrollText, TerminalSquare, Trash2 } from 'lucide-react';
 
 import { useCapabilities, usePlatformInfo } from '@/hooks/use-platform';
+import { CommandConsole } from './CommandConsole';
 import { cn } from '@/lib/cn';
 import { formatBytes, formatTime } from '@/lib/format';
 import { readDiagnostics, type Diagnostics } from '@/services/diagnostics';
@@ -21,7 +22,7 @@ const LEVEL_STYLE: Record<LogLevel, string> = {
   erro: 'text-danger',
 };
 
-type Tab = 'registo' | 'estado';
+type Tab = 'registo' | 'estado' | 'consola';
 
 /** De quanto em quanto tempo o diagnóstico é relido. */
 const DIAGNOSTICS_INTERVAL_MS = 2_000;
@@ -29,10 +30,11 @@ const DIAGNOSTICS_INTERVAL_MS = 2_000;
 /**
  * Painel de desenvolvedor (Parte 16).
  *
- * Registo em tempo real com filtros, e o estado real das peças do sistema.
- * Lê tudo do que já existe — o `logService` escuta o Event Bus, o
- * `readDiagnostics` pergunta a cada serviço como está. Nada aqui é simulado;
- * onde o browser não sabe responder, aparece "não disponível".
+ * Registo em tempo real com filtros, o estado real das peças do sistema, e uma
+ * consola de comandos que fala com o mesmo executor do assistente. Lê tudo do
+ * que já existe — o `logService` escuta o Event Bus, o `readDiagnostics`
+ * pergunta a cada serviço como está. Nada aqui é simulado; onde o browser não
+ * sabe responder, aparece "não disponível".
  */
 export default function DeveloperCenterWindow(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('registo');
@@ -62,6 +64,10 @@ export default function DeveloperCenterWindow(): React.JSX.Element {
           <Activity className="h-3.5 w-3.5" aria-hidden="true" />
           Estado
         </TabButton>
+        <TabButton isActive={tab === 'consola'} onClick={() => setTab('consola')}>
+          <TerminalSquare className="h-3.5 w-3.5" aria-hidden="true" />
+          Consola
+        </TabButton>
 
         {tab === 'registo' && entries.length > 0 && (
           <button
@@ -75,7 +81,9 @@ export default function DeveloperCenterWindow(): React.JSX.Element {
         )}
       </div>
 
-      {tab === 'registo' ? (
+      {tab === 'consola' && <CommandConsole />}
+
+      {tab === 'registo' && (
         <>
           <label className="flex-shrink-0">
             <span className="sr-only">Pesquisar no registo</span>
@@ -149,9 +157,9 @@ export default function DeveloperCenterWindow(): React.JSX.Element {
             )}
           </ul>
         </>
-      ) : (
-        <StatePanel />
       )}
+
+      {tab === 'estado' && <StatePanel />}
     </div>
   );
 }
