@@ -1,4 +1,4 @@
-# Prepara o serviço de voz clonada sozinho — Python, ambiente virtual,
+﻿# Prepara o serviço de voz clonada sozinho — Python, ambiente virtual,
 # PyTorch com CUDA, dependências, e confirma no fim se a GPU foi encontrada.
 #
 # A única coisa que este script não escolhe sozinho com certeza é a versão
@@ -51,7 +51,7 @@ pip install --quiet -r requirements.txt
 
 Escreve "5. A confirmar se a GPU foi encontrada..."
 $resultado = python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')" 2>&1
-$linhas = ($resultado -split "`r?`n") | ForEach-Object { $_.Trim() }
+$linhas = ($resultado -split '\r?\n') | ForEach-Object { $_.Trim() }
 
 if ($linhas[0] -eq "True") {
     Escreve "   GPU encontrada: $($linhas[1])"

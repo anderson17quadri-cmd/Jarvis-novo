@@ -1,4 +1,4 @@
-# Arranca o serviço de voz clonada — depois de correres .\setup.ps1 uma vez
+﻿# Arranca o serviço de voz clonada — depois de correres .\setup.ps1 uma vez
 # e de teres uma gravação em voices\referencia.wav.
 
 $ErrorActionPreference = "Stop"
