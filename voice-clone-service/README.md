@@ -136,23 +136,23 @@ ligar isto ao `voice-service.ts` da app (sub-fase 4.3 do desenho).
   o ficheiro tem duas extensões por engano — `Rename-Item
   voices\referencia.wav.wav voices\referencia.wav` corrige.
 - **`RuntimeError: Could not load libtorchcodec`** — falta o FFmpeg (a
-  versão "com bibliotecas partilhadas", não só o programa). Resolve-se em
-  três passos:
+  versão "com bibliotecas partilhadas", não só o programa) — **e tem de ser
+  uma versão 4 a 8**. O próprio erro diz isso: "We support versions 4, 5, 6,
+  7, and 8". `winget install Gyan.FFmpeg.Shared` instala sempre a mais
+  recente (hoje, a 9), que ainda não é suportada — não uses esse comando
+  para isto.
 
-  1. Instala o FFmpeg com as DLLs:
+  1. Descarrega a versão 7.1, confirmada como funcionando:
      ```powershell
-     winget install Gyan.FFmpeg.Shared
+     Invoke-WebRequest -Uri "https://github.com/GyanD/codexffmpeg/releases/download/7.1/ffmpeg-7.1-full_build-shared.zip" -OutFile ffmpeg.zip
+     Expand-Archive ffmpeg.zip -DestinationPath . -Force
      ```
-  2. Descobre onde ficou instalado (o caminho tem sempre uma pasta `bin`
-     com ficheiros `avcodec-*.dll` lá dentro):
-     ```powershell
-     Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "avcodec-*.dll" | Select-Object -First 1 -ExpandProperty DirectoryName
-     ```
-  3. Usa esse caminho na variável `FFMPEG_DLL_DIR`, **na mesma janela** onde
+  2. Isto cria uma pasta `ffmpeg-7.1-full_build-shared\bin` com as DLLs.
+     Usa esse caminho na variável `FFMPEG_DLL_DIR`, **na mesma janela** onde
      vais correr o serviço (variáveis de ambiente do PowerShell só duram
      nessa janela):
      ```powershell
-     $env:FFMPEG_DLL_DIR = "C:\caminho\que\o\passo\2\devolveu"
+     $env:FFMPEG_DLL_DIR = "$PWD\ffmpeg-7.1-full_build-shared\bin"
      .\run.ps1
      ```
 
