@@ -156,10 +156,44 @@ export class VoiceService {
   }
 
   /**
+   * A voz escolhida de propósito (Parte 7.1 §Voz). `null` deixa a escolha
+   * automática de sempre — um nome que "soa a masculino", ou a primeira
+   * portuguesa que houver.
+   */
+  private preferredVoiceURI: string | null = null;
+
+  setPreferredVoice(voiceURI: string | null): void {
+    this.preferredVoiceURI = voiceURI;
+  }
+
+  /**
+   * As vozes portuguesas que o sistema conhece.
+   *
+   * **Não inventa vozes.** Isto só mostra o que o Windows (ou o browser) já
+   * tem instalado — para teres mais do que a voz robótica de sempre, sem
+   * pagar nenhuma API, é ires a Definições → Hora e idioma → Voz, no Windows,
+   * e instalares as vozes "Natural" em português. O JARVIS lista o que
+   * encontrar; não sabe transformar uma voz fraca numa melhor.
+   */
+  get availableVoices(): readonly SpeechSynthesisVoice[] {
+    if (!this.isSynthesisSupported) return [];
+    return speechSynthesis.getVoices().filter((voice) => /^pt/i.test(voice.lang));
+  }
+
+  /**
    * Lê um texto em voz alta, em português europeu.
+   *
+   * `voiceURIOverride` serve só o botão de "testar" nas configurações — ouvir
+   * uma voz sem a tornar a preferida. Sem argumento, usa a preferida (ou a
+   * escolha automática, se não houver nenhuma guardada).
+   *
    * Devolve `false` se não foi possível — quem chama não precisa de reagir.
    */
-  speak(text: string, callbacks?: { onStart?: () => void; onEnd?: () => void }): boolean {
+  speak(
+    text: string,
+    callbacks?: { onStart?: () => void; onEnd?: () => void },
+    voiceURIOverride?: string,
+  ): boolean {
     if (!this.isSynthesisSupported) return false;
 
     try {
@@ -168,8 +202,13 @@ export class VoiceService {
       utterance.rate = 1.02;
       utterance.pitch = 0.95;
 
-      const portugueseVoices = speechSynthesis.getVoices().filter((voice) => /^pt/i.test(voice.lang));
+      const portugueseVoices = this.availableVoices;
+      const targetURI = voiceURIOverride ?? this.preferredVoiceURI;
+      const chosen = targetURI
+        ? portugueseVoices.find((voice) => voice.voiceURI === targetURI)
+        : undefined;
       const preferred =
+        chosen ??
         portugueseVoices.find((voice) => /male|masc|duarte|ricardo|joaquim/i.test(voice.name)) ??
         portugueseVoices[0];
       if (preferred) utterance.voice = preferred;

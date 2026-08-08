@@ -11,6 +11,7 @@ import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useTaskStore } from '@/stores/use-task-store';
 import { useThemeStore } from '@/stores/use-theme-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWorkspaceStore } from '@/stores/use-workspace-store';
 
@@ -39,6 +40,7 @@ export async function hydrateAll(): Promise<void> {
   await useSystemStateStore.getState().hydrate();
   await useAppearanceStore.getState().hydrate();
   await useTaskStore.getState().hydrate();
+  await useVoiceSettingsStore.getState().hydrate();
   await soundService.hydrate();
   await automationService.hydrate(seedAutomations());
   await useAssistantStore.getState().hydrate();

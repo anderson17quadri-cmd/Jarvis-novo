@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 1035 testes |
+| Vitest | 1041 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -346,7 +346,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 
 | Item | | |
 |---|:--:|---|
-| Reconhecimento pela Web Speech API | ✅ | `services/voice-service.ts` |
+| Reconhecimento pela Web Speech API | 🟡 | `services/voice-service.ts`. Falha silenciosamente no WebView2 (o motor do Tauri no Windows) — sem o serviço de reconhecimento que o Chrome tem por trás da mesma API. O código de erro do navegador passou a chegar sempre (`SpeechRecognitionErrorKind`), registado e mostrado em vez de descartado — resta confirmar no PC se o diagnóstico é mesmo esse |
+| Escolha de voz de síntese | ✅ | `VoiceSettings.tsx` — lista as vozes portuguesas já instaladas no sistema (as "Natural" do Windows, por exemplo) e deixa escolher e testar cada uma. Não é clonagem nem API paga: só o que já existe na máquina |
 | Indicador de estado no header | ✅ | |
 | Wake word configurável | ⬜ | Exige escuta contínua — decisão de privacidade por tomar |
 | Pipeline completo (ruído, silêncio, idioma, planeamento) | 🟡 | Transcrição → intenção → execução → síntese. Faltam as etapas do meio |

@@ -11,6 +11,7 @@ import { LayoutSettings } from './LayoutSettings';
 import { SoundSettings } from './SoundSettings';
 import { ThemeEditor } from './ThemeEditor';
 import { SystemStatePicker } from './SystemStatePicker';
+import { VoiceSettings } from './VoiceSettings';
 
 /**
  * Personalização.
@@ -78,6 +79,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Assistente</p>
         <AiSettings />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Voz</p>
+        <VoiceSettings />
       </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
