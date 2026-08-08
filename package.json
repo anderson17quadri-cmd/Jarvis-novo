@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test",
+    "test:provedores": "node scripts/testar-provedores.mjs",
     "tauri": "tauri",
     "android:init": "tauri android init",
     "android:dev": "tauri android dev",
