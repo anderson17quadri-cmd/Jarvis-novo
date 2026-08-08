@@ -8,10 +8,12 @@ a amostra em `voices/referencia.wav`. Não há aqui suporte a clonar mais do
 que uma pessoa de propósito — isto é a voz de quem usa o sistema, não um
 serviço geral de clonagem.
 
-NÃO TESTADO NUMA GPU A SÉRIO. Escrito com cuidado a partir da API pública e
-documentada do pacote `coqui-tts`, mas sem uma RTX 5070 à mão para confirmar
-— a primeira corrida no PC é que prova se está certo. Ver README.md para o
-que fazer se algo não bater certo.
+Confirmado a funcionar numa RTX 5070 (09/08/2026) — áudio real, gerado com a
+voz gravada em `voices/referencia.wav`. Precisou de três correções que só
+apareceram a sério no Windows: FFmpeg de uma versão específica (4 a 8, não a
+mais recente), `os.add_dll_directory` para o Python encontrar as DLLs, e o
+PyTorch reinstalado contra um índice CUDA mais recente (a RTX 5070 é
+demasiado nova para o `cu126` inicial). Tudo documentado no README.md.
 
 Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
 """

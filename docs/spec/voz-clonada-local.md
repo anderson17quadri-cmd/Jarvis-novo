@@ -10,12 +10,17 @@
 > terceiros, de atores, ou de personagens entra aqui — essa linha mantém-se,
 > como já ficou dito nesta conversa.
 >
-> **Estado: sub-fase 4.1 construída.** `voice-clone-service/server.py` — a
-> lógica das rotas está testada (`/health`, `/voz`, `/falar`, os erros por
-> ordem certa), mas **sem GPU nenhuma disponível neste ambiente**, o modelo
-> XTTS-v2 a sério nunca correu. É o próximo passo — só se confirma no PC com
-> a RTX 5070. Ver `voice-clone-service/README.md` para os passos de
-> instalação e o smoke test por terminal.
+> **Estado: sub-fase 4.1 confirmada a sério (09/08/2026).**
+> `voice-clone-service/server.py` corre na RTX 5070 do utilizador — `/falar`
+> devolve áudio real, com a voz gravada. Custou três correções que só o
+> Windows revela: FFmpeg preso à versão 4–8 (`winget` instala a mais
+> recente, que o `torchcodec` ainda não suporta), `os.add_dll_directory`
+> porque o Windows deixou de usar a PATH para DLLs de bibliotecas Python
+> desde o Python 3.8, e o PyTorch reinstalado contra `cu130` (a RTX
+> 5070/Blackwell não tinha kernels compilados no `cu126` inicial). Tudo em
+> `voice-clone-service/README.md`, com o erro exato de cada uma para quem
+> passar pelo mesmo. Falta a sub-fase 4.3 — ligar isto ao `voice-service.ts`
+> da app, em vez de testar só por terminal.
 
 ---
 
