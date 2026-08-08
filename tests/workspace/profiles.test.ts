@@ -41,6 +41,7 @@ describe('o que um perfil guarda', () => {
     appearance.set('cursor', 'minimal');
     appearance.set('radius', 'reto');
     appearance.set('wallpaperIntensity', 0.4);
+    appearance.set('fontFamily', 'plex-sans');
 
     expect(captureWorkspace().ambience).toEqual({
       wallpaper: 'liso',
@@ -48,6 +49,7 @@ describe('o que um perfil guarda', () => {
       coreParticles: 0.5,
       cursor: 'minimal',
       radius: 'reto',
+      fontFamily: 'plex-sans',
     });
   });
 

@@ -60,3 +60,56 @@ describe('tipografia local', () => {
     expect(html).toMatch(/rel="preload"[\s\S]*inter-latin\.woff2/);
   });
 });
+
+/**
+ * Tipografia à escolha (Parte 15 §Tipografia à escolha).
+ *
+ * As duas famílias novas seguem a mesma regra que o Inter: vendorizadas uma
+ * vez, ficheiros a sério, sem pedido nenhum à rede. Estes testes repetem, uma
+ * a uma, as garantias que já existiam só para o Inter.
+ */
+describe('tipografia à escolha', () => {
+  const css = read('src/styles/fonts.css');
+  const worker = read('public/sw.js');
+  const tailwindConfig = read('tailwind.config.ts');
+
+  const FAMILIES: readonly { readonly name: string; readonly file: string }[] = [
+    { name: 'Space Grotesk', file: 'space-grotesk' },
+    { name: 'IBM Plex Sans', file: 'plex-sans' },
+  ];
+
+  it.each(FAMILIES)('$name é declarada a partir de ficheiros do próprio projeto', ({ file }) => {
+    expect(css).toContain(`url('/fonts/${file}-latin.woff2')`);
+    expect(css).toContain(`url('/fonts/${file}-latin-ext.woff2')`);
+  });
+
+  it.each(FAMILIES)('$name cobre os pesos 300 a 700', ({ name }) => {
+    const block = css.slice(css.indexOf(`font-family: '${name}'`));
+    expect(block.slice(0, 200)).toContain('font-weight: 300 700');
+  });
+
+  it.each(FAMILIES)('os ficheiros de $name existem e são mesmo woff2', ({ file }) => {
+    for (const suffix of ['latin', 'latin-ext']) {
+      const path = `public/fonts/${file}-${suffix}.woff2`;
+      const bytes = readFileSync(resolve(root, path));
+      expect(bytes.length, path).toBeGreaterThan(1000);
+      expect(bytes.subarray(0, 4).toString('latin1'), path).toBe('wOF2');
+    }
+  });
+
+  it.each(FAMILIES)('o casco do service worker inclui $name — senão só chega offline se já tiver sido pedida', ({ file }) => {
+    expect(worker).toContain(`/fonts/${file}-latin.woff2`);
+    expect(worker).toContain(`/fonts/${file}-latin-ext.woff2`);
+  });
+
+  it('nenhuma das duas aponta para um servidor de fontes', () => {
+    expect(css).not.toMatch(/https?:\/\/fonts\./);
+  });
+
+  it('o token do Tailwind lê a variável, e não um nome de família fixo', () => {
+    // Sem isto, trocar de família na Personalização mudava a variável CSS e
+    // nada na página lhe dava ouvidos — as classes `font-sans` continuavam a
+    // apontar para o Inter escrito à letra.
+    expect(tailwindConfig).toMatch(/sans:\s*\[\s*'var\(--font-sans\)'/);
+  });
+});

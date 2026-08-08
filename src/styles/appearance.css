@@ -11,6 +11,13 @@
   --wp-intensity: 1;
   /* Escala global da interface. */
   --ui-scale: 1;
+  /*
+   * Família tipográfica (Parte 15 §Tipografia à escolha). O Inter aqui é a
+   * mesma cauda do token original do Tailwind — antes de o `useAppearanceStore`
+   * escrever esta variável (ou num contexto sem JavaScript), o texto já sai
+   * legível, na família predefinida.
+   */
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
   /* A vinheta é um token porque num tema claro tem de ser clara. */
   --vignette: rgb(0 0 0 / 0.72);
 }

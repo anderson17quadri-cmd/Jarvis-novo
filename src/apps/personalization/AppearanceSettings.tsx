@@ -7,11 +7,15 @@ import {
   CURSOR_LABELS,
   DALTONISM_DESCRIPTIONS,
   DALTONISM_LABELS,
+  FONT_FAMILY_DESCRIPTIONS,
+  FONT_FAMILY_LABELS,
+  FONT_FAMILY_STACKS,
   RADIUS_LABELS,
   WALLPAPER_DESCRIPTIONS,
   WALLPAPER_LABELS,
   type CursorKind,
   type DaltonismKind,
+  type FontFamilyKind,
   type RadiusKind,
   type WallpaperKind,
 } from '@/types/appearance';
@@ -128,6 +132,30 @@ export function AppearanceSettings(): React.JSX.Element {
       </section>
 
       <section className="border-t border-line pt-s3">
+        <p className="t-label mb-2">Tipografia</p>
+
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
+          role="radiogroup"
+          aria-label="Família tipográfica"
+        >
+          {(Object.keys(FONT_FAMILY_LABELS) as FontFamilyKind[]).map((kind) => (
+            <Option
+              key={kind}
+              isActive={appearance.fontFamily === kind}
+              onClick={() => change('fontFamily', kind)}
+              title={FONT_FAMILY_LABELS[kind]}
+              // A própria opção mostra-se na fonte que representa — a escolha
+              // vê-se antes de se fazer, e não só depois.
+              titleStyle={{ fontFamily: FONT_FAMILY_STACKS[kind] }}
+              description={FONT_FAMILY_DESCRIPTIONS[kind]}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="border-t border-line pt-s3">
         <p className="t-label mb-2">Acessibilidade</p>
 
         <div className="flex flex-col gap-2">
@@ -195,11 +223,14 @@ function Option({
   isActive,
   onClick,
   title,
+  titleStyle,
   description,
 }: {
   readonly isActive: boolean;
   readonly onClick: () => void;
   readonly title: string;
+  /** Estilo aplicado só ao título — a pré-visualização da tipografia usa isto. */
+  readonly titleStyle?: React.CSSProperties;
   readonly description: string;
 }): React.JSX.Element {
   return (
@@ -214,7 +245,7 @@ function Option({
         isActive && 'border-accent bg-accent/[.08]',
       )}
     >
-      <span className="flex items-center gap-1.5 text-[12.5px] font-medium">
+      <span className="flex items-center gap-1.5 text-[12.5px] font-medium" style={titleStyle}>
         {title}
         {isActive && <Check className="ml-auto h-3.5 w-3.5 text-accent" aria-hidden="true" />}
       </span>

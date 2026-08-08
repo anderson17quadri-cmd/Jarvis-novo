@@ -5,6 +5,7 @@ import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import {
   clampAppearance,
   DEFAULT_APPEARANCE,
+  FONT_FAMILY_STACKS,
   RADIUS_SCALE,
   type Ambience,
   type Appearance,
@@ -72,6 +73,9 @@ export function applyAppearance(appearance: Appearance): void {
 
   root.style.setProperty('--wp-intensity', String(appearance.wallpaperIntensity));
   root.style.setProperty('--ui-scale', String(appearance.uiScale));
+  // O token `font-sans` do Tailwind lê esta variável — trocar de família é
+  // escrevê-la, e nada mais. Nenhuma classe muda, nenhum componente sabe.
+  root.style.setProperty('--font-sans', FONT_FAMILY_STACKS[appearance.fontFamily]);
 
   const scale = RADIUS_SCALE[appearance.radius];
   root.style.setProperty('--r-btn', `${Math.round(BASE_RADIUS.btn * scale)}px`);

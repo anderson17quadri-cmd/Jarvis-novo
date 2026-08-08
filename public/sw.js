@@ -19,7 +19,7 @@
  */
 
 /** Mudar a versão invalida tudo o que ficou para trás. */
-const CACHE = 'jarvis-v2';
+const CACHE = 'jarvis-v3';
 
 /** O suficiente para o primeiro pintar. O resto entra à medida que é pedido. */
 const SHELL = [
@@ -29,9 +29,15 @@ const SHELL = [
   '/favicon.svg',
   '/icon-192.png',
   // As fontes entram no casco: sem elas, a primeira abertura offline mostrava
-  // o sistema inteiro numa fonte de sistema.
+  // o sistema inteiro numa fonte de sistema. As três famílias, não só a
+  // predefinida — trocar de fonte é uma preferência que pode já estar
+  // guardada antes da primeira visita offline.
   '/fonts/inter-latin.woff2',
   '/fonts/inter-latin-ext.woff2',
+  '/fonts/space-grotesk-latin.woff2',
+  '/fonts/space-grotesk-latin-ext.woff2',
+  '/fonts/plex-sans-latin.woff2',
+  '/fonts/plex-sans-latin-ext.woff2',
 ];
 
 self.addEventListener('install', (event) => {

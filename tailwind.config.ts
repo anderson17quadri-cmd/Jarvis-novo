@@ -107,7 +107,14 @@ export default {
         soft: '12px',
       },
       fontFamily: {
-        sans: ['Inter', 'SF Pro Display', 'system-ui', '-apple-system', 'sans-serif'],
+        /*
+         * A pilha inteira vive na variável (Parte 15 §Tipografia à escolha) —
+         * `FONT_FAMILY_STACKS` já traz a família e todos os recursos, e
+         * repeti-los aqui só duplicava a cauda: um `font-family` computado com
+         * "SF Pro Display" escrito duas vezes. Ver `styles/appearance.css`
+         * para o valor base e `use-appearance-store.ts` para quem a troca.
+         */
+        sans: ['var(--font-sans)'],
         mono: ['ui-monospace', 'Menlo', 'monospace'],
       },
       fontSize: {

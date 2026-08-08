@@ -50,6 +50,37 @@ export const RADIUS_SCALE: Record<RadiusKind, number> = {
 };
 
 /**
+ * Família tipográfica (Parte 15 §Tipografia à escolha).
+ *
+ * Três, não uma lista longa. Cada uma lê-se diferente o suficiente para a
+ * escolha significar alguma coisa — uma humanista, uma geométrica, uma
+ * técnica — e todas vêm do repositório, nunca da rede: ver `styles/fonts.css`.
+ */
+export type FontFamilyKind = 'inter' | 'space-grotesk' | 'plex-sans';
+
+export const FONT_FAMILY_LABELS: Record<FontFamilyKind, string> = {
+  inter: 'Inter',
+  'space-grotesk': 'Space Grotesk',
+  'plex-sans': 'IBM Plex Sans',
+};
+
+export const FONT_FAMILY_DESCRIPTIONS: Record<FontFamilyKind, string> = {
+  inter: 'Humanista, neutra. A predefinida.',
+  'space-grotesk': 'Geométrica, com um ar técnico — assenta bem num sistema que se diz de IA.',
+  'plex-sans': 'Desenhada para ecrãs de engenharia. Densa, muito legível em texto pequeno.',
+};
+
+/**
+ * A pilha CSS de cada família, com a mesma cauda de recurso do token original
+ * do Tailwind — um sistema sem a fonte escolhida ainda mostra algo decente.
+ */
+export const FONT_FAMILY_STACKS: Record<FontFamilyKind, string> = {
+  inter: "'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif",
+  'space-grotesk': "'Space Grotesk', 'SF Pro Display', system-ui, -apple-system, sans-serif",
+  'plex-sans': "'IBM Plex Sans', 'SF Pro Display', system-ui, -apple-system, sans-serif",
+};
+
+/**
  * Daltonismo (Parte 15 §Acessibilidade).
  *
  * Os três tipos que valem a pena distinguir. Não se corrige "daltonismo" em
@@ -110,6 +141,7 @@ export interface Appearance {
   readonly uiScale: number;
   readonly radius: RadiusKind;
   readonly cursor: CursorKind;
+  readonly fontFamily: FontFamilyKind;
   /** Sobe o contraste do texto e das linhas. */
   readonly highContrast: boolean;
   /** Tira o desfoque das superfícies. Ajuda a ler, e alivia máquinas lentas. */
@@ -129,6 +161,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   uiScale: 1,
   radius: 'redondo',
   cursor: 'holografico',
+  fontFamily: 'inter',
   highContrast: false,
   reduceTransparency: false,
   daltonism: 'nenhum',
@@ -141,8 +174,8 @@ export const DEFAULT_APPEARANCE: Appearance = {
  * O que viaja num perfil, e o que nunca viaja (Parte 15 §Perfis).
  *
  * Um perfil leva o **ambiente**: papel de parede e a sua intensidade,
- * partículas do núcleo, cursor e arredondamento. Não leva a
- * **acessibilidade** — contraste alto, transparência reduzida, correção de
+ * partículas do núcleo, cursor, arredondamento e família tipográfica. Não leva
+ * a **acessibilidade** — contraste alto, transparência reduzida, correção de
  * daltonismo, escala da interface e bloqueio por inatividade ficam onde estão.
  *
  * A razão não é técnica. Quem precisa de correção de daltonismo precisa dela
@@ -157,6 +190,7 @@ export const AMBIENCE_KEYS = [
   'coreParticles',
   'cursor',
   'radius',
+  'fontFamily',
 ] as const;
 
 export type AmbienceKey = (typeof AMBIENCE_KEYS)[number];
@@ -178,6 +212,7 @@ export function ambienceOf(appearance: Appearance): Ambience {
     coreParticles: appearance.coreParticles,
     cursor: appearance.cursor,
     radius: appearance.radius,
+    fontFamily: appearance.fontFamily,
   };
 }
 

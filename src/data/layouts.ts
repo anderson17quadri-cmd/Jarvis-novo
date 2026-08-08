@@ -126,6 +126,9 @@ export function builtInLayouts(): readonly SavedLayout[] {
           coreParticles: 0.5,
           cursor: 'minimal',
           radius: 'reto',
+          // Desenhada para ecrãs de engenharia — é literalmente o que este
+          // perfil é.
+          fontFamily: 'plex-sans',
         }),
         sound: sound(0.4, { interface: 0 }),
       },

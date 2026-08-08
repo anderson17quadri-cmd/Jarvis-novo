@@ -5,9 +5,12 @@ import {
   APPEARANCE_RANGES,
   clampAppearance,
   DEFAULT_APPEARANCE,
+  FONT_FAMILY_LABELS,
+  FONT_FAMILY_STACKS,
   RADIUS_SCALE,
   WALLPAPER_LABELS,
   type Appearance,
+  type FontFamilyKind,
 } from '@/types/appearance';
 
 const root = document.documentElement;
@@ -59,6 +62,25 @@ describe('aplicação ao documento', () => {
     expect(root.style.getPropertyValue('--ui-scale')).toBe('1.2');
     expect(root.style.getPropertyValue('--wp-intensity')).toBe('0.4');
   });
+
+  it('a família tipográfica escreve-se em --font-sans, e nada mais muda por causa dela', () => {
+    applyAppearance({ ...DEFAULT_APPEARANCE, fontFamily: 'space-grotesk' });
+
+    expect(root.style.getPropertyValue('--font-sans')).toBe(
+      FONT_FAMILY_STACKS['space-grotesk'],
+    );
+    // Trocar de fonte não é trocar de arredondamento nem de escala — só a
+    // variável dela muda.
+    expect(root.style.getPropertyValue('--ui-scale')).toBe('1');
+  });
+
+  it.each(Object.keys(FONT_FAMILY_LABELS) as FontFamilyKind[])(
+    'a família "%s" escreve exatamente a sua pilha',
+    (kind) => {
+      applyAppearance({ ...DEFAULT_APPEARANCE, fontFamily: kind });
+      expect(root.style.getPropertyValue('--font-sans')).toBe(FONT_FAMILY_STACKS[kind]);
+    },
+  );
 });
 
 describe('limites', () => {
@@ -98,6 +120,19 @@ describe('persistência', () => {
     expect(appearance.wallpaper).toBe('grelha');
     expect(appearance.cursor).toBe(DEFAULT_APPEARANCE.cursor);
     expect(appearance.uiScale).toBe(DEFAULT_APPEARANCE.uiScale);
+    // Uma cópia de antes de a tipografia existir não pode deixar a variável
+    // por escrever — cai no Inter, como quem nunca escolheu outra.
+    expect(appearance.fontFamily).toBe('inter');
+  });
+
+  it('a família tipográfica sobrevive a recarregar, como o resto', async () => {
+    useAppearanceStore.getState().set('fontFamily', 'plex-sans');
+    await useAppearanceStore.getState().persist();
+
+    useAppearanceStore.setState({ appearance: DEFAULT_APPEARANCE });
+    await useAppearanceStore.getState().hydrate();
+
+    expect(useAppearanceStore.getState().appearance.fontFamily).toBe('plex-sans');
   });
 
   it('um valor guardado fora dos limites é trazido para dentro', async () => {
@@ -126,6 +161,15 @@ describe('opções', () => {
     for (const scale of Object.values(RADIUS_SCALE)) {
       expect(scale).toBeGreaterThan(0);
       expect(scale).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('cada família tipográfica tem etiqueta e pilha, e a pilha nomeia a família', () => {
+    for (const kind of Object.keys(FONT_FAMILY_LABELS) as FontFamilyKind[]) {
+      expect(FONT_FAMILY_LABELS[kind].length).toBeGreaterThan(0);
+      // A pilha tem de começar pela própria família, e não por um recurso —
+      // senão a "escolha" nunca se via, e a predefinida ganhava sempre.
+      expect(FONT_FAMILY_STACKS[kind]).toContain(FONT_FAMILY_LABELS[kind]);
     }
   });
 });
