@@ -121,3 +121,8 @@ ligar isto ao `voice-service.ts` da app (sub-fase 4.3 do desenho).
 - **A voz sai distorcida ou nada parecida** — a amostra em
   `voices/referencia.wav` pode ter ruído a mais, ou ser curta de mais.
   Regrava num sítio silencioso.
+- **`ImportError: cannot import name 'isin_mps_friendly'`** — a `transformers`
+  instalada é a versão 5, que removeu essa função; o `coqui-tts` ainda não
+  foi atualizado. `pip install "transformers<5"` resolve (já está no
+  `requirements.txt`, mas quem instalou antes desta correção precisa de
+  correr isto à mão uma vez).

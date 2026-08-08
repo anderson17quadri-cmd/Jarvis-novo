@@ -2,3 +2,7 @@ fastapi
 uvicorn[standard]
 python-multipart
 coqui-tts
+# A transformers 5 removeu isin_mps_friendly, que o coqui-tts ainda importa —
+# https://github.com/idiap/coqui-ai-TTS/issues/558. Preso a <5 até isso ser
+# corrigido do lado deles.
+transformers<5
