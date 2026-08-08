@@ -555,7 +555,7 @@ disso.
 
 ## Divergências assumidas
 
-Seis pontos em que o código não segue a spec à letra. Todos deliberados.
+Sete pontos em que o código não segue a spec à letra. Todos deliberados.
 
 ### 1. Estrutura de pastas — resolvida como híbrido
 
@@ -642,3 +642,11 @@ segurança (Parte 14), não de decoração.
 Pela mesma lógica, **saltar de desktop não repõe som nem plugins**: mudar de
 espaço não é mudar de definições. Só um perfil guardado com um nome, aplicado
 de propósito, o faz. A distinção é o `WorkspaceScope`.
+
+### 7. Layout do núcleo — mantido como está
+
+Foram desenhadas e mostradas três propostas para reorganizar o núcleo no
+palco (A · estado numa linha, B · a caixa encolhe com o núcleo, C · estado ao
+lado), com medidas reais lado a lado com "como está hoje". **O utilizador
+escolheu manter como está.** `AICore.tsx`, `CoreRings.tsx`, `core-size.ts` e
+`Stage.tsx` continuam sem alteração — decisão fechada, não fica em aberto.
