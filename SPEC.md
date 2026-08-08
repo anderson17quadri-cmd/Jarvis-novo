@@ -392,7 +392,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Não decorar comandos exatos | 🟡 | Várias formas de dizer o mesmo, sem acentos nem pontuação. Não há modelo de linguagem — e o ficheiro diz isso |
 | Contexto ("amanhã", "esse ficheiro") | ⬜ | Depende do provedor de IA |
 | Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual. A escuta contínua é uma decisão de privacidade por tomar |
-| Histórico de voz pesquisável | 🟡 | Fica no painel de notificações, na categoria do assistente |
+| Histórico de voz pesquisável | ✅ | Cada comando reconhecido vira uma notificação com o transcrito e a categoria "assistente" (`use-voice.ts`); a pesquisa do painel filtra por título e descrição, sem acentos. Sem teste nenhum a provar isto até agora — `notification-panel.test.tsx` |
 
 ---
 
