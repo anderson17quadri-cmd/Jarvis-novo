@@ -511,6 +511,20 @@ reavaliados: nenhum precisava de nativo. Ficam de fora, por dependerem de
 coisas ainda não validadas: execução de plugins, MCP, múltiplos desktops e
 layouts guardados.
 
+### Fase 3 — Controlo direto ⬜ (só desenho)
+
+Pedido à parte do resto da spec: o JARVIS a mexer no rato e no teclado como
+uma pessoa, com "olhos" (câmara, para só agir com alguém à frente) e visão do
+ecrã (para saber onde estão as coisas). Desenho completo — camadas de
+presença, perceção, ação e auditoria; travão de mão; classificação de risco;
+faseamento interno 3.1–3.6 — em
+[`docs/spec/fase-3-controlo-direto.md`](docs/spec/fase-3-controlo-direto.md).
+**Nenhuma linha de código nativo escrita.** Depende de dois pré-requisitos:
+a Fase 1 validada no PC real, e a ativação explícita e desligada por omissão
+na janela de Privacidade. A única sub-fase que não precisa do nativo (3.1 —
+overlay de confirmação e auditoria, com ações simuladas) pode começar antes
+disso.
+
 ---
 
 ## Divergências assumidas
