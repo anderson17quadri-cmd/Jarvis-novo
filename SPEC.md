@@ -29,7 +29,7 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 989 testes |
+| Vitest | 1017 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
@@ -325,7 +325,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Wake word configurável | ⬜ | Exige escuta contínua — decisão de privacidade por tomar |
 | Pipeline completo (ruído, silêncio, idioma, planeamento) | 🟡 | Transcrição → intenção → execução → síntese. Faltam as etapas do meio |
 | Agentes especializados | 🟡 | Um só agente, com 21 ferramentas sobre o sistema inteiro. Especializá-los em vários é o passo seguinte |
-| AI Orchestrator | 🟡 | Seleção automática de modelo e regras de fallback, os dois ✅. Só a ligação a outros provedores fica de fora — rede real. Ver Parte 12 |
+| AI Orchestrator | 🟡 | Seleção automática de modelo e regras de fallback, os dois ✅. A ligação a outros provedores ganhou uma cadeia com salto automático e aviso quando um fica sem saldo — `ClaudeProvider`, `OllamaProvider` e `provider-chain.ts`, testados. **Ainda não ligados à interface**: juntar um seletor sem o resto da cadeia pronta (chaves, ordem, CSP) deixava um botão que não fazia nada. Desenho completo em [`docs/spec/orquestrador-multi-provedor.md`](docs/spec/orquestrador-multi-provedor.md). Ver Parte 12 |
 | Modo copiloto (sugestões discretas) | ✅ | `services/assistant/copilot.ts`, no widget de IA. **Cada sugestão parte de uma contagem e propõe uma ferramenta que já existe** — tarefas fora do prazo, tarefas de hoje, janelas a mais. Nenhuma é uma frase de encorajamento, e um teste percorre-as a exigir que o facto tenha um número e que a ferramenta aceite os argumentos. O ficheiro lista o que ficou de fora e porquê: notificações por ler (já está no ecrã), estado pela carga do processador (no browser a métrica é simulada), hora tardia (não há ação a propor). Dispensa-se, e não volta na mesma sessão |
 | Log de ações | ✅ | `services/log-service.ts`, visível no Centro de Programador e na aba de auditoria da Privacidade |
 | Permissões por plugin | 🟡 | Declaradas, mostradas e **recusáveis** na janela de Privacidade, com a decisão persistida. Recusar ainda não impede nada, porque nenhum plugin executa código — e a interface di-lo por escrito |
