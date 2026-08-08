@@ -9,6 +9,32 @@ máquina. Ver o desenho completo em
 documentada do `coqui-tts`, mas sem uma RTX 5070 à mão para confirmar. Os
 passos abaixo dizem o que fazer se algo não bater certo.
 
+## Caminho rápido — um script faz quase tudo
+
+```powershell
+cd voice-clone-service
+.\setup.ps1
+```
+
+Confirma o Python, cria o ambiente virtual, instala o PyTorch com CUDA e o
+resto das dependências, e no fim diz-te se a GPU foi encontrada. Se a
+versão de CUDA por omissão não bater certo com o que a tua placa precisa,
+o próprio script diz o que fazer — normalmente é correr outra vez com
+`.\setup.ps1 -Cuda cuXXX`, com a versão que o pytorch.org indicar.
+
+Depois de gravares a tua voz em `voices\referencia.wav` (passo 5 abaixo,
+esse continua manual — é a tua voz, não há como automatizar isso):
+
+```powershell
+.\run.ps1
+```
+
+Arranca o serviço e avisa se ainda não houver gravação nenhuma.
+
+**Os passos abaixo são o que estes dois scripts fazem por dentro** — útil
+se algo falhar e precisares de perceber onde, ou se preferires correr à
+mão.
+
 ## 1. Python
 
 Precisas de Python 3.10, 3.11 ou 3.12 — o `coqui-tts` ainda não costuma
