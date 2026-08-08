@@ -5,9 +5,15 @@
 > rastos), avisa e salta para o seguinte automaticamente, sem ninguém ter de
 > ir mudar nada a meio de uma conversa.
 >
-> **Estado:** os blocos que pensam já existem e estão testados — dois
-> provedores novos e a lógica da cadeia. **Nada disto está ligado à
-> interface.** Ver §4.
+> **Estado: ligado e verificado.** Claude e Ollama entraram em
+> `AiProviderId`/`AI_PROVIDERS`, a Personalização ganhou os painéis dos dois,
+> `use-ai-settings-store.ts` constrói a cadeia a partir do que estiver
+> configurado, e o `AIService` tenta-a sozinho no `recover()`. Verificado num
+> Chromium real: guardar a chave da Claude e depois a da DeepSeek mostra a
+> nota "Se o DeepSeek falhar… tenta sozinho o próximo provedor" na própria
+> janela. Falta só o que o §4 já dizia que ia ficar de fora nesta leva —
+> ferramentas para o Claude e o Ollama, e uma interface para reordenar a
+> cadeia.
 
 ---
 
@@ -96,31 +102,30 @@ falha."*
 3. **Se o Ollama entra à frente ou atrás do Claude por omissão.** Grátis e
    local versus melhor e pago — não é uma decisão técnica, é tua.
 
-## 4. O que falta para isto aparecer na interface
+## 4. O que ficou ligado
 
-Nada do que existe hoje mexe em `AiProviderId`, em `AI_PROVIDERS`, nem na
-janela de Personalização — de propósito. A lista de provedores da
-Personalização (`AiSettings.tsx`) já percorre `Object.keys(AI_PROVIDERS)`
-para desenhar os botões: juntar `'claude'` e `'ollama'` aí sem o resto
-pronto criava um botão que parece funcionar e não faz nada — exatamente o
-"half-finished" que este projeto evita desde o primeiro dia.
+Os seis pontos que este documento listava como pendentes estão todos feitos:
 
-Falta, para a próxima etapa:
+1. ✅ `AiProviderId` e `AI_PROVIDERS` estendidos, com as entradas de
+   configuração de cada um.
+2. ✅ `AiSettings` ganhou `claudeApiKey`, `claudeModel`, `ollamaModel`,
+   `ollamaBaseUrl`. A ordem da cadeia ficou fixa em código
+   (`CHAIN_ORDER` — DeepSeek, Claude, Ollama), não configurável ainda: ver §3,
+   que continua em aberto.
+3. ✅ `AiSettings.tsx` ganhou os painéis do Claude e do Ollama, com a mesma
+   disciplina de aviso do que sai do dispositivo que a DeepSeek já tinha.
+4. ✅ `AIService.setChain()` e o `recover()` tentam a cadeia sozinhos antes
+   de caírem no `RuleProvider` — testado com falhas encadeadas
+   (`provider-chain-service.test.ts`) e verificado num Chromium real.
+5. ✅ CSP com `https://api.anthropic.com` e `http://localhost:11434`. A
+   porta do Ollama é fixa no CSP — mudar a porta na Personalização sem mudar
+   também o CSP deixa o pedido bloqueado, e a própria interface avisa disto.
+6. ✅ `claudeApiKey` excluída do backup, ao lado de `apiKey`.
 
-1. Estender `AiProviderId` e `AI_PROVIDERS`, com as respetivas entradas de
-   configuração (chave da Claude, endereço do Ollama).
-2. Um campo novo em `AiSettings` para a ordem da cadeia.
-3. A `AiSettings.tsx` ganhar os painéis de configuração do Claude e do
-   Ollama, ao lado do que já existe para a DeepSeek.
-4. O `AIService` construir a cadeia a partir do que está configurado, e usar
-   `provider-chain.ts` no `catch` de `send()`/`sendWithTools()` em vez de
-   cair direto no `RuleProvider`.
-5. O CSP do Tauri (`connect-src`) ganhar `https://api.anthropic.com` e o
-   endereço do Ollama.
-6. Excluir as chaves novas do backup, pela mesma regra que já existe para a
-   da DeepSeek (Parte 14).
+## 5. O que fica mesmo de fora, por agora
 
-Nenhum destes seis pontos precisa de nativo — é tudo browser e configuração,
-o mesmo tipo de trabalho que já pôs a DeepSeek a funcionar. E mesmo que
-precisasse, a Fase 1 já está validada no PC real desde 08/08/2026 (`SPEC.md`
-§1.1) — o portão que faltava para qualquer trabalho nativo está aberto.
+- **Ferramentas para o Claude e o Ollama.** Só a DeepSeek pede ferramentas —
+  a Claude e o Ollama respondem em conversa, e a interface di-lo.
+- **Reordenar a cadeia.** Hoje é sempre "o escolhido, depois DeepSeek, Claude,
+  Ollama pela ordem fixa" — não há arrastar nem preferência guardada por
+  posição.

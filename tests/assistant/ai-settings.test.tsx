@@ -157,3 +157,112 @@ describe('a chave', () => {
     expect(aiService.providerName).toBe('Contexto local');
   });
 });
+
+const CLAUDE_KEY = 'sk-ant-abcdefgh12345678';
+
+describe('Claude', () => {
+  it('com chave, passa a responder a Claude', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+
+    await user.click(screen.getByRole('radio', { name: /^Claude/ }));
+    await user.type(screen.getByLabelText('Chave da Claude'), CLAUDE_KEY);
+    await user.click(screen.getByRole('button', { name: 'Guardar a chave' }));
+
+    await waitFor(() => {
+      expect(aiService.providerName).toBe('Claude');
+    });
+  });
+
+  it('avisa o que sai do dispositivo e para onde vai', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+    await user.click(screen.getByRole('radio', { name: /^Claude/ }));
+
+    const note = screen.getByRole('note');
+    expect(note).toHaveTextContent(/saem deste dispositivo/);
+    expect(note).toHaveTextContent('https://api.anthropic.com/v1/messages');
+  });
+
+  it('a chave apaga-se e volta ao local', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+    await user.click(screen.getByRole('radio', { name: /^Claude/ }));
+    await user.type(screen.getByLabelText('Chave da Claude'), CLAUDE_KEY);
+    await user.click(screen.getByRole('button', { name: 'Guardar a chave' }));
+
+    await user.click(await screen.findByLabelText('Apagar a chave da Claude'));
+
+    expect(useAiSettingsStore.getState().settings.claudeApiKey).toBe('');
+    expect(useAiSettingsStore.getState().settings.provider).toBe('regras');
+  });
+
+  it('nunca entra no registo de auditoria', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+    await user.click(screen.getByRole('radio', { name: /^Claude/ }));
+    await user.type(screen.getByLabelText('Chave da Claude'), CLAUDE_KEY);
+    await user.click(screen.getByRole('button', { name: 'Guardar a chave' }));
+
+    await waitFor(() => {
+      expect(logService.list.some((entry) => entry.message.includes('Claude'))).toBe(true);
+    });
+
+    const everything = logService.list
+      .map((entry) => `${entry.message} ${entry.detail ?? ''}`)
+      .join(' ');
+    expect(everything).not.toContain(CLAUDE_KEY);
+  });
+});
+
+describe('Ollama', () => {
+  it('sem chave nenhuma — só o nome do modelo já chega para responder', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+
+    await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+    await user.type(screen.getByLabelText('Modelo do Ollama'), 'llama3.1');
+    await user.tab();
+
+    await waitFor(() => {
+      expect(aiService.providerName).toBe('Ollama');
+    });
+  });
+
+  it('diz que nada sai do dispositivo', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+    await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+
+    expect(screen.getByText(/Nada sai do dispositivo/)).toBeInTheDocument();
+  });
+});
+
+describe('cadeia automática', () => {
+  it('com mais do que um provedor configurado, avisa que há troca automática', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+
+    await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+    await user.type(screen.getByLabelText('Modelo do Ollama'), 'llama3.1');
+    await user.tab();
+
+    await user.click(screen.getByRole('radio', { name: /^DeepSeek/ }));
+    await user.type(screen.getByLabelText('Chave da API'), KEY);
+    await user.click(screen.getByRole('button', { name: 'Guardar a chave' }));
+
+    expect(await screen.findByText(/tenta sozinho o próximo provedor/)).toBeInTheDocument();
+  });
+
+  it('com um só provedor configurado, não há nota de cadeia', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+
+    await user.click(screen.getByRole('radio', { name: /^DeepSeek/ }));
+    await user.type(screen.getByLabelText('Chave da API'), KEY);
+    await user.click(screen.getByRole('button', { name: 'Guardar a chave' }));
+
+    await waitFor(() => expect(aiService.providerName).toBe('DeepSeek'));
+    expect(screen.queryByText(/tenta sozinho o próximo provedor/)).toBeNull();
+  });
+});

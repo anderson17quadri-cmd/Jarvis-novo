@@ -36,7 +36,7 @@ export const BACKUP_VERSION = 1;
  * repõe volta a colar a chave, e a interface diz-lho.
  */
 export const SECRET_FIELDS: Readonly<Partial<Record<StorageKey, readonly string[]>>> = {
-  [STORAGE_KEYS.aiSettings]: ['apiKey'],
+  [STORAGE_KEYS.aiSettings]: ['apiKey', 'claudeApiKey'],
 };
 
 export interface JarvisBackup {

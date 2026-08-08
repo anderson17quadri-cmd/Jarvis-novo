@@ -11,7 +11,7 @@
  * escrito, em vez de deixar supor que está guardada com cuidado.
  */
 
-export type AiProviderId = 'regras' | 'deepseek';
+export type AiProviderId = 'regras' | 'deepseek' | 'claude' | 'ollama';
 
 export interface AiProviderInfo {
   readonly id: AiProviderId;
@@ -44,6 +44,24 @@ export const AI_PROVIDERS: Readonly<Record<AiProviderId, AiProviderInfo>> = {
     keyUrl: 'https://platform.deepseek.com/api_keys',
     endpoint: 'https://api.deepseek.com/chat/completions',
   },
+  claude: {
+    id: 'claude',
+    name: 'Claude',
+    description:
+      'Modelo de linguagem da Anthropic. O que escrever no assistente sai do dispositivo e vai para os servidores da Anthropic.',
+    needsKey: true,
+    keyUrl: 'https://console.anthropic.com/settings/keys',
+    endpoint: 'https://api.anthropic.com/v1/messages',
+  },
+  ollama: {
+    id: 'ollama',
+    name: 'Ollama',
+    description:
+      'Um modelo a correr no próprio dispositivo. Nada sai daqui — não há chave, porque não há ninguém do outro lado a cobrar.',
+    needsKey: false,
+    keyUrl: '',
+    endpoint: '',
+  },
 };
 
 /** Modelos da DeepSeek, com o que cada um serve. */
@@ -74,6 +92,13 @@ export interface AiSettings {
    * A janela explica a regra antes de se ligar.
    */
   readonly autoModel: boolean;
+  /** Chave da Anthropic. Mesmas regras da `apiKey` da DeepSeek. */
+  readonly claudeApiKey: string;
+  readonly claudeModel: 'claude-sonnet-5' | 'claude-opus-5';
+  /** Nome do modelo instalado localmente — depende do que foi feito `ollama pull`. */
+  readonly ollamaModel: string;
+  /** Endereço do Ollama. Configurável porque a porta pode ter sido mudada. */
+  readonly ollamaBaseUrl: string;
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
@@ -83,6 +108,10 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   apiKey: '',
   model: 'deepseek-chat',
   autoModel: false,
+  claudeApiKey: '',
+  claudeModel: 'claude-sonnet-5',
+  ollamaModel: '',
+  ollamaBaseUrl: 'http://localhost:11434',
 };
 
 /**

@@ -1,7 +1,9 @@
 import { selectMessages, useAssistantStore } from '@/stores/use-assistant-store';
+import { notificationService } from './notification-service';
 import type { AiProvider, AiRequest } from '@/types/assistant';
 import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
 import { describeChoice } from './ai-providers/model-choice';
+import { nextStep, type ChainMember } from './ai-providers/provider-chain';
 import { RuleProvider } from './ai-providers/rule-provider';
 import { runTool, type ToolCall } from './assistant/tool-runner';
 import { readContext } from './assistant/context';
@@ -18,6 +20,13 @@ import { AiFailure, planFallback } from '@/types/ai-failure';
  * Trocar de provedor é `aiService.setProvider(new OpenAiProvider(chave))` —
  * nenhum componente muda, porque nenhum componente conhece o provedor.
  *
+ * **A cadeia (Parte 12 §Orquestrador multi-provedor).** `setChain` liga mais
+ * do que um provedor de uma vez: o primeiro é o ativo, e se ele falhar por
+ * chave, saldo, limite ou rede, o `recover` tenta o seguinte sozinho, avisa
+ * sempre, e só cai no `RuleProvider` quando a cadeia toda se esgota. Quem
+ * escolheu só um provedor (`setProvider`) continua a funcionar exatamente
+ * como antes — a cadeia fica vazia, e falhar cai direto no local.
+ *
  * O contexto (Parte 7.2) chega por uma fonte registada de fora, e a memória
  * pelo `memoryService`. O serviço não conhece nenhuma store além da do
  * assistente, que é a que escreve.
@@ -33,6 +42,7 @@ export interface PendingConfirmation {
 
 export class AIService {
   private controller: AbortController | null = null;
+  private chain: readonly ChainMember[] = [];
 
   constructor(private provider: AiProvider = new RuleProvider()) {}
 
@@ -43,6 +53,20 @@ export class AIService {
   setProvider(provider: AiProvider): void {
     this.cancel();
     this.provider = provider;
+    this.chain = [];
+  }
+
+  /**
+   * Liga uma cadeia de provedores. O primeiro configurado passa a ser o
+   * ativo; os outros só entram em jogo se este falhar (ver `recover`).
+   *
+   * Uma cadeia vazia (nenhum provedor configurado) cai no `RuleProvider` —
+   * o mesmo comportamento de sempre quando não há para onde responder.
+   */
+  setChain(chain: readonly ChainMember[]): void {
+    this.cancel();
+    this.chain = chain;
+    this.provider = chain[0]?.provider ?? new RuleProvider();
   }
 
   /** Cancela o pedido em curso, se houver. */
@@ -286,6 +310,50 @@ export class AIService {
       `O provedor falhou: ${failure.kind}`,
       error instanceof Error ? error.message : String(error),
     );
+
+    // A cadeia tenta o próximo provedor configurado antes de cair no local —
+    // é o que faz "sem saldo" virar "a passar para o Claude" em vez de "a
+    // passar para o local" logo à primeira falha.
+    if (this.chain.length > 0) {
+      const step = nextStep(this.chain, this.provider.name, failure, state.isAborted);
+
+      if (step.action === 'tentar' && step.member) {
+        notificationService.warn('Provedor de IA trocado', step.notice, {
+          category: 'assistente',
+        });
+        logService.audit(step.notice, 'executado');
+
+        this.provider = step.member.provider;
+        store().appendToMessage(state.messageId, `\n\n— ${step.notice}\n\n`);
+
+        let full = '';
+        let hasStartedSpeaking = false;
+
+        try {
+          for await (const chunk of this.provider.stream(state.request)) {
+            if (state.request.signal?.aborted) break;
+
+            if (!hasStartedSpeaking) {
+              hasStartedSpeaking = true;
+              store().setMode('speaking');
+            }
+
+            full += chunk;
+            store().appendToMessage(state.messageId, chunk);
+          }
+        } catch (nextError) {
+          // A cadeia continua sozinha: a próxima falha volta a este mesmo
+          // método, que tenta o provedor seguinte, ou esgota-se e cai no local.
+          return await this.recover(nextError, { ...state, text: full });
+        }
+
+        this.noteModel(state.messageId);
+        store().finishMessage(state.messageId);
+        store().setMode('idle');
+        this.controller = null;
+        return full;
+      }
+    }
 
     const plan = planFallback({
       failure,

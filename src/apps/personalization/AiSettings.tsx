@@ -3,6 +3,7 @@ import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Trash2, Wand2 } from '
 
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
+import { CLAUDE_MODELS } from '@/services/ai-providers/claude-provider';
 import { LONG_PROMPT_CHARS } from '@/services/ai-providers/model-choice';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import {
@@ -30,12 +31,33 @@ export function AiSettings(): React.JSX.Element {
   const setModel = useAiSettingsStore((state) => state.setModel);
   const setAutoModel = useAiSettingsStore((state) => state.setAutoModel);
   const forgetKey = useAiSettingsStore((state) => state.forgetKey);
+  const setClaudeApiKey = useAiSettingsStore((state) => state.setClaudeApiKey);
+  const setClaudeModel = useAiSettingsStore((state) => state.setClaudeModel);
+  const forgetClaudeKey = useAiSettingsStore((state) => state.forgetClaudeKey);
+  const setOllamaModel = useAiSettingsStore((state) => state.setOllamaModel);
+  const setOllamaBaseUrl = useAiSettingsStore((state) => state.setOllamaBaseUrl);
 
   const [draft, setDraft] = useState('');
   const [isVisible, setVisible] = useState(false);
+  const [claudeDraft, setClaudeDraft] = useState('');
+  const [isClaudeVisible, setClaudeVisible] = useState(false);
+  const [ollamaModelDraft, setOllamaModelDraft] = useState(settings.ollamaModel);
 
   const hasKey = settings.apiKey.length > 0;
   const isMalformed = draft.trim().length > 0 && !looksLikeApiKey(draft);
+  const hasClaudeKey = settings.claudeApiKey.length > 0;
+  const isClaudeMalformed = claudeDraft.trim().length > 0 && !looksLikeApiKey(claudeDraft);
+
+  /**
+   * Quantos provedores remotos, além do escolhido, têm chave guardada — é o
+   * que entra na cadeia automática se o escolhido falhar (Parte 12
+   * §Orquestrador multi-provedor).
+   */
+  const configuredElsewhere = [
+    settings.provider !== 'deepseek' && hasKey,
+    settings.provider !== 'claude' && hasClaudeKey,
+    settings.provider !== 'ollama' && settings.ollamaModel.trim().length > 0,
+  ].filter(Boolean).length;
 
   return (
     <div className="flex flex-col gap-s3">
@@ -73,6 +95,14 @@ export function AiSettings(): React.JSX.Element {
           );
         })}
       </div>
+
+      {configuredElsewhere > 0 && (
+        <p className="text-cap leading-relaxed text-t3" role="note">
+          Se o <b>{AI_PROVIDERS[settings.provider].name}</b> falhar — sem saldo, sem chave aceite,
+          ou de rastos — o assistente tenta sozinho o próximo provedor que tiver chave guardada, e
+          avisa sempre antes de continuar.
+        </p>
+      )}
 
       {settings.provider === 'deepseek' && (
         <>
@@ -245,6 +275,194 @@ export function AiSettings(): React.JSX.Element {
                 : DEEPSEEK_MODELS.find((model) => model.id === settings.model)?.description}
             </p>
           </div>
+        </>
+      )}
+
+      {settings.provider === 'claude' && (
+        <>
+          <p
+            className="flex items-start gap-2 rounded-input border border-warn/30 bg-warn/[.06] p-2.5 text-cap leading-relaxed text-t2"
+            role="note"
+          >
+            <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0 text-warn" aria-hidden="true" />
+            <span>
+              O que escrever no assistente, o histórico da conversa aberta e um resumo do estado do
+              sistema saem deste dispositivo para <b>{AI_PROVIDERS.claude.endpoint}</b>. A chave
+              fica guardada aqui, em armazenamento local — <b>não é um cofre</b>. Um cofre a sério
+              exige o chaveiro do sistema, que só existe na versão nativa.
+            </span>
+          </p>
+
+          {hasClaudeKey ? (
+            <div className="flex items-center gap-2 rounded-input border border-line bg-tint/[.02] px-3 py-2">
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] text-t3">Chave guardada</span>
+                <span className="mono block truncate text-[12px]">
+                  {isClaudeVisible ? settings.claudeApiKey : maskApiKey(settings.claudeApiKey)}
+                </span>
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setClaudeVisible((value) => !value)}
+                aria-label={isClaudeVisible ? 'Esconder a chave da Claude' : 'Mostrar a chave da Claude'}
+                aria-pressed={isClaudeVisible}
+                className="flex-shrink-0 rounded p-1.5 text-t3 transition-colors duration-hover hover:text-accent"
+              >
+                {isClaudeVisible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  forgetClaudeKey();
+                  setClaudeVisible(false);
+                }}
+                aria-label="Apagar a chave da Claude"
+                className="flex-shrink-0 rounded p-1.5 text-t3 transition-colors duration-hover hover:text-danger"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="flex gap-2">
+                <label className="min-w-0 flex-1">
+                  <span className="sr-only">Chave da Claude</span>
+                  <input
+                    type="password"
+                    value={claudeDraft}
+                    onChange={(event) => setClaudeDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && looksLikeApiKey(claudeDraft)) {
+                        setClaudeApiKey(claudeDraft);
+                        setClaudeDraft('');
+                      }
+                    }}
+                    placeholder="sk-ant-…"
+                    className={cn(
+                      'mono w-full rounded-input border bg-tint/[.03] px-3 py-2',
+                      'text-[12px] outline-none transition-colors duration-hover',
+                      'placeholder:text-t3 focus:border-accent/45',
+                      isClaudeMalformed ? 'border-warn/50' : 'border-line',
+                    )}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  disabled={!looksLikeApiKey(claudeDraft)}
+                  onClick={() => {
+                    setClaudeApiKey(claudeDraft);
+                    setClaudeDraft('');
+                  }}
+                  className={cn(
+                    'flex-shrink-0 rounded-btn border px-3.5 py-2 text-[12.5px] font-medium',
+                    'transition-all duration-hover ease-out',
+                    looksLikeApiKey(claudeDraft)
+                      ? 'border-accent/50 bg-accent/[.08] text-accent hover:bg-accent/[.14] active:scale-[.98]'
+                      : 'cursor-not-allowed border-line text-t3 opacity-60',
+                  )}
+                >
+                  Guardar a chave
+                </button>
+              </div>
+
+              {isClaudeMalformed && (
+                <p className="mt-1.5 text-[11px] text-warn">
+                  Uma chave da Anthropic começa por <span className="mono">sk-</span>. Isto não
+                  parece uma.
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => void getPlatformAdapter().openExternal(AI_PROVIDERS.claude.keyUrl)}
+                className="mt-2 flex items-center gap-1.5 text-[11px] text-t3 underline transition-colors duration-hover hover:text-accent"
+              >
+                <ExternalLink className="h-3 w-3" aria-hidden="true" />
+                Obter uma chave em console.anthropic.com
+              </button>
+            </div>
+          )}
+
+          <div>
+            <p className="t-label mb-1.5">Modelo</p>
+            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label="Modelo da Claude">
+              {CLAUDE_MODELS.map((model) => (
+                <button
+                  key={model.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={settings.claudeModel === model.id}
+                  onClick={() => setClaudeModel(model.id)}
+                  title={model.description}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-[10.5px] transition-all duration-hover ease-out',
+                    settings.claudeModel === model.id
+                      ? 'border-accent bg-accent/[.1] text-accent'
+                      : 'border-line text-t3 hover:border-accent/35 hover:text-t2',
+                  )}
+                >
+                  {model.name}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-cap text-t3">
+              {CLAUDE_MODELS.find((model) => model.id === settings.claudeModel)?.description}
+            </p>
+          </div>
+
+          <p className="text-cap leading-relaxed text-t3">
+            Ainda não pede ferramentas — abre janelas, cria tarefas ou muda de tema só a DeepSeek,
+            por agora. A Claude responde em conversa.
+          </p>
+        </>
+      )}
+
+      {settings.provider === 'ollama' && (
+        <>
+          <p className="text-cap leading-relaxed text-t3">
+            Nada sai do dispositivo — é um modelo a correr no próprio PC. Sem chave: não há
+            ninguém do outro lado a cobrar.
+          </p>
+
+          <label className="block">
+            <span className="t-label mb-1.5 block">Modelo instalado</span>
+            <input
+              type="text"
+              value={ollamaModelDraft}
+              onChange={(event) => setOllamaModelDraft(event.target.value)}
+              onBlur={() => setOllamaModel(ollamaModelDraft)}
+              placeholder="llama3.1"
+              aria-label="Modelo do Ollama"
+              className="mono w-full rounded-input border border-line bg-tint/[.03] px-3 py-2 text-[12px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+            />
+            <span className="mt-1.5 block text-cap text-t3">
+              O nome tal como aparece em <span className="mono">ollama list</span> no teu
+              terminal — o sistema não sabe que modelos tens instalados.
+            </span>
+          </label>
+
+          <label className="block">
+            <span className="t-label mb-1.5 block">Endereço</span>
+            <input
+              type="text"
+              defaultValue={settings.ollamaBaseUrl}
+              onBlur={(event) => setOllamaBaseUrl(event.target.value)}
+              aria-label="Endereço do Ollama"
+              className="mono w-full rounded-input border border-line bg-tint/[.03] px-3 py-2 text-[12px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+            />
+            <span className="mt-1.5 block text-cap text-t3">
+              Só a porta 11434 (a de origem) está autorizada a falar com o JARVIS. Mudar a porta
+              aqui sem mudar também a política de segurança da app deixa o pedido bloqueado.
+            </span>
+          </label>
+
+          <p className="text-cap leading-relaxed text-t3">
+            Ainda não pede ferramentas — abre janelas, cria tarefas ou muda de tema só a DeepSeek,
+            por agora. O Ollama responde em conversa.
+          </p>
         </>
       )}
 
