@@ -50,7 +50,17 @@ Escreve "4. O resto das dependências (FastAPI, coqui-tts)..."
 pip install --quiet -r requirements.txt
 
 Escreve "5. A confirmar se a GPU foi encontrada..."
-$resultado = python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')" 2>&1
+# O PyTorch escreve avisos inofensivos no stderr (por exemplo, sobre uma GPU
+# nova de mais para os kernels compilados terem sido validados nela) — com
+# `2>&1` e `$ErrorActionPreference = "Stop"`, o PowerShell trata isso como
+# erro fatal e para o script, mesmo sem nada de errado ter acontecido.
+# `2>$null` descarta esses avisos: só interessa aqui o "True"/"False" e o
+# nome da placa, que vêm sempre no stdout.
+$anteriorErrorAction = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$resultado = python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else '')" 2>$null
+$ErrorActionPreference = $anteriorErrorAction
+
 $linhas = ($resultado -split '\r?\n') | ForEach-Object { $_.Trim() }
 
 if ($linhas[0] -eq "True") {
