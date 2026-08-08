@@ -2,6 +2,7 @@ import { getPlatformAdapter } from '@/platform';
 import { aiService } from './ai-service';
 import { memoryService } from './assistant/memory-service';
 import { automationService } from './automation-service';
+import { fpsMeter } from './fps-meter';
 import { logService } from './log-service';
 import { soundService } from './sound-service';
 import { systemService } from './system-service';
@@ -28,6 +29,11 @@ export interface Diagnostics {
   /** Memória do heap em bytes. Só no Chromium; `null` nos outros. */
   readonly heapUsedBytes: number | null;
   readonly heapLimitBytes: number | null;
+  /**
+   * `null` durante o primeiro segundo de medição, ou se nada estiver a
+   * observar (ver `fps-meter.ts`) — nunca um número por adivinhar.
+   */
+  readonly fps: number | null;
   readonly services: readonly ServiceStatus[];
 }
 
@@ -61,6 +67,7 @@ export function readDiagnostics(): Diagnostics {
     firstPaintMs: readFirstPaint(),
     heapUsedBytes: memory?.usedJSHeapSize ?? null,
     heapLimitBytes: memory?.jsHeapSizeLimit ?? null,
+    fps: fpsMeter.current,
     services: [
       {
         name: 'Plataforma',

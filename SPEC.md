@@ -29,13 +29,13 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 |---|---|
 | `tsc --noEmit` | limpo, strict total |
 | ESLint | 0 erros |
-| Vitest | 970 testes |
+| Vitest | 977 testes |
 | `vite build` | produz |
 | `cargo check` | limpo em desktop **e** em `aarch64-linux-android` |
 | `npm run dev` | arranca sem avisos; consola do browser limpa |
 | **PWA instalável** | manifesto, ícones 192/512 + `maskable` e service worker ativo. O Chromium reportou **zero erros de instalabilidade** em `Page.getInstallabilityErrors`. Verificado com a rede cortada: a aplicação abre, e **a tipografia carrega** — as três famílias, não só a predefinida —, porque nenhuma delas vem do Google Fonts |
 | **Zero pedidos para fora** | Medido em Chromium: com o provedor local, **nenhum pedido sai do `localhost`**. Só sai alguma coisa depois de se escolher a DeepSeek e colar uma chave — e a janela di-lo antes |
-| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha, a **escolha de modelo por pedido**, o **modo copiloto**, os **sons do arranque e do login biométrico**, a **consola de comandos** e a **tipografia à escolha** |
+| Interface via `WebAdapter` | arranque, login, shell responsivo, AI Core, janelas, encaixe, paleta, temas, menu contextual, grelha de widgets com arrastar e persistência, pesquisa global na paleta, painel de notificações, loja de plugins, Emails, Tarefas, Projetos e Arquivos, **widgets de Disco e Rede**, **estados do sistema**, **sons sintetizados**, **comandos de voz**, **Centro de Programador**, **Privacidade**, **assistente com histórico, memória e contexto**, **quatro desktops com layouts guardados**, os **widgets de Calendário, Tarefas e IA**, o **daltonismo**, o **volume por categoria**, o **bloqueio por inatividade**, o **editor de temas**, a **DeepSeek ligada ao assistente**, o **assistente a executar ações a sério**, os **perfis completos**, com som e plugins, a **correção do que a voz ouviu**, as **cópias de segurança**, a **queda para o provedor local** quando a DeepSeek falha, a **escolha de modelo por pedido**, o **modo copiloto**, os **sons do arranque e do login biométrico**, a **consola de comandos**, a **tipografia à escolha** e o **FPS a sério** |
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
@@ -492,7 +492,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Logs em tempo real, pesquisáveis | ✅ | `apps/developer-center/` — filtros por nível e por origem, pesquisa que também entra no detalhe |
 | Diagnóstico do sistema | ✅ | `services/diagnostics.ts` — plataforma, adapter e capacidades, além do Monitor de recursos |
 | Inspetor de eventos | ✅ | `logService.watchEventBus()` escuta o Event Bus inteiro e mostra o nome e a carga de cada evento |
-| Desempenho (memória, tempo de arranque) | 🟡 | Arranque e `performance.memory`. **A memória só existe no Chromium** — noutros browsers mostra-se ausente em vez de um número inventado. FPS fica para depois |
+| Desempenho (memória, tempo de arranque, FPS) | ✅ | Arranque, `performance.memory` e agora **FPS a sério**, por `requestAnimationFrame` (`services/fps-meter.ts`) — não um número simulado. **A memória só existe no Chromium** — noutros browsers mostra-se ausente em vez de um número inventado. O medidor de FPS segue a mesma regra do som: só corre enquanto a aba Estado está aberta, e mostra "a medir…" no primeiro segundo em vez de um zero ou de um valor congelado de antes |
 | Estado dos serviços e dos adapters | ✅ | Plataforma, métricas, automações, som e registo, cada um com o que está mesmo a fazer |
 | Consola de comandos | ✅ | Aba **Consola** no Centro de Programador. `ferramenta chave=valor` corre pelo mesmo `runTool` que o assistente usa — o catálogo inteiro de 23 ferramentas, incluindo as que a voz e a paleta nunca alcançam (`guardar_layout`, `ligar_automacao`, as destrutivas…). `ajuda` lista o catálogo, `ajuda <nome>` detalha parâmetros, `limpar` esvazia. As destrutivas pedem confirmação em linha, como no assistente — não correm sozinhas mesmo escritas à mão |
 

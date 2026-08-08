@@ -6,6 +6,7 @@ import { CommandConsole } from './CommandConsole';
 import { cn } from '@/lib/cn';
 import { formatBytes, formatTime } from '@/lib/format';
 import { readDiagnostics, type Diagnostics } from '@/services/diagnostics';
+import { fpsMeter } from '@/services/fps-meter';
 import {
   filterLogs,
   LEVEL_LABELS,
@@ -170,8 +171,14 @@ function StatePanel(): React.JSX.Element {
   const info = usePlatformInfo();
 
   useEffect(() => {
+    // O medidor de FPS só corre enquanto este painel está aberto — a mesma
+    // regra do som, que só cria o `AudioContext` ao primeiro uso.
+    const stopFpsMeter = fpsMeter.start();
     const timer = setInterval(() => setDiagnostics(readDiagnostics()), DIAGNOSTICS_INTERVAL_MS);
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      stopFpsMeter();
+    };
   }, []);
 
   return (
@@ -188,6 +195,7 @@ function StatePanel(): React.JSX.Element {
               ? 'não disponível neste browser'
               : `${formatBytes(diagnostics.heapUsedBytes)} de ${formatBytes(diagnostics.heapLimitBytes ?? 0)}`}
           </Row>
+          <Row term="FPS">{diagnostics.fps === null ? 'a medir…' : `${diagnostics.fps} fps`}</Row>
         </dl>
       </section>
 
