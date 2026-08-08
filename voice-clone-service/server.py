@@ -45,9 +45,38 @@ app.add_middleware(
 _tts_model = None
 
 
+def _preparar_ffmpeg_no_windows() -> None:
+    """
+    No Windows, desde o Python 3.8, a variável PATH deixou de bastar para o
+    Python encontrar DLLs de que uma biblioteca precise — é preciso dizer-lho
+    por código, com `os.add_dll_directory`. O `torchcodec` (usado pelo
+    XTTS-v2 para ler o áudio) precisa das DLLs do FFmpeg, e sem isto falha
+    a arrancar mesmo com o FFmpeg instalado.
+
+    `FFMPEG_DLL_DIR` aponta para a pasta `bin` do FFmpeg — ver README.md.
+    Sem essa variável definida, ou fora do Windows, não faz nada: o
+    `torchcodec` no Linux/Mac já encontra as bibliotecas sozinho.
+    """
+    if not hasattr(os, "add_dll_directory"):
+        return
+
+    ffmpeg_bin = os.environ.get("FFMPEG_DLL_DIR")
+    if not ffmpeg_bin:
+        return
+
+    if not Path(ffmpeg_bin).is_dir():
+        raise RuntimeError(
+            f"FFMPEG_DLL_DIR aponta para uma pasta que não existe: {ffmpeg_bin}"
+        )
+
+    os.add_dll_directory(ffmpeg_bin)
+
+
 @app.on_event("startup")
 def carregar_modelo() -> None:
     global _tts_model
+    _preparar_ffmpeg_no_windows()
+
     # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
     # PyTorch a inicializar a GPU, e isso não deve acontecer só por importar
     # este módulo (por exemplo, em testes que nunca chegam a arrancar o servidor).

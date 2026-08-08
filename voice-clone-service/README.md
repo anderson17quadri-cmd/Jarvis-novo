@@ -135,3 +135,28 @@ ligar isto ao `voice-service.ts` da app (sub-fase 4.3 do desenho).
   Confirma com `dir voices` no terminal: se aparecer `referencia.wav.wav`,
   o ficheiro tem duas extensões por engano — `Rename-Item
   voices\referencia.wav.wav voices\referencia.wav` corrige.
+- **`RuntimeError: Could not load libtorchcodec`** — falta o FFmpeg (a
+  versão "com bibliotecas partilhadas", não só o programa). Resolve-se em
+  três passos:
+
+  1. Instala o FFmpeg com as DLLs:
+     ```powershell
+     winget install Gyan.FFmpeg.Shared
+     ```
+  2. Descobre onde ficou instalado (o caminho tem sempre uma pasta `bin`
+     com ficheiros `avcodec-*.dll` lá dentro):
+     ```powershell
+     Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "avcodec-*.dll" | Select-Object -First 1 -ExpandProperty DirectoryName
+     ```
+  3. Usa esse caminho na variável `FFMPEG_DLL_DIR`, **na mesma janela** onde
+     vais correr o serviço (variáveis de ambiente do PowerShell só duram
+     nessa janela):
+     ```powershell
+     $env:FFMPEG_DLL_DIR = "C:\caminho\que\o\passo\2\devolveu"
+     .\run.ps1
+     ```
+
+  **Porquê não basta pôr no PATH:** desde o Python 3.8, o Windows deixou de
+  usar a PATH para encontrar DLLs de que uma biblioteca Python precise — é
+  preciso dizer-lho por código, e é o que `server.py` faz com
+  `os.add_dll_directory`, lendo o caminho desta variável.
