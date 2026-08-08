@@ -1,0 +1,128 @@
+"""
+Serviço local de voz clonada (Parte 7.1 — docs/spec/voz-clonada-local.md).
+
+Sozinho, à parte do JARVIS — a mesma relação que o Ollama já tem com a app:
+corre no próprio PC, o JARVIS fala com ele por HTTP no localhost, e nada disto
+sai da máquina. Usa o XTTS-v2 (Coqui) para clonar UMA voz só: a de quem grava
+a amostra em `voices/referencia.wav`. Não há aqui suporte a clonar mais do
+que uma pessoa de propósito — isto é a voz de quem usa o sistema, não um
+serviço geral de clonagem.
+
+NÃO TESTADO NUMA GPU A SÉRIO. Escrito com cuidado a partir da API pública e
+documentada do pacote `coqui-tts`, mas sem uma RTX 5070 à mão para confirmar
+— a primeira corrida no PC é que prova se está certo. Ver README.md para o
+que fazer se algo não bater certo.
+
+Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
+"""
+
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+
+VOICES_DIR = Path(__file__).parent / "voices"
+REFERENCE_PATH = VOICES_DIR / "referencia.wav"
+MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
+
+app = FastAPI(title="JARVIS — voz clonada local")
+
+# CORS aberto de propósito: isto só ouve em 127.0.0.1, nunca sai da máquina, e
+# o JARVIS (Tauri/WebView) precisa de o poder chamar sem o browser bloquear o
+# pedido por vir de uma origem diferente.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
+
+# O modelo é grande (mais de 1GB) e demora a carregar — uma vez só, no
+# arranque do serviço, não a cada pedido. `None` até lá: um pedido que chegue
+# antes de estar pronto recebe um erro claro em vez de um crash a meio.
+_tts_model = None
+
+
+@app.on_event("startup")
+def carregar_modelo() -> None:
+    global _tts_model
+    # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
+    # PyTorch a inicializar a GPU, e isso não deve acontecer só por importar
+    # este módulo (por exemplo, em testes que nunca chegam a arrancar o servidor).
+    from TTS.api import TTS
+
+    device = "cuda" if os.environ.get("VOICE_CLONE_CPU") != "1" else "cpu"
+    _tts_model = TTS(MODEL_NAME).to(device)
+
+
+@app.get("/health")
+def saude() -> dict:
+    return {
+        "ok": True,
+        "modelo_carregado": _tts_model is not None,
+        "voz_configurada": REFERENCE_PATH.exists(),
+    }
+
+
+@app.post("/voz")
+async def gravar_voz(ficheiro: UploadFile) -> dict:
+    """
+    Recebe a amostra de voz e guarda-a como referência.
+
+    Substitui o que estiver lá — só há uma voz de propósito, a de quem grava.
+    """
+    VOICES_DIR.mkdir(parents=True, exist_ok=True)
+    conteudo = await ficheiro.read()
+
+    if len(conteudo) < 1000:
+        raise HTTPException(400, "O ficheiro parece vazio ou vazio de mais para ser uma gravação.")
+
+    REFERENCE_PATH.write_bytes(conteudo)
+    return {"ok": True, "bytes": len(conteudo)}
+
+
+@app.post("/falar")
+def falar(pedido: dict) -> Response:
+    """
+    Sintetiza `pedido["texto"]` com a voz gravada. Devolve áudio WAV.
+
+    `pedido["idioma"]` por omissão `"pt"` — o XTTS-v2 aceita um código de
+    idioma, não um código de região; "pt-PT" não é um valor válido aqui.
+    """
+    if _tts_model is None:
+        raise HTTPException(503, "O modelo ainda está a carregar. Tenta outra vez em instantes.")
+
+    if not REFERENCE_PATH.exists():
+        raise HTTPException(
+            400,
+            "Ainda não há nenhuma voz gravada. Manda um ficheiro para /voz primeiro.",
+        )
+
+    texto = pedido.get("texto", "").strip()
+    if not texto:
+        raise HTTPException(400, "Falta o texto a dizer.")
+
+    idioma = pedido.get("idioma", "pt")
+
+    # `tts_to_file` é a forma documentada de gerar áudio com este pacote;
+    # gera-se para um ficheiro temporário e lê-se de volta, porque a versão
+    # instalada pode não ter um método que devolva os bytes diretamente.
+    import tempfile
+
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
+        caminho_temp = tmp.name
+
+    try:
+        _tts_model.tts_to_file(
+            text=texto,
+            speaker_wav=str(REFERENCE_PATH),
+            language=idioma,
+            file_path=caminho_temp,
+        )
+        audio_bytes = Path(caminho_temp).read_bytes()
+    finally:
+        Path(caminho_temp).unlink(missing_ok=True)
+
+    return Response(content=audio_bytes, media_type="audio/wav")

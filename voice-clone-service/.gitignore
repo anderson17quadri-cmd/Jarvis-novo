@@ -1,0 +1,8 @@
+# A tua voz nunca vai para o repositório. Nem o modelo (é grande, e é
+# descarregado sozinho na primeira vez que o serviço arranca).
+voices/*.wav
+voices/*.mp3
+__pycache__/
+*.pyc
+.venv/
+venv/
