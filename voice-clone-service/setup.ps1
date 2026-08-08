@@ -44,7 +44,10 @@ if (-not (Test-Path ".venv")) {
 
 Escreve "3. PyTorch com CUDA ($Cuda)..."
 Escreve "   Se isto falhar mais abaixo na confirmação da GPU, corre de novo com -Cuda e outra versão — vê a lista em pytorch.org."
-pip install --quiet torch --index-url "https://download.pytorch.org/whl/$Cuda"
+# torchaudio tem de vir da mesma fonte que o torch — instalado à parte, do
+# índice normal do PyPI, corre o risco de vir sem CUDA ou com uma versão que
+# não bate certo com o torch já instalado. O XTTS-v2 precisa dos dois.
+pip install --quiet torch torchaudio --index-url "https://download.pytorch.org/whl/$Cuda"
 
 Escreve "4. O resto das dependências (FastAPI, coqui-tts)..."
 pip install --quiet -r requirements.txt

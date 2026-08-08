@@ -63,9 +63,11 @@ Vai a **pytorch.org** → "Get Started" → escolhe *Stable*, *Windows*, *Pip*,
 *Python*, e a versão do **CUDA** mais recente que aparecer na lista. O site
 dá-te o comando exato a copiar — algo como:
 ```powershell
-pip install torch --index-url https://download.pytorch.org/whl/cu126
+pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu126
 ```
-(o número depois de `cu` é que muda; usa o que o site te disser)
+(o número depois de `cu` é que muda; usa o que o site te disser — mas o
+`torchaudio` tem de vir sempre do mesmo comando que o `torch`, nunca à
+parte, senão as versões desalinham-se e o XTTS-v2 não arranca)
 
 **Confirma que a GPU foi encontrada** antes de continuares:
 ```powershell
