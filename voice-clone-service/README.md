@@ -126,3 +126,12 @@ ligar isto ao `voice-service.ts` da app (sub-fase 4.3 do desenho).
   foi atualizado. `pip install "transformers<5"` resolve (já está no
   `requirements.txt`, mas quem instalou antes desta correção precisa de
   correr isto à mão uma vez).
+- **`torchcodec library is required for audio IO`** — a partir do PyTorch
+  2.9, o coqui-tts precisa do `torchcodec`, que não vem por omissão.
+  `pip install coqui-tts[codec]` resolve (já está no `requirements.txt`
+  como `coqui-tts[codec]`, mesma nota da anterior).
+- **O serviço diz que não há gravação, mas a pasta mostra `referencia.wav`**
+  — o Explorador do Windows pode estar a esconder a extensão verdadeira.
+  Confirma com `dir voices` no terminal: se aparecer `referencia.wav.wav`,
+  o ficheiro tem duas extensões por engano — `Rename-Item
+  voices\referencia.wav.wav voices\referencia.wav` corrige.
