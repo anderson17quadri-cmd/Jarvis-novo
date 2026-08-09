@@ -9,14 +9,15 @@ máquina. Ver o desenho completo em
 incluem as três correções que só apareceram a sério no Windows.
 
 **Duas formas de escolher a voz, sem clonar ninguém sem autorização:**
-- **Uma voz pronta do próprio modelo** (`GET /vozes`) — cerca de 40 vozes
-  gravadas por atores que autorizaram o uso, distribuídas com o XTTS-v2.
+- **Uma voz pronta do próprio modelo** (`GET /vozes`) — todas as que o
+  XTTS-v2 trouxer (mais de 40), gravadas por atores que autorizaram o uso.
   Não precisa de gravação nenhuma.
 - **A tua voz, ou a de alguém que autorizou explicitamente** — grava-se em
   `voices/referencia.wav` (`POST /voz`), e o serviço clona-a.
 
 `POST /falar` usa a voz pronta se mandares `"voz": "Ana Florence"` no
-pedido; sem isso, usa a gravação clonada.
+pedido (qualquer nome que `GET /vozes` liste); sem isso, usa a gravação
+clonada.
 
 ## Caminho rápido — um script faz quase tudo
 
@@ -118,8 +119,27 @@ curl -X POST http://127.0.0.1:8090/falar `
   --output teste.wav
 ```
 
-Se `teste.wav` tocar com a tua voz, está a funcionar — o próximo passo é
-ligar isto ao `voice-service.ts` da app (sub-fase 4.3 do desenho).
+Se `teste.wav` tocar com a tua voz, está a funcionar. Já está ligado ao
+`voice-service.ts` da app (sub-fase 4.3 do desenho) — em Personalização →
+Voz, a "A minha voz" e as vozes prontas aparecem sozinhas quando este
+serviço está a correr.
+
+**Para experimentar várias vozes prontas de seguida**, sem repetir o
+comando à mão uma vez por voz:
+
+```powershell
+$vozes = (Invoke-RestMethod http://127.0.0.1:8090/vozes).vozes.PSObject.Properties.Name
+
+foreach ($voz in $vozes) {
+    $body = @{ texto = "Boa tarde. Sou o JARVIS. Esta é a voz $voz."; voz = $voz } | ConvertTo-Json
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($body)
+    Invoke-RestMethod -Uri "http://127.0.0.1:8090/falar" -Method Post -Body $bytes -ContentType "application/json; charset=utf-8" -OutFile "voz_$($voz -replace ' ','_').wav"
+}
+
+explorer .
+```
+
+Cria um `.wav` por cada voz que o teu modelo trouxer, na pasta atual.
 
 ## Se algo correr mal
 

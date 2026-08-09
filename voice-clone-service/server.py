@@ -3,10 +3,11 @@ Serviço local de voz clonada (Parte 7.1 — docs/spec/voz-clonada-local.md).
 
 Sozinho, à parte do JARVIS — a mesma relação que o Ollama já tem com a app:
 corre no próprio PC, o JARVIS fala com ele por HTTP no localhost, e nada disto
-sai da máquina. Usa o XTTS-v2 (Coqui) para clonar UMA voz só: a de quem grava
-a amostra em `voices/referencia.wav`. Não há aqui suporte a clonar mais do
-que uma pessoa de propósito — isto é a voz de quem usa o sistema, não um
-serviço geral de clonagem.
+sai da máquina. Usa o XTTS-v2 (Coqui) — que faz duas coisas diferentes, e as
+duas ficam aqui: clona UMA voz só (a de quem grava a amostra em
+`voices/referencia.wav` — isto é a voz de quem usa o sistema, não um serviço
+geral de clonagem), e também traz várias dezenas de vozes já gravadas por
+atores que autorizaram o uso, sem clonar ninguém (`GET /vozes`).
 
 Confirmado a funcionar numa RTX 5070 (09/08/2026) — áudio real, gerado com a
 voz gravada em `voices/referencia.wav`. Precisou de três correções que só
@@ -32,9 +33,10 @@ MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 # Vozes próprias do XTTS-v2 — gravadas por atores de voz que autorizaram o
 # uso no modelo, distribuídas com ele. Nenhuma delas é clonada por nós; são
 # do próprio pacote (ficheiro `speakers_xtts.pth`, dentro do modelo
-# descarregado). Uma curadoria pequena da lista inteira (mais de 40), só
-# para a escolha não ser um nome ao acaso — confirma-se a lista completa
-# com: tts --model_name tts_models/multilingual/multi-dataset/xtts_v2 --list_speaker_idx
+# descarregado). Isto é só uma descrição para as que já se ouviram — a
+# lista de vozes *válidas* vem do modelo a sério (`_vozes_disponiveis`,
+# preenchida no arranque), nunca desta tabela: um nome escrito à mão errado
+# dava um erro feio, vindo de dentro do coqui-tts.
 VOZES_PRONTAS: dict[str, str] = {
     "Ana Florence": "Feminina, tom claro e neutro",
     "Sofia Hellen": "Feminina, mais grave",
@@ -45,6 +47,12 @@ VOZES_PRONTAS: dict[str, str] = {
     "Royston Min": "Masculina, tom neutro",
     "Craig Gutsy": "Masculina, tom firme",
 }
+
+# Preenchida no arranque, com as vozes que o modelo carregado trouxer a
+# sério (`TTS.speakers`) — mais de 40, no XTTS-v2. `None` até lá, e nos
+# testes sem modelo nenhum: nesse caso cai-se para as chaves de
+# VOZES_PRONTAS, só para a lógica das rotas continuar testável sem GPU.
+_vozes_disponiveis: list[str] | None = None
 
 app = FastAPI(title="JARVIS — voz clonada local")
 
@@ -93,7 +101,7 @@ def _preparar_ffmpeg_no_windows() -> None:
 
 @app.on_event("startup")
 def carregar_modelo() -> None:
-    global _tts_model
+    global _tts_model, _vozes_disponiveis
     _preparar_ffmpeg_no_windows()
 
     # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
@@ -103,6 +111,7 @@ def carregar_modelo() -> None:
 
     device = "cuda" if os.environ.get("VOICE_CLONE_CPU") != "1" else "cpu"
     _tts_model = TTS(MODEL_NAME).to(device)
+    _vozes_disponiveis = list(_tts_model.speakers or [])
 
 
 @app.get("/health")
@@ -116,8 +125,16 @@ def saude() -> dict:
 
 @app.get("/vozes")
 def vozes_prontas() -> dict:
-    """As vozes do próprio modelo, sem clonagem nenhuma — ver VOZES_PRONTAS."""
-    return {"vozes": VOZES_PRONTAS}
+    """
+    As vozes do próprio modelo, sem clonagem nenhuma.
+
+    A lista é a verdadeira, a que o modelo carregado trouxer — mais de 40,
+    no XTTS-v2 — com a descrição de `VOZES_PRONTAS` para as que já se
+    ouviram, e uma genérica para as restantes. Antes do modelo carregar
+    (ou nos testes sem GPU), cai-se só para a pequena curadoria.
+    """
+    nomes = _vozes_disponiveis if _vozes_disponiveis is not None else list(VOZES_PRONTAS)
+    return {"vozes": {nome: VOZES_PRONTAS.get(nome, "Voz do modelo XTTS-v2") for nome in nomes}}
 
 
 @app.post("/voz")
@@ -143,8 +160,8 @@ def falar(pedido: dict) -> Response:
     Sintetiza `pedido["texto"]`. Devolve áudio WAV.
 
     Duas formas de escolher a voz, nunca as duas ao mesmo tempo:
-    - `pedido["voz"]` — um nome de `VOZES_PRONTAS` (ver `/vozes`). Voz do
-      próprio modelo, sem clonagem.
+    - `pedido["voz"]` — um nome de `GET /vozes`. Voz do próprio modelo, sem
+      clonagem.
     - Nem isso: usa a amostra gravada em `voices/referencia.wav`, clonada.
 
     `pedido["idioma"]` por omissão `"pt"` — o XTTS-v2 aceita um código de
@@ -163,7 +180,8 @@ def falar(pedido: dict) -> Response:
     kwargs: dict = {"text": texto, "language": idioma}
 
     if voz:
-        if voz not in VOZES_PRONTAS:
+        vozes_validas = _vozes_disponiveis if _vozes_disponiveis is not None else list(VOZES_PRONTAS)
+        if voz not in vozes_validas:
             raise HTTPException(
                 400,
                 f"'{voz}' não é uma voz conhecida. Vê /vozes para a lista.",
