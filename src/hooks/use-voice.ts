@@ -28,6 +28,11 @@ const VOICE_ERROR_MESSAGES: Partial<Record<string, string>> = {
     'O motor de voz deste PC não tem o serviço de reconhecimento disponível — é uma limitação conhecida do WebView2 (o motor do Tauri no Windows), não desta app.',
   'service-not-allowed':
     'O serviço de reconhecimento de voz não está disponível neste motor — mesma limitação do WebView2.',
+  timeout:
+    'O motor de voz deste PC não respondeu — é uma limitação conhecida do WebView2. Liga o voice-clone-service (voice-clone-service/run.ps1) para usares o reconhecimento local em vez deste.',
+  'no-speech': 'Não percebi nada na gravação. Tenta falar mais perto do microfone, ou mais alto.',
+  'local-service-unavailable':
+    'O serviço de voz local parou a meio do reconhecimento. Confirma se ainda está a correr (voice-clone-service/run.ps1) e tenta outra vez.',
 };
 
 /** A frase para um erro sem entrada na tabela acima. */

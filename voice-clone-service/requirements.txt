@@ -8,3 +8,7 @@ coqui-tts[codec]
 # https://github.com/idiap/coqui-ai-TTS/issues/558. Preso a <5 até isso ser
 # corrigido do lado deles.
 transformers<5
+# Reconhecimento de voz (POST /ouvir) — o WebView2 não tem nenhum serviço a
+# sério por trás da Web Speech API (ver a nota em server.py). Usa o mesmo
+# PyTorch já instalado acima, nenhuma dependência nova de GPU.
+openai-whisper

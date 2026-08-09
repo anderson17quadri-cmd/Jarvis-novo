@@ -20,10 +20,19 @@ interface VoiceSettingsState {
   hydrate: () => Promise<void>;
 }
 
-const AUTO: VoiceSelection = { kind: 'auto' };
+/**
+ * Voz por omissão, para quem nunca escolheu nenhuma (primeiro arranque, ou
+ * `hydrate` sem nada guardado): "Alison Dietlinde", uma das vozes prontas do
+ * XTTS-v2, em vez de `{ kind: 'auto' }` (a voz robótica do sistema). Só
+ * entra em jogo se o serviço local (`voice-clone-service/`) estiver a
+ * correr — sem ele, `speakClonada` falha em silêncio e nada soa; quem nunca
+ * o instalou não fica sem voz nenhuma, só sem áudio até o instalar ou
+ * escolher outra em Definições.
+ */
+const DEFAULT_SELECTION: VoiceSelection = { kind: 'clonada', nome: 'Alison Dietlinde' };
 
 export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
-  selection: AUTO,
+  selection: DEFAULT_SELECTION,
 
   setSelection: (selection) => {
     set({ selection });
@@ -38,7 +47,7 @@ export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
   hydrate: async () => {
     const saved = await storageService.get<VoiceSelection | null>(STORAGE_KEYS.voiceSettings, null);
 
-    const selection = saved?.kind ? saved : AUTO;
+    const selection = saved?.kind ? saved : DEFAULT_SELECTION;
     set({ selection });
     voiceService.setSelection(selection);
   },

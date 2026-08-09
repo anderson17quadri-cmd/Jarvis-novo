@@ -57,14 +57,17 @@ describe('VoiceService — código do erro', () => {
     restore?.();
   });
 
-  it('um start() que rebenta de forma síncrona chega ao onError, não fica em silêncio', () => {
+  it('um start() que rebenta de forma síncrona chega ao onError, não fica em silêncio', async () => {
     restore = withGlobalRecognition(() => new FakeRecognition('throws'));
     const service = new VoiceService();
     const onError = vi.fn();
 
-    const started = service.toggleListening({ onTranscript: vi.fn(), onError });
+    // A decisão entre o reconhecimento local e o nativo (ver `startListening`)
+    // pergunta primeiro ao serviço local — por isso já não há um resultado
+    // síncrono a testar aqui, só o `onError` a chegar depois.
+    service.toggleListening({ onTranscript: vi.fn(), onError });
 
-    expect(started).toBe(false);
+    await vi.waitFor(() => expect(onError).toHaveBeenCalled());
     expect(onError).toHaveBeenCalledWith('NotAllowedError');
   });
 

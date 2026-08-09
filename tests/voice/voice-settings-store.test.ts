@@ -10,10 +10,10 @@ beforeEach(() => {
 });
 
 describe('useVoiceSettingsStore', () => {
-  it('sem nada gravado, hidrata para a escolha automática', async () => {
+  it('sem nada gravado, hidrata para a voz por omissão (Alison Dietlinde, clonada)', async () => {
     await useVoiceSettingsStore.getState().hydrate();
 
-    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'auto' });
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'clonada', nome: 'Alison Dietlinde' });
   });
 
   it('sobrevive a recarregar, e o voiceService fica a par', async () => {

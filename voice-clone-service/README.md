@@ -8,6 +8,15 @@ máquina. Ver o desenho completo em
 **Confirmado a funcionar numa RTX 5070 (09/08/2026).** Os passos abaixo
 incluem as três correções que só apareceram a sério no Windows.
 
+**Também faz reconhecimento de voz (`POST /ouvir`), não só síntese.** O
+WebView2 (o motor do Tauri no Windows) não tem nenhum serviço a sério por
+trás da Web Speech API do browser — o microfone liga, mas nunca sai
+transcrição nenhuma, nem erro, fica preso para sempre. Confirmado a sério
+nesta app (09/08/2026), não é suposição. O arranjo usa o Whisper, com o
+mesmo PyTorch+CUDA já instalado acima — nenhuma dependência nova de GPU.
+`voice-service.ts` já fala com este endpoint sozinho sempre que este
+serviço estiver a correr; não precisa de nada manual.
+
 **Duas formas de escolher a voz, sem clonar ninguém sem autorização:**
 - **Uma voz pronta do próprio modelo** (`GET /vozes`) — todas as que o
   XTTS-v2 trouxer (mais de 40), gravadas por atores que autorizaram o uso.

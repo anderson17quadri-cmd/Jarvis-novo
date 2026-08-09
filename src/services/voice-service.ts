@@ -102,6 +102,21 @@ function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   return candidate ?? null;
 }
 
+/**
+ * `getUserMedia` + `MediaRecorder` — o suficiente para gravar e mandar ao
+ * reconhecimento local (`POST /ouvir`, ver `speakClonada` para o par em
+ * síntese). Verificado a existir no WebView2, mesmo sem o reconhecimento
+ * nativo funcionar.
+ */
+function hasLocalRecordingSupport(): boolean {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.mediaDevices?.getUserMedia === 'function' &&
+    typeof window !== 'undefined' &&
+    'MediaRecorder' in window
+  );
+}
+
 export interface VoiceCallbacks {
   readonly onTranscript: (text: string) => void;
   readonly onStart?: () => void;
@@ -114,8 +129,14 @@ export class VoiceService {
   private recognition: SpeechRecognitionLike | null = null;
   private listening = false;
 
+  /** O relógio de segurança do WebView2 — ver `startListeningNative`. */
+  private hangTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** A gravação em curso para o reconhecimento local, se houver. */
+  private localRecorder: MediaRecorder | null = null;
+
   get isRecognitionSupported(): boolean {
-    return getRecognitionConstructor() !== null;
+    return getRecognitionConstructor() !== null || hasLocalRecordingSupport();
   }
 
   get isSynthesisSupported(): boolean {
@@ -132,18 +153,74 @@ export class VoiceService {
       this.stopListening();
       return false;
     }
-    return this.startListening(callbacks);
+    // Marcado já aqui, de forma síncrona: um segundo clique enquanto se
+    // decide qual motor usar (ver `startListening`) tem de parar, não
+    // arrancar uma segunda escuta por cima.
+    this.listening = true;
+    void this.startListening(callbacks);
+    return true;
   }
 
-  private startListening(callbacks: VoiceCallbacks): boolean {
+  /**
+   * Decide entre o reconhecimento local (`voice-clone-service/`, `POST
+   * /ouvir`) e o nativo do motor (Web Speech API).
+   *
+   * **O nativo está confirmado partido no WebView2** (o motor do Tauri no
+   * Windows): o microfone liga (`onaudiostart` dispara), mas nunca chega
+   * transcrição, erro nem sequer o fim do reconhecimento — fica preso para
+   * sempre, sem pista nenhuma. Por isso o local é a escolha por omissão
+   * sempre que o serviço estiver a correr, e o nativo só entra como
+   * segunda opção — onde continua a servir (browser, Android), continua a
+   * ser usado.
+   */
+  private async startListening(callbacks: VoiceCallbacks): Promise<void> {
+    const local = await this.localSttReachable();
+    if (!this.listening) return; // `stopListening` correu enquanto se perguntava
+
+    if (local) {
+      await this.startListeningLocal(callbacks);
+    } else {
+      this.startListeningNative(callbacks);
+    }
+  }
+
+  /**
+   * Pergunta rápida (700ms) se `voice-clone-service/` está a correr e já
+   * tem o modelo de reconhecimento carregado. Timeout curto de propósito —
+   * se não responder depressa, é porque não está lá, e o botão do
+   * microfone não deve ficar à espera disso.
+   */
+  private async localSttReachable(): Promise<boolean> {
+    try {
+      const resposta = await fetch(`${CLONE_SERVICE_URL}/health`, { signal: AbortSignal.timeout(700) });
+      if (!resposta.ok) return false;
+      const saude = (await resposta.json()) as { reconhecimento_carregado?: boolean };
+      return Boolean(saude.reconhecimento_carregado);
+    } catch {
+      return false;
+    }
+  }
+
+  private startListeningNative(callbacks: VoiceCallbacks): void {
     const Recognition = getRecognitionConstructor();
-    if (!Recognition) return false;
+    if (!Recognition) {
+      this.listening = false;
+      callbacks.onError?.(null);
+      return;
+    }
 
     try {
       const recognition = new Recognition();
       recognition.lang = 'pt-PT';
       recognition.continuous = false;
       recognition.interimResults = false;
+
+      const limparHangTimer = (): void => {
+        if (this.hangTimer !== null) {
+          clearTimeout(this.hangTimer);
+          this.hangTimer = null;
+        }
+      };
 
       recognition.onresult = (event): void => {
         const last = event.results[event.results.length - 1];
@@ -152,12 +229,14 @@ export class VoiceService {
       };
 
       recognition.onend = (): void => {
+        limparHangTimer();
         this.listening = false;
         this.recognition = null;
         callbacks.onEnd?.();
       };
 
       recognition.onerror = (event): void => {
+        limparHangTimer();
         this.listening = false;
         this.recognition = null;
         callbacks.onError?.(event?.error ?? null);
@@ -165,9 +244,25 @@ export class VoiceService {
 
       recognition.start();
       this.recognition = recognition;
-      this.listening = true;
       callbacks.onStart?.();
-      return true;
+
+      /*
+       * O relógio de segurança: sem o serviço local a correr, o WebView2
+       * pode nunca dar sinal nenhum depois de ligar o microfone (ver a nota
+       * acima `startListening`). Sem isto, o núcleo ficava em "a ouvir"
+       * para sempre, e ninguém percebia porquê.
+       */
+      this.hangTimer = setTimeout(() => {
+        this.hangTimer = null;
+        try {
+          recognition.stop();
+        } catch {
+          /* já parado */
+        }
+        this.listening = false;
+        this.recognition = null;
+        callbacks.onError?.('timeout');
+      }, 9_000);
     } catch (error) {
       /*
        * O `start()` pode recusar de forma síncrona — sem permissão de
@@ -179,18 +274,114 @@ export class VoiceService {
       this.listening = false;
       this.recognition = null;
       callbacks.onError?.(error instanceof Error ? error.message : 'start-falhou');
-      return false;
+    }
+  }
+
+  /**
+   * Reconhecimento pelo serviço local (`voice-clone-service/`, `POST
+   * /ouvir`) — grava com `MediaRecorder` (isto funciona no WebView2, mesmo
+   * a Web Speech API não funcionando) e manda o áudio para transcrever.
+   *
+   * Sem deteção de silêncio (Parte 10 — só a escuta manual existe): grava
+   * até se voltar a carregar no botão (`stopListening`), ou até um limite
+   * de segurança, para nunca gravar para sempre por engano.
+   */
+  private async startListeningLocal(callbacks: VoiceCallbacks): Promise<void> {
+    if (!hasLocalRecordingSupport()) {
+      this.listening = false;
+      callbacks.onError?.('audio-capture');
+      return;
+    }
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (error) {
+      this.listening = false;
+      const nome = error instanceof Error ? error.name : '';
+      callbacks.onError?.(nome === 'NotAllowedError' ? 'not-allowed' : 'audio-capture');
+      return;
+    }
+
+    if (!this.listening) {
+      // `stopListening` correu enquanto se pedia permissão ao Windows.
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+
+    const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((tipo) =>
+      MediaRecorder.isTypeSupported(tipo),
+    );
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (event): void => {
+      if (event.data.size > 0) chunks.push(event.data);
+    };
+
+    const parado = new Promise<void>((resolve) => {
+      recorder.onstop = (): void => resolve();
+    });
+
+    recorder.start();
+    this.localRecorder = recorder;
+    callbacks.onStart?.();
+
+    const limiteDeSeguranca = setTimeout(() => {
+      if (recorder.state !== 'inactive') recorder.stop();
+    }, 12_000);
+
+    await parado;
+    clearTimeout(limiteDeSeguranca);
+    stream.getTracks().forEach((track) => track.stop());
+    this.localRecorder = null;
+
+    const foiCancelado = !this.listening;
+    this.listening = false;
+    if (foiCancelado) return; // `stopListening` já tratou de tudo
+
+    if (chunks.length === 0) {
+      callbacks.onError?.('no-speech');
+      callbacks.onEnd?.();
+      return;
+    }
+
+    try {
+      const forma = new FormData();
+      forma.append('ficheiro', new Blob(chunks, { type: mimeType ?? 'audio/webm' }), 'gravacao.webm');
+
+      const resposta = await fetch(`${CLONE_SERVICE_URL}/ouvir`, { method: 'POST', body: forma });
+      if (!resposta.ok) throw new Error(`o serviço local devolveu ${resposta.status}`);
+
+      const corpo = (await resposta.json()) as { texto?: string };
+      const texto = (corpo.texto ?? '').trim();
+
+      if (texto) callbacks.onTranscript(texto);
+      else callbacks.onError?.('no-speech');
+    } catch {
+      callbacks.onError?.('local-service-unavailable');
+    } finally {
+      callbacks.onEnd?.();
     }
   }
 
   stopListening(): void {
+    this.listening = false;
+
+    if (this.hangTimer !== null) {
+      clearTimeout(this.hangTimer);
+      this.hangTimer = null;
+    }
+
     try {
       this.recognition?.stop();
     } catch {
       /* já parado */
     }
-    this.listening = false;
     this.recognition = null;
+
+    if (this.localRecorder && this.localRecorder.state !== 'inactive') {
+      this.localRecorder.stop();
+    }
   }
 
   /** A voz escolhida de propósito (Parte 7.1 §Voz). Ver `VoiceSelection`. */

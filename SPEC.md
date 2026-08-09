@@ -109,18 +109,31 @@ npm run tauri android dev      # dispositivo Android
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
 | **Leitura real do disco** — explorador de ficheiros | `apps/files/`, `data/files.ts` | 🚫 bloqueado |
 | Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ✅ **confirmado 08/08/2026** — CPU real no Windows, ver §1.1. RAM, disco e rede vêm da mesma leitura, ainda sem print à parte |
-| Lista de processos | `src-tauri/src/commands/system.rs` | ⚠️ por testar |
-| Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ⚠️ por testar |
-| Atalho global `CTRL+ALT+J` | `src-tauri/src/shortcuts.rs` | ⚠️ por testar |
-| Notificações nativas do sistema | plugin `notification` | ⚠️ por testar |
-| Persistência via plugin `store` | `services/storage-service.ts` | ⚠️ por testar |
-| Diálogos nativos de ficheiro | plugin `dialog` | ⚠️ por testar |
-| Build Windows (MSI e NSIS) | `npm run tauri build` | ⚠️ por testar |
-| Build Android (APK e AAB) | `npm run android:build` | ⚠️ por testar |
+| Lista de processos | `src-tauri/src/commands/system.rs` | 🟡 comando pronto, mesma leitura (`sysinfo`) já confirmada em §1.1 — ainda sem nenhum ecrã a chamá-lo (`getTopProcesses` só existe no adapter, nenhum widget o usa) |
+| Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ✅ **confirmado 09/08/2026** — o atalho global (linha abaixo) chama `tray::focus_main`, e correu sem erro |
+| Atalho global `CTRL+ALT+J` | `src-tauri/src/shortcuts.rs` | ✅ **confirmado a sério 09/08/2026** — janela minimizada à força, `CTRL+ALT+J` enviado ao sistema (não à janela), e voltou ao primeiro plano sozinha |
+| Notificações nativas do sistema | plugin `notification` | 🟡 `notification-service.ts` pede-a sempre que mostra um toast que possa interromper — corre a cada arranque (as notificações de boot), nunca isolada por testar |
+| Persistência via plugin `store` | `services/storage-service.ts` | ✅ **confirmado 09/08/2026** — `%APPDATA%\com.projectarc.jarvis\jarvis.store.json` no disco a sério, com dados reais de sessões anteriores (notificações, memória do assistente, voz escolhida), sobrevive a fechar e voltar a abrir |
+| Diálogos nativos de ficheiro | plugin `dialog` | ⬜ registado no Rust (`Cargo.toml`), mas **nenhum sítio da interface o chama ainda** — a cópia de segurança usa um `<a download>`/`<input type="file">` normais, não este plugin. Por wire, não só por testar |
+| Build Windows (MSI e NSIS) | `npm run tauri build` | 🟡 em curso pela primeira vez, 09/08/2026 — ver a nota abaixo da tabela |
+| Build Android (APK e AAB) | `npm run android:build` | 🚫 bloqueado nesta máquina — sem Android SDK instalado (`ANDROID_HOME` vazio). Precisa de `npm run android:init` com o SDK/NDK primeiro |
 | Instalação como aplicação nativa | Tauri | ⚠️ por testar — **a PWA já cobre isto** no telemóvel |
 
 > No browser, tudo isto está desligado nas capacidades do `WebAdapter` e
 > substituído por simulação ou por vazio. Ver [PLATFORM.md](PLATFORM.md).
+
+**Nota de sessão (09/08/2026) — a instância de `npm run tauri dev` fechou-se
+sozinha várias vezes** durante estes testes, sem nenhum erro no terminal nem
+entrada no visualizador de eventos do Windows — nem sempre a meio de algo
+que se estivesse a fazer (uma vez, só a aguardar, sem interação nenhuma). Não
+se percebeu a causa a tempo desta sessão. Suspeitas por confirmar: pressão de
+memória com o `voice-clone-service` a carregar dois modelos grandes ao mesmo
+tempo (XTTS-v2 + Whisper) na mesma GPU/RAM, ou algo ligado ao
+`--remote-debugging-port` do WebView2 usado para testar por fora (CDP). Não
+aconteceu com a app corrida sem essa flag. Se voltar a acontecer em uso
+normal (não só em testes automatizados), vale a pena olhar para o
+`Gestor de Tarefas` no momento da falha, e para os registos de eventos do
+Windows (`Get-WinEvent -LogName Application`) logo a seguir.
 
 ## 3. Regra em vigor a partir daqui
 
@@ -346,7 +359,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 
 | Item | | |
 |---|:--:|---|
-| Reconhecimento pela Web Speech API | 🟡 | `services/voice-service.ts`. Falha silenciosamente no WebView2 (o motor do Tauri no Windows) — sem o serviço de reconhecimento que o Chrome tem por trás da mesma API. O código de erro do navegador passou a chegar sempre (`SpeechRecognitionErrorKind`), registado e mostrado em vez de descartado — resta confirmar no PC se o diagnóstico é mesmo esse |
+| Reconhecimento pela Web Speech API | ✅ | `services/voice-service.ts`. **Confirmado partido no WebView2** (09/08/2026, RTX 5070): não é só "falha silenciosamente" — o microfone liga (`onaudiostart` dispara), e depois nunca mais dá sinal nenhum, nem resultado, nem erro, nem sequer o fim do reconhecimento. Testado a sério por CDP (`webkitSpeechRecognition` isolado, `getUserMedia` a funcionar, permissão concedida) antes de se mexer em código nenhum — não é suposição. **O arranjo:** `voice-clone-service/` ganhou `POST /ouvir` (Whisper, mesmo `torch`+CUDA já instalado para o XTTS-v2) — `voice-service.ts` grava com `MediaRecorder` (isto funciona no WebView2) e manda transcrever, sempre que o serviço local estiver a correr; o nativo do motor fica como segunda opção, para quem não o tiver a correr (ou no browser/Android, onde pode servir). Testado ponta-a-ponta: um `.wav` com fala real em português voltou como texto correto. Um relógio de segurança (9s) força o fim do nativo caso ele fique preso — para nunca mais deixar o núcleo em "a ouvir" para sempre, mesmo sem o serviço local a correr |
 | Escolha de voz de síntese | ✅ | `VoiceSettings.tsx` — lista as vozes portuguesas já instaladas no sistema (as "Natural" do Windows, por exemplo) e deixa escolher e testar cada uma. Não é clonagem nem API paga: só o que já existe na máquina |
 | Voz clonada local (a própria voz, via XTTS-v2) | ✅ | `voice-clone-service/` — serviço Python à parte (a mesma relação que o Ollama tem com a app). **Confirmado a sério numa RTX 5070 (09/08/2026)**: `/falar` devolve áudio real com a voz gravada em `voices/referencia.wav`. Precisou de três correções só visíveis no Windows — FFmpeg fixado à versão 4–8 (o `winget` instala a mais recente, incompatível), `os.add_dll_directory` porque o Python 3.8+ deixou de usar a PATH para DLLs, e o PyTorch reinstalado contra `cu130` (a RTX 5070/Blackwell não tinha kernels no `cu126` inicial) — todas em `voice-clone-service/README.md`. `setup.ps1`/`run.ps1` automatizam o resto. Também traz `GET /vozes`, uma curadoria de 8 vozes já gravadas por atores que autorizaram o uso, distribuídas com o próprio XTTS-v2 — sem clonar ninguém, para quem só quer uma voz melhor sem gravar nada. Só a voz de quem usa o sistema, ou uma destas prontas — nunca a de terceiros sem autorização. **Ligado a `voice-service.ts`** (`VoiceSelection`, sub-fase 4.3): `VoiceSettings.tsx` (Personalização → Voz) mostra "A minha voz" e as vozes prontas ao lado das vozes do sistema, quando o serviço está a correr em `127.0.0.1:8090` — CSP do Tauri atualizado (`connect-src`, `media-src blob:`). Falta a gravação da amostra dentro da própria interface (4.2) e o arranque automático do serviço (4.4). Desenho em [`docs/spec/voz-clonada-local.md`](docs/spec/voz-clonada-local.md) |
 | Indicador de estado no header | ✅ | |

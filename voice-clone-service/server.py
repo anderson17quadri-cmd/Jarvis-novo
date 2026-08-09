@@ -21,6 +21,7 @@ Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
 
 import json
 import os
+import tempfile
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request, UploadFile
@@ -30,6 +31,14 @@ from fastapi.responses import Response
 VOICES_DIR = Path(__file__).parent / "voices"
 REFERENCE_PATH = VOICES_DIR / "referencia.wav"
 MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
+
+# O reconhecimento de voz do WebView2 (o motor do Tauri no Windows) não tem
+# nenhum serviço de verdade por trás da Web Speech API: o microfone liga
+# (`onaudiostart` dispara), mas nunca sai transcrição, erro nem sequer o
+# fim do reconhecimento — fica preso para sempre. Confirmado a sério nesta
+# máquina, não é suposição. `POST /ouvir`, aqui, é o arranjo: local, sem
+# pedir nada à Microsoft nem à Google, no mesmo espírito da voz clonada.
+STT_MODEL_NAME = os.environ.get("STT_MODEL", "small")
 
 # Vozes próprias do XTTS-v2 — gravadas por atores de voz que autorizaram o
 # uso no modelo, distribuídas com ele. Nenhuma delas é clonada por nós; são
@@ -95,6 +104,11 @@ app.add_middleware(
 # antes de estar pronto recebe um erro claro em vez de um crash a meio.
 _tts_model = None
 
+# O modelo de reconhecimento (Whisper), carregado à parte do de síntese —
+# ver a nota junto a `STT_MODEL_NAME`. Mesma regra do `_tts_model`: `None`
+# até estar pronto.
+_stt_model = None
+
 
 def _preparar_ffmpeg_no_windows() -> None:
     """
@@ -125,17 +139,23 @@ def _preparar_ffmpeg_no_windows() -> None:
 
 @app.on_event("startup")
 def carregar_modelo() -> None:
-    global _tts_model, _vozes_disponiveis
+    global _tts_model, _vozes_disponiveis, _stt_model
     _preparar_ffmpeg_no_windows()
 
     # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
     # PyTorch a inicializar a GPU, e isso não deve acontecer só por importar
     # este módulo (por exemplo, em testes que nunca chegam a arrancar o servidor).
     from TTS.api import TTS
+    import whisper
 
     device = "cuda" if os.environ.get("VOICE_CLONE_CPU") != "1" else "cpu"
     _tts_model = TTS(MODEL_NAME).to(device)
     _vozes_disponiveis = list(_tts_model.speakers or [])
+
+    # Carregado depois do XTTS-v2: se a GPU não tiver memória para os dois,
+    # é melhor a síntese (já confirmada a funcionar) continuar a arrancar do
+    # que os dois falharem por causa do reconhecimento, que é o mais novo.
+    _stt_model = whisper.load_model(STT_MODEL_NAME, device=device)
 
 
 @app.get("/health")
@@ -144,6 +164,7 @@ def saude() -> Response:
         "ok": True,
         "modelo_carregado": _tts_model is not None,
         "voz_configurada": REFERENCE_PATH.exists(),
+        "reconhecimento_carregado": _stt_model is not None,
     })
 
 
@@ -225,8 +246,6 @@ def falar(pedido: dict) -> Response:
     # `tts_to_file` é a forma documentada de gerar áudio com este pacote;
     # gera-se para um ficheiro temporário e lê-se de volta, porque a versão
     # instalada pode não ter um método que devolva os bytes diretamente.
-    import tempfile
-
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         caminho_temp = tmp.name
 
@@ -237,3 +256,36 @@ def falar(pedido: dict) -> Response:
         Path(caminho_temp).unlink(missing_ok=True)
 
     return Response(content=audio_bytes, media_type="audio/wav")
+
+
+@app.post("/ouvir")
+async def ouvir(ficheiro: UploadFile) -> Response:
+    """
+    Transcreve um áudio gravado no browser (`MediaRecorder`, normalmente
+    `.webm`/Opus) — o arranjo real do microfone, ver a nota junto a
+    `STT_MODEL_NAME`. O Whisper decodifica pelo `ffmpeg` (subprocesso, não
+    as DLLs do `torchcodec`): qualquer FFmpeg no PATH serve, mesmo o mais
+    recente que o XTTS-v2 recusa.
+    """
+    if _stt_model is None:
+        raise HTTPException(503, "O reconhecimento ainda está a carregar. Tenta outra vez em instantes.")
+
+    conteudo = await ficheiro.read()
+    if len(conteudo) < 100:
+        raise HTTPException(400, "O áudio parece vazio ou vazio de mais para transcrever.")
+
+    sufixo = Path(ficheiro.filename or "audio.webm").suffix or ".webm"
+    with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as tmp:
+        tmp.write(conteudo)
+        caminho_temp = tmp.name
+
+    try:
+        resultado = _stt_model.transcribe(caminho_temp, language="pt", fp16=False)
+    except Exception as erro:
+        # Um `.webm` vazio de silêncio, ou um formato que o ffmpeg não
+        # decodifica, não deve derrubar o serviço — só esta transcrição.
+        raise HTTPException(422, f"Não consegui transcrever: {erro}") from erro
+    finally:
+        Path(caminho_temp).unlink(missing_ok=True)
+
+    return _json_utf8({"texto": str(resultado.get("text", "")).strip()})
