@@ -159,6 +159,16 @@ Cria um `.wav` por cada voz que o teu modelo trouxer, na pasta atual.
   2.9, o coqui-tts precisa do `torchcodec`, que não vem por omissão.
   `pip install coqui-tts[codec]` resolve (já está no `requirements.txt`
   como `coqui-tts[codec]`, mesma nota da anterior).
+- **Um nome de voz com acentos ou letras nórdicas vem trocado** (por
+  exemplo, "Camilla Holmström" aparece como "Camilla HolmstrÃ¶m" numa
+  variável, e depois `/falar` diz que essa voz não existe) — é a **Windows
+  PowerShell** (a versão antiga, 5.1, não a "PowerShell 7"/`pwsh`) a
+  adivinhar mal a codificação da resposta. Já está corrigido do lado do
+  servidor (a resposta vem sempre com `charset=utf-8` explícito), mas só a
+  partir de quem tiver feito `git pull` depois da correção — reinicia o
+  serviço (`Ctrl+C` e `.\run.ps1` outra vez) para a apanhar. Se ainda
+  assim acontecer, `pwsh` (PowerShell 7, se o tiveres instalado) não tem
+  este problema, mesmo sem a correção.
 - **O serviço diz que não há gravação, mas a pasta mostra `referencia.wav`**
   — o Explorador do Windows pode estar a esconder a extensão verdadeira.
   Confirma com `dir voices` no terminal: se aparecer `referencia.wav.wav`,

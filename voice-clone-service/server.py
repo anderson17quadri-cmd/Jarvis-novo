@@ -19,10 +19,11 @@ demasiado nova para o `cu126` inicial). Tudo documentado no README.md.
 Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
 """
 
+import json
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, UploadFile
+from fastapi import FastAPI, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -54,7 +55,30 @@ VOZES_PRONTAS: dict[str, str] = {
 # VOZES_PRONTAS, só para a lógica das rotas continuar testável sem GPU.
 _vozes_disponiveis: list[str] | None = None
 
+def _json_utf8(data: dict, status_code: int = 200) -> Response:
+    """
+    JSON com `charset=utf-8` explícito no cabeçalho.
+
+    Sem isto, o FastAPI manda só `Content-Type: application/json` — e a
+    Windows PowerShell 5.1 (`Invoke-RestMethod`), sem essa pista, adivinha
+    mal a codificação de nomes fora do inglês. "Camilla Holmström" chegava
+    como "Camilla HolmstrÃ¶m" a um utilizador — um bug antigo e conhecido
+    desse cmdlet, não deste modelo nem desta lista.
+    """
+    return Response(
+        content=json.dumps(data, ensure_ascii=False),
+        media_type="application/json; charset=utf-8",
+        status_code=status_code,
+    )
+
+
 app = FastAPI(title="JARVIS — voz clonada local")
+
+
+@app.exception_handler(HTTPException)
+async def _erro_json_utf8(request: Request, exc: HTTPException) -> Response:
+    """Os erros vêm da mesma fábrica que as respostas — o bug era o mesmo aí."""
+    return _json_utf8({"detail": exc.detail}, status_code=exc.status_code)
 
 # CORS aberto de propósito: isto só ouve em 127.0.0.1, nunca sai da máquina, e
 # o JARVIS (Tauri/WebView) precisa de o poder chamar sem o browser bloquear o
@@ -115,16 +139,16 @@ def carregar_modelo() -> None:
 
 
 @app.get("/health")
-def saude() -> dict:
-    return {
+def saude() -> Response:
+    return _json_utf8({
         "ok": True,
         "modelo_carregado": _tts_model is not None,
         "voz_configurada": REFERENCE_PATH.exists(),
-    }
+    })
 
 
 @app.get("/vozes")
-def vozes_prontas() -> dict:
+def vozes_prontas() -> Response:
     """
     As vozes do próprio modelo, sem clonagem nenhuma.
 
@@ -134,11 +158,13 @@ def vozes_prontas() -> dict:
     (ou nos testes sem GPU), cai-se só para a pequena curadoria.
     """
     nomes = _vozes_disponiveis if _vozes_disponiveis is not None else list(VOZES_PRONTAS)
-    return {"vozes": {nome: VOZES_PRONTAS.get(nome, "Voz do modelo XTTS-v2") for nome in nomes}}
+    return _json_utf8(
+        {"vozes": {nome: VOZES_PRONTAS.get(nome, "Voz do modelo XTTS-v2") for nome in nomes}}
+    )
 
 
 @app.post("/voz")
-async def gravar_voz(ficheiro: UploadFile) -> dict:
+async def gravar_voz(ficheiro: UploadFile) -> Response:
     """
     Recebe a amostra de voz e guarda-a como referência.
 
@@ -151,7 +177,7 @@ async def gravar_voz(ficheiro: UploadFile) -> dict:
         raise HTTPException(400, "O ficheiro parece vazio ou vazio de mais para ser uma gravação.")
 
     REFERENCE_PATH.write_bytes(conteudo)
-    return {"ok": True, "bytes": len(conteudo)}
+    return _json_utf8({"ok": True, "bytes": len(conteudo)})
 
 
 @app.post("/falar")
