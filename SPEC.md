@@ -115,7 +115,7 @@ npm run tauri android dev      # dispositivo Android
 | Notificações nativas do sistema | plugin `notification` | 🟡 `notification-service.ts` pede-a sempre que mostra um toast que possa interromper — corre a cada arranque (as notificações de boot), nunca isolada por testar |
 | Persistência via plugin `store` | `services/storage-service.ts` | ✅ **confirmado 09/08/2026** — `%APPDATA%\com.projectarc.jarvis\jarvis.store.json` no disco a sério, com dados reais de sessões anteriores (notificações, memória do assistente, voz escolhida), sobrevive a fechar e voltar a abrir |
 | Diálogos nativos de ficheiro | plugin `dialog` | ⬜ registado no Rust (`Cargo.toml`), mas **nenhum sítio da interface o chama ainda** — a cópia de segurança usa um `<a download>`/`<input type="file">` normais, não este plugin. Por wire, não só por testar |
-| Build Windows (MSI e NSIS) | `npm run tauri build` | 🟡 em curso pela primeira vez, 09/08/2026 — ver a nota abaixo da tabela |
+| Build Windows (MSI e NSIS) | `npm run tauri build` | ✅ **confirmado 09/08/2026** — os dois instaladores produzidos sem erro: `JARVIS AI OS_1.0.0_x64_en-US.msi` (3,4 MB) e `JARVIS AI OS_1.0.0_x64-setup.exe` (2,6 MB), em `src-tauri/target/release/bundle/`. Ainda não instalados nem corridos a partir do instalador — só a build em si |
 | Build Android (APK e AAB) | `npm run android:build` | 🚫 bloqueado nesta máquina — sem Android SDK instalado (`ANDROID_HOME` vazio). Precisa de `npm run android:init` com o SDK/NDK primeiro |
 | Instalação como aplicação nativa | Tauri | ⚠️ por testar — **a PWA já cobre isto** no telemóvel |
 

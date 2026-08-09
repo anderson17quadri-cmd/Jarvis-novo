@@ -96,8 +96,9 @@ diálogos nativos de ficheiro (o plugin está registado no Rust, mas
 nenhum sítio da interface o chama ainda — a cópia de segurança usa
 `<a download>`/`<input type="file">` normais), a lista de processos (o
 comando existe, mas nenhum widget o pede), e o build Android (bloqueado
-nesta máquina por falta do SDK). O build Windows (MSI/NSIS) ficou a
-correr no fim da sessão — ver o resultado no início da próxima.
+nesta máquina por falta do SDK). O build Windows (MSI/NSIS) também
+confirmou — `npm run tauri build` produziu os dois instaladores sem erro
+(`src-tauri/target/release/bundle/`), ainda não corridos.
 
 Nota para quem continuar: a instância de `npm run tauri dev` fechou-se
 sozinha várias vezes durante os testes automatizados por CDP, sem erro
