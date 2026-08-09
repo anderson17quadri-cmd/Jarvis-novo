@@ -29,6 +29,23 @@ VOICES_DIR = Path(__file__).parent / "voices"
 REFERENCE_PATH = VOICES_DIR / "referencia.wav"
 MODEL_NAME = "tts_models/multilingual/multi-dataset/xtts_v2"
 
+# Vozes próprias do XTTS-v2 — gravadas por atores de voz que autorizaram o
+# uso no modelo, distribuídas com ele. Nenhuma delas é clonada por nós; são
+# do próprio pacote (ficheiro `speakers_xtts.pth`, dentro do modelo
+# descarregado). Uma curadoria pequena da lista inteira (mais de 40), só
+# para a escolha não ser um nome ao acaso — confirma-se a lista completa
+# com: tts --model_name tts_models/multilingual/multi-dataset/xtts_v2 --list_speaker_idx
+VOZES_PRONTAS: dict[str, str] = {
+    "Ana Florence": "Feminina, tom claro e neutro",
+    "Sofia Hellen": "Feminina, mais grave",
+    "Alison Dietlinde": "Feminina, tom firme",
+    "Gracie Wise": "Feminina, tom suave",
+    "Andrew Chipper": "Masculina, tom animado",
+    "Damien Black": "Masculina, mais grave",
+    "Royston Min": "Masculina, tom neutro",
+    "Craig Gutsy": "Masculina, tom firme",
+}
+
 app = FastAPI(title="JARVIS — voz clonada local")
 
 # CORS aberto de propósito: isto só ouve em 127.0.0.1, nunca sai da máquina, e
@@ -97,6 +114,12 @@ def saude() -> dict:
     }
 
 
+@app.get("/vozes")
+def vozes_prontas() -> dict:
+    """As vozes do próprio modelo, sem clonagem nenhuma — ver VOZES_PRONTAS."""
+    return {"vozes": VOZES_PRONTAS}
+
+
 @app.post("/voz")
 async def gravar_voz(ficheiro: UploadFile) -> dict:
     """
@@ -117,7 +140,12 @@ async def gravar_voz(ficheiro: UploadFile) -> dict:
 @app.post("/falar")
 def falar(pedido: dict) -> Response:
     """
-    Sintetiza `pedido["texto"]` com a voz gravada. Devolve áudio WAV.
+    Sintetiza `pedido["texto"]`. Devolve áudio WAV.
+
+    Duas formas de escolher a voz, nunca as duas ao mesmo tempo:
+    - `pedido["voz"]` — um nome de `VOZES_PRONTAS` (ver `/vozes`). Voz do
+      próprio modelo, sem clonagem.
+    - Nem isso: usa a amostra gravada em `voices/referencia.wav`, clonada.
 
     `pedido["idioma"]` por omissão `"pt"` — o XTTS-v2 aceita um código de
     idioma, não um código de região; "pt-PT" não é um valor válido aqui.
@@ -125,17 +153,30 @@ def falar(pedido: dict) -> Response:
     if _tts_model is None:
         raise HTTPException(503, "O modelo ainda está a carregar. Tenta outra vez em instantes.")
 
-    if not REFERENCE_PATH.exists():
-        raise HTTPException(
-            400,
-            "Ainda não há nenhuma voz gravada. Manda um ficheiro para /voz primeiro.",
-        )
-
     texto = pedido.get("texto", "").strip()
     if not texto:
         raise HTTPException(400, "Falta o texto a dizer.")
 
     idioma = pedido.get("idioma", "pt")
+    voz = pedido.get("voz")
+
+    kwargs: dict = {"text": texto, "language": idioma}
+
+    if voz:
+        if voz not in VOZES_PRONTAS:
+            raise HTTPException(
+                400,
+                f"'{voz}' não é uma voz conhecida. Vê /vozes para a lista.",
+            )
+        kwargs["speaker"] = voz
+    else:
+        if not REFERENCE_PATH.exists():
+            raise HTTPException(
+                400,
+                "Ainda não há nenhuma voz gravada, e não pediste uma voz pronta. "
+                "Manda um ficheiro para /voz, ou indica 'voz' no pedido — ver /vozes.",
+            )
+        kwargs["speaker_wav"] = str(REFERENCE_PATH)
 
     # `tts_to_file` é a forma documentada de gerar áudio com este pacote;
     # gera-se para um ficheiro temporário e lê-se de volta, porque a versão
@@ -146,12 +187,7 @@ def falar(pedido: dict) -> Response:
         caminho_temp = tmp.name
 
     try:
-        _tts_model.tts_to_file(
-            text=texto,
-            speaker_wav=str(REFERENCE_PATH),
-            language=idioma,
-            file_path=caminho_temp,
-        )
+        _tts_model.tts_to_file(file_path=caminho_temp, **kwargs)
         audio_bytes = Path(caminho_temp).read_bytes()
     finally:
         Path(caminho_temp).unlink(missing_ok=True)

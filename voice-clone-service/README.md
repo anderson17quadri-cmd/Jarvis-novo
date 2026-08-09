@@ -5,9 +5,18 @@ corre no teu PC, o JARVIS fala com ele por HTTP no `localhost`, nada sai da
 máquina. Ver o desenho completo em
 [`docs/spec/voz-clonada-local.md`](../docs/spec/voz-clonada-local.md).
 
-**Ainda não testado numa GPU a sério** — escrito com cuidado a partir da API
-documentada do `coqui-tts`, mas sem uma RTX 5070 à mão para confirmar. Os
-passos abaixo dizem o que fazer se algo não bater certo.
+**Confirmado a funcionar numa RTX 5070 (09/08/2026).** Os passos abaixo
+incluem as três correções que só apareceram a sério no Windows.
+
+**Duas formas de escolher a voz, sem clonar ninguém sem autorização:**
+- **Uma voz pronta do próprio modelo** (`GET /vozes`) — cerca de 40 vozes
+  gravadas por atores que autorizaram o uso, distribuídas com o XTTS-v2.
+  Não precisa de gravação nenhuma.
+- **A tua voz, ou a de alguém que autorizou explicitamente** — grava-se em
+  `voices/referencia.wav` (`POST /voz`), e o serviço clona-a.
+
+`POST /falar` usa a voz pronta se mandares `"voz": "Ana Florence"` no
+pedido; sem isso, usa a gravação clonada.
 
 ## Caminho rápido — um script faz quase tudo
 
