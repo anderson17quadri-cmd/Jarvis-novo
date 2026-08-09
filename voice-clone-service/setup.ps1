@@ -2,16 +2,18 @@
 # PyTorch com CUDA, dependências, e confirma no fim se a GPU foi encontrada.
 #
 # A única coisa que este script não escolhe sozinho com certeza é a versão
-# exata do CUDA a pedir ao PyTorch — isso muda com o tempo. Tenta uma
-# escolha recente por omissão; se a confirmação da GPU falhar no fim, diz
+# exata do CUDA a pedir ao PyTorch — isso muda com o tempo, e placas novas
+# de mais (a RTX 5070 foi o caso, confirmado a 09/08/2026 — cu126 não trazia
+# kernels para ela, cu130 já trouxe) podem precisar de uma versão mais
+# recente do que a por omissão. Se a confirmação da GPU falhar no fim, diz
 # o que fazer.
 #
 # Uso:
-#   .\setup.ps1                  # usa a versão de CUDA por omissão (cu126)
-#   .\setup.ps1 -Cuda cu124      # força outra versão, se a por omissão falhar
+#   .\setup.ps1                  # usa a versão de CUDA por omissão (cu130)
+#   .\setup.ps1 -Cuda cu126      # força outra versão, se a por omissão falhar
 
 param(
-    [string]$Cuda = "cu126"
+    [string]$Cuda = "cu130"
 )
 
 $ErrorActionPreference = "Stop"
@@ -79,6 +81,6 @@ if ($linhas[0] -eq "True") {
     EscreveErro "   com o que o PyTorch precisa para a tua placa. Vai a pytorch.org, escolhe"
     EscreveErro "   Stable > Windows > Pip > Python > a versão do CUDA mais recente da lista,"
     EscreveErro "   e corre este script outra vez com essa versão, por exemplo:"
-    EscreveErro "     .\setup.ps1 -Cuda cu128"
+    EscreveErro "     .\setup.ps1 -Cuda cu126"
     exit 1
 }
