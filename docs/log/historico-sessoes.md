@@ -53,4 +53,17 @@ real com Playwright antes de se dar como funcional (`f5da343`).
 O utilizador começou também a configurar o Claude Code localmente
 (instalador nativo, VS Code, `PATH` do Windows que não atualizava em
 janelas já abertas) para deixar de depender de copiar/colar comandos
-nesta conversa.
+nesta conversa. Testou as 58 vozes prontas e escolheu "Alison Dietlinde".
+
+Por fim, memória entre sessões e entre modelos: `CLAUDE.md` (lido sozinho
+pelo Claude Code no arranque, aponta para este ficheiro e para
+`docs/estilo-de-codigo.md`) e `docs/estilo-de-codigo.md` (as regras do
+projeto — língua, comentários, design, verificação, ética — escritas para
+qualquer modelo, não só o Claude). O pedido era "todo modelo que vou usar
+usar a inteligência já adquirida" — por isso `ollama/Modelfile` traz um
+resumo do mesmo ficheiro como prompt de sistema, para criar um modelo
+Ollama local (`ollama create jarvis-dev -f Modelfile`) já com as
+convenções do projeto, sem depender de as colar a cada conversa. Os dois
+ficheiros de regras (`docs/estilo-de-codigo.md` e `ollama/Modelfile`) não
+se sincronizam sozinhos — o formato do Ollama não inclui outros
+ficheiros — por isso mudar um exige lembrar do outro.
