@@ -67,3 +67,41 @@ convenções do projeto, sem depender de as colar a cada conversa. Os dois
 ficheiros de regras (`docs/estilo-de-codigo.md` e `ollama/Modelfile`) não
 se sincronizam sozinhos — o formato do Ollama não inclui outros
 ficheiros — por isso mudar um exige lembrar do outro.
+
+## 2026-08-09 — O microfone estava mesmo partido: reconhecimento local via Whisper
+
+Depois de escolher "Alison Dietlinde" e ligar a voz por omissão a ela (em
+vez da escolha automática do sistema), o utilizador pediu para deixar o
+microfone a funcionar de verdade, com autonomia total para trabalhar
+diretamente no PC. Testado por CDP antes de mexer em código (não por
+suposição): o reconhecimento nativo do WebView2 liga o microfone
+(`onaudiostart` dispara) e nunca mais dá sinal nenhum — nem resultado, nem
+erro, nem fim. Preso para sempre, sem pista nenhuma para quem usa a app.
+
+O arranjo: `voice-clone-service/server.py` ganhou `POST /ouvir`, com
+Whisper sobre o mesmo `torch`+CUDA já instalado para o XTTS-v2 — nenhuma
+dependência nova de GPU. `voice-service.ts` passou a gravar com
+`MediaRecorder` (isto funciona no WebView2, ao contrário da Web Speech
+API) e mandar transcrever ali, sempre que o serviço local estiver a
+correr; o reconhecimento nativo do motor fica como segunda opção, com um
+relógio de segurança de 9s para nunca mais ficar preso. Confirmado
+ponta-a-ponta: um `.wav` com fala real em português voltou como texto
+correto (`dba49ab`).
+
+De caminho, confirmaram-se a sério no Windows nativo (não só "por
+testar"): a bandeja do sistema, o atalho global `CTRL+ALT+J` (janela
+minimizada à força voltou sozinha ao primeiro plano), e a persistência
+via plugin `store` (ficheiro real em `%APPDATA%`). Ficou por ligar: os
+diálogos nativos de ficheiro (o plugin está registado no Rust, mas
+nenhum sítio da interface o chama ainda — a cópia de segurança usa
+`<a download>`/`<input type="file">` normais), a lista de processos (o
+comando existe, mas nenhum widget o pede), e o build Android (bloqueado
+nesta máquina por falta do SDK). O build Windows (MSI/NSIS) ficou a
+correr no fim da sessão — ver o resultado no início da próxima.
+
+Nota para quem continuar: a instância de `npm run tauri dev` fechou-se
+sozinha várias vezes durante os testes automatizados por CDP, sem erro
+nenhum no terminal — suspeita-se de pressão de memória (XTTS-v2 e Whisper
+carregados ao mesmo tempo no `voice-clone-service`) ou de algo ligado ao
+`--remote-debugging-port` usado para testar por fora. Não visto em uso
+normal, sem essa flag.
