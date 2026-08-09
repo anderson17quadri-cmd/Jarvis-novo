@@ -1,45 +1,45 @@
 import { create } from 'zustand';
 
-import { voiceService } from '@/services/voice-service';
+import { voiceService, type VoiceSelection } from '@/services/voice-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
 /**
- * Qual voz de síntese usar (Parte 7.1 §Voz).
+ * Qual voz de síntese usar (Parte 7.1 §Voz / §Voz clonada local).
  *
- * Guarda só o `voiceURI` — o identificador que o próprio sistema atribui à
- * voz, não o nome (que muda de sítio para sítio) nem a voz em si (que não é
- * serializável). `null` deixa a escolha automática de sempre.
+ * Guarda a `VoiceSelection` inteira, não só um URI — desde que há também a
+ * opção de voz clonada (local, `voice-clone-service/`), "qual voz" já não é
+ * só um identificador do sistema operativo, é também "sistema ou serviço
+ * local, e dentro deste, qual nome".
  */
 interface VoiceSettingsState {
-  voiceURI: string | null;
+  selection: VoiceSelection;
 
-  setVoiceURI: (voiceURI: string | null) => void;
+  setSelection: (selection: VoiceSelection) => void;
 
   persist: () => Promise<void>;
   hydrate: () => Promise<void>;
 }
 
-export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
-  voiceURI: null,
+const AUTO: VoiceSelection = { kind: 'auto' };
 
-  setVoiceURI: (voiceURI) => {
-    set({ voiceURI });
-    voiceService.setPreferredVoice(voiceURI);
+export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
+  selection: AUTO,
+
+  setSelection: (selection) => {
+    set({ selection });
+    voiceService.setSelection(selection);
     void get().persist();
   },
 
   persist: async () => {
-    await storageService.set(STORAGE_KEYS.voiceSettings, { voiceURI: get().voiceURI });
+    await storageService.set(STORAGE_KEYS.voiceSettings, get().selection);
   },
 
   hydrate: async () => {
-    const saved = await storageService.get<{ voiceURI: string | null } | null>(
-      STORAGE_KEYS.voiceSettings,
-      null,
-    );
+    const saved = await storageService.get<VoiceSelection | null>(STORAGE_KEYS.voiceSettings, null);
 
-    const voiceURI = saved?.voiceURI ?? null;
-    set({ voiceURI });
-    voiceService.setPreferredVoice(voiceURI);
+    const selection = saved?.kind ? saved : AUTO;
+    set({ selection });
+    voiceService.setSelection(selection);
   },
 }));

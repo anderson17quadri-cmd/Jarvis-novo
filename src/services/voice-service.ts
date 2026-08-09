@@ -53,6 +53,44 @@ interface SpeechRecognitionLike {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
+/**
+ * O serviço local de voz clonada (Parte 7.1 §Voz clonada local,
+ * `voice-clone-service/`) — Python + XTTS-v2, à parte da app, como o Ollama.
+ * Porta fixa: é uma única máquina, um único utilizador, sem necessidade de
+ * configurar nada.
+ */
+const CLONE_SERVICE_URL = 'http://127.0.0.1:8090';
+
+/** Uma das vozes prontas do XTTS-v2 (ver `GET /vozes` no serviço local). */
+export interface CloneVoiceInfo {
+  readonly nome: string;
+  readonly descricao: string;
+}
+
+export interface CloneServiceInfo {
+  /** `false` quando o serviço local não está a correr, ou não responde. */
+  readonly disponivel: boolean;
+  /** Se já há uma amostra gravada em `voices/referencia.wav`, no serviço. */
+  readonly vozPropriaGravada: boolean;
+  readonly vozesProntas: readonly CloneVoiceInfo[];
+}
+
+/**
+ * Qual voz usar, ao ler algo em voz alta.
+ *
+ * - `'auto'` — a escolha automática de sempre (uma voz do sistema).
+ * - `'sistema'` — uma voz específica das que o sistema operativo já tem.
+ * - `'clonada'` — o serviço local de voz clonada. `nome: null` é a voz do
+ *   próprio utilizador (a amostra gravada); um nome é uma das vozes prontas
+ *   do modelo (ver `CloneVoiceInfo`), sem clonagem nenhuma.
+ */
+export type VoiceSelection =
+  | { readonly kind: 'auto' }
+  | { readonly kind: 'sistema'; readonly voiceURI: string }
+  | { readonly kind: 'clonada'; readonly nome: string | null };
+
+const VOICE_SELECTION_AUTO: VoiceSelection = { kind: 'auto' };
+
 function getRecognitionConstructor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
 
@@ -155,15 +193,97 @@ export class VoiceService {
     this.recognition = null;
   }
 
-  /**
-   * A voz escolhida de propósito (Parte 7.1 §Voz). `null` deixa a escolha
-   * automática de sempre — um nome que "soa a masculino", ou a primeira
-   * portuguesa que houver.
-   */
-  private preferredVoiceURI: string | null = null;
+  /** A voz escolhida de propósito (Parte 7.1 §Voz). Ver `VoiceSelection`. */
+  private selection: VoiceSelection = VOICE_SELECTION_AUTO;
 
-  setPreferredVoice(voiceURI: string | null): void {
-    this.preferredVoiceURI = voiceURI;
+  /** O áudio da voz clonada atualmente a tocar, se houver — para `stopSpeaking`. */
+  private cloneAudio: HTMLAudioElement | null = null;
+
+  setSelection(selection: VoiceSelection): void {
+    this.selection = selection;
+  }
+
+  /**
+   * Pergunta ao serviço local (`voice-clone-service/`) se está a correr, se
+   * já há uma voz gravada, e a lista de vozes prontas do modelo.
+   *
+   * Falha em silêncio: não estar a correr é o estado normal para quem nunca
+   * o instalou, não um erro para mostrar. Timeout curto porque, se não
+   * responder depressa, é porque não está lá — não vale a pena a UI esperar.
+   */
+  async getCloneServiceInfo(): Promise<CloneServiceInfo> {
+    const naoDisponivel: CloneServiceInfo = {
+      disponivel: false,
+      vozPropriaGravada: false,
+      vozesProntas: [],
+    };
+
+    try {
+      const [saude, vozes] = await Promise.all([
+        fetch(`${CLONE_SERVICE_URL}/health`, { signal: AbortSignal.timeout(1_500) }),
+        fetch(`${CLONE_SERVICE_URL}/vozes`, { signal: AbortSignal.timeout(1_500) }),
+      ]);
+      if (!saude.ok || !vozes.ok) return naoDisponivel;
+
+      const saudeJson = (await saude.json()) as { voz_configurada?: boolean };
+      const vozesJson = (await vozes.json()) as { vozes?: Record<string, string> };
+
+      return {
+        disponivel: true,
+        vozPropriaGravada: Boolean(saudeJson.voz_configurada),
+        vozesProntas: Object.entries(vozesJson.vozes ?? {}).map(([nome, descricao]) => ({
+          nome,
+          descricao,
+        })),
+      };
+    } catch {
+      return naoDisponivel;
+    }
+  }
+
+  /** Fala pelo serviço local de voz clonada. `nome: null` é a voz gravada do utilizador. */
+  private async speakClonada(
+    text: string,
+    nome: string | null,
+    callbacks?: { onStart?: () => void; onEnd?: () => void },
+  ): Promise<void> {
+    try {
+      const resposta = await fetch(`${CLONE_SERVICE_URL}/falar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto: text, ...(nome ? { voz: nome } : {}) }),
+      });
+      if (!resposta.ok) throw new Error(`o serviço de voz local devolveu ${resposta.status}`);
+
+      const url = URL.createObjectURL(await resposta.blob());
+
+      this.cloneAudio?.pause();
+      const audio = new Audio(url);
+      this.cloneAudio = audio;
+
+      const limpar = (): void => {
+        URL.revokeObjectURL(url);
+        if (this.cloneAudio === audio) this.cloneAudio = null;
+      };
+
+      audio.onplay = () => callbacks?.onStart?.();
+      audio.onended = () => {
+        limpar();
+        callbacks?.onEnd?.();
+      };
+      audio.onerror = () => {
+        limpar();
+        callbacks?.onEnd?.();
+      };
+
+      await audio.play();
+    } catch {
+      // O serviço local pode não estar a correr — quem chama (`useVoice`,
+      // o botão "testar") não tem aqui uma forma síncrona de reportar isto;
+      // a UI de definições confirma a disponibilidade à parte, com
+      // `getCloneServiceInfo`.
+      callbacks?.onEnd?.();
+    }
   }
 
   /**
@@ -183,13 +303,33 @@ export class VoiceService {
   /**
    * Lê um texto em voz alta, em português europeu.
    *
-   * `voiceURIOverride` serve só o botão de "testar" nas configurações — ouvir
-   * uma voz sem a tornar a preferida. Sem argumento, usa a preferida (ou a
-   * escolha automática, se não houver nenhuma guardada).
+   * `selectionOverride` serve só o botão de "testar" nas configurações —
+   * ouvir uma voz sem a tornar a preferida. Sem argumento, usa a preferida
+   * (ver `setSelection`), ou a escolha automática se nunca foi guardada
+   * nenhuma.
    *
-   * Devolve `false` se não foi possível — quem chama não precisa de reagir.
+   * Uma voz clonada fala de forma assíncrona (pede áudio ao serviço local) —
+   * por isso isto devolve só se o pedido *arrancou*, não se chegou a soar.
+   * `callbacks.onEnd` dispara sempre, mesmo que o serviço local falhe, para
+   * quem estiver a usar isto para mudar de estado (ex.: `AICore`) não ficar
+   * preso em "a falar" para sempre.
    */
   speak(
+    text: string,
+    callbacks?: { onStart?: () => void; onEnd?: () => void },
+    selectionOverride?: VoiceSelection,
+  ): boolean {
+    const selection = selectionOverride ?? this.selection;
+
+    if (selection.kind === 'clonada') {
+      void this.speakClonada(text, selection.nome, callbacks);
+      return true;
+    }
+
+    return this.speakSistema(text, callbacks, selection.kind === 'sistema' ? selection.voiceURI : undefined);
+  }
+
+  private speakSistema(
     text: string,
     callbacks?: { onStart?: () => void; onEnd?: () => void },
     voiceURIOverride?: string,
@@ -203,9 +343,8 @@ export class VoiceService {
       utterance.pitch = 0.95;
 
       const portugueseVoices = this.availableVoices;
-      const targetURI = voiceURIOverride ?? this.preferredVoiceURI;
-      const chosen = targetURI
-        ? portugueseVoices.find((voice) => voice.voiceURI === targetURI)
+      const chosen = voiceURIOverride
+        ? portugueseVoices.find((voice) => voice.voiceURI === voiceURIOverride)
         : undefined;
       const preferred =
         chosen ??
@@ -227,12 +366,16 @@ export class VoiceService {
   }
 
   stopSpeaking(): void {
-    if (!this.isSynthesisSupported) return;
-    try {
-      speechSynthesis.cancel();
-    } catch {
-      /* nada a fazer */
+    if (this.isSynthesisSupported) {
+      try {
+        speechSynthesis.cancel();
+      } catch {
+        /* nada a fazer */
+      }
     }
+
+    this.cloneAudio?.pause();
+    this.cloneAudio = null;
   }
 }
 

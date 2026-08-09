@@ -10,7 +10,7 @@
 > terceiros, de atores, ou de personagens entra aqui — essa linha mantém-se,
 > como já ficou dito nesta conversa.
 >
-> **Estado: sub-fase 4.1 confirmada a sério (09/08/2026).**
+> **Estado: sub-fases 4.1 e 4.3 feitas (09/08/2026).**
 > `voice-clone-service/server.py` corre na RTX 5070 do utilizador — `/falar`
 > devolve áudio real, com a voz gravada. Custou três correções que só o
 > Windows revela: FFmpeg preso à versão 4–8 (`winget` instala a mais
@@ -19,8 +19,25 @@
 > desde o Python 3.8, e o PyTorch reinstalado contra `cu130` (a RTX
 > 5070/Blackwell não tinha kernels compilados no `cu126` inicial). Tudo em
 > `voice-clone-service/README.md`, com o erro exato de cada uma para quem
-> passar pelo mesmo. Falta a sub-fase 4.3 — ligar isto ao `voice-service.ts`
-> da app, em vez de testar só por terminal.
+> passar pelo mesmo.
+>
+> Depois disto, a amostra de referência que se estava a usar revelou-se (via
+> `ffprobe`) uma gravação de ecrã de uma voz sintética de outro serviço, não
+> a do utilizador — recusado pela mesma razão que a voz do filme original
+> tinha sido: não é uma voz com autorização de quem a usa. Em vez disso, o
+> XTTS-v2 já traz cerca de 40 vozes gravadas por atores que autorizaram o
+> uso, distribuídas com o próprio modelo — `GET /vozes` expõe uma curadoria
+> de 8, sem clonagem nenhuma, como alternativa imediata.
+>
+> A sub-fase 4.3 está feita: `voice-service.ts` fala com o serviço local
+> (`VoiceSelection` com `kind: 'clonada'`), e `VoiceSettings.tsx`
+> (Personalização → Voz) lista as vozes prontas e "A minha voz" (quando há
+> uma amostra gravada) ao lado das vozes do sistema, no mesmo seletor — só
+> aparecem se o serviço estiver a correr em `127.0.0.1:8090`. O CSP do Tauri
+> já inclui esse endereço em `connect-src`, e `media-src 'self' blob:` para
+> tocar o áudio devolvido. Falta a 4.2 (gravar a amostra a partir da própria
+> interface do JARVIS, em vez de um ficheiro colocado à mão) e a 4.4
+> (arranque automático do serviço pelo Tauri).
 
 ---
 
@@ -86,10 +103,10 @@ correr no `localhost`, que o JARVIS contacta por HTTP.
 
 | Sub-fase | O quê |
 |---|---|
-| 4.1 | Serviço Python local, sozinho, testado por terminal (`curl` — o mesmo espírito do `scripts/testar-provedores.mjs`) |
-| 4.2 | Gravação da amostra de voz na interface do JARVIS |
-| 4.3 | `voice-service.ts` a falar com o serviço local, CSP atualizado |
-| 4.4 | Aparece no seletor de vozes já existente, com "testar" como as outras |
+| 4.1 | ✅ Serviço Python local, sozinho, testado por terminal (`curl` — o mesmo espírito do `scripts/testar-provedores.mjs`) |
+| 4.2 | Gravação da amostra de voz na interface do JARVIS (por agora, o ficheiro é colocado à mão em `voices/referencia.wav`) |
+| 4.3 | ✅ `voice-service.ts` a falar com o serviço local, CSP atualizado |
+| 4.4 | Arranque automático do serviço pelo Tauri (por agora, corre à parte, como o Ollama) |
 
 ## 5. O que fica decidido já, e o que fica em aberto
 

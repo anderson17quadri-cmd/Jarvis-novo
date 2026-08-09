@@ -44,8 +44,15 @@ function fakeSynthesis(): void {
 
 beforeEach(() => {
   fakeSynthesis();
-  useVoiceSettingsStore.setState({ voiceURI: null });
-  voiceService.setPreferredVoice(null);
+  useVoiceSettingsStore.setState({ selection: { kind: 'auto' } });
+  voiceService.setSelection({ kind: 'auto' });
+  // O serviço local de voz clonada não está a correr nos testes — sem isto,
+  // cada teste dispararia um `fetch` a sério contra o localhost.
+  vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
+    disponivel: false,
+    vozPropriaGravada: false,
+    vozesProntas: [],
+  });
 });
 
 afterEach(() => {
@@ -66,28 +73,58 @@ describe('VoiceSettings', () => {
 
     await user.click(screen.getByRole('radio', { name: /Duarte Online \(Natural\)/ }));
 
-    expect(useVoiceSettingsStore.getState().voiceURI).toBe('duarte-natural');
+    expect(useVoiceSettingsStore.getState().selection).toEqual({
+      kind: 'sistema',
+      voiceURI: 'duarte-natural',
+    });
   });
 
-  it('"Escolha automática" volta a null', async () => {
+  it('"Escolha automática" volta ao estado automático', async () => {
     const user = userEvent.setup();
-    useVoiceSettingsStore.setState({ voiceURI: 'helena' });
+    useVoiceSettingsStore.setState({ selection: { kind: 'sistema', voiceURI: 'helena' } });
     render(<VoiceSettings />);
 
     await user.click(screen.getByRole('radio', { name: 'Escolha automática' }));
 
-    expect(useVoiceSettingsStore.getState().voiceURI).toBeNull();
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'auto' });
   });
 
   it('testar uma voz não muda a preferência guardada', async () => {
     const user = userEvent.setup();
-    useVoiceSettingsStore.setState({ voiceURI: 'helena' });
+    useVoiceSettingsStore.setState({ selection: { kind: 'sistema', voiceURI: 'helena' } });
     render(<VoiceSettings />);
 
     await user.click(screen.getByRole('button', { name: /Testar a voz.*Duarte Online/ }));
 
     // O teste falou com a voz do Duarte, mas a preferência continua a ser a Helena.
-    expect(useVoiceSettingsStore.getState().voiceURI).toBe('helena');
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'sistema', voiceURI: 'helena' });
     expect(speak).toHaveBeenCalled();
+  });
+
+  it('mostra as vozes clonadas locais quando o serviço está disponível', async () => {
+    vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
+      disponivel: true,
+      vozPropriaGravada: true,
+      vozesProntas: [{ nome: 'Ana Florence', descricao: 'Feminina, tom claro e neutro' }],
+    });
+
+    render(<VoiceSettings />);
+
+    expect(await screen.findByText('A minha voz')).toBeInTheDocument();
+    expect(await screen.findByText(/Ana Florence/)).toBeInTheDocument();
+  });
+
+  it('escolher uma voz clonada pronta guarda-a como preferida', async () => {
+    vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
+      disponivel: true,
+      vozPropriaGravada: false,
+      vozesProntas: [{ nome: 'Ana Florence', descricao: 'Feminina, tom claro e neutro' }],
+    });
+    const user = userEvent.setup();
+    render(<VoiceSettings />);
+
+    await user.click(await screen.findByRole('radio', { name: /Ana Florence/ }));
+
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'clonada', nome: 'Ana Florence' });
   });
 });
