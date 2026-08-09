@@ -12,8 +12,10 @@ import type { AssistantMode } from '@/types/assistant';
  * faz o conjunto parecer maquinaria em vez de um só disco a girar. O terceiro
  * anel leva ainda uma oscilação, para o movimento nunca ficar previsível.
  *
- * Em SVG e não em canvas porque os traços são geometria fixa: assim escalam sem
- * perder nitidez e herdam `var(--accent)` do tema sem código nenhum.
+ * Em SVG e não em canvas porque os traços são geometria fixa: assim escalam
+ * sem perder nitidez. A cor vem de `color` (Parte 15 §Núcleo personalizável)
+ * em vez de `var(--accent)` fixo, para a preferência de cor do núcleo se
+ * aplicar aqui também, e não só às partículas do canvas.
  */
 
 /** Velocidade angular de cada anel, em graus por milissegundo. */
@@ -21,9 +23,16 @@ const RING_SPEEDS = [0.0018, 0.003, -0.007, 0.011, -0.016] as const;
 
 interface CoreRingsProps {
   readonly mode: AssistantMode;
+  /** A cor já resolvida do núcleo — ver `AICore.modeColor`. */
+  readonly color: string;
+  /**
+   * Entre 0.5 e 2 (Parte 15 §Núcleo personalizável). Multiplica a velocidade
+   * de rotação de todos os anéis — `1` é a velocidade de sempre.
+   */
+  readonly speedScale?: number;
 }
 
-export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
+export function CoreRings({ mode, color, speedScale = 1 }: CoreRingsProps): React.JSX.Element {
   const ringRefs = useRef<(SVGGElement | null)[]>([]);
   const glowRef = useRef<SVGCircleElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -42,7 +51,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
 
           // O quarto anel (índice 3) oscila além de rodar.
           const wobble = index === 3 ? Math.sin(elapsed / 900) * 2.5 : 0;
-          ring.style.transform = `rotate(${elapsed * speed * config.spin + wobble}deg)`;
+          ring.style.transform = `rotate(${elapsed * speed * config.spin * speedScale + wobble}deg)`;
         }
 
         // Respiração: 100% → 103% em ciclos de 5s, mais a inclinação do cursor.
@@ -58,7 +67,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
           glowRef.current.setAttribute('r', radius.toFixed(1));
         }
       },
-      [config.glowPulse, config.spin],
+      [config.glowPulse, config.spin, speedScale],
     ),
   );
 
@@ -77,7 +86,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
         <radialGradient id="core-glow-gradient">
           <stop offset="0%" stopColor="#ffffff" />
           <stop offset="26%" stopColor="#a9efff" />
-          <stop offset="58%" stopColor="var(--accent)" />
+          <stop offset="58%" stopColor={color} />
           <stop offset="100%" stopColor="rgba(0,162,255,0)" />
         </radialGradient>
         <filter id="core-bloom">
@@ -107,13 +116,13 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
 
       {/* Anel principal, com marcas técnicas */}
       <g ref={setRingRef(1)} style={{ transformOrigin: '200px 200px' }}>
-        <circle cx="200" cy="200" r="176" fill="none" stroke="var(--accent)" strokeWidth="1" opacity=".3" />
+        <circle cx="200" cy="200" r="176" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
         <circle
           cx="200"
           cy="200"
           r="168"
           fill="none"
-          stroke="var(--accent)"
+          stroke={color}
           strokeWidth="8"
           strokeDasharray="1.4 10"
           strokeLinecap="round"
@@ -124,7 +133,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
           cy="200"
           r="152"
           fill="none"
-          stroke="var(--accent)"
+          stroke={color}
           strokeWidth="14"
           strokeDasharray="62 30"
           opacity=".14"
@@ -148,7 +157,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
           cy="200"
           r="126"
           fill="none"
-          stroke="var(--accent)"
+          stroke={color}
           strokeWidth="10"
           strokeDasharray="34 84"
           strokeLinecap="round"
@@ -163,12 +172,12 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
           cy="200"
           r="106"
           fill="none"
-          stroke="var(--accent)"
+          stroke={color}
           strokeWidth="12"
           strokeDasharray="1 5"
           opacity=".42"
         />
-        <circle cx="200" cy="200" r="92" fill="none" stroke="var(--accent)" strokeWidth="1" opacity=".3" />
+        <circle cx="200" cy="200" r="92" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
       </g>
 
       <g ref={setRingRef(4)} style={{ transformOrigin: '200px 200px' }}>
@@ -177,7 +186,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
           cy="200"
           r="76"
           fill="none"
-          stroke="var(--accent)"
+          stroke={color}
           strokeWidth="6"
           strokeDasharray="26 20"
           opacity=".3"
@@ -185,7 +194,7 @@ export function CoreRings({ mode }: CoreRingsProps): React.JSX.Element {
       </g>
 
       {/* Cruzetas — fixas, dão referencial ao movimento dos anéis */}
-      <g stroke="var(--accent)" strokeWidth="1.6" opacity=".5" strokeLinecap="round">
+      <g stroke={color} strokeWidth="1.6" opacity=".5" strokeLinecap="round">
         <path d="M200 4v22M200 374v22M4 200h22M374 200h22" />
       </g>
       <g stroke="rgba(0,207,255,.16)" strokeWidth="1">

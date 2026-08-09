@@ -70,18 +70,21 @@ export function AICore({
   const stateScale = useSystemStateStore((state) => state.definition.particleScale);
   const preferenceScale = useAppearanceStore((state) => state.appearance.coreParticles);
   const particleScale = stateScale * preferenceScale;
+  const coreColor = useAppearanceStore((state) => state.appearance.coreColor);
+  const coreSpeed = useAppearanceStore((state) => state.appearance.coreSpeed);
   const config = CORE_MODES[mode];
 
   // O canvas precisa da cor resolvida: `var(--accent)` não lhe diz nada.
-  // Os modos com cor fixa (analisar, responder, falha) ignoram o tema de
-  // propósito, para se lerem à mesma no Solar ou no Titanium.
+  // Os modos com cor fixa (analisar, responder, falha) ignoram tanto o tema
+  // como esta preferência, de propósito — para se lerem à mesma no Solar ou
+  // no Titanium, essa cor tem significado e não é para personalizar.
   const modeColor = useMemo(
-    () => config.color ?? themeService.readAccentColor(),
+    () => config.color ?? coreColor ?? themeService.readAccentColor(),
     // `theme` parece não ser usado, mas é: `readAccentColor` lê o CSS computado
     // do `<html>`, que muda quando o tema muda. Sem esta dependência, o núcleo
     // ficava com a cor do tema anterior até o modo mudar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config.color, theme],
+    [config.color, coreColor, theme],
   );
   const rgbColor = useMemo(() => parseHexColor(modeColor), [modeColor]);
 
@@ -185,7 +188,7 @@ export function AICore({
           o centro lê-se melhor sem uma legenda a competir com o brilho.
         */}
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-        <CoreRings mode={mode} />
+        <CoreRings mode={mode} color={modeColor} speedScale={coreSpeed} />
       </div>
 
       <div

@@ -129,6 +129,7 @@ export const useAppearanceStore = create<AppearanceState>((set, get) => ({
         'coreParticles',
         saved?.coreParticles ?? DEFAULT_APPEARANCE.coreParticles,
       ),
+      coreSpeed: clampAppearance('coreSpeed', saved?.coreSpeed ?? DEFAULT_APPEARANCE.coreSpeed),
       uiScale: clampAppearance('uiScale', saved?.uiScale ?? DEFAULT_APPEARANCE.uiScale),
     };
 

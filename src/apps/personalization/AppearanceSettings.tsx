@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import { Check, RotateCcw } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { themeService } from '@/services/theme-service';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
+import { useThemeStore } from '@/stores/use-theme-store';
 import {
   APPEARANCE_RANGES,
   CURSOR_LABELS,
@@ -32,6 +35,12 @@ export function AppearanceSettings(): React.JSX.Element {
   const set = useAppearanceStore((state) => state.set);
   const reset = useAppearanceStore((state) => state.reset);
   const persist = useAppearanceStore((state) => state.persist);
+
+  // Só para mostrar algo sensato no seletor de cor quando ainda não há
+  // nenhuma escolhida — o núcleo em si usa o acento do tema, não isto.
+  const theme = useThemeStore((state) => state.theme);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const accentFallback = useMemo(() => themeService.readAccentColor(), [theme]);
 
   /** Muda e guarda. Guardar a cada passo de um cursor deslizante seria demais. */
   const change = <K extends keyof typeof appearance>(
@@ -89,6 +98,43 @@ export function AppearanceSettings(): React.JSX.Element {
         <p className="mt-1.5 text-cap text-t3">
           O estado do sistema também mexe nisto — os dois multiplicam-se, e o núcleo nunca
           fica sem partícula nenhuma.
+        </p>
+
+        <Slider
+          label="Velocidade"
+          value={appearance.coreSpeed}
+          range={APPEARANCE_RANGES.coreSpeed}
+          format={(value) => `${Math.round(value * 100)}%`}
+          onChange={(value) => change('coreSpeed', value, false)}
+          onCommit={() => void persist()}
+        />
+
+        <label className="mt-2.5 flex items-center gap-2.5">
+          <span className="w-[76px] flex-shrink-0 text-[11.5px] text-t3">Cor</span>
+          <input
+            type="color"
+            value={appearance.coreColor ?? accentFallback}
+            aria-label="Cor do núcleo"
+            onChange={(event) => change('coreColor', event.target.value)}
+            className="h-[22px] w-[30px] flex-shrink-0 cursor-pointer rounded border border-line bg-transparent p-0"
+          />
+          <button
+            type="button"
+            onClick={() => change('coreColor', null)}
+            disabled={appearance.coreColor === null}
+            className={cn(
+              'rounded-full border px-2.5 py-1 text-[11px] transition-all duration-hover ease-out',
+              appearance.coreColor === null
+                ? 'border-accent/60 bg-accent/[.1] text-accent'
+                : 'border-line text-t3 hover:border-accent/30 hover:text-t2',
+            )}
+          >
+            Automático (acento do tema)
+          </button>
+        </label>
+        <p className="mt-1.5 text-cap text-t3">
+          Só se aplica em repouso — os modos com cor própria (a analisar, a responder, em
+          falha) continuam a ler-se sempre da mesma cor, para não perderem o significado.
         </p>
       </section>
 

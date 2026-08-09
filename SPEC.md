@@ -502,7 +502,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Perfis de animação | 🟡 | Os estados do sistema fazem parte disto |
 | Centro de Personalização | ✅ | Temas, aparência, estado do sistema, som e arranque numa janela só |
 | Papéis de parede escolhíveis | ✅ | Quatro variantes — Nebulosa, Grelha, Partículas, Liso — com intensidade |
-| Núcleo personalizável | 🟡 | Contagem de partículas, que se multiplica com o estado do sistema. Cor, anéis e velocidade ficam para depois |
+| Núcleo personalizável | 🟡 | Contagem de partículas (multiplica-se com o estado do sistema), **cor** e **velocidade dos anéis**, verificadas visualmente num browser real — a cor aplica-se aos anéis SVG, ao brilho, às partículas do canvas e à waveform, todos ao mesmo tempo, exceto nos modos com cor própria (analisar, responder, falha), que continuam a ignorá-la de propósito. Falta só decidir se um dia faz sentido esconder os anéis por completo |
 | Escala, arredondamento e cursor | ✅ | `types/appearance.ts` — três estilos de cursor, três de arredondamento, escala de 90% a 130% |
 | Acessibilidade (alto contraste, reduzir transparência) | ✅ | Mais a correção de daltonismo. A redução de movimento vem do sistema operativo e já era respeitada |
 | Editor de temas personalizados | ✅ | Três escolhas — acento, fundo e base clara ou escura — e os outros doze tokens derivam daí, com as proporções dos temas oficiais. Um formulário com os quinze daria combinações ilegíveis. Avisa quando o contraste não chega, sem impedir |

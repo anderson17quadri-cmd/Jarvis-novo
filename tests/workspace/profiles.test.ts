@@ -47,6 +47,8 @@ describe('o que um perfil guarda', () => {
       wallpaper: 'liso',
       wallpaperIntensity: 0.4,
       coreParticles: 0.5,
+      coreColor: null,
+      coreSpeed: 1,
       cursor: 'minimal',
       radius: 'reto',
       fontFamily: 'plex-sans',
@@ -236,6 +238,8 @@ describe('os layouts do sistema', () => {
       expect(ambience.wallpaperIntensity).toBeLessThanOrEqual(1);
       expect(ambience.coreParticles).toBeGreaterThanOrEqual(0.25);
       expect(ambience.coreParticles).toBeLessThanOrEqual(1.5);
+      expect(ambience.coreSpeed).toBeGreaterThanOrEqual(0.5);
+      expect(ambience.coreSpeed).toBeLessThanOrEqual(2);
     },
   );
 

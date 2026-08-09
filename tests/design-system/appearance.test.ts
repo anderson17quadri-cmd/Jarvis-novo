@@ -88,6 +88,8 @@ describe('limites', () => {
     ['uiScale', 5, APPEARANCE_RANGES.uiScale.max],
     ['uiScale', -3, APPEARANCE_RANGES.uiScale.min],
     ['coreParticles', 99, APPEARANCE_RANGES.coreParticles.max],
+    ['coreSpeed', 99, APPEARANCE_RANGES.coreSpeed.max],
+    ['coreSpeed', -1, APPEARANCE_RANGES.coreSpeed.min],
     ['wallpaperIntensity', -1, APPEARANCE_RANGES.wallpaperIntensity.min],
   ] as const)('%s com %s fica em %s', (key, value, expected) => {
     expect(clampAppearance(key, value)).toBe(expected);
@@ -133,6 +135,18 @@ describe('persistência', () => {
     await useAppearanceStore.getState().hydrate();
 
     expect(useAppearanceStore.getState().appearance.fontFamily).toBe('plex-sans');
+  });
+
+  it('a cor e a velocidade do núcleo sobrevivem a recarregar', async () => {
+    useAppearanceStore.getState().set('coreColor', '#ff00aa');
+    useAppearanceStore.getState().set('coreSpeed', 1.5);
+    await useAppearanceStore.getState().persist();
+
+    useAppearanceStore.setState({ appearance: DEFAULT_APPEARANCE });
+    await useAppearanceStore.getState().hydrate();
+
+    expect(useAppearanceStore.getState().appearance.coreColor).toBe('#ff00aa');
+    expect(useAppearanceStore.getState().appearance.coreSpeed).toBeCloseTo(1.5);
   });
 
   it('um valor guardado fora dos limites é trazido para dentro', async () => {

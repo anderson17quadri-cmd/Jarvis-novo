@@ -137,6 +137,15 @@ export interface Appearance {
   readonly wallpaperIntensity: number;
   /** Entre 0.25 e 1.5. Multiplica a contagem de partículas do núcleo. */
   readonly coreParticles: number;
+  /**
+   * Cor do núcleo, à parte do acento do tema. `null` é o comportamento de
+   * sempre — o acento do tema. Só se aplica em repouso: os modos com cor
+   * própria (analisar, responder, falha) continuam a ignorar isto, pela
+   * mesma razão por que já ignoram o tema — essa cor tem significado.
+   */
+  readonly coreColor: string | null;
+  /** Entre 0.5 e 2. Multiplica a velocidade de rotação dos anéis do núcleo. */
+  readonly coreSpeed: number;
   /** Entre 0.9 e 1.3. Escala global do texto e dos espaços. */
   readonly uiScale: number;
   readonly radius: RadiusKind;
@@ -158,6 +167,8 @@ export const DEFAULT_APPEARANCE: Appearance = {
   wallpaper: 'nebulosa',
   wallpaperIntensity: 1,
   coreParticles: 1,
+  coreColor: null,
+  coreSpeed: 1,
   uiScale: 1,
   radius: 'redondo',
   cursor: 'holografico',
@@ -188,6 +199,8 @@ export const AMBIENCE_KEYS = [
   'wallpaper',
   'wallpaperIntensity',
   'coreParticles',
+  'coreColor',
+  'coreSpeed',
   'cursor',
   'radius',
   'fontFamily',
@@ -210,6 +223,8 @@ export function ambienceOf(appearance: Appearance): Ambience {
     wallpaper: appearance.wallpaper,
     wallpaperIntensity: appearance.wallpaperIntensity,
     coreParticles: appearance.coreParticles,
+    coreColor: appearance.coreColor,
+    coreSpeed: appearance.coreSpeed,
     cursor: appearance.cursor,
     radius: appearance.radius,
     fontFamily: appearance.fontFamily,
@@ -222,6 +237,7 @@ export const DEFAULT_AMBIENCE: Ambience = ambienceOf(DEFAULT_APPEARANCE);
 export const APPEARANCE_RANGES = {
   wallpaperIntensity: { min: 0, max: 1, step: 0.05 },
   coreParticles: { min: 0.25, max: 1.5, step: 0.05 },
+  coreSpeed: { min: 0.5, max: 2, step: 0.05 },
   uiScale: { min: 0.9, max: 1.3, step: 0.05 },
 } as const;
 
