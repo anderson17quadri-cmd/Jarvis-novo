@@ -263,7 +263,7 @@ seguem.
 
 | Sub-fase | O quê | Precisa de nativo? |
 |---|:--:|:--:|
-| 3.1 | Auditoria + overlay de confirmação + portão por palavra-passe (sessão de 30 min) | Não — testável já, em browser |
+| 3.1 | Auditoria + overlay de confirmação + portão por palavra-passe (sessão de 30 min) | ✅ Implementado 11/08/2026 — `services/direct-control-service.ts`, `components/ControlOverlay.tsx`, separador "Controlo" em `PrivacyWindow.tsx` |
 | 3.2 | Abrir aplicações e ficheiros por caminho | Sim, mas é o comando de menor risco |
 | 3.3 | Captura de ecrã, indicador visível, zonas sensíveis | Sim |
 | 3.4 | Rato e teclado, com o travão de mão e a confirmação por passo | Sim |

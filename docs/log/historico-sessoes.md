@@ -635,3 +635,31 @@ Quatro melhorias na voz e no assistente:
    SPEC.md linha 371), confirmado e passado à frente.
 
 Confirmado: `tsc` limpo, `eslint` limpo, 1118/1118 testes passam.
+
+## 2026-08-11 — Fase 3.1: controlo direto (portão, overlay, auditoria, simulação)
+
+Implementou-se a sub-fase 3.1 do controlo direto, a única que não depende
+de código nativo (Rust) — ver `docs/spec/fase-3-controlo-direto.md`.
+
+Quatro peças, todas só em TypeScript/React:
+
+1. **Serviço** (`services/direct-control-service.ts`) — hash SHA-256 da
+   palavra-passe (`crypto.subtle.digest`), sessão de 30 minutos, modo
+   simulado (ações nunca executam a sério), registo de passos para auditoria.
+
+2. **Overlay de confirmação** (`components/ControlOverlay.tsx`) — cobre a
+   janela inteira (`z-[9999]`, backdrop blur), mostra a descrição da ação
+   e o nível de risco (Baixo/Médio/Alto/Irreversível), pede Confirmar ou
+   Recusar. No modo simulado, mostra um aviso laranja: "a ação não vai
+   executar a sério".
+
+3. **Separador "Controlo" na Privacidade** — ativação explícita desligada
+   por omissão (item 20), campo de palavra-passe com toggle mostrar/esconder,
+   toggle de modo simulado vs real (item 23), e histórico de passos com
+   nível de risco (item 22). Usa `useSyncExternalStore` como as outras
+   janelas que dependem de serviços.
+
+4. **Especificação atualizada** — `SPEC.md` (Fase 3 agora 🟡) e
+   `docs/spec/fase-3-controlo-direto.md` (tabela de sub-fases com 3.1 ✅).
+
+Confirmado: `tsc` limpo, `eslint` limpo, 1118/1118 testes passam.

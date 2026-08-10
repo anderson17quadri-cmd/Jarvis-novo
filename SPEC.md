@@ -555,7 +555,7 @@ reavaliados: nenhum precisava de nativo. Ficam de fora, por dependerem de
 coisas ainda não validadas: execução de plugins, MCP, múltiplos desktops e
 layouts guardados.
 
-### Fase 3 — Controlo direto ⬜ (só desenho)
+### Fase 3 — Controlo direto 🟡 (3.1 implementada, 3.2–3.5 só desenho)
 
 Pedido à parte do resto da spec: o JARVIS a mexer no rato e no teclado como
 uma pessoa, com uma palavra-passe falada como portão de presença (sessão de
