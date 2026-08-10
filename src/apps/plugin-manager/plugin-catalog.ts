@@ -1,12 +1,15 @@
 import {
+  Bell,
   Bot,
   Calendar,
   Cloud,
   Code,
+  FolderOpen,
   Gamepad2,
   Globe,
   Music,
   Terminal,
+  Wifi,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -17,10 +20,11 @@ import type { PlatformCapabilities } from '@/types/platform';
 /**
  * Catálogo de plugins da loja.
  *
- * **Só interface.** Nada aqui carrega código: instalar muda um estado local e
- * mais nada. O carregamento real exige sandbox, verificação de assinatura e
- * acesso ao sistema de ficheiros — tudo bloqueado até haver PC.
- * Ver `SPEC.md` §Estado de verificação.
+ * Instalar continua a só mudar um estado local — nenhum destes descarrega
+ * código de lado nenhum. A sandbox de execução (`plugins/runtime/`) já existe
+ * e já corre um plugin a sério (`ola-notificacao`); os outros do catálogo
+ * ainda não têm código por trás, capacidade a capacidade, à medida que a
+ * sandbox cobre mais do protocolo. Desenho em `docs/spec/plugins-sandbox.md`.
  */
 
 export type PluginCategory = 'produtividade' | 'desenvolvimento' | 'media' | 'integracao' | 'ia';
@@ -57,6 +61,18 @@ export interface CatalogEntry {
    * seja no browser, sem que ninguém escreva o nome da plataforma.
    */
   readonly requires: readonly (keyof PlatformCapabilities)[];
+  /**
+   * Pasta raiz para ficheiros — declarada no manifesto, nunca o disco
+   * inteiro. Todos os caminhos que o plugin pede (`core.fs.read`,
+   * `core.fs.write`, `core.fs.list`) são relativos a esta raiz.
+   */
+  readonly filesystemRoot?: string;
+  /**
+   * Domínios que o plugin pode contactar via `core.fetch`. Vazio ou
+   * omisso significa "nenhum". Cada entrada é um domínio exato
+   * (ex.: `"api.github.com"`), validado pelo Core antes de cada pedido.
+   */
+  readonly allowedDomains?: readonly string[];
 }
 
 const NO_PERMISSIONS: PluginPermissions = {
@@ -196,6 +212,72 @@ export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
     rating: 4.3,
     isBuiltIn: false,
     requires: ['processList', 'fileDialogs'],
+  },
+  {
+    id: 'ola-notificacao',
+    name: 'Olá, notificação',
+    tagline: 'Plugin de exemplo — código a sério, isolado numa sandbox.',
+    description:
+      'Não faz nada de útil: existe para provar que a execução de plugins funciona a sério. Corre num iframe restrito, sem acesso a nada do sistema além do que o Core autorizar, e pede uma notificação para mostrar que a permissão é verificada de verdade.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Bell,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
+  {
+    id: 'ola-ficheiro',
+    name: 'Olá, ficheiro',
+    tagline: 'Plugin de exemplo — escreve e lê dentro da própria pasta.',
+    description:
+      'Segunda prova da sandbox: escreve uma nota de teste e lê-a de volta, sempre dentro da pasta que declarou (nunca o disco inteiro). Recusar a permissão de ficheiros bloqueia as duas ações.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: FolderOpen,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, filesystem: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+    filesystemRoot: 'ola-ficheiro',
+  },
+  {
+    id: 'ola-rede',
+    name: 'Olá, rede',
+    tagline: 'Plugin de exemplo — um pedido a um domínio autorizado.',
+    description:
+      'Terceira prova da sandbox: um GET a um único domínio, declarado à partida no catálogo. Qualquer outro domínio é recusado pelo Core, mesmo que o plugin tente — a lista não vem do próprio plugin.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Wifi,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, network: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+    allowedDomains: ['jsonplaceholder.typicode.com'],
+  },
+  {
+    id: 'dispara-automacao',
+    name: 'Dispara automação',
+    tagline: 'Plugin de exemplo — dispara uma automação existente.',
+    description:
+      'Quarta prova da sandbox: tenta disparar uma automação pelo nome, usando o SDK. O plugin nunca pode criar ou alterar automações — só disparar as que já existem, e a verificação de permissão impede-o de o fazer se a permissão estiver recusada.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Zap,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
   },
   {
     id: 'game-mode',
