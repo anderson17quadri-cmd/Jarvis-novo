@@ -135,3 +135,29 @@ caminhos relativos (`WinError 87`, "o parâmetro está incorreto") — a
 pasta do serviço tinha de chegar já canonicalizada. Só haveria sinal
 disto a testar a sério, num PC a sério — exatamente a razão de tudo isto
 não ter avançado antes da Fase 1 confirmar em `§1.1`.
+
+**Bloco 2 — Pipeline de reconhecimento completo.** As três etapas que
+faltavam entre transcrição e execução: **ruído** — `POST /ouvir` passou a
+descartar a alucinação conhecida do Whisper em áudio só com ruído
+(`no_speech_prob` por segmento, testado a sério com 3s de silêncio puro);
+**silêncio** — `vigiarSilencio`, novo em `voice-service.ts`, mede o volume
+por um `AnalyserNode` a cada 100ms e para a gravação sozinha depois de
+fala seguida de silêncio, em vez de esperar sempre os 12s do limite de
+segurança; **idioma** — `/ouvir` ganhou o mesmo parâmetro que `/falar` já
+tinha, só por simetria (a app continua só em português). "Planeamento"
+ficou por implementar de propósito: já está coberto pelos comandos
+compostos (Parte 10) e pelo encadeamento de ferramentas da DeepSeek
+(Parte 7.1).
+
+De caminho, a testar a sério (não só a ler o código), apanhou-se outro
+bug real: parar a escuta à mão — voltar a carregar no botão do microfone
+a meio de uma gravação — deixava de chamar `onEnd`, e o núcleo ficava
+preso em "a ouvir" para sempre. Corrigido para tratar as três formas de
+acabar a escuta (limite de segurança, silêncio, botão) da mesma maneira.
+Confirmado ao vivo por CDP com um microfone falso do Chromium a "ouvir" a
+própria voz do XTTS-v2: a transcrição chegou à memória do assistente, e o
+botão voltou sozinho ao estado inativo. A deteção de silêncio em si não
+se deixou cronometrar ao vivo — o `--use-file-for-fake-audio-capture` do
+Chromium repete o ficheiro em loop, nunca produz silêncio a sério — por
+isso essa parte ficou confirmada só por testes com temporizadores
+controlados, não pelo browser real.

@@ -129,6 +129,77 @@ function hasLocalRecordingSupport(): boolean {
   );
 }
 
+/**
+ * Deteta quando quem fala parou, para a escuta de um comando não obrigar a
+ * esperar sempre o limite de segurança todo — a etapa do "silêncio" que
+ * faltava no pipeline (Parte 7.2 §Pipeline completo). Não é deteção de
+ * atividade de voz a sério (nenhum modelo, nenhuma distinção de ruído de
+ * fundo): só o volume médio do sinal, medido a cada 100ms pela
+ * `AnalyserNode` da Web Audio API — que, ao contrário do reconhecimento da
+ * Web Speech API, funciona no WebView2. Chama `aoDetetarSilencio` uma vez
+ * só, depois de ter havido fala a sério (`minFalaMs`) seguida de silêncio
+ * sustentado (`silencioMs`) — para uma pausa a respirar a meio da frase não
+ * cortar a gravação cedo de mais.
+ */
+function vigiarSilencio(
+  stream: MediaStream,
+  aoDetetarSilencio: () => void,
+  opcoes: { limiarVolume?: number; silencioMs?: number; minFalaMs?: number } = {},
+): () => void {
+  const limiarVolume = opcoes.limiarVolume ?? 0.02;
+  const silencioMs = opcoes.silencioMs ?? 1_200;
+  const minFalaMs = opcoes.minFalaMs ?? 300;
+
+  const AudioContextConstructor =
+    window.AudioContext ??
+    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextConstructor) return () => undefined;
+
+  const contexto = new AudioContextConstructor();
+  const fonte = contexto.createMediaStreamSource(stream);
+  const analisador = contexto.createAnalyser();
+  analisador.fftSize = 2_048;
+  fonte.connect(analisador);
+
+  const dados = new Uint8Array(analisador.fftSize);
+  let falaDetetada = false;
+  let inicioFala = 0;
+  let ultimoSomAlto = Date.now();
+  let jaAvisou = false;
+
+  const intervalo = setInterval(() => {
+    if (jaAvisou) return;
+
+    analisador.getByteTimeDomainData(dados);
+    let somaQuadrados = 0;
+    for (const amostra of dados) {
+      const normalizado = (amostra - 128) / 128;
+      somaQuadrados += normalizado * normalizado;
+    }
+    const rms = Math.sqrt(somaQuadrados / dados.length);
+    const agora = Date.now();
+
+    if (rms > limiarVolume) {
+      ultimoSomAlto = agora;
+      if (!falaDetetada) {
+        falaDetetada = true;
+        inicioFala = agora;
+      }
+      return;
+    }
+
+    if (falaDetetada && agora - inicioFala > minFalaMs && agora - ultimoSomAlto > silencioMs) {
+      jaAvisou = true;
+      aoDetetarSilencio();
+    }
+  }, 100);
+
+  return () => {
+    clearInterval(intervalo);
+    void contexto.close();
+  };
+}
+
 export interface VoiceCallbacks {
   readonly onTranscript: (text: string) => void;
   readonly onStart?: () => void;
@@ -294,9 +365,9 @@ export class VoiceService {
    * /ouvir`) — grava com `MediaRecorder` (isto funciona no WebView2, mesmo
    * a Web Speech API não funcionando) e manda o áudio para transcrever.
    *
-   * Sem deteção de silêncio (Parte 10 — só a escuta manual existe): grava
-   * até se voltar a carregar no botão (`stopListening`), ou até um limite
-   * de segurança, para nunca gravar para sempre por engano.
+   * Para sozinha quando deteta que quem fala já parou (`vigiarSilencio`),
+   * sem obrigar a esperar o limite de segurança todo por um comando curto.
+   * Continua a dar para parar à mão, a qualquer momento (`stopListening`).
    */
   private async startListeningLocal(callbacks: VoiceCallbacks): Promise<void> {
     if (!hasLocalRecordingSupport()) {
@@ -342,14 +413,26 @@ export class VoiceService {
       if (recorder.state !== 'inactive') recorder.stop();
     }, 12_000);
 
+    const pararDeVigiarSilencio = vigiarSilencio(stream, () => {
+      if (recorder.state !== 'inactive') recorder.stop();
+    });
+
     await parado;
     clearTimeout(limiteDeSeguranca);
+    pararDeVigiarSilencio();
     stream.getTracks().forEach((track) => track.stop());
     this.localRecorder = null;
-
-    const foiCancelado = !this.listening;
     this.listening = false;
-    if (foiCancelado) return; // `stopListening` já tratou de tudo
+
+    /*
+     * A partir daqui, processa-se sempre — quer a gravação tenha acabado
+     * pelo limite de segurança, pelo silêncio, ou por se ter voltado a
+     * carregar no botão (`stopListening`, chamado com a escuta ainda
+     * ativa). As três são "a pessoa acabou de falar", não um cancelamento:
+     * o par nativo (`recognition.onend`) já sempre processou o que tinha
+     * até ao `stop()`, e ficar a meio aqui deixava o `onEnd` por chamar —
+     * o modo do núcleo ficava preso em "a ouvir" para sempre.
+     */
 
     if (chunks.length === 0) {
       callbacks.onError?.('no-speech');

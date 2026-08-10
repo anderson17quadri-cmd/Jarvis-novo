@@ -25,7 +25,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Request, UploadFile
+from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -286,13 +286,25 @@ def falar(pedido: dict) -> Response:
 
 
 @app.post("/ouvir")
-async def ouvir(ficheiro: UploadFile) -> Response:
+async def ouvir(ficheiro: UploadFile, idioma: str = Form("pt")) -> Response:
     """
     Transcreve um áudio gravado no browser (`MediaRecorder`, normalmente
     `.webm`/Opus) — o arranjo real do microfone, ver a nota junto a
     `STT_MODEL_NAME`. O Whisper decodifica pelo `ffmpeg` (subprocesso, não
     as DLLs do `torchcodec`): qualquer FFmpeg no PATH serve, mesmo o mais
     recente que o XTTS-v2 recusa.
+
+    `idioma` segue o mesmo padrão de `/falar` — um código de idioma ("pt",
+    não "pt-PT"), por omissão "pt". A interface não tem ainda escolha de
+    idioma nenhuma (é uma app só em português); isto é só para o endpoint
+    não ficar mais pobre do que o seu par em síntese.
+
+    Filtra a alucinação conhecida do Whisper: dado só ruído ou silêncio, o
+    modelo às vezes inventa uma frase inteira (o exemplo clássico é
+    "Obrigado por assistir") em vez de dizer que não ouviu nada.
+    `no_speech_prob`, que o próprio modelo devolve por segmento, é o sinal
+    para não confiar nesse texto — sem ele, um comando de voz executava-se
+    sozinho a partir do ruído do microfone.
     """
     if _stt_model is None:
         raise HTTPException(503, "O reconhecimento ainda está a carregar. Tenta outra vez em instantes.")
@@ -307,7 +319,7 @@ async def ouvir(ficheiro: UploadFile) -> Response:
         caminho_temp = tmp.name
 
     try:
-        resultado = _stt_model.transcribe(caminho_temp, language="pt", fp16=False)
+        resultado = _stt_model.transcribe(caminho_temp, language=idioma, fp16=False)
     except Exception as erro:
         # Um `.webm` vazio de silêncio, ou um formato que o ffmpeg não
         # decodifica, não deve derrubar o serviço — só esta transcrição.
@@ -315,4 +327,8 @@ async def ouvir(ficheiro: UploadFile) -> Response:
     finally:
         Path(caminho_temp).unlink(missing_ok=True)
 
-    return _json_utf8({"texto": str(resultado.get("text", "")).strip()})
+    segmentos = resultado.get("segments") or []
+    parece_so_ruido = bool(segmentos) and all(seg.get("no_speech_prob", 0) > 0.6 for seg in segmentos)
+    texto = "" if parece_so_ruido else str(resultado.get("text", "")).strip()
+
+    return _json_utf8({"texto": texto})
