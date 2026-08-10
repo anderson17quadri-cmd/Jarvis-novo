@@ -25,3 +25,18 @@ local.properties
 
 # Testes
 coverage/
+
+# Obsidian (notas pessoais)
+.obsidian/
+*.canvas
+*.base
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
+
+# Scripts locais com segredos
+claude-deepseek.ps1
+
+# Python (root — voice-clone-service tem o seu próprio .gitignore também)
+.venv/
+venv/
+__pycache__/
+*.pyc
