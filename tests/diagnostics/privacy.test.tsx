@@ -31,9 +31,11 @@ describe('permissões', () => {
     expect(screen.queryByText('Terminal integrado')).toBeNull();
   });
 
-  it('diz de frente que recusar aqui ainda não impede nada', () => {
+  it('diz de frente que recusar já impede a sério os plugins com execução real', () => {
     render(<PrivacyWindow />);
-    expect(screen.getByText(/recusar aqui não impede nada hoje/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/recusar aqui só guarda a decisão para quando a execução existir/i),
+    ).toBeInTheDocument();
   });
 
   it('recusar uma permissão guarda a decisão e regista-a', async () => {

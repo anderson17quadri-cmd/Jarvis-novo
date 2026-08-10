@@ -39,9 +39,11 @@ beforeEach(async () => {
 });
 
 describe('loja de plugins', () => {
-  it('diz de frente que nada é executado', () => {
+  it('diz de frente que a maioria dos plugins ainda só regista a instalação', () => {
     render(<PluginManagerWindow />);
-    expect(screen.getByText(/nenhum plugin é descarregado nem executado/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/a maioria destes plugins ainda só regista a instalação/i),
+    ).toBeInTheDocument();
   });
 
   it('lista o catálogo todo na vista da loja', () => {
