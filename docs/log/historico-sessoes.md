@@ -305,3 +305,32 @@ aparecer confusão de verdade entre ferramentas parecidas.
 Com isto fecham-se os seis blocos pedidos nesta sessão. As exclusões
 explícitas (wake word, Fase 3, Windows Hello, Terminal, serviços da
 Fase 2, contexto de conversa por IA) ficaram de fora, como pedido.
+
+## 2026-08-10 — O "ponto" a ser dito em voz alta: reproduzido e confirmado
+
+Pedido explícito: reproduzir a sério antes de mexer em código, não
+inventar uma limpeza genérica sem ouvir onde entrava o ponto a mais.
+`BOOT_SPOKEN_LINE` inteira ("Bom dia. Todos os sistemas foram
+inicializados com sucesso.") não reproduziu nada de errado a um primeiro
+teste — mas isolar só a primeira frase, "Bom dia.", sozinha, é que
+mostrou o problema: 1 em 4 gerações do XTTS-v2 saía "Bom dia. Ponto." Sem
+mais texto a seguir para dar contexto ao modelo, o ponto final às vezes é
+lido à letra. Confirmado com áudio a sério — `POST /falar` seguido de
+`POST /ouvir` (Whisper) a transcrever de volta o que realmente foi dito —
+não só a ler o código.
+
+Arranjo: `limparParaSintese`, em `voice-service.ts`, chamado por `speak()`
+antes de escolher entre a voz clonada e a do sistema (vale para as duas,
+mesmo só se ter confirmado o defeito na clonada). Tira o ponto final —
+redundante, o fim da string já diz que a frase acabou — e troca
+reticências (`...` ou `…`) por vírgula, que já pausa a prosódia sem
+arriscar ser lida. Não mexe em pontos a meio de uma frase mais longa,
+que servem de pausa real. Confirmado o arranjo com 9 gerações seguidas
+de "Bom dia" sem ponto final, todas limpas — contra 1 em 4 antes.
+
+Achado à parte, registado mas não arranjado agora: ao repetir o teste
+com a frase completa do arranque, viu-se que o XTTS-v2 tem uma taxa de
+fundo de alucinação em texto mais longo (sílabas ou palavras soltas a
+mais, por vezes no fim do áudio) que acontece com ou sem o ponto final —
+não é o mesmo bug, e uma limpeza de texto não o resolve. Fica escrito no
+SPEC.md para quem voltar a isto não pensar que é a mesma coisa.

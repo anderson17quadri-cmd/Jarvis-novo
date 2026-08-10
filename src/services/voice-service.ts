@@ -200,6 +200,38 @@ function vigiarSilencio(
   };
 }
 
+/**
+ * Limpa o texto antes de sintetizar — pontuação que fica lida à letra em
+ * vez de servir só de pausa.
+ *
+ * Confirmado a sério, não só por ler o código: um texto curto isolado como
+ * "Bom dia." (a primeira frase de `BOOT_SPOKEN_LINE`, testada à parte) sai
+ * do XTTS-v2 como "Bom dia. Ponto." em cerca de 1 em cada 4 gerações — um
+ * sintoma conhecido de modelos de síntese neuronais com pouco texto: sem
+ * contexto a seguir, o modelo por vezes lê o ponto final em vez de o tratar
+ * como fim de frase. A mesma frase completa (`BOOT_SPOKEN_LINE` inteira,
+ * com mais texto a seguir ao primeiro ponto) nunca reproduziu o problema —
+ * por isso o ponto **final** é que se tira, não os pontos a meio de uma
+ * frase mais longa, que servem de pausa real entre orações.
+ *
+ * Aplica-se antes de escolher a voz (clonada ou do sistema): o ponto final
+ * é redundante para as duas — o fim da string já diz que a frase acabou —
+ * e é a voz clonada que, por vezes, o lê à letra.
+ */
+function limparParaSintese(texto: string): string {
+  return (
+    texto
+      // Reticências (três pontos ou o carácter único "…") só servem de
+      // pausa — viram vírgula, que já pausa a prosódia sem arriscar ser lida.
+      .replace(/\.{3,}|…/g, ',')
+      // O ponto final da frase inteira é o que, por vezes, sai como a
+      // palavra "ponto" — sem ele, o fim da frase continua a ouvir-se pela
+      // entoação, não por um caráter a mais.
+      .replace(/\.+\s*$/, '')
+      .trim()
+  );
+}
+
 export interface VoiceCallbacks {
   readonly onTranscript: (text: string) => void;
   readonly onStart?: () => void;
@@ -683,13 +715,14 @@ export class VoiceService {
     selectionOverride?: VoiceSelection,
   ): boolean {
     const selection = selectionOverride ?? this.selection;
+    const limpo = limparParaSintese(text);
 
     if (selection.kind === 'clonada') {
-      void this.speakClonada(text, selection.nome, callbacks);
+      void this.speakClonada(limpo, selection.nome, callbacks);
       return true;
     }
 
-    return this.speakSistema(text, callbacks, selection.kind === 'sistema' ? selection.voiceURI : undefined);
+    return this.speakSistema(limpo, callbacks, selection.kind === 'sistema' ? selection.voiceURI : undefined);
   }
 
   private speakSistema(
