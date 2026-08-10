@@ -404,3 +404,40 @@ refletir o estado real.
 Suite toda: 1101 testes, todos a passar (1 falha isolada em
 `login-screen.test.tsx` no correr completo, confirmada como oscilação ao
 correr o ficheiro sozinho — não relacionada com este trabalho).
+
+## 2026-08-10 — Auditoria de dependências: uma vulnerabilidade real, uma decidida a não forçar
+
+Com duas sessões locais (Claude, DeepSeek) a trabalhar em paralelo numa
+fila grande de tarefas, esta sessão fez algo que nenhuma das duas tinha
+na lista: um `npm ci` limpo, num clone à parte, para confirmar que o
+projeto instala e corre bem partindo do zero — não só por cima do que já
+estava instalado.
+
+O `npm audit` desse clone apontou 10 vulnerabilidades. Duas descobertas:
+
+**`react-router-dom` era peso morto com uma vulnerabilidade a reboque.**
+Estava no `package.json` (`^7.1.1`) e listado no `manualChunks` do
+`vite.config.ts`, mas `grep -rl "react-router" src/` não encontrou
+nenhuma importação em lado nenhum — a app usa o próprio `WindowManager`,
+nunca teve rotas. Removido de propósito (não atualizado — apagado),
+tirando de uma vez a vulnerabilidade alta associada e peso do bundle
+vendor sem função nenhuma. `npm audit` caiu de 10 para 5.
+
+**As 5 restantes (vitest/vite/esbuild, uma delas crítica — CVSS 9.8,
+leitura/execução arbitrária de ficheiros com o servidor de UI do Vitest
+ligado) só têm correção com `npm audit fix --force`, que sobe o vitest
+para a versão 4, major.** Tentei a sério: instalei o `vitest@4.1.10`,
+corri a suite toda — 4 testes falharam (`login-sound.test.tsx`,
+`boot-sound.test.tsx`), isolados a passarem sozinhos mas a falharem em
+conjunto, sinal de estado a vazar entre ficheiros de teste que a versão
+2 isolava e a 4 não isola da mesma forma por omissão. Diagnosticar a
+fundo (mudança de `pool`/`isolate` entre versões) e corrigir a sério
+ficaria para além do que esta peça devia ocupar sozinha, com duas outras
+sessões já a trabalhar em paralelo — **decisão: reverter para
+`vitest@2.1.8`** (a versão de sempre, suite verde outra vez, 1101/1101),
+e deixar a atualização major documentada aqui como trabalho real por
+fazer, não escondida nem forçada com testes a falhar.
+
+Confirmado com `tsc`, `eslint`, a suite toda, e um `npm run build` a
+sério (produção, não só o `dev`) — o `vite.config.ts` mudou, tinha de se
+confirmar que o build ainda produzia os chunks certos.

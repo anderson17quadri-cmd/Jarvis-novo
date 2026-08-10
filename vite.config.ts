@@ -42,7 +42,7 @@ export default defineConfig({
       output: {
         // Os módulos pesados saem em chunks próprios para o lazy loading valer.
         manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['react', 'react-dom'],
           charts: ['recharts'],
           motion: ['framer-motion'],
         },
