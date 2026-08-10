@@ -57,6 +57,17 @@ describe('estado das tarefas', () => {
     expect(useTaskStore.getState().tasks[0]?.title).toBe('Com espaços');
   });
 
+  it('sem prazo indicado, dueAt fica null (omisso)', () => {
+    useTaskStore.getState().add('Sem prazo', 'media');
+    expect(useTaskStore.getState().tasks[0]?.dueAt).toBeNull();
+  });
+
+  it('um prazo passado ao add() fica guardado na tarefa', () => {
+    const amanha = Date.now() + 24 * 60 * 60 * 1000;
+    useTaskStore.getState().add('Com prazo', 'media', amanha);
+    expect(useTaskStore.getState().tasks[0]?.dueAt).toBe(amanha);
+  });
+
   it('marcar uma subtarefa não mexe nas outras tarefas', () => {
     const withSubtasks = useTaskStore
       .getState()

@@ -19,7 +19,7 @@ interface TaskState {
   /** `false` até a primeira leitura do armazenamento. */
   readonly isHydrated: boolean;
 
-  add: (title: string, priority: TaskPriority) => void;
+  add: (title: string, priority: TaskPriority, dueAt?: number | null) => void;
   toggle: (id: string) => void;
   toggleSubtask: (taskId: string, subtaskId: string) => void;
   remove: (id: string) => void;
@@ -34,7 +34,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
   isHydrated: false,
 
-  add: (title, priority) =>
+  add: (title, priority, dueAt = null) =>
     set((state) => {
       const trimmed = title.trim();
       // Uma tarefa sem título seria uma linha em branco na lista para sempre.
@@ -44,7 +44,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         id: createId('task'),
         title: trimmed,
         priority,
-        dueAt: null,
+        dueAt,
         tags: [],
         subtasks: [],
         isDone: false,

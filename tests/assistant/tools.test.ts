@@ -35,7 +35,7 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       return layout !== 'inexistente';
     },
     saveLayout: (name) => void calls.push(`guardar-layout:${name}`),
-    createTask: (title, priority) => void calls.push(`tarefa:${title}:${priority}`),
+    createTask: (title, priority, dueAt) => void calls.push(`tarefa:${title}:${priority}:${dueAt}`),
     completeTask: (title) => {
       calls.push(`concluir:${title}`);
       return title !== 'inexistente';
@@ -202,6 +202,50 @@ describe('executar', () => {
     unregister();
 
     expect(runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } }).status).toBe('erro');
+  });
+});
+
+/**
+ * Contexto ("amanhã") resolvido pelo modelo, não por regras escritas à mão
+ * (Parte 7 §Contexto). O modelo já recebe a data de hoje por extenso no
+ * `system prompt` (`services/assistant/context.ts`); a ferramenta só precisa
+ * de um campo para ele devolver o que resolveu, em ISO — nunca "amanhã" a
+ * ser interpretado aqui dentro.
+ */
+describe('criar_tarefa — prazo resolvido pelo modelo', () => {
+  it('AAAA-MM-DD válido vira meia-noite local desse dia', () => {
+    const outcome = runTool({
+      id: '1',
+      name: 'criar_tarefa',
+      args: { titulo: 'Enviar orçamento', prazo: '2026-08-12' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    const esperado = new Date('2026-08-12T00:00:00').getTime();
+    expect(executor.calls).toEqual([`tarefa:Enviar orçamento:media:${esperado}`]);
+    expect(outcome.message).toContain('12/08/2026');
+  });
+
+  it('sem prazo, a tarefa fica sem data — não é erro', () => {
+    const outcome = runTool({
+      id: '1',
+      name: 'criar_tarefa',
+      args: { titulo: 'Ler o relatório' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['tarefa:Ler o relatório:media:null']);
+  });
+
+  it('um prazo mal formado é ignorado, não inventado', () => {
+    const outcome = runTool({
+      id: '1',
+      name: 'criar_tarefa',
+      args: { titulo: 'x', prazo: 'amanhã' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['tarefa:x:media:null']);
   });
 });
 

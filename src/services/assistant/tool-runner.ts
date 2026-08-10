@@ -29,7 +29,7 @@ export interface ToolExecutor {
   readonly goToDesktop: (desktop: number) => void;
   readonly applyLayout: (layout: string) => boolean;
   readonly saveLayout: (name: string) => void;
-  readonly createTask: (title: string, priority: string) => void;
+  readonly createTask: (title: string, priority: string, dueAt: number | null) => void;
   readonly completeTask: (title: string) => boolean;
   readonly clearDoneTasks: () => number;
   readonly notify: (title: string, description: string) => void;
@@ -122,6 +122,17 @@ export function describe(call: ToolCall): string {
 }
 
 /**
+ * Lê "AAAA-MM-DD" como meia-noite local desse dia. `null` se vazio ou se o
+ * modelo mandar algo que não é essa forma — uma tarefa sem prazo é melhor do
+ * que uma com um prazo inventado.
+ */
+function parseDueDate(value: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+}
+
+/**
  * O que cada ferramenta faz, e o que responde ao modelo.
  *
  * A resposta importa tanto como a ação: é com ela que o modelo sabe se
@@ -186,9 +197,12 @@ function perform(
       run.saveLayout(text('nome'));
       return `Layout "${text('nome')}" guardado.`;
 
-    case 'criar_tarefa':
-      run.createTask(text('titulo'), text('prioridade') || 'media');
-      return `Tarefa "${text('titulo')}" criada.`;
+    case 'criar_tarefa': {
+      const dueAt = parseDueDate(text('prazo'));
+      run.createTask(text('titulo'), text('prioridade') || 'media', dueAt);
+      const prazo = dueAt !== null ? `, para ${new Date(dueAt).toLocaleDateString('pt-PT')}` : '';
+      return `Tarefa "${text('titulo')}" criada${prazo}.`;
+    }
 
     case 'concluir_tarefa':
       return run.completeTask(text('titulo'))

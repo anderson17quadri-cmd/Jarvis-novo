@@ -733,3 +733,45 @@ sistema operativo, fora do DOM) — a mesma limitação já documentada para
 a cópia de segurança — por isso o caminho de recurso do browser ficou
 coberto a sério pelos testes automatizados (anexar, pré-visualizar só
 imagens, remover, cancelar sem guardar).
+
+## 2026-08-11 — Contexto na conversa: "amanhã" resolvido pelo modelo, não por regras
+
+Pedido: usar o provedor de IA para resolver referências relativas
+("amanhã", "esse ficheiro") em vez de regras escritas à mão. A procura por
+regras já existentes não encontrou nenhuma — nunca houve resolução de
+datas relativas no assistente; `criar_tarefa` nem tinha campo de prazo,
+por isso "cria uma tarefa para amanhã" sempre criou a tarefa sem data
+nenhuma, em silêncio.
+
+Arranjo: `criar_tarefa` ganha o parâmetro opcional `prazo`, com a
+instrução de o modelo devolver AAAA-MM-DD já resolvido — ele já recebe
+"hoje é terça-feira, 11 de agosto de 2026" no `system prompt`
+(`services/assistant/context.ts`, sessão anterior), por isso não precisa
+de ajuda nenhuma para saber que dia é "amanhã". `tool-runner.ts` só
+valida a forma (`parseDueDate`) e nunca tenta interpretar a palavra —
+uma data mal formada fica sem prazo, nunca inventada. `useTaskStore.add()`
+e as duas assinaturas de `createTask` (voz e ferramentas) passam o
+`dueAt` até à tarefa a sério.
+
+**Confirmado por 6 testes** (`tests/assistant/tools.test.ts`,
+`tests/stores/task-store.test.ts`): data válida vira o timestamp certo à
+meia-noite local, prazo ausente não é erro, prazo malformado ("amanhã"
+literal, por exemplo) é ignorado em vez de inventado.
+
+**Não confirmado ao vivo de ponta a ponta**, e a razão fica registada
+para quem continuar: ferramentas só correm com a DeepSeek —
+`ai-service.ts`, `sendWithTools()` exige `provider instanceof
+DeepSeekProvider` — e esta máquina não tinha chave DeepSeek configurada
+nesta sessão. Testado com o Ollama ativo (sem chave nenhuma a
+configurar): o pedido chega mesmo ao modelo — confirmado por CDP, pedidos
+reais a `localhost:11434` — mas como o Ollama nunca recebe as ferramentas,
+o modelo só responde em texto livre (por vezes ecoando JSON que viu antes
+na conversa), nunca chama `criar_tarefa` a sério. Não é um bug desta
+funcionalidade — é a mesma limitação já escrita no `SPEC.md` antes de
+hoje ("Ferramentas continuam só na DeepSeek"). Fica por confirmar ao vivo
+quando houver uma chave DeepSeek na máquina de testes.
+
+"Esse ficheiro" fica por fazer: não há ainda nenhuma ferramenta que atue
+sobre um ficheiro (abrir, resumir, o que for) para uma referência desse
+tipo ter alguma coisa a resolver-se — construir uma ferramenta dessas do
+zero seria maior do que "resolver contexto", e não foi pedido em separado.

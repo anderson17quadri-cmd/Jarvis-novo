@@ -403,8 +403,8 @@ export function App(): React.JSX.Element {
         return layout ? applyLayout(layout.id) : false;
       },
       saveLayout: (name) => useWorkspaceStore.getState().saveLayout(name),
-      createTask: (title, priority) => {
-        useTaskStore.getState().add(title, priority as TaskPriority);
+      createTask: (title, priority, dueAt) => {
+        useTaskStore.getState().add(title, priority as TaskPriority, dueAt);
         void useTaskStore.getState().persist();
       },
       completeTask: (title) => {

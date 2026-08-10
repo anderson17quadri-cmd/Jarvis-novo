@@ -162,6 +162,12 @@ export const TOOLS: readonly ToolDefinition[] = [
     parameters: [
       text('titulo', 'O que há a fazer.'),
       choice('prioridade', 'Urgência.', ['alta', 'media', 'baixa'], false),
+      text(
+        'prazo',
+        'Prazo, em AAAA-MM-DD, resolvido a partir da data de hoje que já sabe (ex.: "amanhã" ' +
+          'vira o dia seguinte, "sexta-feira" a próxima sexta). Omitido se o pedido não tiver prazo.',
+        false,
+      ),
     ],
   },
   {
