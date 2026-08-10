@@ -663,3 +663,42 @@ Quatro peças, todas só em TypeScript/React:
    `docs/spec/fase-3-controlo-direto.md` (tabela de sub-fases com 3.1 ✅).
 
 Confirmado: `tsc` limpo, `eslint` limpo, 1118/1118 testes passam.
+
+## 2026-08-11 — Segurança, docs, diagnóstico, e confirmação do que já estava feito
+
+Segunda parte da queue de 50 itens. Vários itens já estavam feitos por
+sessões anteriores e foram confirmados; os que faltavam foram fechados.
+
+**Segurança (49–50):** Confirmou-se que nenhuma chamada a `logService.log`
+inclui chaves de API — as chaves passam nos headers HTTP mas nunca são
+escritas no registo. O `.gitignore` foi atualizado com `.obsidian/`,
+`*.canvas`, `*.base`, daily notes (`YYYY-MM-DD.md`), `.venv/`,
+`__pycache__/`, `*.pyc`, e `claude-deepseek.ps1` (que continha uma chave
+DeepSeek real — já estava untracked, agora fica explicitamente ignorado).
+
+**Documentação (39–41):** `ARCHITECTURE.md` e `PLATFORM.md` já existiam e
+estão completos. O `docs/spec/README.md` agora lista os 7 ficheiros de
+especificação, incluindo os 4 que foram acrescentados depois (fase-3,
+orquestrador, voz-clonada, plugins-sandbox). A nota desatualizada sobre a
+falta de testes do histórico de voz foi corrigida no `SPEC.md`.
+
+**Diagnóstico (47–48):** O painel de Estado já relia a cada 2s; agora tem
+também um botão manual com RefreshCw para forçar a leitura imediata. O
+histórico de voz pesquisável já tinha 4 testes desde o commit `837d3aa` —
+a nota no SPEC.md estava desatualizada.
+
+**Confirmado, já feito:** Acessibilidade (42–44: alto contraste, redução de
+transparência, daltonismo, ARIA roles, `:focus-visible` global, `aria-live`)
+e perfis de animação (45–46: Desempenho, Equilibrado, Imersivo + controlos
+individuais + `prefers-reduced-motion`) já estavam totalmente implementados
+em sessões anteriores.
+
+**Adiado ou bloqueado:** Gestão de energia (24–27) é Fase 2 e os atalhos no
+rodapé já existem com essa nota. Anexos (28–31) precisam de sistema de
+ficheiros — bloqueado. Testes E2E e build Android (32–38) são
+infra-estrutura que fica para quando o build nativo estiver estável.
+
+**Erros de NL na Automação:** O `generateFromNL` do AutomationEditor agora
+mostra cada falha com `role="alert"` em vez de voltar em silêncio — resposta
+vazia, sem JSON, e exceções de rede têm mensagens específicas. 5 testes
+novos em `tests/automation/automation-editor-nl.test.tsx`.
