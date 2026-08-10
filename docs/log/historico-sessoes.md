@@ -161,3 +161,13 @@ se deixou cronometrar ao vivo — o `--use-file-for-fake-audio-capture` do
 Chromium repete o ficheiro em loop, nunca produz silêncio a sério — por
 isso essa parte ficou confirmada só por testes com temporizadores
 controlados, não pelo browser real.
+
+**Bloco 2, continuação — mais variações em `services/voice/intents.ts`.**
+A peça mais valiosa não foi mais uma palavra numa lista: `stripPoliteness`
+tira prefixos de cortesia ("podes", "por favor", "consegues", em cadeia)
+antes de se procurar o verbo — antes, "podes abrir os emails" não
+reconhecia nada e ia sempre parar ao assistente, só "abre os emails" é
+que batia. Mais sinónimos por família de comando (abrir, esconder,
+pesquisar, tarefa, música), e "fecha tudo"/"reinicia a app"/"reinicia o
+jarvis" como variantes que faltavam. 52 testes no total, os 15 novos a
+cobrir exatamente estes casos.

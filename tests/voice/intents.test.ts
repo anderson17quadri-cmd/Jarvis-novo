@@ -213,3 +213,69 @@ describe('robustez', () => {
     expect(describeIntent(first('Mostra o widget de cpu'))).toBe('Mostrar o widget CPU');
   });
 });
+
+describe('cortesia — "podes", "por favor", "consegues"', () => {
+  it.each([
+    'Abre os emails.',
+    'Podes abrir os emails?',
+    'Pode abrir os emails.',
+    'Por favor abre os emails.',
+    'Consegues abrir os emails?',
+    'Podes por favor abrir os emails?',
+  ])('%s', (phrase) => {
+    const intent = first(phrase);
+    expect(intent.kind).toBe('abrir-janela');
+    expect(intent.kind === 'abrir-janela' && intent.appId).toBe('emails');
+  });
+
+  it('a cortesia sozinha, sem pedido nenhum a seguir, não vira comando', () => {
+    // "podes" sem mais nada não é "abrir" nem nada — vai para o assistente,
+    // como qualquer frase que não bata com um comando conhecido.
+    expect(first('Podes').kind).toBe('perguntar');
+  });
+});
+
+describe('mais variações do mesmo pedido', () => {
+  it.each([
+    ['Entra no calendário.', 'calendar'],
+    ['Vai para o calendário.', 'calendar'],
+    ['Inicia o calendário.', 'calendar'],
+    ['Quero abrir o calendário.', 'calendar'],
+  ])('%s', (phrase, appId) => {
+    const intent = first(phrase);
+    expect(intent.kind).toBe('abrir-janela');
+    expect(intent.kind === 'abrir-janela' && intent.appId).toBe(appId);
+  });
+
+  it('remover/ocultar são sinónimos de esconder, para widgets', () => {
+    expect(first('Remove o widget de cpu.').kind).toBe('widget');
+    expect(first('Ocultar o widget de cpu.').kind).toBe('widget');
+  });
+
+  it('busca é sinónimo de procurar', () => {
+    const intent = first('Busca relatório mensal.');
+    expect(intent.kind).toBe('pesquisar');
+    expect(intent.kind === 'pesquisar' && intent.query).toBe('relatorio mensal');
+  });
+
+  it('anotar é sinónimo de criar tarefa', () => {
+    const intent = first('Anota comprar leite.');
+    expect(intent.kind).toBe('criar-tarefa');
+    expect(intent.kind === 'criar-tarefa' && intent.title).toBe('comprar leite');
+  });
+
+  it('"fecha tudo" fecha as janelas, sem precisar de dizer "janelas"', () => {
+    expect(first('Fecha tudo.').kind).toBe('fechar-janelas');
+  });
+
+  it('reiniciar aceita "app" e "jarvis", não só "interface"/"sistema"', () => {
+    expect(first('Reinicia a app.').kind).toBe('reiniciar-interface');
+    expect(first('Reinicia o jarvis.').kind).toBe('reiniciar-interface');
+  });
+
+  it('continuar/retomar a música é sinónimo de tocar', () => {
+    const intent = first('Continua a música.');
+    expect(intent.kind).toBe('musica');
+    expect(intent.kind === 'musica' && intent.action).toBe('tocar');
+  });
+});

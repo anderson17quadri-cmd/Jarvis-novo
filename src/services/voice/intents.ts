@@ -86,20 +86,68 @@ const APP_WORDS: Partial<Record<AppId, readonly string[]>> = {
 };
 
 /** Verbos que pedem para abrir algo. */
-const OPEN_VERBS = ['abre', 'abrir', 'mostra', 'mostrar', 'ver', 'vai para', 'quero ver'];
-
-/** Verbos que pedem para esconder. */
-const HIDE_VERBS = ['esconde', 'esconder', 'fecha', 'fechar', 'tira', 'oculta'];
-
-const MUSIC_WORDS: readonly { readonly words: readonly string[]; readonly action: 'tocar' | 'pausar' | 'proxima' | 'anterior' }[] = [
-  { words: ['proxima faixa', 'proxima musica', 'a seguir', 'saltar'], action: 'proxima' },
-  { words: ['faixa anterior', 'musica anterior', 'anterior', 'voltar atras'], action: 'anterior' },
-  { words: ['pausa', 'pausar', 'para a musica', 'parar musica'], action: 'pausar' },
-  { words: ['toca', 'tocar', 'reproduz', 'reproduzir', 'poe musica'], action: 'tocar' },
+const OPEN_VERBS = [
+  'abre',
+  'abrir',
+  'mostra',
+  'mostrar',
+  'ver',
+  'vai para',
+  'ir para',
+  'entra em',
+  'entra no',
+  'entra na',
+  'inicia',
+  'iniciar',
+  'quero abrir',
+  'quero ver',
+  'preciso de ver',
+  'preciso ver',
 ];
 
-const SEARCH_VERBS = ['procura', 'procurar', 'pesquisa', 'pesquisar', 'encontra', 'encontrar'];
-const TASK_VERBS = ['cria uma tarefa', 'criar tarefa', 'nova tarefa', 'adiciona uma tarefa', 'lembra-me de'];
+/** Verbos que pedem para esconder. */
+const HIDE_VERBS = [
+  'esconde',
+  'esconder',
+  'fecha',
+  'fechar',
+  'tira',
+  'oculta',
+  'ocultar',
+  'remove',
+  'remover',
+];
+
+const MUSIC_WORDS: readonly { readonly words: readonly string[]; readonly action: 'tocar' | 'pausar' | 'proxima' | 'anterior' }[] = [
+  { words: ['proxima faixa', 'proxima musica', 'a seguir', 'saltar', 'avanca a musica', 'avancar musica'], action: 'proxima' },
+  { words: ['faixa anterior', 'musica anterior', 'anterior', 'voltar atras', 'recua a musica', 'recuar musica'], action: 'anterior' },
+  { words: ['pausa', 'pausar', 'para a musica', 'parar musica', 'para de tocar'], action: 'pausar' },
+  { words: ['toca', 'tocar', 'reproduz', 'reproduzir', 'poe musica', 'continua a musica', 'retoma a musica'], action: 'tocar' },
+];
+
+const SEARCH_VERBS = [
+  'procura',
+  'procurar',
+  'pesquisa',
+  'pesquisar',
+  'encontra',
+  'encontrar',
+  'busca',
+  'buscar',
+  'quero encontrar',
+];
+const TASK_VERBS = [
+  'cria uma tarefa',
+  'criar tarefa',
+  'criar uma tarefa',
+  'nova tarefa',
+  'adiciona uma tarefa',
+  'adicionar tarefa',
+  'lembra-me de',
+  'lembrar-me de',
+  'anota',
+  'anotar',
+];
 
 // ── Interpretação ──────────────────────────────────────────────────────────
 
@@ -129,6 +177,41 @@ function trimPunctuation(text: string): string {
   return text.replace(/[.!?;:,]+$/, '').trim();
 }
 
+/**
+ * Prefixos de cortesia mais comuns antes de um pedido — "podes", "por
+ * favor", "consegues". Sem isto, só "abre os emails" batia; "podes abrir
+ * os emails" não reconhecia nada, e caía sempre para o assistente.
+ */
+const POLITENESS_PREFIXES = [
+  'por favor',
+  'se fazes favor',
+  'se faz favor',
+  'importas-te de',
+  'importa-te de',
+  'consegues',
+  'conseguias',
+  'podes',
+  'pode',
+];
+
+function stripPoliteness(text: string): string {
+  let resultado = text;
+  let removeuAlgum = true;
+
+  // Em ciclo: "podes por favor abrir" tem dois prefixos, um a seguir ao outro.
+  while (removeuAlgum) {
+    removeuAlgum = false;
+    for (const prefixo of POLITENESS_PREFIXES) {
+      if (resultado.startsWith(`${prefixo} `)) {
+        resultado = resultado.slice(prefixo.length).trim();
+        removeuAlgum = true;
+      }
+    }
+  }
+
+  return resultado;
+}
+
 export function parseSpeech(transcript: string): ParsedSpeech {
   const normalized = trimPunctuation(normalizeSearch(transcript));
 
@@ -154,12 +237,16 @@ export function parseSpeech(transcript: string): ParsedSpeech {
 
 /** Interpreta um comando só. `null` quando não reconhece. */
 export function matchIntent(normalized: string): VoiceIntent | null {
-  const text = trimPunctuation(normalized);
+  const text = stripPoliteness(trimPunctuation(normalized));
   if (text.length === 0) return null;
 
   // ── Sistema ──────────────────────────────────────────────────────────────
-  if (/fecha(r)? (todas as |as )?janelas/.test(text)) return { kind: 'fechar-janelas' };
-  if (/reinicia(r)? (a )?(interface|sistema)/.test(text)) return { kind: 'reiniciar-interface' };
+  if (/fecha(r)? (todas as |as )?janelas/.test(text) || /fecha(r)? tudo\b/.test(text)) {
+    return { kind: 'fechar-janelas' };
+  }
+  if (/reinicia(r)? (a |o )?(interface|sistema|app|aplicacao|jarvis)/.test(text)) {
+    return { kind: 'reiniciar-interface' };
+  }
 
   // ── Estados do sistema ───────────────────────────────────────────────────
   const state = matchSystemState(text);
