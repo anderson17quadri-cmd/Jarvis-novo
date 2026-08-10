@@ -495,3 +495,28 @@ erro em vez do clique habitual. `'todas'` falha as dez. Fora do
 desenvolvimento, não um caminho que um utilizador normal encontre. A
 sequência continua até ao fim mesmo com verificações falhadas, como a
 spec pedia (`1a1b016`).
+
+## 2026-08-11 — Voz clonada: três bugs de concorrência fechados
+
+Auditoria ao `voice-service.ts` pedida na sessão anterior. Confirmou-se que
+o eco loop (microfone ligar-se sozinho depois de falar) já estava corrigido
+— não há caminho nenhum a chamar `toggleListening` sem ser o utilizador.
+Mas encontraram-se três bugs reais no caminho da voz clonada:
+
+1. **`stopSpeaking()` não travava áudio em voo.** Durante o `fetch` ao
+   voice-clone-service, `cloneAudio` é `null` — o `pause()` não fazia nada
+   e o áudio tocava na mesma quando o fetch completava.
+2. **Fuga de blob URL.** `cloneAudio?.pause()` não dispara `onended`, por
+   isso o `URL.revokeObjectURL` dentro do handler nunca corria — a URL
+   sobrevivia até fechar a página.
+3. **Ordem de chegada dos fetch.** Duas chamadas rápidas a `speak()` com
+   voz clonada podiam tocar a resposta errada, porque o fetch mais antigo
+   podia completar depois do mais recente.
+
+Os três corrigem-se com o mesmo mecanismo: um contador de geração
+(`speakGeneration`) incrementado a cada `speak()` e a cada
+`stopSpeaking()`, capturado pela `speakClonada` e verificado depois do
+`fetch`. A URL da blob passou a ser guardada junto com o `HTMLAudioElement`
+para se poder revogar a qualquer momento, e não só no `onended`.
+Confirmado: `tsc` limpo, `eslint` limpo, 6/6 testes do echo guard a
+passar, suite toda sem regressões (as 3 falhas são pré-existentes).

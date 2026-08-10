@@ -564,8 +564,21 @@ export class VoiceService {
   /** A voz escolhida de propósito (Parte 7.1 §Voz). Ver `VoiceSelection`. */
   private selection: VoiceSelection = VOICE_SELECTION_AUTO;
 
-  /** O áudio da voz clonada atualmente a tocar, se houver — para `stopSpeaking`. */
-  private cloneAudio: HTMLAudioElement | null = null;
+  /**
+   * O áudio da voz clonada atualmente a tocar, e a sua URL.
+   *
+   * A URL fica guardada para se poder revogar a qualquer momento — o
+   * `pause()` não dispara `onended`, e sem isto a blob URL sobrevivia até
+   * a página ser fechada.
+   */
+  private cloneAudio: { readonly audio: HTMLAudioElement; readonly url: string } | null = null;
+
+  /**
+   * Contador que cresce a cada `speak()` (e a cada `stopSpeaking()`) —
+   * uma `speakClonada` em voo verifica se o seu número ainda é o atual
+   * antes de começar a tocar, e descarta-se se não for.
+   */
+  private speakGeneration = 0;
 
   setSelection(selection: VoiceSelection): void {
     this.selection = selection;
@@ -686,10 +699,19 @@ export class VoiceService {
     };
   }
 
-  /** Fala pelo serviço local de voz clonada. `nome: null` é a voz gravada do utilizador. */
+  /**
+   * Fala pelo serviço local de voz clonada. `nome: null` é a voz gravada do
+   * utilizador.
+   *
+   * Aceita a geração em que foi chamada (`toque`): se já não for a geração
+   * atual do serviço, descarta o áudio depois do `fetch` — sem isto, duas
+   * chamadas rápidas podem tocar a resposta errada, e `stopSpeaking` a meio
+   * do pedido não impede o áudio de soar na mesma.
+   */
   private async speakClonada(
     text: string,
     nome: string | null,
+    toque: number,
     callbacks?: { onStart?: () => void; onEnd?: () => void },
   ): Promise<void> {
     try {
@@ -700,15 +722,35 @@ export class VoiceService {
       });
       if (!resposta.ok) throw new Error(`o serviço de voz local devolveu ${resposta.status}`);
 
+      // Se a geração já não é a atual, o áudio perdeu a vez — descarta-se
+      // antes de criar o Audio sequer.
+      if (toque !== this.speakGeneration) return;
+
       const url = URL.createObjectURL(await resposta.blob());
 
-      this.cloneAudio?.pause();
+      // Limpa o áudio anterior, e a URL que ele segurava — o `onended`
+      // nunca dispara em `pause()`, e sem revogar aqui a blob URL fugia.
+      if (this.cloneAudio) {
+        this.cloneAudio.audio.pause();
+        URL.revokeObjectURL(this.cloneAudio.url);
+        this.cloneAudio = null;
+      }
+
+      // Segunda verificação: entre a linha acima e aqui, outra `speakClonada`
+      // pode ter sido despachada. Sem esta verificação, duas chamadas
+      // simultâneas que cheguem a esta linha ao mesmo tempo sobrescrevem-se
+      // sem a primeira se limpar.
+      if (toque !== this.speakGeneration) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+
       const audio = new Audio(url);
-      this.cloneAudio = audio;
+      this.cloneAudio = { audio, url };
 
       const limpar = (): void => {
         URL.revokeObjectURL(url);
-        if (this.cloneAudio === audio) this.cloneAudio = null;
+        if (this.cloneAudio?.audio === audio) this.cloneAudio = null;
       };
 
       audio.onplay = () => {
@@ -782,9 +824,10 @@ export class VoiceService {
     const limpo = limparParaSintese(text);
 
     this.onSpeechStart();
+    const toque = ++this.speakGeneration;
 
     if (selection.kind === 'clonada') {
-      void this.speakClonada(limpo, selection.nome, callbacks);
+      void this.speakClonada(limpo, selection.nome, toque, callbacks);
       return true;
     }
 
@@ -853,8 +896,16 @@ export class VoiceService {
       }
     }
 
-    this.cloneAudio?.pause();
-    this.cloneAudio = null;
+    // Avançar a geração faz com que qualquer `speakClonada` que esteja em
+    // voo (a meio do `fetch`) se descarte em vez de tocar — o utilizador
+    // pediu para parar, e o áudio que chegar depois já não lhe pertence.
+    this.speakGeneration += 1;
+
+    if (this.cloneAudio) {
+      this.cloneAudio.audio.pause();
+      URL.revokeObjectURL(this.cloneAudio.url);
+      this.cloneAudio = null;
+    }
 
     // `cancel()`/`pause()` nem sempre disparam `onend`/`onerror` — sem
     // isto, interromper a voz a meio podia deixar o microfone bloqueado
