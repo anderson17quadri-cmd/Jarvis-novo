@@ -289,3 +289,19 @@ mais simples sobre o modelo que já existe; se for o canvas a sério, o
 modelo de dados muda primeiro — projeto à parte, maior do que o editor;
 e o que fazer aos blocos (Plugin, webhook/API) que dependem de
 capacidades ainda bloqueadas nesta app.
+
+**Bloco 6 — Agentes especializados: decidido que não vale a pena, para
+já.** Pedido explícito: uma frase de porquê, decisão registada mesmo que
+seja "não". Razão: 23 ferramentas (contagem corrigida no SPEC.md — a
+nota antiga dizia 21) é pouco para um modelo de tool-calling lidar de
+uma vez, sem sinal nenhum de confusão nos testes existentes; o pedido
+típico já atravessa "domínios" à vontade (abrir uma janela e criar uma
+tarefa no mesmo pedido); e especializar exigia um encaminhador a
+escolher o agente, mais orquestração entre agentes para repor o
+encadeamento que já funciona sozinho hoje — tudo isso sem nenhum
+problema real a resolver. Reabre-se se o catálogo crescer a sério ou
+aparecer confusão de verdade entre ferramentas parecidas.
+
+Com isto fecham-se os seis blocos pedidos nesta sessão. As exclusões
+explícitas (wake word, Fase 3, Windows Hello, Terminal, serviços da
+Fase 2, contexto de conversa por IA) ficaram de fora, como pedido.
