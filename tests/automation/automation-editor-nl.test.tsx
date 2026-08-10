@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AutomationEditor } from '@/apps/automations/AutomationEditor';
-import { aiService } from '@/services/ai-service';
 
 /**
  * Criação de automação por linguagem natural (Parte 11-adjacente, editor
@@ -14,8 +13,9 @@ import { aiService } from '@/services/ai-service';
  * o de falha ficava mudo. Estes testes cobrem os dois.
  */
 
+const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
 vi.mock('@/services/ai-service', () => ({
-  aiService: { send: vi.fn() },
+  aiService: { send: sendMock },
 }));
 
 const noop = (): void => {};
@@ -28,12 +28,12 @@ async function preencherEInterpretar(texto: string): Promise<void> {
 }
 
 beforeEach(() => {
-  vi.mocked(aiService.send).mockReset();
+  sendMock.mockReset();
 });
 
 describe('AutomationEditor — geração por linguagem natural', () => {
   it('sucesso: preenche nome e descrição, sem mensagem de erro', async () => {
-    vi.mocked(aiService.send).mockResolvedValue(
+    sendMock.mockResolvedValue(
       '{"nome":"Resumo Emails","descricao":"Resume emails não lidos às 9h","quando":{"kind":"hora","hour":9,"minute":0},"se":[],"entao":[{"kind":"notificar","title":"Resumo","description":"emails"}]}',
     );
     render(<AutomationEditor onClose={noop} onSaved={noop} />);
@@ -46,7 +46,7 @@ describe('AutomationEditor — geração por linguagem natural', () => {
   });
 
   it('resposta vazia: mostra erro em vez de ficar em silêncio', async () => {
-    vi.mocked(aiService.send).mockResolvedValue('');
+    sendMock.mockResolvedValue('');
     render(<AutomationEditor onClose={noop} onSaved={noop} />);
 
     await preencherEInterpretar('qualquer coisa');
@@ -55,7 +55,7 @@ describe('AutomationEditor — geração por linguagem natural', () => {
   });
 
   it('resposta sem JSON: mostra erro com o que o assistente disse', async () => {
-    vi.mocked(aiService.send).mockResolvedValue('Desculpe, não percebi o que quer.');
+    sendMock.mockResolvedValue('Desculpe, não percebi o que quer.');
     render(<AutomationEditor onClose={noop} onSaved={noop} />);
 
     await preencherEInterpretar('faz uma coisa impossível');
@@ -66,7 +66,7 @@ describe('AutomationEditor — geração por linguagem natural', () => {
   });
 
   it('exceção (ex.: rede em baixo): mostra a mensagem do erro', async () => {
-    vi.mocked(aiService.send).mockRejectedValue(new Error('falha de rede'));
+    sendMock.mockRejectedValue(new Error('falha de rede'));
     render(<AutomationEditor onClose={noop} onSaved={noop} />);
 
     await preencherEInterpretar('qualquer coisa');
@@ -75,13 +75,13 @@ describe('AutomationEditor — geração por linguagem natural', () => {
   });
 
   it('um novo pedido limpa o erro anterior', async () => {
-    vi.mocked(aiService.send).mockResolvedValueOnce('');
+    sendMock.mockResolvedValueOnce('');
     render(<AutomationEditor onClose={noop} onSaved={noop} />);
 
     await preencherEInterpretar('primeiro pedido');
     expect(await screen.findByRole('alert')).toBeInTheDocument();
 
-    vi.mocked(aiService.send).mockResolvedValueOnce(
+    sendMock.mockResolvedValueOnce(
       '{"nome":"Ok","descricao":"","quando":{"kind":"manual"},"se":[],"entao":[]}',
     );
     const user = userEvent.setup();
