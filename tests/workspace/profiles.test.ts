@@ -49,6 +49,7 @@ describe('o que um perfil guarda', () => {
       coreParticles: 0.5,
       coreColor: null,
       coreSpeed: 1,
+      coreRingsVisible: true,
       cursor: 'minimal',
       radius: 'reto',
       fontFamily: 'plex-sans',

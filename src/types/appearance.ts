@@ -146,6 +146,12 @@ export interface Appearance {
   readonly coreColor: string | null;
   /** Entre 0.5 e 2. Multiplica a velocidade de rotação dos anéis do núcleo. */
   readonly coreSpeed: number;
+  /**
+   * Falso esconde os anéis do núcleo, deixando só o brilho central e as
+   * partículas orbitais — a opção que ficava por decidir em §Núcleo
+   * personalizável. `true` por omissão: o núcleo continua como sempre foi.
+   */
+  readonly coreRingsVisible: boolean;
   /** Entre 0.9 e 1.3. Escala global do texto e dos espaços. */
   readonly uiScale: number;
   readonly radius: RadiusKind;
@@ -169,6 +175,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   coreParticles: 1,
   coreColor: null,
   coreSpeed: 1,
+  coreRingsVisible: true,
   uiScale: 1,
   radius: 'redondo',
   cursor: 'holografico',
@@ -201,6 +208,7 @@ export const AMBIENCE_KEYS = [
   'coreParticles',
   'coreColor',
   'coreSpeed',
+  'coreRingsVisible',
   'cursor',
   'radius',
   'fontFamily',
@@ -225,6 +233,7 @@ export function ambienceOf(appearance: Appearance): Ambience {
     coreParticles: appearance.coreParticles,
     coreColor: appearance.coreColor,
     coreSpeed: appearance.coreSpeed,
+    coreRingsVisible: appearance.coreRingsVisible,
     cursor: appearance.cursor,
     radius: appearance.radius,
     fontFamily: appearance.fontFamily,
@@ -240,6 +249,80 @@ export const APPEARANCE_RANGES = {
   coreSpeed: { min: 0.5, max: 2, step: 0.05 },
   uiScale: { min: 0.9, max: 1.3, step: 0.05 },
 } as const;
+
+/**
+ * Perfis de animação (Parte 15 §Perfis de animação;
+ * `docs/spec/jarvis-spec-completo.md`, linha 733): "Minimal, Suave,
+ * Equilibrado, Cinemático, Performance, Personalizado — cada um altera
+ * velocidade/duração/glow/partículas/transições".
+ *
+ * **Decisão, 10/08/2026**: não é uma dimensão nova, é um atalho sobre as
+ * três que já existiam (partículas, velocidade, anéis) — os "estados do
+ * sistema" (Parte 9) já cobrem o "ritmo de sondagem" e os avisos; duplicar
+ * isso aqui só criava duas fontes de verdade a poderem discordar. "Glow" e
+ * "duração das transições" globais ficam de fora: não há hoje nenhum dial
+ * para nenhum dos dois, e inventar um só para preencher a lista seria
+ * personalização a fingir, sem efeito verificável — a mesma regra que já
+ * guiava o resto deste ficheiro.
+ *
+ * "Personalizado" nunca se guarda: é o que aparece sozinho quando a
+ * combinação atual não bate com nenhum perfil — ver `detectAnimationProfile`.
+ * Um valor guardado à parte podia discordar dos três dials a sério.
+ */
+export type AnimationProfileKind =
+  | 'minimal'
+  | 'suave'
+  | 'equilibrado'
+  | 'cinematico'
+  | 'performance';
+
+export const ANIMATION_PROFILE_LABELS: Record<AnimationProfileKind, string> = {
+  minimal: 'Minimal',
+  suave: 'Suave',
+  equilibrado: 'Equilibrado',
+  cinematico: 'Cinemático',
+  performance: 'Performance',
+};
+
+export const ANIMATION_PROFILE_DESCRIPTIONS: Record<AnimationProfileKind, string> = {
+  minimal: 'O menos possível: poucas partículas, devagar, sem anéis.',
+  suave: 'Devagar e cheio — partículas normais, tudo mais lento.',
+  equilibrado: 'Como o núcleo sempre foi — a predefinição.',
+  cinematico: 'Muitas partículas, rotação lenta e deliberada.',
+  performance: 'Poucas partículas e sem anéis, à velocidade normal — para máquinas mais lentas.',
+};
+
+/** O que cada perfil ajusta de uma vez, nos três dials que já existiam. */
+export const ANIMATION_PROFILES: Record<
+  AnimationProfileKind,
+  { readonly coreParticles: number; readonly coreSpeed: number; readonly coreRingsVisible: boolean }
+> = {
+  minimal: { coreParticles: 0.25, coreSpeed: 0.5, coreRingsVisible: false },
+  suave: { coreParticles: 1, coreSpeed: 0.65, coreRingsVisible: true },
+  equilibrado: { coreParticles: 1, coreSpeed: 1, coreRingsVisible: true },
+  cinematico: { coreParticles: 1.5, coreSpeed: 0.6, coreRingsVisible: true },
+  performance: { coreParticles: 0.25, coreSpeed: 1, coreRingsVisible: false },
+};
+
+/**
+ * Qual perfil bate com a aparência atual — `null` quando nenhum bate
+ * ("Personalizado", ver a nota acima de `AnimationProfileKind`).
+ */
+export function detectAnimationProfile(appearance: Appearance): AnimationProfileKind | null {
+  for (const [kind, valores] of Object.entries(ANIMATION_PROFILES) as [
+    AnimationProfileKind,
+    (typeof ANIMATION_PROFILES)[AnimationProfileKind],
+  ][]) {
+    if (
+      appearance.coreParticles === valores.coreParticles &&
+      appearance.coreSpeed === valores.coreSpeed &&
+      appearance.coreRingsVisible === valores.coreRingsVisible
+    ) {
+      return kind;
+    }
+  }
+  return null;
+}
 
 /** Opções de bloqueio, em minutos. `0` é "nunca". */
 export const IDLE_LOCK_OPTIONS: readonly number[] = [0, 1, 5, 15, 30, 60];

@@ -6,16 +6,21 @@ import { themeService } from '@/services/theme-service';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useThemeStore } from '@/stores/use-theme-store';
 import {
+  ANIMATION_PROFILE_DESCRIPTIONS,
+  ANIMATION_PROFILE_LABELS,
+  ANIMATION_PROFILES,
   APPEARANCE_RANGES,
   CURSOR_LABELS,
   DALTONISM_DESCRIPTIONS,
   DALTONISM_LABELS,
+  detectAnimationProfile,
   FONT_FAMILY_DESCRIPTIONS,
   FONT_FAMILY_LABELS,
   FONT_FAMILY_STACKS,
   RADIUS_LABELS,
   WALLPAPER_DESCRIPTIONS,
   WALLPAPER_LABELS,
+  type AnimationProfileKind,
   type CursorKind,
   type DaltonismKind,
   type FontFamilyKind,
@@ -52,6 +57,18 @@ export function AppearanceSettings(): React.JSX.Element {
     if (save) void persist();
   };
 
+  // Nenhum estado próprio: "qual perfil está ativo" deriva sempre dos três
+  // dials que já existiam (partículas, velocidade, anéis) — ver a nota em
+  // `detectAnimationProfile`. Um valor guardado à parte podia discordar deles.
+  const activeProfile = detectAnimationProfile(appearance);
+
+  const applyAnimationProfile = (kind: AnimationProfileKind): void => {
+    const preset = ANIMATION_PROFILES[kind];
+    change('coreParticles', preset.coreParticles, false);
+    change('coreSpeed', preset.coreSpeed, false);
+    change('coreRingsVisible', preset.coreRingsVisible);
+  };
+
   return (
     <div className="flex flex-col gap-s3">
       <section>
@@ -83,6 +100,32 @@ export function AppearanceSettings(): React.JSX.Element {
           onCommit={() => void persist()}
           isDisabled={appearance.wallpaper === 'liso'}
         />
+      </section>
+
+      <section className="border-t border-line pt-s3">
+        <p className="t-label mb-2">Perfil de animação</p>
+        <p className="mb-2 text-cap text-t3">
+          Um atalho sobre as partículas, a velocidade e os anéis do núcleo, na secção abaixo —
+          escolher um destes muda os três de uma vez.
+          {activeProfile === null && ' Os valores atuais não batem com nenhum: "Personalizado".'}
+        </p>
+
+        <div
+          className="grid gap-2"
+          style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))' }}
+          role="radiogroup"
+          aria-label="Perfil de animação"
+        >
+          {(Object.keys(ANIMATION_PROFILE_LABELS) as AnimationProfileKind[]).map((kind) => (
+            <Option
+              key={kind}
+              isActive={activeProfile === kind}
+              onClick={() => applyAnimationProfile(kind)}
+              title={ANIMATION_PROFILE_LABELS[kind]}
+              description={ANIMATION_PROFILE_DESCRIPTIONS[kind]}
+            />
+          ))}
+        </div>
       </section>
 
       <section className="border-t border-line pt-s3">
@@ -136,6 +179,15 @@ export function AppearanceSettings(): React.JSX.Element {
           Só se aplica em repouso — os modos com cor própria (a analisar, a responder, em
           falha) continuam a ler-se sempre da mesma cor, para não perderem o significado.
         </p>
+
+        <div className="mt-2.5">
+          <Toggle
+            isOn={appearance.coreRingsVisible}
+            onClick={() => change('coreRingsVisible', !appearance.coreRingsVisible)}
+            title="Mostrar os anéis"
+            description="Desligado, fica só o brilho central e as partículas orbitais — sem os anéis em volta."
+          />
+        </div>
       </section>
 
       <section className="border-t border-line pt-s3">

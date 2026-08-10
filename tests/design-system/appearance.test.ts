@@ -2,13 +2,16 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { applyAppearance, useAppearanceStore } from '@/stores/use-appearance-store';
 import {
+  ANIMATION_PROFILES,
   APPEARANCE_RANGES,
   clampAppearance,
   DEFAULT_APPEARANCE,
+  detectAnimationProfile,
   FONT_FAMILY_LABELS,
   FONT_FAMILY_STACKS,
   RADIUS_SCALE,
   WALLPAPER_LABELS,
+  type AnimationProfileKind,
   type Appearance,
   type FontFamilyKind,
 } from '@/types/appearance';
@@ -185,5 +188,32 @@ describe('opções', () => {
       // senão a "escolha" nunca se via, e a predefinida ganhava sempre.
       expect(FONT_FAMILY_STACKS[kind]).toContain(FONT_FAMILY_LABELS[kind]);
     }
+  });
+});
+
+describe('perfis de animação', () => {
+  it('a predefinição bate com "equilibrado"', () => {
+    expect(detectAnimationProfile(DEFAULT_APPEARANCE)).toBe('equilibrado');
+  });
+
+  it('aplicar cada perfil deteta-se de volta a ele mesmo', () => {
+    for (const kind of Object.keys(ANIMATION_PROFILES) as AnimationProfileKind[]) {
+      const appearance: Appearance = { ...DEFAULT_APPEARANCE, ...ANIMATION_PROFILES[kind] };
+      expect(detectAnimationProfile(appearance)).toBe(kind);
+    }
+  });
+
+  it('nenhum perfil é igual a outro — senão dois botões ficariam sempre acesos juntos', () => {
+    const vistos = new Set<string>();
+    for (const valores of Object.values(ANIMATION_PROFILES)) {
+      const chave = JSON.stringify(valores);
+      expect(vistos.has(chave)).toBe(false);
+      vistos.add(chave);
+    }
+  });
+
+  it('uma combinação fora de qualquer perfil devolve null ("Personalizado")', () => {
+    const appearance: Appearance = { ...DEFAULT_APPEARANCE, coreParticles: 0.8, coreSpeed: 1.3 };
+    expect(detectAnimationProfile(appearance)).toBeNull();
   });
 });

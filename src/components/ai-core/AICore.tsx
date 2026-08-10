@@ -72,6 +72,7 @@ export function AICore({
   const particleScale = stateScale * preferenceScale;
   const coreColor = useAppearanceStore((state) => state.appearance.coreColor);
   const coreSpeed = useAppearanceStore((state) => state.appearance.coreSpeed);
+  const coreRingsVisible = useAppearanceStore((state) => state.appearance.coreRingsVisible);
   const config = CORE_MODES[mode];
 
   // O canvas precisa da cor resolvida: `var(--accent)` não lhe diz nada.
@@ -188,7 +189,7 @@ export function AICore({
           o centro lê-se melhor sem uma legenda a competir com o brilho.
         */}
         <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
-        <CoreRings mode={mode} color={modeColor} speedScale={coreSpeed} />
+        <CoreRings mode={mode} color={modeColor} speedScale={coreSpeed} ringsVisible={coreRingsVisible} />
       </div>
 
       <div

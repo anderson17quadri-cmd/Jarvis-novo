@@ -30,9 +30,16 @@ interface CoreRingsProps {
    * de rotação de todos os anéis — `1` é a velocidade de sempre.
    */
   readonly speedScale?: number;
+  /**
+   * Falso esconde os anéis, deixando só o brilho central (Parte 15 §Núcleo
+   * personalizável — a opção que ficava por decidir). As partículas orbitais
+   * vivem à parte, num canvas próprio em `AICore.tsx`, e continuam a
+   * aparecer normalmente: isto só tira os anéis em SVG.
+   */
+  readonly ringsVisible?: boolean;
 }
 
-export function CoreRings({ mode, color, speedScale = 1 }: CoreRingsProps): React.JSX.Element {
+export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: CoreRingsProps): React.JSX.Element {
   const ringRefs = useRef<(SVGGElement | null)[]>([]);
   const glowRef = useRef<SVGCircleElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -101,105 +108,109 @@ export function CoreRings({ mode, color, speedScale = 1 }: CoreRingsProps): Reac
         </filter>
       </defs>
 
-      {/* Halo exterior */}
-      <g ref={setRingRef(0)} style={{ transformOrigin: '200px 200px' }}>
-        <circle
-          cx="200"
-          cy="200"
-          r="192"
-          fill="none"
-          stroke="rgba(0,207,255,.08)"
-          strokeWidth="16"
-          filter="url(#core-soft)"
-        />
-      </g>
+      {ringsVisible && (
+        <>
+          {/* Halo exterior */}
+          <g ref={setRingRef(0)} style={{ transformOrigin: '200px 200px' }}>
+            <circle
+              cx="200"
+              cy="200"
+              r="192"
+              fill="none"
+              stroke="rgba(0,207,255,.08)"
+              strokeWidth="16"
+              filter="url(#core-soft)"
+            />
+          </g>
 
-      {/* Anel principal, com marcas técnicas */}
-      <g ref={setRingRef(1)} style={{ transformOrigin: '200px 200px' }}>
-        <circle cx="200" cy="200" r="176" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
-        <circle
-          cx="200"
-          cy="200"
-          r="168"
-          fill="none"
-          stroke={color}
-          strokeWidth="8"
-          strokeDasharray="1.4 10"
-          strokeLinecap="round"
-          opacity=".55"
-        />
-        <circle
-          cx="200"
-          cy="200"
-          r="152"
-          fill="none"
-          stroke={color}
-          strokeWidth="14"
-          strokeDasharray="62 30"
-          opacity=".14"
-        />
-      </g>
+          {/* Anel principal, com marcas técnicas */}
+          <g ref={setRingRef(1)} style={{ transformOrigin: '200px 200px' }}>
+            <circle cx="200" cy="200" r="176" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
+            <circle
+              cx="200"
+              cy="200"
+              r="168"
+              fill="none"
+              stroke={color}
+              strokeWidth="8"
+              strokeDasharray="1.4 10"
+              strokeLinecap="round"
+              opacity=".55"
+            />
+            <circle
+              cx="200"
+              cy="200"
+              r="152"
+              fill="none"
+              stroke={color}
+              strokeWidth="14"
+              strokeDasharray="62 30"
+              opacity=".14"
+            />
+          </g>
 
-      {/* Anel secundário, sentido inverso */}
-      <g ref={setRingRef(2)} style={{ transformOrigin: '200px 200px' }}>
-        <circle
-          cx="200"
-          cy="200"
-          r="136"
-          fill="none"
-          stroke="var(--neon)"
-          strokeWidth="2"
-          strokeDasharray="3 7"
-          opacity=".6"
-        />
-        <circle
-          cx="200"
-          cy="200"
-          r="126"
-          fill="none"
-          stroke={color}
-          strokeWidth="10"
-          strokeDasharray="34 84"
-          strokeLinecap="round"
-          opacity=".22"
-        />
-      </g>
+          {/* Anel secundário, sentido inverso */}
+          <g ref={setRingRef(2)} style={{ transformOrigin: '200px 200px' }}>
+            <circle
+              cx="200"
+              cy="200"
+              r="136"
+              fill="none"
+              stroke="var(--neon)"
+              strokeWidth="2"
+              strokeDasharray="3 7"
+              opacity=".6"
+            />
+            <circle
+              cx="200"
+              cy="200"
+              r="126"
+              fill="none"
+              stroke={color}
+              strokeWidth="10"
+              strokeDasharray="34 84"
+              strokeLinecap="round"
+              opacity=".22"
+            />
+          </g>
 
-      {/* Anel interno irregular */}
-      <g ref={setRingRef(3)} style={{ transformOrigin: '200px 200px' }}>
-        <circle
-          cx="200"
-          cy="200"
-          r="106"
-          fill="none"
-          stroke={color}
-          strokeWidth="12"
-          strokeDasharray="1 5"
-          opacity=".42"
-        />
-        <circle cx="200" cy="200" r="92" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
-      </g>
+          {/* Anel interno irregular */}
+          <g ref={setRingRef(3)} style={{ transformOrigin: '200px 200px' }}>
+            <circle
+              cx="200"
+              cy="200"
+              r="106"
+              fill="none"
+              stroke={color}
+              strokeWidth="12"
+              strokeDasharray="1 5"
+              opacity=".42"
+            />
+            <circle cx="200" cy="200" r="92" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
+          </g>
 
-      <g ref={setRingRef(4)} style={{ transformOrigin: '200px 200px' }}>
-        <circle
-          cx="200"
-          cy="200"
-          r="76"
-          fill="none"
-          stroke={color}
-          strokeWidth="6"
-          strokeDasharray="26 20"
-          opacity=".3"
-        />
-      </g>
+          <g ref={setRingRef(4)} style={{ transformOrigin: '200px 200px' }}>
+            <circle
+              cx="200"
+              cy="200"
+              r="76"
+              fill="none"
+              stroke={color}
+              strokeWidth="6"
+              strokeDasharray="26 20"
+              opacity=".3"
+            />
+          </g>
 
-      {/* Cruzetas — fixas, dão referencial ao movimento dos anéis */}
-      <g stroke={color} strokeWidth="1.6" opacity=".5" strokeLinecap="round">
-        <path d="M200 4v22M200 374v22M4 200h22M374 200h22" />
-      </g>
-      <g stroke="rgba(0,207,255,.16)" strokeWidth="1">
-        <path d="M200 44v312M44 200h312" />
-      </g>
+          {/* Cruzetas — fixas, dão referencial ao movimento dos anéis */}
+          <g stroke={color} strokeWidth="1.6" opacity=".5" strokeLinecap="round">
+            <path d="M200 4v22M200 374v22M4 200h22M374 200h22" />
+          </g>
+          <g stroke="rgba(0,207,255,.16)" strokeWidth="1">
+            <path d="M200 44v312M44 200h312" />
+          </g>
+        </>
+      )}
 
       {/* Núcleo energético */}
       <circle

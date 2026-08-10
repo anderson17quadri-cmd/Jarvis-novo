@@ -171,3 +171,20 @@ que batia. Mais sinónimos por família de comando (abrir, esconder,
 pesquisar, tarefa, música), e "fecha tudo"/"reinicia a app"/"reinicia o
 jarvis" como variantes que faltavam. 52 testes no total, os 15 novos a
 cobrir exatamente estes casos.
+
+**Bloco 3 — Núcleo e personalização.** Duas decisões da Parte 15 que
+ficavam por tomar. Esconder os anéis: sim, compensa — `coreRingsVisible`
+(Personalização → Aparência → "Mostrar os anéis"), por omissão ligado;
+desligado, o núcleo fica só com o brilho central e as partículas (que
+vivem num canvas à parte). Perfis de animação: cinco — Minimal, Suave,
+Equilibrado, Cinemático, Performance — mas não como uma dimensão nova: um
+atalho sobre os três dials que já existiam (partículas, velocidade,
+anéis), não duplicando o que os "estados do sistema" (Parte 9) já fazem
+para o ritmo e os avisos. "Glow" e "duração das transições", que a spec
+original também pedia, ficaram de fora — não há dial nenhum para nenhum
+dos dois, e inventar um só para preencher a lista seria personalização a
+fingir. "Personalizado" nunca se guarda — deriva-se sempre dos três
+dials (`detectAnimationProfile`), para nunca haver dois sítios a poder
+discordar sobre qual perfil está ativo. Ambas confirmadas ao vivo por
+CDP, não só pelos 7 testes novos: os anéis a desaparecer e a voltar, e
+"Minimal" a marcar-se sozinho como ativo.
