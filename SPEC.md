@@ -109,12 +109,12 @@ npm run tauri android dev      # dispositivo Android
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | 🚫 bloqueado |
 | **Leitura real do disco** — explorador de ficheiros | `apps/files/`, `data/files.ts` | 🚫 bloqueado |
 | Métricas reais do `sysinfo` (CPU, RAM, disco, rede) | `src-tauri/src/system/` | ✅ **confirmado 08/08/2026** — CPU real no Windows, ver §1.1. RAM, disco e rede vêm da mesma leitura, ainda sem print à parte |
-| Lista de processos | `src-tauri/src/commands/system.rs` | 🟡 comando pronto, mesma leitura (`sysinfo`) já confirmada em §1.1 — ainda sem nenhum ecrã a chamá-lo (`getTopProcesses` só existe no adapter, nenhum widget o usa) |
+| Lista de processos | `src-tauri/src/commands/system.rs` | ✅ **confirmado 10/08/2026** — separador "Processos" no Centro de Programador (DeveloperCenterWindow.tsx), com nome, PID e memória, relido a cada 3s |
 | Ícone na bandeja e respetivo menu | `src-tauri/src/tray.rs` | ✅ **confirmado 09/08/2026** — o atalho global (linha abaixo) chama `tray::focus_main`, e correu sem erro |
 | Atalho global `CTRL+ALT+J` | `src-tauri/src/shortcuts.rs` | ✅ **confirmado a sério 09/08/2026** — janela minimizada à força, `CTRL+ALT+J` enviado ao sistema (não à janela), e voltou ao primeiro plano sozinha |
 | Notificações nativas do sistema | plugin `notification` | 🟡 `notification-service.ts` pede-a sempre que mostra um toast que possa interromper — corre a cada arranque (as notificações de boot), nunca isolada por testar |
 | Persistência via plugin `store` | `services/storage-service.ts` | ✅ **confirmado 09/08/2026** — `%APPDATA%\com.projectarc.jarvis\jarvis.store.json` no disco a sério, com dados reais de sessões anteriores (notificações, memória do assistente, voz escolhida), sobrevive a fechar e voltar a abrir |
-| Diálogos nativos de ficheiro | plugin `dialog` | ⬜ registado no Rust (`Cargo.toml`), mas **nenhum sítio da interface o chama ainda** — a cópia de segurança usa um `<a download>`/`<input type="file">` normais, não este plugin. Por wire, não só por testar |
+| Diálogos nativos de ficheiro | plugin `dialog` | ✅ **confirmado 10/08/2026** — a cópia de segurança (BackupPanel.tsx) chama `save()`/`open()` do plugin, com queda para `<a download>`/`<input type="file">` quando o plugin falha (ex.: a correr no browser) |
 | Build Windows (MSI e NSIS) | `npm run tauri build` | ✅ **confirmado 09/08/2026** — os dois instaladores produzidos sem erro: `JARVIS AI OS_1.0.0_x64_en-US.msi` (3,4 MB) e `JARVIS AI OS_1.0.0_x64-setup.exe` (2,6 MB), em `src-tauri/target/release/bundle/`. Ainda não instalados nem corridos a partir do instalador — só a build em si |
 | Build Android (APK e AAB) | `npm run android:build` | 🚫 bloqueado nesta máquina — sem Android SDK instalado (`ANDROID_HOME` vazio). Precisa de `npm run android:init` com o SDK/NDK primeiro |
 | Instalação como aplicação nativa | Tauri | ⚠️ por testar — **a PWA já cobre isto** no telemóvel |
@@ -268,7 +268,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Arranque rápido com "Bem-vindo de volta" | ✅ | |
 | Duração 6–10s | ✅ | ~9s |
 | Efeitos sonoros | ✅ | A nota dizia "sem recursos de áudio na Fase 1" — já não é verdade desde que o `soundService` passou a sintetizar sem ficheiros (Bloco H). A categoria "sistema" já se descrevia como "arranque e leitura biométrica", e nenhum código lhe tocava: `scanner` ao formarem-se os anéis, um `click` por verificação, `success` na identidade final. O arranque rápido soa a `open`, não a `success` — não verificou nada, não merece a fanfarra. Com redução de movimento, silêncio: a saída é quase instantânea |
-| Modo de erro simulado | ⬜ | Marcado como opcional na spec |
+| Modo de erro simulado | ✅ | `sessionStorage.setItem('jarvis-debug.bootFailAt', '3')` — força a verificação de índice 3 a falhar (X vermelho, barra vermelha, som de erro), sem travar a sequência |
 | Botão "Mostrar sequência completa" nas configurações | ✅ | Na janela de Personalização e na Command Palette; a ação vive no `useSessionStore`, sem duplicação |
 
 ---
@@ -290,7 +290,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Atalhos do rodapé | 🟡 | Presentes, mas informam que a gestão de energia é Fase 2 |
 | IA cumprimenta por voz na transição | ✅ | |
 | Windows Hello, chave física, sessão automática | ⬜ | Exigem integração nativa |
-| Avatar "viaja" até ao canto superior direito | ⬜ | A transição é fade + scale |
+| Avatar "viaja" até ao canto superior direito | ✅ | A transição usa `transform`/`opacity` — o avatar desliza do centro do ecrã de login (posição real por `getBoundingClientRect`) até ao canto do header |
 
 ---
 

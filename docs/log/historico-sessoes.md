@@ -454,3 +454,44 @@ check` (o próprio script já existente, `typecheck && lint && test`), e
 Validado a sério antes de enviar, não só a sintaxe do YAML: correram-se
 os mesmos três comandos localmente, exatamente como o workflow os
 corre — 1101 testes, `tsc` e `eslint` limpos, build de produção completo.
+
+## 2026-08-10 — Quatro blocos: diálogos nativos, avatar, processos e erro simulado
+
+Sessão paralela a outra (a trabalhar no Ollama), com os mesmos critérios
+de verificação: `tsc`, `eslint`, `vitest` e confirmação visual onde há
+interface. Quatro blocos pequenos, cada um com o seu commit.
+
+**Bloco 1 — Diálogos nativos de ficheiro na cópia de segurança.**
+`src/platform/native-dialogs.ts` (novo) tenta `save()`/`open()` do
+`@tauri-apps/plugin-dialog` mais `writeTextFile`/`readTextFile` do
+`@tauri-apps/plugin-fs` — ambos já estavam no `Cargo.toml`, no
+`package.json` e registados no `lib.rs`, mas nenhum sítio os chamava.
+`BackupPanel.tsx` tenta o diálogo nativo primeiro e cai para o
+`<a download>`/`<input type="file">` de sempre se falhar (ex.: a correr
+só no browser). O SPEC.md reflete o novo estado (`c839ef9`).
+
+**Bloco 2 — O avatar "viaja" até ao canto superior direito.** A spec
+(Parte 5) pedia uma transição do centro do ecrã de login até ao
+header. `FlyingAvatar`, novo componente em `App.tsx`, renderiza sobre
+`position: fixed` na posição de destino (canto superior direito do
+header), mas começa com `transform: translate()` e `scale()` a partir
+da posição real do avatar do login (por `getBoundingClientRect`), e faz
+a transição por CSS (`transform 600ms ease-out`). Só `transform` e
+`opacity`, como manda a regra do projeto (`aa36d48`).
+
+**Bloco 3 — Lista de processos.** O comando Rust `get_top_processes` já
+existia (`src-tauri/src/commands/system.rs`), mas nenhum ecrã o
+chamava. Novo separador "Processos" no Centro de Programador
+(`DeveloperCenterWindow.tsx`): tabela com nome, PID e memória, relida a
+cada 3s via `systemService.getTopProcesses()`. Sem ações (matar, etc.)
+nesta primeira versão. Só aparece onde `capabilities.processList` for
+verdade (`603675f`).
+
+**Bloco 4 — Modo de erro simulado no arranque.** `sessionStorage.setItem(
+'jarvis-debug.bootFailAt', '3')` faz a verificação de índice 3 falhar no
+ecrã de arranque: X vermelho, barra vermelha, texto "— falhou" e som de
+erro em vez do clique habitual. `'todas'` falha as dez. Fora do
+`sessionStorage`, o arranque corre sempre sem erro — é uma ferramenta de
+desenvolvimento, não um caminho que um utilizador normal encontre. A
+sequência continua até ao fim mesmo com verificações falhadas, como a
+spec pedia (`1a1b016`).
