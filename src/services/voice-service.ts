@@ -240,6 +240,14 @@ export interface VoiceCallbacks {
   readonly onError?: (kind: SpeechRecognitionErrorKind | null) => void;
 }
 
+/**
+ * Quanto tempo, depois de a voz parar de tocar, o microfone continua
+ * bloqueado — o eco não desaparece no instante exato em que o áudio
+ * termina (a sala continua a ressoar, e o `AnalyserNode` do
+ * `vigiarSilencio` continua a ouvir isso por mais uns instantes).
+ */
+const SPEAK_GUARD_MS = 900;
+
 export class VoiceService {
   private recognition: SpeechRecognitionLike | null = null;
   private listening = false;
@@ -249,6 +257,35 @@ export class VoiceService {
 
   /** A gravação em curso para o reconhecimento local, se houver. */
   private localRecorder: MediaRecorder | null = null;
+
+  /**
+   * `true` enquanto `speak()`/`speakClonada()` está mesmo a tocar áudio —
+   * não enquanto só se está a pedir o áudio ao serviço local.
+   *
+   * Existe para o microfone nunca se ligar a ouvir a própria voz do
+   * sistema pelas colunas como se fosse um pedido novo (Parte 7.2 §Voz):
+   * sem isto, um "Bom dia" dito em voz alta podia ser ouvido de volta pelo
+   * microfone, transcrito, respondido, e o ciclo não tinha razão nenhuma
+   * para parar sozinho.
+   */
+  private speaking = false;
+
+  /** Até quando o microfone continua bloqueado, depois de a voz parar — ver `SPEAK_GUARD_MS`. */
+  private speakGuardUntil = 0;
+
+  /** `true` enquanto se estiver a falar, ou durante o período de segurança logo a seguir. */
+  private get isSpeakingOrGuarded(): boolean {
+    return this.speaking || Date.now() < this.speakGuardUntil;
+  }
+
+  private onSpeechStart(): void {
+    this.speaking = true;
+  }
+
+  private onSpeechEnd(): void {
+    this.speaking = false;
+    this.speakGuardUntil = Date.now() + SPEAK_GUARD_MS;
+  }
 
   get isRecognitionSupported(): boolean {
     return getRecognitionConstructor() !== null || hasLocalRecordingSupport();
@@ -262,12 +299,25 @@ export class VoiceService {
     return this.listening;
   }
 
-  /** Liga ou desliga a escuta. Devolve o estado resultante. */
+  /**
+   * Liga ou desliga a escuta. Devolve o estado resultante.
+   *
+   * Nunca liga enquanto o sistema estiver a falar, nem durante o período
+   * de segurança logo a seguir (`SPEAK_GUARD_MS`) — o eco acústico da
+   * própria voz do JARVIS, ouvido pelo microfone como se fosse um pedido
+   * novo, é o caso a sério que isto evita (Parte 7.2 §Voz).
+   */
   toggleListening(callbacks: VoiceCallbacks): boolean {
     if (this.listening) {
       this.stopListening();
       return false;
     }
+
+    if (this.isSpeakingOrGuarded) {
+      callbacks.onError?.('a-falar');
+      return false;
+    }
+
     // Marcado já aqui, de forma síncrona: um segundo clique enquanto se
     // decide qual motor usar (ver `startListening`) tem de parar, não
     // arrancar uma segunda escuta por cima.
@@ -661,12 +711,17 @@ export class VoiceService {
         if (this.cloneAudio === audio) this.cloneAudio = null;
       };
 
-      audio.onplay = () => callbacks?.onStart?.();
+      audio.onplay = () => {
+        this.onSpeechStart();
+        callbacks?.onStart?.();
+      };
       audio.onended = () => {
+        this.onSpeechEnd();
         limpar();
         callbacks?.onEnd?.();
       };
       audio.onerror = () => {
+        this.onSpeechEnd();
         limpar();
         callbacks?.onEnd?.();
       };
@@ -676,7 +731,10 @@ export class VoiceService {
       // O serviço local pode não estar a correr — quem chama (`useVoice`,
       // o botão "testar") não tem aqui uma forma síncrona de reportar isto;
       // a UI de definições confirma a disponibilidade à parte, com
-      // `getCloneServiceInfo`.
+      // `getCloneServiceInfo`. `onSpeechEnd` liberta o microfone: sem áudio
+      // nenhum a tocar, `speak()` já o tinha marcado como "a falar", e sem
+      // isto ficava bloqueado à espera de um `onend` que nunca chega.
+      this.onSpeechEnd();
       callbacks?.onEnd?.();
     }
   }
@@ -708,6 +766,12 @@ export class VoiceService {
    * `callbacks.onEnd` dispara sempre, mesmo que o serviço local falhe, para
    * quem estiver a usar isto para mudar de estado (ex.: `AICore`) não ficar
    * preso em "a falar" para sempre.
+   *
+   * O microfone fica bloqueado já a partir daqui, antes de se pedir o
+   * áudio ao serviço local — não só quando ele começa mesmo a tocar. A voz
+   * clonada demora a gerar (pedido de rede + síntese), e sem marcar já
+   * aqui havia uma janela, enquanto se espera pelo áudio, em que o
+   * microfone continuava livre para ligar por cima.
    */
   speak(
     text: string,
@@ -717,12 +781,22 @@ export class VoiceService {
     const selection = selectionOverride ?? this.selection;
     const limpo = limparParaSintese(text);
 
+    this.onSpeechStart();
+
     if (selection.kind === 'clonada') {
       void this.speakClonada(limpo, selection.nome, callbacks);
       return true;
     }
 
-    return this.speakSistema(limpo, callbacks, selection.kind === 'sistema' ? selection.voiceURI : undefined);
+    const arrancou = this.speakSistema(
+      limpo,
+      callbacks,
+      selection.kind === 'sistema' ? selection.voiceURI : undefined,
+    );
+    // Não arrancou (sem suporte, ou o construtor rebentou): não vem nenhum
+    // `onend` a libertar o microfone, por isso liberta-se já aqui.
+    if (!arrancou) this.onSpeechEnd();
+    return arrancou;
   }
 
   private speakSistema(
@@ -748,9 +822,18 @@ export class VoiceService {
         portugueseVoices[0];
       if (preferred) utterance.voice = preferred;
 
-      utterance.onstart = (): void => callbacks?.onStart?.();
-      utterance.onend = (): void => callbacks?.onEnd?.();
-      utterance.onerror = (): void => callbacks?.onEnd?.();
+      utterance.onstart = (): void => {
+        this.onSpeechStart();
+        callbacks?.onStart?.();
+      };
+      utterance.onend = (): void => {
+        this.onSpeechEnd();
+        callbacks?.onEnd?.();
+      };
+      utterance.onerror = (): void => {
+        this.onSpeechEnd();
+        callbacks?.onEnd?.();
+      };
 
       // Cancelar primeiro: falas sobrepostas ficam impercetíveis.
       speechSynthesis.cancel();
@@ -772,6 +855,11 @@ export class VoiceService {
 
     this.cloneAudio?.pause();
     this.cloneAudio = null;
+
+    // `cancel()`/`pause()` nem sempre disparam `onend`/`onerror` — sem
+    // isto, interromper a voz a meio podia deixar o microfone bloqueado
+    // para sempre, à espera de um fim que já não vem.
+    this.onSpeechEnd();
   }
 }
 

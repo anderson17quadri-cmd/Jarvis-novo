@@ -334,3 +334,35 @@ fundo de alucinação em texto mais longo (sílabas ou palavras soltas a
 mais, por vezes no fim do áudio) que acontece com ou sem o ponto final —
 não é o mesmo bug, e uma limpeza de texto não o resolve. Fica escrito no
 SPEC.md para quem voltar a isto não pensar que é a mesma coisa.
+
+## 2026-08-10 — Microfone em ciclo infinito: reproduzido, e um buraco real fechado
+
+Pedido explícito, urgente: reproduzir a sério antes de mexer em código, e
+confirmar se o microfone volta a ligar-se sozinho depois de o JARVIS
+falar. Com um microfone falso (o Chromium a repetir um ficheiro `.wav`),
+um ciclo completo — ouvir, transcrever, responder, falar — não voltou a
+disparar sozinho em 75 segundos de observação por CDP; e a leitura do
+código confirmou que não há nenhum sítio a chamar `toggleListening`
+sozinho depois de `speak()`. Até aqui, sem reprodução do "ciclo infinito"
+propriamente dito — um microfone falso nunca ouve o que toca nas colunas,
+por isso não conseguia mesmo reproduzir eco a sério.
+
+Mas o teste ao vivo apanhou o buraco a sério, só que noutro sítio: a
+clicar no microfone a meio de "Testar" uma voz (Personalização → Voz), a
+gravação **arrancava à mesma** — o pedido de áudio à voz clonada (rede +
+síntese, pode demorar segundos) tinha uma janela em que nada impedia o
+microfone de ligar, mesmo antes de o áudio chegar a tocar. É exatamente a
+pista que o utilizador tinha dado: o `vigiarSilencio` não sabia nada
+sobre `speak()`/`speakClonada()` estarem em curso.
+
+Arranjo: `voice-service.ts` marca "a falar" logo no início de `speak()`
+— antes de se pedir o áudio, não só quando ele começa a tocar — e só
+larga o bloqueio `SPEAK_GUARD_MS` (900ms) depois de a voz acabar de
+verdade (`onend`/`onerror`/`stopSpeaking()`). `toggleListening()` recusa
+nessa janela com o motivo `'a-falar'`, com mensagem própria em vez de
+falhar em silêncio. Um teste apanhou exatamente o buraco original
+(bloquear só a partir de `onplay`, tarde de mais) antes de se corrigir, e
+voltou a passar depois. Confirmado ao vivo por CDP, duas vezes — antes do
+arranjo (o microfone ligava a meio da fala) e depois (recusado, com o
+motivo certo) — e confirmado que o uso normal continua igual quando não
+há nada a falar.

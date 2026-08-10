@@ -33,6 +33,8 @@ const VOICE_ERROR_MESSAGES: Partial<Record<string, string>> = {
   'no-speech': 'Não percebi nada na gravação. Tenta falar mais perto do microfone, ou mais alto.',
   'local-service-unavailable':
     'O serviço de voz local parou a meio do reconhecimento. Confirma se ainda está a correr (voice-clone-service/run.ps1) e tenta outra vez.',
+  'a-falar':
+    'Espera só um instante — ainda estou a falar. Ligar o microfone agora arriscava ouvir-me a mim mesmo pelas colunas.',
 };
 
 /** A frase para um erro sem entrada na tabela acima. */
