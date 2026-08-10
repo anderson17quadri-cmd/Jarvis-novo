@@ -51,7 +51,7 @@ type HintTone = 'neutral' | 'ok' | 'error';
 type AuthMethod = 'password' | 'pin';
 
 interface LoginScreenProps {
-  readonly onAuthenticated: () => void;
+  readonly onAuthenticated: (avatarElement: HTMLElement) => void;
 }
 
 /**
@@ -78,6 +78,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
   const [isLeaving, setLeaving] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const avatarRef = useRef<HTMLButtonElement>(null);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const isResolvedRef = useRef(false);
 
@@ -121,7 +122,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           () => {
             setLeaving(true);
             timersRef.current.push(
-              setTimeout(onAuthenticated, reducedMotion ? 0 : GRANT_DELAY_MS),
+              setTimeout(() => onAuthenticated(avatarRef.current!), reducedMotion ? 0 : GRANT_DELAY_MS),
             );
           },
           reducedMotion ? 0 : GRANT_DELAY_MS,
@@ -231,6 +232,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
         <span className="absolute inset-x-[10%] top-0 h-px bg-gradient-to-r from-transparent via-accent/50 to-transparent" />
 
         <button
+          ref={avatarRef}
           type="button"
           onClick={runFaceScan}
           aria-label="Autenticar por reconhecimento facial"

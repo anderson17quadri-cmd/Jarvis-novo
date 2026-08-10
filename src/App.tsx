@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { AICore } from '@/components/ai-core/AICore';
 import { LoginScreen } from '@/components/auth/LoginScreen';
@@ -74,6 +74,26 @@ export function App(): React.JSX.Element {
   const authenticate = useSessionStore((state) => state.authenticate);
   const logout = useSessionStore((state) => state.logout);
   const restartBootSequence = useSessionStore((state) => state.restartBootSequence);
+
+  // Posições para a transição do avatar (Parte 5 §Avatar "viaja").
+  const [avatarFlight, setAvatarFlight] = useState<{
+    readonly fromRect: DOMRect;
+    readonly targetCenterX: number;
+    readonly targetCenterY: number;
+  } | null>(null);
+
+  const handleAuthenticate = useCallback(
+    (avatarElement: HTMLElement): void => {
+      const fromRect = avatarElement.getBoundingClientRect();
+      // O avatar do header está no canto superior direito, dentro de um header
+      // de 72px (--h-header) com padding de 24px (--s3). O avatar tem 38px.
+      const targetCenterX = window.innerWidth - 24 - 19;
+      const targetCenterY = 36;
+      setAvatarFlight({ fromRect, targetCenterX, targetCenterY });
+      authenticate();
+    },
+    [authenticate],
+  );
 
   const setTheme = useThemeStore((state) => state.setTheme);
 
@@ -507,7 +527,7 @@ export function App(): React.JSX.Element {
       <CustomCursor />
 
       {phase === 'booting' && <BootSequence onComplete={completeBoot} />}
-      {phase === 'login' && <LoginScreen onAuthenticated={authenticate} />}
+      {phase === 'login' && <LoginScreen onAuthenticated={handleAuthenticate} />}
 
       <AppShell
         isActive={isDesktop}
@@ -547,6 +567,90 @@ export function App(): React.JSX.Element {
 
       <ToastViewport />
       <NotificationPanel />
+
+      {avatarFlight && (
+        <FlyingAvatar
+          fromRect={avatarFlight.fromRect}
+          targetCenterX={avatarFlight.targetCenterX}
+          targetCenterY={avatarFlight.targetCenterY}
+          onDone={() => setAvatarFlight(null)}
+        />
+      )}
     </>
+  );
+}
+
+/**
+ * Avatar que "viaja" do ecrã de login até ao header (Parte 5 §Transição).
+ *
+ * Renderiza uma cópia do avatar com `position: fixed` na posição de destino
+ * (canto superior direito), mas começa deslocada e ampliada até à posição de
+ * origem (centro do cartão de login). A transição corre só por
+ * `transform`/`opacity` — nunca `top`/`left`.
+ */
+function FlyingAvatar({
+  fromRect,
+  targetCenterX,
+  targetCenterY,
+  onDone,
+}: {
+  readonly fromRect: DOMRect;
+  readonly targetCenterX: number;
+  readonly targetCenterY: number;
+  readonly onDone: () => void;
+}): React.JSX.Element {
+  const [phase, setPhase] = useState<'start' | 'fly' | 'done'>('start');
+  const doneRef = useRef(false);
+
+  const TARGET_SIZE = 38;
+  const fromScale = fromRect.width / TARGET_SIZE;
+  const fromCenterX = fromRect.left + fromRect.width / 2;
+  const fromCenterY = fromRect.top + fromRect.height / 2;
+
+  useEffect(() => {
+    // Um frame depois de montado: aplicar a posição final, que dispara a
+    // transição CSS. Sem isto, o browser funde o estado inicial com o novo
+    // e a animação nunca se vê.
+    const frame = requestAnimationFrame(() => setPhase('fly'));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
+  const handleTransitionEnd = (): void => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    setPhase('done');
+    setTimeout(onDone, 300);
+  };
+
+  return (
+    <div
+      onTransitionEnd={handleTransitionEnd}
+      className="pointer-events-none"
+      style={{
+        position: 'fixed',
+        zIndex: 9999,
+        left: `${targetCenterX - TARGET_SIZE / 2}px`,
+        top: `${targetCenterY - TARGET_SIZE / 2}px`,
+        width: `${TARGET_SIZE}px`,
+        height: `${TARGET_SIZE}px`,
+        borderRadius: '50%',
+        background: 'linear-gradient(to bottom right, #1d2f42, #0a141d)',
+        border: '1px solid rgb(0 207 255 / 0.28)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '12.5px',
+        fontWeight: 600,
+        color: 'var(--accent)',
+        transform:
+          phase === 'start'
+            ? `translate(${fromCenterX - targetCenterX}px, ${fromCenterY - targetCenterY}px) scale(${fromScale})`
+            : 'translate(0, 0) scale(1)',
+        transition: phase === 'fly' ? 'transform 600ms ease-out, opacity 300ms ease-out' : 'none',
+        opacity: phase === 'done' ? 0 : 1,
+      }}
+    >
+      AQ
+    </div>
   );
 }
