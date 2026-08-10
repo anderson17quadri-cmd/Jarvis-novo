@@ -106,3 +106,32 @@ nenhum no terminal — suspeita-se de pressão de memória (XTTS-v2 e Whisper
 carregados ao mesmo tempo no `voice-clone-service`) ou de algo ligado ao
 `--remote-debugging-port` usado para testar por fora. Não visto em uso
 normal, sem essa flag.
+
+## 2026-08-10 — Voz clonada local: gravar pela interface, e a app arranca o serviço sozinha
+
+Pedido em modo de autonomia total (`--dangerously-skip-permissions`),
+por blocos, com verificação a sério (`tsc`, `eslint`, `vitest`, e
+confirmação em browser real para peças de interface) e commits pequenos
+por peça. Primeiro bloco: as duas sub-fases que faltavam em §Voz clonada
+local.
+
+**4.2 — gravar a amostra na interface.** `VoiceSettings.tsx` ganha
+"Gravar a minha voz": grava até 12s com `MediaRecorder` (a mesma técnica
+já usada no reconhecimento local), com contagem decrescente e um botão
+para terminar mais cedo, e manda para `POST /voz`. Esse endpoint deixou
+de exigir um `.wav` — passou a converter com `ffmpeg` qualquer formato
+que o browser grave (`.webm`/Opus), sempre para PCM mono. Confirmado a
+sério: gravei pela interface a correr, e `voices/referencia.wav` mudou
+na hora, sem nada a rebentar (`e41581e`).
+
+**4.4 — a app arranca o serviço sozinha.** `src-tauri/src/voice_clone.rs`
+novo: tenta a porta 8090 no arranque, só chama `uvicorn` se não houver lá
+nada a ouvir, e mata o processo filho ao fechar a janela — confirmado com
+um fecho normal, não um "matar já" (`taskkill` sem `/F`), que o Python
+saiu junto. Sem `.venv` instalado, desiste em silêncio, nunca impede o
+arranque da app. Ao testar a sério (não só o `cargo check`), apanhou-se
+um bug verdadeiro: `os.add_dll_directory`, do lado do Python, recusa
+caminhos relativos (`WinError 87`, "o parâmetro está incorreto") — a
+pasta do serviço tinha de chegar já canonicalizada. Só haveria sinal
+disto a testar a sério, num PC a sério — exatamente a razão de tudo isto
+não ter avançado antes da Fase 1 confirmar em `§1.1`.

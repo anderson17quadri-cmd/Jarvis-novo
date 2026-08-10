@@ -6,6 +6,8 @@ mod system;
 mod shortcuts;
 #[cfg(desktop)]
 mod tray;
+#[cfg(desktop)]
+mod voice_clone;
 
 use system::SystemMonitor;
 
@@ -36,13 +38,21 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .setup(|app| {
             tray::setup(app.handle())?;
             shortcuts::setup(app.handle())?;
+            voice_clone::setup(app.handle());
             Ok(())
         });
 
-    if let Err(err) = builder.run(tauri::generate_context!()) {
-        eprintln!("[jarvis] a aplicação terminou com erro: {err}");
+    match builder.build(tauri::generate_context!()) {
+        Ok(app) => app.run(|_app_handle, _event| {
+            #[cfg(desktop)]
+            if let tauri::RunEvent::Exit = _event {
+                voice_clone::cleanup(_app_handle);
+            }
+        }),
+        Err(err) => eprintln!("[jarvis] a aplicação terminou com erro: {err}"),
     }
 }
