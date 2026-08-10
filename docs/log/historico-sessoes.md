@@ -521,6 +521,66 @@ para se poder revogar a qualquer momento, e não só no `onended`.
 Confirmado: `tsc` limpo, `eslint` limpo, 6/6 testes do echo guard a
 passar, suite toda sem regressões (as 3 falhas são pré-existentes).
 
+## 2026-08-11 — Plugins a sério: sandbox, três capacidades, SDK — o maior buraco do projeto fechado em parte
+
+Pedido explícito: parar de fingir que os plugins executam. Até aqui, "instalar"
+só escrevia um `Record` — nenhum código descarregado, nenhum executado, e
+`selectPermissionDenied` não protegia nada a sério para terceiros.
+
+**A escolha de desenho**: `<iframe sandbox="allow-scripts">`, sem
+`allow-same-origin` — origem opaca, sem acesso a `localStorage`, cookies,
+nem ao `window` do Core a não ser por `postMessage`. Considerado e posto
+de lado: Web Worker (sem DOM, fecha a porta a widgets/janelas de plugin
+mais tarde), processo Rust separado (pede a mesma sandbox do SO ainda por
+decidir), `eval()` no mesmo contexto (zero isolamento). Uma consequência
+não óbvia: `event.origin` de um iframe opaco é sempre `"null"` —
+validou-se o remetente por `event.source === iframe.contentWindow`, o
+único critério que continua a ser verdade mesmo com origem opaca.
+
+**Protocolo tipado, uma mensagem por capacidade** (`plugins/runtime/protocol.ts`),
+cada uma ligada a uma permissão real do manifesto e verificada por
+`handlePluginMessage()` antes de qualquer serviço correr — a mesma
+`selectPermissionDenied` que já protegia automações e a rede da IA, agora
+a sério para plugins também:
+
+- **Notificações** (`core.notify`) — chama `notificationService` a sério.
+- **Ficheiros** (`core.fs.{read,write,list}`) — nunca o disco inteiro:
+  `filesystemRoot` no catálogo é só um nome de subpasta, sempre resolvido
+  dentro de `$APPDATA/plugins-data/<nome>`; um caminho com `..` é recusado
+  antes de tocar no disco. Precisou de duas permissões novas no Tauri
+  (`fs:allow-read-dir`, `fs:allow-mkdir`, `src-tauri/capabilities/default.json`)
+  que não existiam ainda.
+- **Rede** (`core.fetch`) — domínio exato de `allowedDomains`, decidido pelo
+  Core a partir do catálogo, nunca aceite do que o próprio plugin diz de si.
+- **Automações** (`core.automation.run`) — dispara uma automação já
+  existente pelo nome; nunca cria nem altera.
+
+Quatro plugins de exemplo, um por capacidade (`ola-notificacao`,
+`ola-ficheiro`, `ola-rede`, `dispara-automacao`), todos à espera de
+`core.run` (o botão na Loja) em vez de disparar sozinhos — para o mesmo
+plugin correr várias vezes na sessão sem recarregar o iframe, essencial
+para testar recusar e depois permitir sem reiniciar nada. Mais um SDK
+mínimo (`plugins/sdk/jarvis-plugin-sdk.js`), injetado automaticamente no
+`srcDoc`, com `window.core.notify()`/`.fs.*`/`.fetch()`/`.automation.run()`
+sobre `Promise`, para quem escrever a próxima capacidade não ter de
+reimplementar a correlação por `requestId` à mão.
+
+**Confirmado a sério, com a app a correr, os quatro plugins** — não só nos
+testes: instalar cada um pela Loja, recusar a permissão em Privacidade →
+Permissões e confirmar "Permissão recusada." no cartão, depois permitir e
+confirmar que se cumpre — incluindo `nota.txt` a aparecer mesmo em
+`%APPDATA%\com.projectarc.jarvis\plugins-data\ola-ficheiro\` (conteúdo
+lido de volta a bater certo) e um pedido real a
+`jsonplaceholder.typicode.com` visto pelo Network domain do CDP. Testes
+unitários cobrem a decisão de permissão sem DOM nenhum
+(`tests/plugins/plugin-bridge.test.ts`), incluindo o `..` de fuga de pasta
+e o domínio fora da lista nunca gerar tráfego a sério. Desenho completo em
+[`docs/spec/plugins-sandbox.md`](docs/spec/plugins-sandbox.md).
+
+Fica por fazer, de propósito: verificação de assinatura (sem fonte de
+terceiros a sério ainda), e as restantes onze capacidades da API do Core
+avaliadas em 10/08/2026 — entram quando um plugin real precisar, não antes.
+
 ## 2026-08-11 — Editor visual de automações
 
 Implementou-se o editor visual de automações em três colunas
