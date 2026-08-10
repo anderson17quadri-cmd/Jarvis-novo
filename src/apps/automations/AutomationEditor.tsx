@@ -160,6 +160,7 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
   );
   const [nlPrompt, setNlPrompt] = useState('');
   const [isGenerating, setGenerating] = useState(false);
+  const [nlError, setNlError] = useState<string | null>(null);
 
   const columns = useMemo(() => ({
     quando: blocks.filter((b) => b.kind === 'quando'),
@@ -218,14 +219,23 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
   const generateFromNL = useCallback(async () => {
     if (!nlPrompt.trim()) return;
     setGenerating(true);
+    setNlError(null);
     try {
       const prompt = `Interpreta esta frase em português como uma automação JARVIS com blocos QUANDO/SE/ENTÃO. Responde só com JSON válido, sem mais texto:\n\n"${nlPrompt.trim()}"\n\nEstrutura:\n{\n  "nome": "nome curto",\n  "descricao": "uma frase",\n  "quando": { gatilho },\n  "se": [condições],\n  "entao": [ações]\n}\n\nGatilhos: hora (hour,minute), intervalo (everyMinutes), evento (event), manual\nCondições: dia-da-semana (days: 0=dom..6=sáb), faixa-horaria (fromHour,toHour), estado-sistema (state)\nAções: abrir-janela (appId), notificar (title,description), tema (theme), estado-sistema (state), widget (widget,show), falar (text)\nIDs reais: apps=[${ALL_APPS.map(a => a.id).join(',')}], temas=[${THEMES.map(t => t.id).join(',')}], widgets=[${ALL_WIDGETS.map(w => w.id).join(',')}], estados=[${Object.keys(SYSTEM_STATES).join(',')}]`;
       const reply = await aiService.send(prompt);
-      if (reply.length === 0) return;
+      if (reply.length === 0) {
+        setNlError('O assistente não respondeu nada — tente outra vez.');
+        return;
+      }
 
       // Tenta extrair JSON da resposta
       const jsonMatch = reply.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) return;
+      if (!jsonMatch) {
+        setNlError(
+          `Não consegui perceber isso como automação. O assistente respondeu: "${reply.slice(0, 140)}"`,
+        );
+        return;
+      }
       const parsed = JSON.parse(jsonMatch[0]) as {
         nome?: string;
         descricao?: string;
@@ -250,7 +260,9 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
       setBlocks(newBlocks);
       logService.log('info', 'automacao', 'Automação gerada por linguagem natural');
     } catch (err) {
-      logService.log('erro', 'automacao', 'Falha ao interpretar automação', (err as Error).message);
+      const message = (err as Error).message;
+      setNlError(`Não consegui interpretar: ${message}`);
+      logService.log('erro', 'automacao', 'Falha ao interpretar automação', message);
     } finally {
       setGenerating(false);
     }
@@ -354,6 +366,11 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
             {isGenerating ? 'A pensar…' : 'Interpretar'}
           </button>
         </div>
+        {nlError !== null && (
+          <p role="alert" className="mt-1.5 text-[11px] text-danger">
+            {nlError}
+          </p>
+        )}
       </div>
     </div>
   );
