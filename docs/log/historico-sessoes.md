@@ -205,3 +205,61 @@ teste se alguém lhe tocar. Confirmado também ao vivo: o interruptor "Rede"
 muda para "Recusada" na Privacidade e persiste. Não se inventou nenhuma
 permissão nova nem se tocou nas outras — não há mais nenhuma chamada real
 por trás delas.
+
+**Bloco 4, continuação — avaliação da API do Core para plugins.** Pedido
+explícito: só avaliar, sem ainda ir ao marketplace/SDK/rollback. As treze
+capacidades do original (`docs/spec/jarvis-spec-completo.md:568`) — Criar
+Widgets, Criar Janelas, Adicionar Menus, Adicionar Comandos, Adicionar
+Atalhos, Criar Notificações, Adicionar Configurações, Criar Serviços,
+Executar Voz, Ler Memória, Guardar Preferências, Adicionar Painéis,
+Registar Eventos.
+
+**Conclusão: nenhuma entra ainda, e não é falta de tempo.** A spec já o
+diz por outras palavras — "isolamento: plugins nunca acedem diretamente a
+outros plugins, só via APIs públicas do sistema" — e isso pressupõe que
+há alguém do outro lado a chamar a API, dentro de uma sandbox. Sem
+execução de código (bloqueado — sandbox, assinatura, ficheiros, ver §2),
+construir a API é adivinhar a forma de uma porta para uma sala que ainda
+não existe: a mesma razão por que os perfis de animação não inventaram um
+dial de "glow" só para preencher a lista.
+
+Mas a avaliação encontrou uma coisa concreta a dizer sobre **como** essas
+treze vão ficar caras de construir, quando a sandbox chegar — e vale a
+pena deixar escrito agora, antes de se esquecer:
+
+- **Criar Widgets / Criar Janelas** são as mais caras das treze.
+  `WIDGET_REGISTRY` (`widgets/registry.ts`) e o equivalente para janelas
+  são `Record<WidgetId, WidgetDefinition>` — `WidgetId` é uma união
+  fechada de tipos, verificada em tempo de compilação, com `switch`
+  exaustivos espalhados pelo código a assumir que a lista é essa e
+  nenhuma outra. Torná-la extensível em tempo de execução por um plugin
+  não é acrescentar uma função — é mudar `WidgetId`/`AppId` de união
+  fechada para `string` aberta, e isso ondula por todos os `switch` que
+  hoje o TypeScript prova exaustivos.
+- **Criar Notificações / Executar Voz** são as mais baratas — já são
+  serviços com um método simples (`notificationService.info(...)`,
+  `voiceService.speak(...)`) chamados de vários sítios (automações, voz,
+  sistema). Expor isto a um plugin é sobretudo decidir *quem* pode
+  chamar, não construir de novo — mas ainda precisa da parte de "quem",
+  que é sandboxing.
+- **Guardar Preferências / Ler Memória** têm um risco que as outras não
+  têm: **isolamento de dados**. `storageService` guarda tudo no mesmo
+  ficheiro (`jarvis.store.json`), sem namespace por plugin — um plugin
+  malicioso lendo ou escrevendo por cima da chave doutro não é hipotético
+  se a API for só "aqui está o storage, usa à vontade". `memoryService`
+  guarda o que o utilizador disse por palavras próprias (Parte 7.1) —
+  dar-lhe acesso a qualquer plugin sem mediação é o mesmo tipo de decisão
+  que já se recusou fazer para a memória do assistente com terceiros.
+- **Adicionar Menus / Comandos / Atalhos / Configurações / Painéis** têm
+  o mesmo problema do primeiro grupo, em menor escala: hoje são registos
+  estáticos (`command-registry.ts`, o menu de contexto fixo de 8 itens da
+  Parte 6.1), não pontos de extensão.
+- **Registar Eventos** é o único já meio-pronto: o Event Bus
+  (`services/event-bus.ts`) já existe, já é tipado, e automações já o
+  escutam — falta decidir que eventos ficam abertos a um plugin (nem
+  todos deviam) e a própria sandbox para o "quem escuta" ser seguro.
+
+Nenhuma linha de código nova. O SPEC.md regista a avaliação; construir
+fica combinado para depois de a Fase 1 nativa desbloquear sandbox (o
+mesmo pré-requisito que já bloqueia "Carregar e executar um plugin",
+sem novidade nenhuma aqui — só a resposta a "o que falta", por escrito).

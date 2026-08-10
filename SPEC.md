@@ -448,8 +448,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | **Carregar e executar um plugin** | 🚫 | Sandbox, assinatura e ficheiros — ver §2 |
 | Isolamento entre plugins | 🚫 | Depende do carregamento |
 | Event Bus global | ✅ | `services/event-bus.ts` — nove eventos tipados. Emitido por temas, estados, notificações, plugins, janelas, email e tarefas |
-| API do Core para plugins | ⬜ | |
-| Marketplace, SDK, atualizações, rollback | ⬜ | |
+| API do Core para plugins | ⬜ | **Avaliado 10/08/2026** — treze capacidades no original (`docs/spec/jarvis-spec-completo.md:568`): Criar Widgets, Criar Janelas, Adicionar Menus, Adicionar Comandos, Adicionar Atalhos, Criar Notificações, Adicionar Configurações, Criar Serviços, Executar Voz, Ler Memória, Guardar Preferências, Adicionar Painéis, Registar Eventos. Ver a avaliação completa, com o porquê de nenhuma entrar ainda, no histórico de sessões (10/08/2026) |
+| Marketplace, SDK, atualizações, rollback | ⬜ | Fora de âmbito por decisão, 10/08/2026 — maior do que vale a pena decidir antes de a API do Core existir |
 
 ---
 
