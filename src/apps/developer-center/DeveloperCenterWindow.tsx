@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Activity, Cpu, ScrollText, TerminalSquare, Trash2 } from 'lucide-react';
+import { Activity, Cpu, RefreshCw, ScrollText, TerminalSquare, Trash2 } from 'lucide-react';
 
 import { useCapabilities, usePlatformInfo } from '@/hooks/use-platform';
 import { CommandConsole } from './CommandConsole';
@@ -190,6 +190,20 @@ function StatePanel(): React.JSX.Element {
 
   return (
     <div className="min-h-0 flex-1 space-y-s3 overflow-y-auto">
+      <div className="flex items-center gap-2">
+        <p className="t-label">Diagnóstico</p>
+        <span className="mono flex-1 text-[10px] text-t3">
+          automático a cada {DIAGNOSTICS_INTERVAL_MS / 1000}s
+        </span>
+        <button
+          type="button"
+          onClick={() => setDiagnostics(readDiagnostics())}
+          aria-label="Atualizar diagnóstico agora"
+          className="rounded p-1 text-t3 transition-all duration-hover hover:text-accent active:scale-90"
+        >
+          <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </div>
       <section>
         <p className="t-label mb-2">Desempenho</p>
         <dl className="space-y-1 text-[11.5px]">

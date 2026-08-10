@@ -435,7 +435,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Não decorar comandos exatos | ✅ | Várias formas de dizer o mesmo, sem acentos nem pontuação. Não há modelo de linguagem — e o ficheiro diz isso. **Alargado 10/08/2026**: `stripPoliteness` tira os prefixos de cortesia mais comuns ("podes", "por favor", "consegues", em cadeia — "podes por favor…") antes de se procurar o verbo, o que vale para todos os comandos de uma vez, não só um; mais verbos por família (abrir: "entra em", "inicia", "quero abrir"; esconder: "remove", "ocultar"; pesquisar: "busca"; tarefa: "anota"; música: "continua"/"retoma"); e "fecha tudo" e "reinicia a app"/"reinicia o jarvis" como variantes que faltavam. 52 testes, incluindo os novos |
 | Contexto ("amanhã", "esse ficheiro") | ⬜ | Depende do provedor de IA |
 | Modos de escuta (manual, wake word, conversa, contínuo) | 🟡 | Só o manual. A escuta contínua é uma decisão de privacidade por tomar |
-| Histórico de voz pesquisável | ✅ | Cada comando reconhecido vira uma notificação com o transcrito e a categoria "assistente" (`use-voice.ts`); a pesquisa do painel filtra por título e descrição, sem acentos. Sem teste nenhum a provar isto até agora — `notification-panel.test.tsx` |
+| Histórico de voz pesquisável | ✅ | Cada comando reconhecido vira uma notificação com o transcrito e a categoria "assistente" (`use-voice.ts`); a pesquisa do painel filtra por título e descrição, sem acentos. 4 testes em `notification-panel.test.tsx` (pesquisa por transcrito, sem acentos, por categoria, sem resultados) |
 
 ---
 
