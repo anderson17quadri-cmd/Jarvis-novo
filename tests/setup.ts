@@ -45,3 +45,14 @@ if (typeof globalThis.ResizeObserver === 'undefined') {
 if (typeof Element !== 'undefined' && !Element.prototype.scrollTo) {
   Element.prototype.scrollTo = function scrollTo(): void {};
 }
+
+/**
+ * Nem `URL.createObjectURL`/`revokeObjectURL` — usado para pré-visualizar
+ * áudio da voz clonada e anexos de email. Um contador simples chega: nenhum
+ * teste precisa de um blob a sério, só de uma string estável para comparar.
+ */
+if (typeof URL !== 'undefined' && typeof URL.createObjectURL !== 'function') {
+  let counter = 0;
+  URL.createObjectURL = (): string => `blob:mock-${++counter}`;
+  URL.revokeObjectURL = (): void => undefined;
+}

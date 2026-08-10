@@ -321,7 +321,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Múltiplos desktops (1 a 4) | ✅ | Cada um com janelas, widgets, tema e papel de parede próprios. Quatro marcas no header. Um desktop por estrear **herda** o que está no ecrã em vez de abrir um vazio |
 | Painel lateral de notificações com agrupamento | ✅ | `components/notifications/NotificationPanel.tsx` — categorias, pesquisa, ações rápidas e histórico persistido |
 | Layouts guardados (Produtividade, Programação…) | ✅ | Os seis da especificação, mais os que se guardarem. Cada um repõe janelas, widgets e onde estão, tema e papel de parede. Os do sistema vêm do código a cada arranque, para uma correção chegar a quem já os tinha |
-| Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`; Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
+| Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`, agora com "Nova mensagem" — anexar ficheiros (diálogo nativo, `platform/attachments.ts`, com queda para `<input type="file">` sem Tauri), nome/tamanho de cada um, e pré-visualização para imagens. Enviar continua fora de âmbito, tal como responder — exige provedor real, dito de frente. Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
 | Janela: Automações | ✅ | Motor a sério — ver Parte 13 |
 | Janelas: Centro de Programador e Privacidade | ✅ | Partes 16 e 14 |
 | Janela: Terminal | ⬜ | Fora de âmbito por decisão — ver §5 |

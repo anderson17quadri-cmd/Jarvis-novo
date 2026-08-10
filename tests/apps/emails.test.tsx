@@ -1,9 +1,22 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import EmailsWindow from '@/apps/emails/EmailsWindow';
 import { mailService } from '@/services/mail/mail-service';
+import type * as AttachmentsModule from '@/platform/attachments';
+
+/**
+ * Sem Tauri (jsdom, tal como no browser), `pickAttachmentsNative` já
+ * devolve `null` sozinho — mas fá-lo tentando primeiro importar o plugin
+ * `dialog` a sério, o que é lento e depende de como esse módulo reage fora
+ * do Tauri. Forçar `null` aqui torna o teste do caminho de recurso
+ * (`<input type="file">`) determinístico, sem mudar o que se testa.
+ */
+vi.mock('@/platform/attachments', async (importOriginal) => {
+  const actual = await importOriginal<typeof AttachmentsModule>();
+  return { ...actual, pickAttachmentsNative: vi.fn().mockResolvedValue(null) };
+});
 
 beforeEach(async () => {
   await mailService.refresh();
@@ -97,5 +110,82 @@ describe('janela de Emails', () => {
   it('diz que a caixa é simulada, em vez de deixar acreditar', async () => {
     await renderMailbox();
     expect(screen.getByText(/caixa simulada/i)).toBeInTheDocument();
+  });
+});
+
+describe('escrever uma mensagem — anexos', () => {
+  it('anexar um ficheiro mostra nome e tamanho', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+    await user.click(screen.getByRole('button', { name: /^anexar$/i }));
+
+    const file = new File(['conteúdo do contrato'], 'contrato.pdf', { type: 'application/pdf' });
+    const input = document.querySelector('input[type="file"]');
+    expect(input).not.toBeNull();
+    await user.upload(input as HTMLInputElement, file);
+
+    expect(await screen.findByText('contrato.pdf')).toBeInTheDocument();
+    expect(screen.getByText(new RegExp(`${file.size} B`))).toBeInTheDocument();
+  });
+
+  it('uma imagem ganha pré-visualização; outro tipo não', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+    await user.click(screen.getByRole('button', { name: /^anexar$/i }));
+
+    const image = new File(['fake-png'], 'foto.png', { type: 'image/png' });
+    const doc = new File(['texto'], 'notas.txt', { type: 'text/plain' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, [image, doc]);
+
+    await screen.findByText('foto.png');
+    const imagemItem = screen.getByText('foto.png').closest('li');
+    const docItem = screen.getByText('notas.txt').closest('li');
+
+    expect(within(imagemItem!).getByRole('img')).toBeInTheDocument();
+    expect(within(docItem!).queryByRole('img')).toBeNull();
+  });
+
+  it('remover um anexo tira-o da lista', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+    await user.click(screen.getByRole('button', { name: /^anexar$/i }));
+
+    const file = new File(['x'], 'ficheiro.txt', { type: 'text/plain' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, file);
+    await screen.findByText('ficheiro.txt');
+
+    await user.click(screen.getByRole('button', { name: /remover anexo ficheiro\.txt/i }));
+
+    expect(screen.queryByText('ficheiro.txt')).toBeNull();
+  });
+
+  it('enviar continua desligado — diz-se, em vez de fingir', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+
+    expect(screen.getByRole('button', { name: /^enviar$/i })).toBeDisabled();
+    expect(screen.getByText(/enviar exige um provedor de envio real/i)).toBeInTheDocument();
+  });
+
+  it('cancelar volta à lista sem guardar nada', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+    await user.type(screen.getByLabelText('Assunto'), 'Rascunho de teste');
+    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+
+    expect(screen.getByText('Pedido de demonstração do Agendado')).toBeInTheDocument();
+    expect(screen.queryByText('Rascunho de teste')).toBeNull();
   });
 });

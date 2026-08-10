@@ -702,3 +702,34 @@ infra-estrutura que fica para quando o build nativo estiver estável.
 mostra cada falha com `role="alert"` em vez de voltar em silêncio — resposta
 vazia, sem JSON, e exceções de rede têm mensagens específicas. 5 testes
 novos em `tests/automation/automation-editor-nl.test.tsx`.
+
+## 2026-08-11 — Anexos na janela de Emails
+
+Pedido: usar os diálogos nativos de ficheiro (já ligados desde a cópia de
+segurança) para anexar um ficheiro a um rascunho, com nome/tamanho e
+pré-visualização simples para imagens. Não havia nenhuma janela de
+composição — só leitura — por isso o pedido trouxe consigo um "Nova
+mensagem" mínimo: Para/Assunto/Corpo, sem guardar rascunho nem enviar (os
+dois exigem um provedor real, ditos de frente, como a leitura já dizia
+para responder).
+
+`platform/attachments.ts` (novo): `pickAttachmentsNative()` tenta o
+diálogo `dialog` do Tauri primeiro — `multiple: true`, e para cada
+caminho devolvido, `stat()` para o tamanho e, só para extensões de
+imagem, `readFile()` para uma pré-visualização (`URL.createObjectURL`).
+Sem Tauri (browser), cai para o `<input type="file">` escondido, o
+mesmo padrão da cópia de segurança — `attachmentsFromFileList()` lê os
+`File` do browser da mesma forma. `formatBytes()` mostra B/KB/MB.
+
+Um bug de teste, não de produto: o jsdom não implementa
+`URL.createObjectURL`, e nenhum teste anterior tinha precisado dele a
+sério — `tests/setup.ts` ganhou um stub simples (string com contador),
+ao lado dos já existentes para `matchMedia`/`ResizeObserver`/`scrollTo`.
+
+Testado a sério na app a correr: "Nova mensagem" abre, "Anexar" e o
+campo escondido existem, "Enviar" está desativado com o aviso certo. O
+diálogo nativo em si não é automatizável por fora (é um modal do
+sistema operativo, fora do DOM) — a mesma limitação já documentada para
+a cópia de segurança — por isso o caminho de recurso do browser ficou
+coberto a sério pelos testes automatizados (anexar, pré-visualizar só
+imagens, remover, cancelar sem guardar).

@@ -1,6 +1,21 @@
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Inbox, Paperclip, Send, Star, Archive as ArchiveIcon } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
+import {
+  ArrowLeft,
+  Inbox,
+  Paperclip,
+  PenSquare,
+  Send,
+  Star,
+  X,
+  Archive as ArchiveIcon,
+} from 'lucide-react';
 
+import {
+  attachmentsFromFileList,
+  formatBytes,
+  pickAttachmentsNative,
+  type DraftAttachment,
+} from '@/platform/attachments';
 import { useDataService } from '@/hooks/use-data-service';
 import { cn } from '@/lib/cn';
 import { formatShortDate, formatTime } from '@/lib/format';
@@ -24,6 +39,7 @@ export default function EmailsWindow(): React.JSX.Element {
   const [folder, setFolder] = useState<MailFolder>('inbox');
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [isComposing, setComposing] = useState(false);
 
   const messages = useMemo(() => {
     const all = data?.messages ?? [];
@@ -45,6 +61,10 @@ export default function EmailsWindow(): React.JSX.Element {
 
   if (isLoading) return <p className="text-desc text-t3">A ler a caixa de correio…</p>;
 
+  if (isComposing) {
+    return <Compose onClose={() => setComposing(false)} />;
+  }
+
   if (open) {
     return <Reading message={open} onBack={() => setOpenId(null)} />;
   }
@@ -52,6 +72,19 @@ export default function EmailsWindow(): React.JSX.Element {
   return (
     <div className="flex h-full flex-col gap-s2">
       <div className="flex flex-wrap items-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => setComposing(true)}
+          className={cn(
+            'flex min-h-[36px] items-center gap-1.5 rounded-btn border border-accent/50 bg-accent/[.1] px-2.5 py-2',
+            'text-[12px] font-medium text-accent transition-all duration-hover ease-out',
+            'hover:bg-accent/[.16] active:scale-[.98] compact:min-h-[44px]',
+          )}
+        >
+          <PenSquare className="h-3.5 w-3.5" aria-hidden="true" />
+          Nova mensagem
+        </button>
+
         <FolderTab
           isActive={folder === 'inbox'}
           onClick={() => setFolder('inbox')}
@@ -220,6 +253,167 @@ function Reading({
 
       <p className="flex-shrink-0 text-cap text-t3">
         Responder exige um provedor de envio real — ainda não ligado.
+      </p>
+    </article>
+  );
+}
+
+/**
+ * Rascunho novo — só o que a Parte 6.2 pede hoje: anexar um ficheiro, ver
+ * nome e tamanho, e uma pré-visualização simples para imagens.
+ *
+ * Enviar continua fora de âmbito, tal como a leitura já dizia: exige um
+ * provedor real. O diálogo nativo de ficheiro tenta primeiro
+ * (`pickAttachmentsNative`); sem Tauri, cai para o `<input type="file">`
+ * escondido, o mesmo padrão da cópia de segurança.
+ */
+function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Element {
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [attachments, setAttachments] = useState<readonly DraftAttachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const onAttach = async (): Promise<void> => {
+    const picked = await pickAttachmentsNative();
+    if (picked) {
+      setAttachments((prev) => [...prev, ...picked]);
+      return;
+    }
+    // Sem diálogo nativo (browser): abre o seletor escondido do input.
+    fileInputRef.current?.click();
+  };
+
+  const onFileInputChange = (files: FileList | null): void => {
+    if (!files || files.length === 0) return;
+    setAttachments((prev) => [...prev, ...attachmentsFromFileList(files)]);
+  };
+
+  const removeAttachment = (id: string): void => {
+    setAttachments((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  return (
+    <article className="flex h-full flex-col gap-s2">
+      <div className="flex flex-shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className={cn(
+            'flex min-h-[36px] items-center gap-1.5 rounded-btn border border-line px-2.5 py-1.5',
+            'text-[12px] text-t2 transition-all duration-hover ease-out',
+            'hover:border-accent/35 hover:text-accent active:scale-[.98] compact:min-h-[44px]',
+          )}
+        >
+          <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
+          Cancelar
+        </button>
+        <h3 className="text-[13px] font-medium">Nova mensagem</h3>
+      </div>
+
+      <div className="flex-shrink-0 space-y-1.5">
+        <input
+          value={to}
+          onChange={(event) => setTo(event.target.value)}
+          placeholder="Para"
+          aria-label="Para"
+          className="w-full rounded-input border border-line bg-tint/[.03] px-2.5 py-2 text-[12.5px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+        />
+        <input
+          value={subject}
+          onChange={(event) => setSubject(event.target.value)}
+          placeholder="Assunto"
+          aria-label="Assunto"
+          className="w-full rounded-input border border-line bg-tint/[.03] px-2.5 py-2 text-[12.5px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+        />
+      </div>
+
+      <textarea
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        placeholder="Escreva a mensagem…"
+        aria-label="Corpo da mensagem"
+        className="min-h-0 flex-1 resize-none rounded-input border border-line bg-tint/[.03] p-2.5 text-[12.5px] leading-[1.6] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+      />
+
+      {attachments.length > 0 && (
+        <ul className="flex flex-shrink-0 flex-wrap gap-2">
+          {attachments.map((attachment) => (
+            <li
+              key={attachment.id}
+              className="flex items-center gap-2 rounded-input border border-line bg-tint/[.03] py-1 pl-1.5 pr-2"
+            >
+              {attachment.previewUrl ? (
+                <img
+                  src={attachment.previewUrl}
+                  alt={attachment.name}
+                  className="h-8 w-8 flex-shrink-0 rounded object-cover"
+                />
+              ) : (
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded bg-tint/[.06] text-t3">
+                  <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+                </span>
+              )}
+              <span className="min-w-0">
+                <span className="block max-w-[160px] truncate text-[11.5px]">
+                  {attachment.name}
+                </span>
+                <span className="block text-[10px] text-t3">
+                  {formatBytes(attachment.sizeBytes)}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => removeAttachment(attachment.id)}
+                aria-label={`Remover anexo ${attachment.name}`}
+                className="ml-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-t3 transition-colors duration-hover hover:bg-danger/[.1] hover:text-danger"
+              >
+                <X className="h-3 w-3" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => void onAttach()}
+          className={cn(
+            'flex min-h-[36px] items-center gap-1.5 rounded-btn border border-line px-2.5 py-1.5',
+            'text-[12px] text-t2 transition-all duration-hover ease-out',
+            'hover:border-accent/35 hover:text-accent active:scale-[.98] compact:min-h-[44px]',
+          )}
+        >
+          <Paperclip className="h-3.5 w-3.5" aria-hidden="true" />
+          Anexar
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          onChange={(event) => onFileInputChange(event.target.files)}
+        />
+        <span className="flex-1" />
+        <button
+          type="button"
+          disabled
+          title="Enviar exige um provedor real — ainda não ligado."
+          className="flex min-h-[36px] items-center gap-1.5 rounded-btn border border-line bg-tint/[.03] px-3 py-2 text-[12px] font-medium text-t3 opacity-50"
+        >
+          <Send className="h-3.5 w-3.5" aria-hidden="true" />
+          Enviar
+        </button>
+      </div>
+
+      <p className="flex-shrink-0 text-cap text-t3">
+        Enviar exige um provedor de envio real — ainda não ligado. O rascunho não é guardado ao
+        sair.
       </p>
     </article>
   );
