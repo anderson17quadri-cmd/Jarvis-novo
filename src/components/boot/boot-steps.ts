@@ -79,6 +79,20 @@ export const BOOT_TIMING = {
 
 export const BOOT_TYPE_LINE = 'Initializing Artificial Intelligence Core...';
 
+/**
+ * Chave do `sessionStorage` para forçar uma verificação a falhar (Parte 4
+ * §Modo de erro simulado).
+ *
+ * O valor é o índice da verificação (0 a 9), ou "todas" para as falhar
+ * todas. Exemplo na consola do browser:
+ *   sessionStorage.setItem('jarvis-debug.bootFailAt', '3');
+ *
+ * Fora do `sessionStorage`, o arranque corre sempre sem erro. É de propósito:
+ * esta é uma ferramenta de desenvolvimento, não um caminho que um utilizador
+ * normal encontre por acidente.
+ */
+export const BOOT_DEBUG_FAIL_KEY = 'jarvis-debug.bootFailAt';
+
 /** Cartões de métricas da quarta etapa. */
 export const BOOT_GRAPHS: readonly { readonly key: string; readonly value: string }[] = [
   { key: 'CPU', value: '24%' },
