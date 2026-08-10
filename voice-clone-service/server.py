@@ -21,6 +21,7 @@ Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
 
 import json
 import os
+import subprocess
 import tempfile
 from pathlib import Path
 
@@ -190,6 +191,13 @@ async def gravar_voz(ficheiro: UploadFile) -> Response:
     Recebe a amostra de voz e guarda-a como referência.
 
     Substitui o que estiver lá — só há uma voz de propósito, a de quem grava.
+
+    Aceita qualquer formato que o `ffmpeg` decodifique — inclui o
+    `.webm`/Opus que o `MediaRecorder` do browser produz, gravado dentro da
+    própria interface (Parte 7.1 §Voz clonada local, sub-fase 4.2), não só
+    o `.wav` de quem grava à mão como antes. Sai sempre `.wav` PCM mono: o
+    ficheiro pode chegar em qualquer contentor, `REFERENCE_PATH` tem de ser
+    sempre o mesmo formato que o XTTS-v2 espera.
     """
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
     conteudo = await ficheiro.read()
@@ -197,8 +205,27 @@ async def gravar_voz(ficheiro: UploadFile) -> Response:
     if len(conteudo) < 1000:
         raise HTTPException(400, "O ficheiro parece vazio ou vazio de mais para ser uma gravação.")
 
-    REFERENCE_PATH.write_bytes(conteudo)
-    return _json_utf8({"ok": True, "bytes": len(conteudo)})
+    sufixo = Path(ficheiro.filename or "gravacao.wav").suffix or ".wav"
+    with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as tmp:
+        tmp.write(conteudo)
+        caminho_temp = tmp.name
+
+    try:
+        resultado = subprocess.run(
+            ["ffmpeg", "-y", "-i", caminho_temp, "-ar", "22050", "-ac", "1", str(REFERENCE_PATH)],
+            capture_output=True,
+            text=True,
+        )
+        if resultado.returncode != 0:
+            raise HTTPException(
+                422,
+                "Não consegui converter a gravação para .wav — o FFmpeg disse: "
+                f"{resultado.stderr.strip()[-300:]}",
+            )
+    finally:
+        Path(caminho_temp).unlink(missing_ok=True)
+
+    return _json_utf8({"ok": True, "bytes": REFERENCE_PATH.stat().st_size})
 
 
 @app.post("/falar")

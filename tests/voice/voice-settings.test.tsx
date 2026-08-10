@@ -127,4 +127,47 @@ describe('VoiceSettings', () => {
 
     expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'clonada', nome: 'Ana Florence' });
   });
+
+  describe('gravar a amostra da própria voz (sub-fase 4.2)', () => {
+    beforeEach(() => {
+      vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
+        disponivel: true,
+        vozPropriaGravada: false,
+        vozesProntas: [],
+      });
+    });
+
+    it('oferece gravar quando o serviço local está disponível, mesmo sem voz gravada ainda', async () => {
+      render(<VoiceSettings />);
+
+      expect(await screen.findByRole('button', { name: 'Gravar a minha voz' })).toBeInTheDocument();
+    });
+
+    it('gravar com sucesso deixa escolher "A minha voz" a seguir, sem reiniciar a janela', async () => {
+      vi.spyOn(voiceService, 'recordVoiceSample').mockReturnValue({
+        result: Promise.resolve({ ok: true, bytes: 12_345 }),
+        stop: vi.fn(),
+      });
+      const user = userEvent.setup();
+      render(<VoiceSettings />);
+
+      await user.click(await screen.findByRole('button', { name: 'Gravar a minha voz' }));
+
+      expect(await screen.findByText(/Gravado/)).toBeInTheDocument();
+      expect(await screen.findByText('A minha voz')).toBeInTheDocument();
+    });
+
+    it('uma gravação falhada mostra o motivo, não um "não funcionou" vazio', async () => {
+      vi.spyOn(voiceService, 'recordVoiceSample').mockReturnValue({
+        result: Promise.resolve({ ok: false, motivo: 'audio-capture' }),
+        stop: vi.fn(),
+      });
+      const user = userEvent.setup();
+      render(<VoiceSettings />);
+
+      await user.click(await screen.findByRole('button', { name: 'Gravar a minha voz' }));
+
+      expect(await screen.findByText('Não encontrei nenhum microfone ligado a este dispositivo.')).toBeInTheDocument();
+    });
+  });
 });

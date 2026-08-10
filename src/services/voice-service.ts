@@ -75,6 +75,18 @@ export interface CloneServiceInfo {
   readonly vozesProntas: readonly CloneVoiceInfo[];
 }
 
+/** O resultado de gravar e enviar uma amostra — ver `recordVoiceSample`. */
+export type RecordSampleResult =
+  | { readonly ok: true; readonly bytes: number }
+  | { readonly ok: false; readonly motivo: string };
+
+/** Uma gravação em curso: o resultado final, e a forma de a terminar mais cedo. */
+export interface RecordSampleHandle {
+  readonly result: Promise<RecordSampleResult>;
+  /** Termina a gravação já — o que foi dito até agora é o que se envia. */
+  stop(): void;
+}
+
 /**
  * Qual voz usar, ao ler algo em voz alta.
  *
@@ -430,6 +442,83 @@ export class VoiceService {
     } catch {
       return naoDisponivel;
     }
+  }
+
+  /**
+   * Grava uns segundos da voz de quem usa o sistema e manda ao serviço
+   * local (`POST /voz`) — a gravação que a Parte 7.1 §Voz clonada local
+   * pedia por ficheiro à mão (sub-fase 4.2), agora dentro da própria
+   * interface. Mesma técnica de `startListeningLocal`, para outro fim: ali
+   * é reconhecimento, aqui é a amostra a clonar.
+   *
+   * Para mais cedo do que `maxDurationMs` se `stop()` for chamado — quem
+   * grava não devia ter de esperar o limite todo só porque já disse o que
+   * queria.
+   */
+  recordVoiceSample(maxDurationMs = 12_000): RecordSampleHandle {
+    let pararCedo: (() => void) | null = null;
+
+    const result = (async (): Promise<RecordSampleResult> => {
+      if (!hasLocalRecordingSupport()) return { ok: false, motivo: 'sem-suporte' };
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (error) {
+        const nome = error instanceof Error ? error.name : '';
+        return { ok: false, motivo: nome === 'NotAllowedError' ? 'not-allowed' : 'audio-capture' };
+      }
+
+      const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'].find((tipo) =>
+        MediaRecorder.isTypeSupported(tipo),
+      );
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event): void => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+
+      const parado = new Promise<void>((resolve) => {
+        recorder.onstop = (): void => resolve();
+      });
+
+      recorder.start();
+
+      await new Promise<void>((resolve) => {
+        const limite = setTimeout(resolve, maxDurationMs);
+        pararCedo = (): void => {
+          clearTimeout(limite);
+          resolve();
+        };
+      });
+
+      if (recorder.state !== 'inactive') recorder.stop();
+      await parado;
+      stream.getTracks().forEach((track) => track.stop());
+
+      if (chunks.length === 0) return { ok: false, motivo: 'sem-audio' };
+
+      try {
+        const forma = new FormData();
+        forma.append('ficheiro', new Blob(chunks, { type: mimeType ?? 'audio/webm' }), 'referencia.webm');
+
+        const resposta = await fetch(`${CLONE_SERVICE_URL}/voz`, { method: 'POST', body: forma });
+        if (!resposta.ok) {
+          const corpo = (await resposta.json().catch(() => null)) as { detail?: string } | null;
+          return { ok: false, motivo: corpo?.detail ?? `o serviço local devolveu ${resposta.status}` };
+        }
+
+        const corpo = (await resposta.json()) as { bytes?: number };
+        return { ok: true, bytes: corpo.bytes ?? 0 };
+      } catch {
+        return { ok: false, motivo: 'local-service-unavailable' };
+      }
+    })();
+
+    return {
+      result,
+      stop: (): void => pararCedo?.(),
+    };
   }
 
   /** Fala pelo serviço local de voz clonada. `nome: null` é a voz gravada do utilizador. */

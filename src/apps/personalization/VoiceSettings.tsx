@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Check, Play } from 'lucide-react';
+import { Check, Mic, Play, Square } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { useVoiceSampleRecorder } from '@/hooks/use-voice-sample-recorder';
 import { voiceService, type CloneVoiceInfo, type VoiceSelection } from '@/services/voice-service';
 import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 
@@ -77,6 +78,7 @@ export function VoiceSettings(): React.JSX.Element | null {
   const [cloneVoices, setCloneVoices] = useState<readonly CloneVoiceInfo[]>([]);
   const [cloneOwnVoiceAvailable, setCloneOwnVoiceAvailable] = useState(false);
   const [cloneServiceAvailable, setCloneServiceAvailable] = useState(false);
+  const sampleRecorder = useVoiceSampleRecorder(() => setCloneOwnVoiceAvailable(true));
 
   useEffect(() => {
     // As vozes chegam de forma assíncrona nalguns motores — a lista começa
@@ -151,6 +153,46 @@ export function VoiceSettings(): React.JSX.Element | null {
       {cloneServiceAvailable && (
         <div className="flex flex-col gap-1">
           <p className="px-1 text-cap text-t3">Voz clonada local</p>
+
+          <div className="flex flex-col gap-1.5 rounded-input border border-line px-3 py-2">
+            {sampleRecorder.status === 'a gravar' ? (
+              <div className="flex items-center justify-between gap-2 text-[12.5px] text-accent">
+                <span>A gravar… fala agora ({sampleRecorder.segundosRestantes}s)</span>
+                <button
+                  type="button"
+                  onClick={() => sampleRecorder.stopEarly()}
+                  aria-label="Terminar a gravação e enviar"
+                  className="flex-shrink-0 rounded p-1 text-t3 transition-colors duration-hover hover:text-accent"
+                >
+                  <Square className="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => sampleRecorder.start()}
+                disabled={sampleRecorder.status === 'a enviar'}
+                className="flex items-center gap-2 text-[12.5px] text-t2 transition-colors duration-hover hover:text-accent disabled:opacity-50"
+              >
+                <Mic className="h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+                <span>
+                  {sampleRecorder.status === 'a enviar'
+                    ? 'A enviar…'
+                    : cloneOwnVoiceAvailable
+                      ? 'Gravar de novo a minha voz'
+                      : 'Gravar a minha voz'}
+                </span>
+              </button>
+            )}
+
+            {sampleRecorder.status === 'sucesso' && (
+              <p className="text-cap text-accent">Gravado. Já podes escolher &quot;A minha voz&quot; abaixo.</p>
+            )}
+            {sampleRecorder.status === 'erro' && sampleRecorder.erro && (
+              <p className="text-cap text-danger">{sampleRecorder.erro}</p>
+            )}
+          </div>
+
           <div role="radiogroup" aria-label="Voz clonada local" className="flex flex-col gap-1">
             {cloneOwnVoiceAvailable && (
               <VoiceOption
