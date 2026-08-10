@@ -366,3 +366,41 @@ voltou a passar depois. Confirmado ao vivo por CDP, duas vezes — antes do
 arranjo (o microfone ligava a meio da fala) e depois (recusado, com o
 motivo certo) — e confirmado que o uso normal continua igual quando não
 há nada a falar.
+
+## 2026-08-10 — Ollama ligado à janela de definições, confirmado com o modelo a correr
+
+Segundo pedido, prioridade normal: o `OllamaProvider` já existia e já
+tinha testes, mas o endereço base era a única coisa editável na
+Personalização — faltava escolher o modelo, e o próprio ficheiro dizia
+(já desatualizado) "não está ligado à janela de definições". A cadeia
+automática (`CHAIN_ORDER`) já incluía o Ollama há um bloco anterior desta
+sessão; o que faltava era mesmo só a interface.
+
+Acrescentado a `AiSettings.tsx`: um campo para o nome do modelo, e um
+botão "Detetar" que pergunta a `GET {endereço}/api/tags` — o mesmo
+endereço que o utilizador já tinha guardado — que modelos já estão
+instalados, e mostra-os como chips clicáveis (evita ter de decorar ou
+copiar o nome exato, tipo `qwen3:8b`). Erros de deteção (Ollama desligado,
+sem nenhum modelo instalado) têm mensagem própria em vez de falhar em
+silêncio.
+
+Testado a sério, com o Ollama a correr na máquina, não só com testes que
+simulam a resposta: a primeira pergunta pela interface ("Diz uma frase
+curta...") gerou pedidos reais a `http://localhost:11434/v1/chat/completions`,
+confirmados por CDP — mas excedeu os 60s de limite, porque o modelo
+(`qwen3:8b`, 8B parâmetros) ainda estava frio, a carregar pela primeira
+vez; a cadeia caiu corretamente para o provedor seguinte, com aviso na
+conversa, exatamente como desenhado. Depois de aquecer o modelo (`ollama
+run qwen3:8b` a partir da linha de comandos), a mesma pergunta pela
+interface teve resposta certa do Ollama dentro do tempo — confirmação
+real de ponta a ponta, não só da cadeia de fallback.
+
+Achado à parte: dois comentários no código (`ollama-provider.ts` e
+`claude-provider.ts`) diziam "não está ligado à janela de definições",
+mas ambos já estavam errados — o mesmo padrão de comentário caído para
+trás encontrado antes em `automations.ts`. Corrigidos os dois para
+refletir o estado real.
+
+Suite toda: 1101 testes, todos a passar (1 falha isolada em
+`login-screen.test.tsx` no correr completo, confirmada como oscilação ao
+correr o ficheiro sozinho — não relacionada com este trabalho).

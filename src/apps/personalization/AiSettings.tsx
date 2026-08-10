@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Trash2, Wand2 } from 'lucide-react';
+import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Search, Trash2, Wand2 } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
@@ -42,6 +42,9 @@ export function AiSettings(): React.JSX.Element {
   const [claudeDraft, setClaudeDraft] = useState('');
   const [isClaudeVisible, setClaudeVisible] = useState(false);
   const [ollamaModelDraft, setOllamaModelDraft] = useState(settings.ollamaModel);
+  const [isDetectingOllama, setDetectingOllama] = useState(false);
+  const [ollamaModelsFound, setOllamaModelsFound] = useState<readonly string[] | null>(null);
+  const [ollamaDetectError, setOllamaDetectError] = useState<string | null>(null);
 
   const hasKey = settings.apiKey.length > 0;
   const isMalformed = draft.trim().length > 0 && !looksLikeApiKey(draft);
@@ -58,6 +61,42 @@ export function AiSettings(): React.JSX.Element {
     settings.provider !== 'claude' && hasClaudeKey,
     settings.provider !== 'ollama' && settings.ollamaModel.trim().length > 0,
   ].filter(Boolean).length;
+
+  /**
+   * Pergunta ao próprio Ollama que modelos já tens instalados, em vez de
+   * teres de escrever o nome à mão e confiar que acertaste. `GET
+   * /api/tags` é o próprio endpoint do Ollama para isto — nada de novo do
+   * lado do JARVIS, só perguntar antes de assumir.
+   */
+  const detectOllamaModels = async (): Promise<void> => {
+    setDetectingOllama(true);
+    setOllamaDetectError(null);
+    setOllamaModelsFound(null);
+
+    try {
+      const resposta = await fetch(`${settings.ollamaBaseUrl}/api/tags`, {
+        signal: AbortSignal.timeout(3_000),
+      });
+      if (!resposta.ok) throw new Error(`o Ollama devolveu ${resposta.status}`);
+
+      const corpo = (await resposta.json()) as { models?: readonly { name: string }[] };
+      const nomes = (corpo.models ?? []).map((modelo) => modelo.name);
+
+      if (nomes.length === 0) {
+        setOllamaDetectError(
+          'O Ollama respondeu, mas não tem nenhum modelo instalado. "ollama pull" um primeiro.',
+        );
+      } else {
+        setOllamaModelsFound(nomes);
+      }
+    } catch {
+      setOllamaDetectError(
+        `Não consegui perguntar ao Ollama em ${settings.ollamaBaseUrl} — confirma que está a correr.`,
+      );
+    } finally {
+      setDetectingOllama(false);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-s3">
@@ -429,19 +468,72 @@ export function AiSettings(): React.JSX.Element {
 
           <label className="block">
             <span className="t-label mb-1.5 block">Modelo instalado</span>
-            <input
-              type="text"
-              value={ollamaModelDraft}
-              onChange={(event) => setOllamaModelDraft(event.target.value)}
-              onBlur={() => setOllamaModel(ollamaModelDraft)}
-              placeholder="llama3.1"
-              aria-label="Modelo do Ollama"
-              className="mono w-full rounded-input border border-line bg-tint/[.03] px-3 py-2 text-[12px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={ollamaModelDraft}
+                onChange={(event) => setOllamaModelDraft(event.target.value)}
+                onBlur={() => setOllamaModel(ollamaModelDraft)}
+                placeholder="llama3.1"
+                aria-label="Modelo do Ollama"
+                className="mono w-full min-w-0 flex-1 rounded-input border border-line bg-tint/[.03] px-3 py-2 text-[12px] outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+              />
+              <button
+                type="button"
+                onClick={() => void detectOllamaModels()}
+                disabled={isDetectingOllama}
+                aria-label="Detetar modelos instalados no Ollama"
+                className={cn(
+                  'flex flex-shrink-0 items-center gap-1.5 rounded-btn border px-3 py-2 text-[12px] font-medium',
+                  'border-line text-t2 transition-all duration-hover ease-out hover:border-accent/35 hover:text-accent',
+                  isDetectingOllama && 'cursor-not-allowed opacity-60',
+                )}
+              >
+                <Search className={cn('h-3.5 w-3.5', isDetectingOllama && 'animate-pulse')} aria-hidden="true" />
+                {isDetectingOllama ? 'A perguntar…' : 'Detetar'}
+              </button>
+            </div>
             <span className="mt-1.5 block text-cap text-t3">
               O nome tal como aparece em <span className="mono">ollama list</span> no teu
-              terminal — o sistema não sabe que modelos tens instalados.
+              terminal, ou "Detetar" para perguntar ao próprio Ollama — o sistema não adivinha
+              que modelos tens instalados.
             </span>
+
+            {ollamaDetectError && (
+              <p className="mt-1.5 flex items-start gap-1.5 text-[11px] text-warn">
+                <AlertTriangle className="mt-px h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                {ollamaDetectError}
+              </p>
+            )}
+
+            {ollamaModelsFound && (
+              <div
+                className="mt-2 flex flex-wrap gap-1.5"
+                role="radiogroup"
+                aria-label="Modelos detetados no Ollama"
+              >
+                {ollamaModelsFound.map((nome) => (
+                  <button
+                    key={nome}
+                    type="button"
+                    role="radio"
+                    aria-checked={settings.ollamaModel === nome}
+                    onClick={() => {
+                      setOllamaModelDraft(nome);
+                      setOllamaModel(nome);
+                    }}
+                    className={cn(
+                      'mono rounded-full border px-2.5 py-1 text-[10.5px] transition-all duration-hover ease-out',
+                      settings.ollamaModel === nome
+                        ? 'border-accent bg-accent/[.1] text-accent'
+                        : 'border-line text-t3 hover:border-accent/35 hover:text-t2',
+                    )}
+                  >
+                    {nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </label>
 
           <label className="block">

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiSettings } from '@/apps/personalization/AiSettings';
 import { aiService } from '@/services/ai-service';
@@ -235,6 +235,71 @@ describe('Ollama', () => {
     await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
 
     expect(screen.getByText(/Nada sai do dispositivo/)).toBeInTheDocument();
+  });
+
+  describe('detetar modelos instalados', () => {
+    const originalFetch = global.fetch;
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('pergunta a GET /api/tags e mostra os modelos como opções', async () => {
+      global.fetch = vi.fn((url: string) => {
+        expect(url).toBe(`${DEFAULT_AI_SETTINGS.ollamaBaseUrl}/api/tags`);
+        return Promise.resolve(
+          new Response(JSON.stringify({ models: [{ name: 'qwen3:8b' }, { name: 'llama3.1' }] }), {
+            status: 200,
+          }),
+        );
+      }) as unknown as typeof fetch;
+
+      const user = userEvent.setup();
+      render(<AiSettings />);
+      await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+      await user.click(screen.getByRole('button', { name: 'Detetar modelos instalados no Ollama' }));
+
+      expect(await screen.findByRole('radio', { name: 'qwen3:8b' })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: 'llama3.1' })).toBeInTheDocument();
+    });
+
+    it('escolher um modelo detetado guarda-o como preferência', async () => {
+      global.fetch = vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ models: [{ name: 'qwen3:8b' }] }), { status: 200 })),
+      );
+
+      const user = userEvent.setup();
+      render(<AiSettings />);
+      await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+      await user.click(screen.getByRole('button', { name: 'Detetar modelos instalados no Ollama' }));
+      await user.click(await screen.findByRole('radio', { name: 'qwen3:8b' }));
+
+      expect(useAiSettingsStore.getState().settings.ollamaModel).toBe('qwen3:8b');
+    });
+
+    it('sem o Ollama a correr, diz isso mesmo em vez de ficar em silêncio', async () => {
+      global.fetch = vi.fn(() => Promise.reject(new Error('ECONNREFUSED')));
+
+      const user = userEvent.setup();
+      render(<AiSettings />);
+      await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+      await user.click(screen.getByRole('button', { name: 'Detetar modelos instalados no Ollama' }));
+
+      expect(await screen.findByText(/confirma que está a correr/)).toBeInTheDocument();
+    });
+
+    it('respondido mas sem nenhum modelo instalado, diz para instalar um primeiro', async () => {
+      global.fetch = vi.fn(() =>
+        Promise.resolve(new Response(JSON.stringify({ models: [] }), { status: 200 })),
+      );
+
+      const user = userEvent.setup();
+      render(<AiSettings />);
+      await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+      await user.click(screen.getByRole('button', { name: 'Detetar modelos instalados no Ollama' }));
+
+      expect(await screen.findByText(/não tem nenhum modelo instalado/)).toBeInTheDocument();
+    });
   });
 });
 

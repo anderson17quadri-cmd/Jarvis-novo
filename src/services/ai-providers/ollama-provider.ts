@@ -22,8 +22,13 @@ import { buildMessages, readStream } from './deepseek-provider';
  * 404 qualquer, tratado como problema genérico do servidor (`failureFromStatus`
  * já faz isso para códigos que não reconhece).
  *
- * **Não está ligado à janela de configurações.** Mesma nota do
- * `claude-provider.ts` — existe e está testado, falta a cadeia à volta.
+ * **Ligado à janela de configurações** (`AiSettings.tsx`, Personalização →
+ * Assistente): campo para o modelo (com um botão "Detetar" que pergunta a
+ * `GET /api/tags` que modelos já estão instalados, em vez de se escrever
+ * o nome às cegas), o endereço base editável, e entra na cadeia de
+ * fallback automática (`use-ai-settings-store.ts`, `CHAIN_ORDER`), a
+ * seguir à DeepSeek e à Claude. Confirmado a sério com um Ollama real a
+ * correr no PC, não só com testes que simulam a resposta.
  */
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';

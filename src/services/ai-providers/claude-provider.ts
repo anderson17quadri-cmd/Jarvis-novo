@@ -16,11 +16,10 @@ import { buildMessages } from './deepseek-provider';
  * chegam por `input_json_delta`) é uma peça própria, maior do que cabia nesta
  * primeira versão. Fica registado como o próximo passo, não escondido.
  *
- * **Não está ligado à janela de configurações.** Existe e está testado, mas
- * `AiProviderId` ainda não o lista — juntar um seletor sem o resto da cadeia
- * (prioridade entre provedores, campo para a chave) deixava um botão na
- * interface que parecia funcionar e não fazia nada. Ver
- * `docs/spec/orquestrador-multi-provedor.md`.
+ * **Ligado à janela de configurações** (`AiSettings.tsx`, Personalização →
+ * Assistente): campo para a chave, seletor de modelo, e entra na cadeia
+ * de fallback automática (`use-ai-settings-store.ts`, `CHAIN_ORDER`), a
+ * seguir à DeepSeek. Ver `docs/spec/orquestrador-multi-provedor.md`.
  */
 
 /** Modelos oferecidos — rápido para o dia a dia, profundo para raciocínio. */
