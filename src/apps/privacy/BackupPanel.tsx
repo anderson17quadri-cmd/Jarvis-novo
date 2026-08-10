@@ -7,6 +7,7 @@ import { notificationService } from '@/services/notification-service';
 import { STORAGE_KEYS } from '@/services/storage-service';
 import { BACKUP_PROBLEMS, backupFilename, readBackup, SECRET_FIELDS } from '@/types/backup';
 import type { JarvisBackup } from '@/types/backup';
+import { openWithNativeDialog, saveWithNativeDialog } from '@/platform/native-dialogs';
 
 /**
  * Cópias de segurança (Parte 14 §Backups e restauro).
@@ -30,14 +31,28 @@ export function BackupPanel(): React.JSX.Element {
 
     try {
       const backup = await createBackup();
-      const blob = new Blob([serializeBackup(backup)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
+      const serialized = serializeBackup(backup);
+      const filename = backupFilename(new Date());
 
-      // Um `<a download>` criado à mão é o que há sem diálogo nativo. O
-      // ficheiro vai para onde o browser puser as descargas.
+      // Tentar o diálogo nativo primeiro (plugin `dialog` do Tauri).
+      // Se falhar — a correr no browser, por exemplo — cai para o
+      // `<a download>` de sempre.
+      const savedNatively = await saveWithNativeDialog(filename, serialized);
+
+      if (savedNatively) {
+        const sections = Object.keys(backup.data).length;
+        notificationService.success(
+          'Cópia guardada',
+          `${filename} — ${sections} ${sections === 1 ? 'secção' : 'secções'}, sem a chave da API.`,
+        );
+        return;
+      }
+
+      const blob = new Blob([serialized], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = backupFilename(new Date());
+      link.download = filename;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -49,6 +64,24 @@ export function BackupPanel(): React.JSX.Element {
     } finally {
       setWorking(false);
     }
+  };
+
+  const importFromFile = async (): Promise<void> => {
+    // Tentar o diálogo nativo primeiro.
+    const nativeContent = await openWithNativeDialog();
+
+    if (nativeContent !== null) {
+      const result = readBackup(nativeContent);
+      if (!result.ok) {
+        notificationService.error('Não deu para ler', BACKUP_PROBLEMS[result.problem]);
+        return;
+      }
+      setPending(result.backup);
+      return;
+    }
+
+    // Cair para o `<input type="file">` do browser.
+    fileRef.current?.click();
   };
 
   const choose = async (file: File | undefined): Promise<void> => {
@@ -120,7 +153,7 @@ export function BackupPanel(): React.JSX.Element {
 
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
+          onClick={() => void importFromFile()}
           disabled={isWorking}
           className={cn(
             'flex items-center gap-2 rounded-btn border border-line px-3.5 py-2',
