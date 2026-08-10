@@ -4,9 +4,14 @@ import type { Automation } from '@/types/automation';
  * Automações de exemplo (Parte 13 §Templates oficiais).
  *
  * Todas usam gatilhos e ações que o sistema cumpre mesmo — nenhuma promete
- * abrir o Spotify nem ler uma pasta. Vêm desligadas por omissão, menos a do
- * arranque: uma regra que corre sem ninguém a ter ligado é uma surpresa, e uma
- * surpresa num sistema é sempre má.
+ * abrir o Spotify nem ler uma pasta. **As cinco vêm desligadas por omissão,
+ * sem exceção nenhuma** — incluindo a do arranque: uma regra que corre sem
+ * ninguém a ter ligado é uma surpresa, e uma surpresa num sistema é sempre
+ * má, mesmo a mais bem-intencionada das cinco. Reavaliado em 10/08/2026
+ * (Parte 13 §Templates): mantido de propósito, não por esquecimento — abrir
+ * duas janelas e falar sozinho no primeiro arranque, antes de a pessoa saber
+ * que automações existem, seria pior do que a pequena fricção de as ligar à
+ * mão uma vez.
  */
 export function seedAutomations(now: number = Date.now()): readonly Automation[] {
   return [

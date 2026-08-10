@@ -263,3 +263,29 @@ Nenhuma linha de código nova. O SPEC.md regista a avaliação; construir
 fica combinado para depois de a Fase 1 nativa desbloquear sandbox (o
 mesmo pré-requisito que já bloqueia "Carregar e executar um plugin",
 sem novidade nenhuma aqui — só a resposta a "o que falta", por escrito).
+
+**Bloco 5 — Automações.** Dois pedidos, um encontrou um bug de
+documentação, o outro descreveu porque não é para começar já.
+
+**Templates desligados**: o comentário em `data/automations.ts` dizia que
+a automação do arranque era exceção à regra "todas desligadas por
+omissão" — nunca foi, nem no código nem no teste que já garantia isto.
+Corrigido o comentário, não o código: o próprio teste
+(`automation-service.test.ts`) já prova que as cinco vêm desligadas, sem
+exceção, e a razão fica escrita — abrir janelas e falar sozinho no
+primeiro arranque, antes de a pessoa saber que automações existem, seria
+pior do que a fricção de as ligar à mão.
+
+**Editor visual em blocos**: lida a Parte 13 original a sério antes de
+decidir. Pede um editor de nós com dez tipos de bloco — incluindo Loop,
+Variável, IA e Plugin como passos — ligados visualmente, com zoom, pan,
+seleção múltipla, copiar/colar e agrupar. O motor de hoje é
+`Gatilho → Condições[] → Ações[]`, uma lista plana, sem ramos nem loops
+nem variáveis. Um editor de nós sobre um motor plano seria interface a
+fingir — a mesma razão por que o Terminal continua de fora. **Não
+começado.** Três decisões por tomar primeiro, nenhuma técnica: se
+"editor visual" é mesmo um canvas de nós livre ou bastaria um construtor
+mais simples sobre o modelo que já existe; se for o canvas a sério, o
+modelo de dados muda primeiro — projeto à parte, maior do que o editor;
+e o que fazer aos blocos (Plugin, webhook/API) que dependem de
+capacidades ainda bloqueadas nesta app.
