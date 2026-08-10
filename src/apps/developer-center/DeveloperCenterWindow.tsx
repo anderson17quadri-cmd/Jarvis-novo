@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Activity, ScrollText, TerminalSquare, Trash2 } from 'lucide-react';
+import { Activity, Cpu, ScrollText, TerminalSquare, Trash2 } from 'lucide-react';
 
 import { useCapabilities, usePlatformInfo } from '@/hooks/use-platform';
 import { CommandConsole } from './CommandConsole';
@@ -15,6 +15,8 @@ import {
   type LogLevel,
   type LogSource,
 } from '@/services/log-service';
+import { systemService } from '@/services/system-service';
+import type { ProcessInfo } from '@/types/system';
 
 const LEVEL_STYLE: Record<LogLevel, string> = {
   debug: 'text-t3',
@@ -23,7 +25,7 @@ const LEVEL_STYLE: Record<LogLevel, string> = {
   erro: 'text-danger',
 };
 
-type Tab = 'registo' | 'estado' | 'consola';
+type Tab = 'registo' | 'estado' | 'consola' | 'processos';
 
 /** De quanto em quanto tempo o diagnóstico é relido. */
 const DIAGNOSTICS_INTERVAL_MS = 2_000;
@@ -69,6 +71,10 @@ export default function DeveloperCenterWindow(): React.JSX.Element {
           <TerminalSquare className="h-3.5 w-3.5" aria-hidden="true" />
           Consola
         </TabButton>
+        <TabButton isActive={tab === 'processos'} onClick={() => setTab('processos')}>
+          <Cpu className="h-3.5 w-3.5" aria-hidden="true" />
+          Processos
+        </TabButton>
 
         {tab === 'registo' && entries.length > 0 && (
           <button
@@ -83,6 +89,7 @@ export default function DeveloperCenterWindow(): React.JSX.Element {
       </div>
 
       {tab === 'consola' && <CommandConsole />}
+      {tab === 'processos' && <ProcessList />}
 
       {tab === 'registo' && (
         <>
@@ -336,5 +343,74 @@ function TabButton({
     >
       {children}
     </button>
+  );
+}
+
+/** De quanto em quanto tempo a lista de processos é relida. */
+const PROCESS_POLL_MS = 3_000;
+
+/**
+ * Lista de processos (Parte 16 §Diagnóstico).
+ *
+ * Mostra nome, PID e memória. Sem ações — matar processos, etc. — nesta
+ * primeira versão. Só aparece onde a plataforma der acesso à lista.
+ */
+function ProcessList(): React.JSX.Element {
+  const capabilities = useCapabilities();
+  const [processes, setProcesses] = useState<readonly ProcessInfo[]>([]);
+
+  useEffect(() => {
+    if (!capabilities.processList) return;
+
+    let cancelled = false;
+
+    const poll = (): void => {
+      if (cancelled) return;
+      void systemService.getTopProcesses().then((list) => {
+        if (!cancelled) setProcesses(list);
+      });
+    };
+
+    poll();
+    const timer = setInterval(poll, PROCESS_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [capabilities.processList]);
+
+  if (!capabilities.processList) {
+    return (
+      <p className="py-s3 text-center text-desc text-t3">
+        A lista de processos não está disponível nesta plataforma.
+      </p>
+    );
+  }
+
+  if (processes.length === 0) {
+    return <p className="py-s3 text-center text-desc text-t3">A ler processos…</p>;
+  }
+
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      <table className="w-full text-left">
+        <thead>
+          <tr className="border-b border-line text-[10px] uppercase tracking-[0.12em] text-t3">
+            <th className="pb-2 pr-2 font-medium">Nome</th>
+            <th className="pb-2 pr-2 text-right font-medium">PID</th>
+            <th className="pb-2 text-right font-medium">Memória</th>
+          </tr>
+        </thead>
+        <tbody>
+          {processes.map((process) => (
+            <tr key={process.pid} className="border-b border-line/40 text-[11.5px]">
+              <td className="max-w-[200px] truncate py-2 pr-2 text-t2">{process.name}</td>
+              <td className="mono py-2 pr-2 text-right text-t3">{process.pid}</td>
+              <td className="mono py-2 text-right text-t2">{formatBytes(process.memoryBytes)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
