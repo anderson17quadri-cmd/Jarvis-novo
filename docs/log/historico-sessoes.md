@@ -441,3 +441,16 @@ fazer, não escondida nem forçada com testes a falhar.
 Confirmado com `tsc`, `eslint`, a suite toda, e um `npm run build` a
 sério (produção, não só o `dev`) — o `vite.config.ts` mudou, tinha de se
 confirmar que o build ainda produzia os chunks certos.
+
+## 2026-08-10 — Verificação automática (CI), a rede de segurança que faltava
+
+Com três sessões (esta, o Claude, a DeepSeek) a empurrar para o mesmo
+branch em paralelo, e nenhuma verificação automática a correr em cada
+`push` — nada apanhava um envio partido antes da sessão seguinte puxar
+por cima dele. `.github/workflows/check.yml`, novo: `npm ci`, `npm run
+check` (o próprio script já existente, `typecheck && lint && test`), e
+`npm run build`, em todo o `push` e `pull_request`, Node 22.
+
+Validado a sério antes de enviar, não só a sintaxe do YAML: correram-se
+os mesmos três comandos localmente, exatamente como o workflow os
+corre — 1101 testes, `tsc` e `eslint` limpos, build de produção completo.
