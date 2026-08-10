@@ -602,3 +602,36 @@ a mesma assinatura `Omit<Automation, 'id' | ...>` que o motor já expõe.
 
 Confirmado: `tsc` limpo, `eslint` limpo, 1115/1118 testes passam (as 3
 falhas são as mesmas pré-existentes).
+
+## 2026-08-11 — Voz e assistente: data no contexto, limite de mensagens, Whisper lazy
+
+Quatro melhorias na voz e no assistente:
+
+1. **Data no contexto do assistente.** `describeContext()` em `context.ts`
+   injectava só a hora ("São 14:30."), nunca a data — o modelo tinha de
+   adivinhar o dia. Passou a incluir a data por extenso em português
+   ("Hoje é segunda-feira, 11 de agosto de 2026.") antes da hora, para
+   qualquer provedor (DeepSeek, Claude, Ollama) receber o dia sem ter de
+   o calcular.
+
+2. **Limite de mensagens por conversa.** O store do assistente não tinha
+   limite nenhum de mensagens dentro de uma conversa — o array crescia
+   sem freio, e a serialização (`persist()`), as cópias imutáveis de
+   estado e o mapeamento durante o streaming (`appendToMessage`) pesavam
+   cada vez mais com o tamanho do histórico. `MSG_LIMIT = 200` em
+   `types/assistant.ts`, aplicado em `addMessage()`: a primeira mensagem
+   nunca cai (é o título da conversa), as mais antigas saem ao atingir
+   o limite.
+
+3. **Carregamento lazy do Whisper.** `voice-clone-service/server.py`
+   carregava o modelo Whisper no arranque (`whisper.load_model()` em
+   `carregar_modelo`), junto com o XTTS-v2. Se a GPU não tivesse
+   memória para os dois ao mesmo tempo, nem a síntese arrancava. Agora
+   `_carregar_stt_se_preciso()` só importa e carrega o Whisper na
+   primeira chamada a `/ouvir` — o `/health` reporta
+   `reconhecimento_a_carregar` enquanto está a meio.
+
+4. **Cadeia de fallback do Ollama** — já estava feito (`provider-chain.ts`,
+   SPEC.md linha 371), confirmado e passado à frente.
+
+Confirmado: `tsc` limpo, `eslint` limpo, 1118/1118 testes passam.

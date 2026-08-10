@@ -45,9 +45,18 @@ export function greetingFor(hour: number): string {
  */
 export function describeContext(context: AssistantContext): string {
   const lines: string[] = [];
+
+  // Data por extenso em português — para o modelo saber o dia sem adivinhar.
+  const dateFormat = new Intl.DateTimeFormat('pt-PT', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+  lines.push(`Hoje é ${dateFormat.format(context.now)}.`);
+
   const hours = context.now.getHours().toString().padStart(2, '0');
   const minutes = context.now.getMinutes().toString().padStart(2, '0');
-
   lines.push(`São ${hours}:${minutes}.`);
 
   if (context.weather) {

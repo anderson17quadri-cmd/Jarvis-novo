@@ -106,9 +106,13 @@ app.add_middleware(
 _tts_model = None
 
 # O modelo de reconhecimento (Whisper), carregado à parte do de síntese —
-# ver a nota junto a `STT_MODEL_NAME`. Mesma regra do `_tts_model`: `None`
-# até estar pronto.
+# ver a nota junto a `STT_MODEL_NAME`. Só carrega na primeira chamada a
+# `/ouvir`, nunca no arranque: se a GPU não tiver memória para os dois ao
+# mesmo tempo, a síntese (a funcionalidade original) continua a funcionar
+# sozinha, e a transcrição fica a dar "ainda a carregar" em vez de bloquear
+# o arranque. `None` até lá.
 _stt_model = None
+_stt_loading = False
 
 
 def _preparar_ffmpeg_no_windows() -> None:
@@ -140,23 +144,39 @@ def _preparar_ffmpeg_no_windows() -> None:
 
 @app.on_event("startup")
 def carregar_modelo() -> None:
-    global _tts_model, _vozes_disponiveis, _stt_model
+    global _tts_model, _vozes_disponiveis
     _preparar_ffmpeg_no_windows()
 
     # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
     # PyTorch a inicializar a GPU, e isso não deve acontecer só por importar
     # este módulo (por exemplo, em testes que nunca chegam a arrancar o servidor).
     from TTS.api import TTS
-    import whisper
 
     device = "cuda" if os.environ.get("VOICE_CLONE_CPU") != "1" else "cpu"
     _tts_model = TTS(MODEL_NAME).to(device)
     _vozes_disponiveis = list(_tts_model.speakers or [])
 
-    # Carregado depois do XTTS-v2: se a GPU não tiver memória para os dois,
-    # é melhor a síntese (já confirmada a funcionar) continuar a arrancar do
-    # que os dois falharem por causa do reconhecimento, que é o mais novo.
-    _stt_model = whisper.load_model(STT_MODEL_NAME, device=device)
+    # O Whisper NÃO carrega aqui — só na primeira chamada a `/ouvir`
+    # (`_carregar_stt_se_preciso`). Se a GPU não tiver memória para os dois
+    # ao mesmo tempo, a síntese (a funcionalidade original) continua a
+    # funcionar, e a transcrição fica a dar "ainda a carregar".
+
+
+def _carregar_stt_se_preciso() -> None:
+    """Carrega o Whisper, uma vez só, na primeira chamada a /ouvir."""
+    global _stt_model, _stt_loading
+    if _stt_model is not None:
+        return
+    if _stt_loading:
+        raise HTTPException(503, "O reconhecimento ainda está a carregar. Tenta outra vez em instantes.")
+
+    _stt_loading = True
+    try:
+        import whisper
+        device = "cuda" if os.environ.get("VOICE_CLONE_CPU") != "1" else "cpu"
+        _stt_model = whisper.load_model(STT_MODEL_NAME, device=device)
+    finally:
+        _stt_loading = False
 
 
 @app.get("/health")
@@ -166,6 +186,7 @@ def saude() -> Response:
         "modelo_carregado": _tts_model is not None,
         "voz_configurada": REFERENCE_PATH.exists(),
         "reconhecimento_carregado": _stt_model is not None,
+        "reconhecimento_a_carregar": _stt_loading,
     })
 
 
@@ -306,8 +327,7 @@ async def ouvir(ficheiro: UploadFile, idioma: str = Form("pt")) -> Response:
     para não confiar nesse texto — sem ele, um comando de voz executava-se
     sozinho a partir do ruído do microfone.
     """
-    if _stt_model is None:
-        raise HTTPException(503, "O reconhecimento ainda está a carregar. Tenta outra vez em instantes.")
+    _carregar_stt_se_preciso()
 
     conteudo = await ficheiro.read()
     if len(conteudo) < 100:

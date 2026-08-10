@@ -4,6 +4,7 @@ import { createId } from '@/lib/id';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import {
   CONVERSATION_LIMIT,
+  MSG_LIMIT,
   SUCCESS_MODE_DURATION_MS,
   TITLE_MAX_LENGTH,
   UNTITLED_CONVERSATION,
@@ -188,11 +189,17 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         const shouldName =
           conversation.title === UNTITLED_CONVERSATION && author === 'user' && text.length > 0;
 
+        const allMessages = [...conversation.messages, message];
+        // Manter só as últimas MSG_LIMIT — a primeira nunca cai (é o título).
+        const trimmed: readonly AssistantMessage[] = allMessages.length > MSG_LIMIT
+          ? [allMessages[0]!, ...allMessages.slice(-(MSG_LIMIT - 1))]
+          : allMessages;
+
         return {
           ...conversation,
           title: shouldName ? titleFrom(text) : conversation.title,
           updatedAt: message.createdAt,
-          messages: [...conversation.messages, message],
+          messages: trimmed,
         };
       }),
     }));

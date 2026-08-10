@@ -50,6 +50,9 @@ export interface AssistantConversation {
 /** Quantas conversas não fixadas se guardam. As fixadas não contam. */
 export const CONVERSATION_LIMIT = 40;
 
+/** Quantas mensagens no máximo em cada conversa. A partir daqui, as mais antigas caem. */
+export const MSG_LIMIT = 200;
+
 /** Título de uma conversa ainda sem nada escrito. */
 export const UNTITLED_CONVERSATION = 'Nova conversa';
 
