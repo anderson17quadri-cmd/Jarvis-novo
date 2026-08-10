@@ -1,6 +1,8 @@
 import { Check, Download, Power, ShieldAlert, Star, Trash2 } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
+import { PluginRuntime } from '@/plugins/runtime/PluginRuntime';
+import { PLUGIN_RUNTIMES } from '@/plugins/runtime/registry';
 import { notificationService } from '@/services/notification-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import type { PlatformCapabilities } from '@/types/platform';
@@ -29,6 +31,7 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
   const persist = usePluginStore((store) => store.persist);
 
   const Icon = entry.icon;
+  const runtime = PLUGIN_RUNTIMES[entry.id];
   const permissions = listPermissions(entry.permissions);
   const missing = missingCapabilities(entry, capabilities);
   const isAvailable = missing.length === 0;
@@ -149,6 +152,12 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
           <p className="flex items-center text-[11px] text-t3">Instalado, mas desativado.</p>
         )}
       </div>
+
+      {isInstalled && state.isEnabled && runtime && (
+        <div className="mt-3">
+          <PluginRuntime pluginId={entry.id} source={runtime.source} triggerLabel={runtime.triggerLabel} />
+        </div>
+      )}
     </li>
   );
 }

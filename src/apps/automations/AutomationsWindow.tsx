@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { History, Info, Play, Power, Trash2, Zap } from 'lucide-react';
+import { History, Info, Pencil, Play, Plus, Power, Trash2, Zap } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { formatTime } from '@/lib/format';
@@ -13,6 +13,7 @@ import {
   type AutomationRun,
   type RunResult,
 } from '@/types/automation';
+import { AutomationEditor } from './AutomationEditor';
 
 const RESULT_STYLE: Record<RunResult, string> = {
   ok: 'text-ok',
@@ -21,6 +22,7 @@ const RESULT_STYLE: Record<RunResult, string> = {
 };
 
 type Tab = 'regras' | 'historico';
+type Mode = 'lista' | 'editor';
 
 /**
  * Automações (Parte 13).
@@ -34,6 +36,8 @@ type Tab = 'regras' | 'historico';
  */
 export default function AutomationsWindow(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('regras');
+  const [mode, setMode] = useState<Mode>('lista');
+  const [editing, setEditing] = useState<Automation | undefined>(undefined);
 
   const automations = useSyncExternalStore(
     (onChange) => automationService.subscribe(onChange),
@@ -55,6 +59,23 @@ export default function AutomationsWindow(): React.JSX.Element {
 
   const enabledCount = automations.filter((automation) => automation.isEnabled).length;
 
+  const handleSaved = () => {
+    setMode('lista');
+    setEditing(undefined);
+  };
+
+  if (mode === 'editor') {
+    return (
+      <div className="flex h-full flex-col">
+        <AutomationEditor
+          onClose={() => { setMode('lista'); setEditing(undefined); }}
+          onSaved={handleSaved}
+          {...(editing ? { existing: editing } : {})}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full flex-col gap-s2">
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
@@ -73,11 +94,24 @@ export default function AutomationsWindow(): React.JSX.Element {
           Histórico ({history.length})
         </TabButton>
 
+        <button
+          type="button"
+          onClick={() => { setEditing(undefined); setMode('editor'); }}
+          className={cn(
+            'ml-auto flex items-center gap-1.5 rounded-btn border px-3 py-2',
+            'text-[12px] font-medium transition-all duration-hover',
+            'border-accent/50 bg-accent/[.1] text-accent hover:shadow-glow',
+          )}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Nova
+        </button>
+
         {tab === 'historico' && history.length > 0 && (
           <button
             type="button"
             onClick={() => automationService.clearHistory()}
-            className="ml-auto text-[11px] text-t3 transition-colors duration-hover hover:text-danger"
+            className="text-[11px] text-t3 transition-colors duration-hover hover:text-danger"
           >
             Limpar
           </button>
@@ -100,6 +134,7 @@ export default function AutomationsWindow(): React.JSX.Element {
               key={automation.id}
               automation={automation}
               onRun={() => setLastRun(automationService.run(automation.id, true))}
+              onEdit={() => { setEditing(automation); setMode('editor'); }}
             />
           ))}
 
@@ -141,9 +176,11 @@ export default function AutomationsWindow(): React.JSX.Element {
 function AutomationCard({
   automation,
   onRun,
+  onEdit,
 }: {
   readonly automation: Automation;
   readonly onRun: () => void;
+  readonly onEdit: () => void;
 }): React.JSX.Element {
   return (
     <li
@@ -208,6 +245,15 @@ function AutomationCard({
         >
           <Play className="h-3.5 w-3.5" aria-hidden="true" />
           Executar
+        </button>
+
+        <button
+          type="button"
+          onClick={onEdit}
+          aria-label={`Editar: ${automation.name}`}
+          className="rounded p-1.5 text-t3 transition-colors duration-hover hover:text-accent"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
 
         <button

@@ -520,3 +520,25 @@ Os três corrigem-se com o mesmo mecanismo: um contador de geração
 para se poder revogar a qualquer momento, e não só no `onended`.
 Confirmado: `tsc` limpo, `eslint` limpo, 6/6 testes do echo guard a
 passar, suite toda sem regressões (as 3 falhas são pré-existentes).
+
+## 2026-08-11 — Editor visual de automações
+
+Implementou-se o editor visual de automações em três colunas
+(QUANDO/SE/ENTÃO) com drag-and-drop da paleta de blocos, sobre o motor
+que já existia (`AutomationTrigger → AutomationCondition[] → AutomationAction[]`).
+O escopo é contido de propósito: a spec original pedia um canvas de nós
+completo com loops, variáveis e ramos, mas isso exigiria um modelo de
+dados novo e capacidades que ainda não existem. O que ficou resolve o
+que o motor de hoje oferece, sem interface a fingir.
+
+A criação por linguagem natural também ficou feita — o botão "Interpretar"
+envia a frase ao `aiService` com um prompt que lista os IDs reais (apps,
+temas, widgets, estados), extrai o JSON da resposta, preenche os blocos,
+nome e descrição. O utilizador revê e confirma antes de guardar.
+
+A janela de Automações ganhou um botão "Nova" e um botão de editar
+(lápis) em cada regra. A integração usa o `automationService.add()` com
+a mesma assinatura `Omit<Automation, 'id' | ...>` que o motor já expõe.
+
+Confirmado: `tsc` limpo, `eslint` limpo, 1115/1118 testes passam (as 3
+falhas são as mesmas pré-existentes).

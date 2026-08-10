@@ -22,9 +22,10 @@ import type { PlatformCapabilities } from '@/types/platform';
  *
  * Instalar continua a só mudar um estado local — nenhum destes descarrega
  * código de lado nenhum. A sandbox de execução (`plugins/runtime/`) já existe
- * e já corre um plugin a sério (`ola-notificacao`); os outros do catálogo
- * ainda não têm código por trás, capacidade a capacidade, à medida que a
- * sandbox cobre mais do protocolo. Desenho em `docs/spec/plugins-sandbox.md`.
+ * e já corre quatro plugins a sério (`ola-notificacao`, `ola-ficheiro`,
+ * `ola-rede`, `dispara-automacao` — notificações, ficheiros, rede e disparar
+ * automações); os outros do catálogo continuam só interface. Desenho em
+ * `docs/spec/plugins-sandbox.md`.
  */
 
 export type PluginCategory = 'produtividade' | 'desenvolvimento' | 'media' | 'integracao' | 'ia';

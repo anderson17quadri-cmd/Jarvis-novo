@@ -60,8 +60,10 @@ export default function PluginManagerWindow(): React.JSX.Element {
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         <span>
-          Modo de demonstração: nenhum plugin é descarregado nem executado. Instalar regista a
-          escolha; a execução chega com a camada nativa.
+          A maioria destes plugins ainda só regista a instalação — instalar escreve a escolha e
+          mais nada. A sandbox de execução já existe (iframe restrito, permissões verificadas a
+          sério): os quatro "Olá, …" e "Dispara automação" correm código de verdade —
+          notificações, ficheiros e rede, cada um com a sua permissão.
         </span>
       </p>
 

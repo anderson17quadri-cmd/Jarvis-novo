@@ -82,8 +82,10 @@ function Permissions(): React.JSX.Element {
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
         <span>
-          Nenhum plugin executa ainda, por isso recusar aqui não impede nada hoje — guarda a
-          decisão para quando o carregamento real existir.
+          Para a maioria dos plugins recusar aqui só guarda a decisão para quando a execução
+          existir. Para os que já correm código a sério (os plugins de exemplo "Olá, …" e
+          "Dispara automação", para já) recusar impede mesmo o pedido — testável na Loja de
+          plugins.
         </span>
       </p>
 
