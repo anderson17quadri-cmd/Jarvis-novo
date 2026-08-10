@@ -48,6 +48,7 @@ interface AnthropicErrorBody {
 export class ClaudeProvider implements AiProvider {
   readonly id = 'claude';
   readonly name = 'Claude';
+  readonly isRemote = true;
 
   constructor(
     private apiKey: string,

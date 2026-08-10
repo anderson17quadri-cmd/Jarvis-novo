@@ -13,6 +13,7 @@ import type { AiProvider } from '@/types/assistant';
 function fakeProvider(id: string, configured: boolean): AiProvider {
   return {
     id,
+    isRemote: true,
     name: id,
     isConfigured: () => configured,
     stream: async function* (): AsyncIterable<string> {

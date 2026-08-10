@@ -188,3 +188,20 @@ dials (`detectAnimationProfile`), para nunca haver dois sítios a poder
 discordar sobre qual perfil está ativo. Ambas confirmadas ao vivo por
 CDP, não só pelos 7 testes novos: os anéis a desaparecer e a voltar, e
 "Minimal" a marcar-se sozinho como ativo.
+
+**Bloco 4 — Permissões por plugin, a sério.** Nenhum plugin executa código
+próprio, mas duas das entradas do catálogo — "Assistente JARVIS" e "Motor
+de automações" — descrevem funcionalidades a sério do próprio sistema, não
+código descarregado. Encontraram-se as duas chamadas reais por trás delas
+e ligou-se a recusa a impedi-las: a permissão de rede do assistente agora
+impede `ai-service.ts` de sequer tentar `provider.stream()` num provedor
+remoto (DeepSeek, Claude) — nem à primeira, nem na cadeia, com o motivo
+dito e queda para o local, tudo a reaproveitar o mecanismo de fallback já
+existente (`AiFailureKind: 'permissao'`); a de notificações das automações
+impede a ação `notificar` de chegar a `notificationService`. Não foi só
+"a resposta veio de outro sítio" que se provou: 5 testes novos garantem
+que a chamada **nunca acontece**, com um provedor de mentira que rebenta o
+teste se alguém lhe tocar. Confirmado também ao vivo: o interruptor "Rede"
+muda para "Recusada" na Privacidade e persiste. Não se inventou nenhuma
+permissão nova nem se tocou nas outras — não há mais nenhuma chamada real
+por trás delas.

@@ -33,6 +33,7 @@ const TIMEOUT_MS = 60_000;
 export class OllamaProvider implements AiProvider {
   readonly id = 'ollama';
   readonly name = 'Ollama';
+  readonly isRemote = false;
 
   constructor(
     private model: string,

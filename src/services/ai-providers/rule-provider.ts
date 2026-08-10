@@ -34,6 +34,7 @@ const THINKING_JITTER_MS = 380;
 export class RuleProvider implements AiProvider {
   readonly id = 'regras';
   readonly name = 'Contexto local';
+  readonly isRemote = false;
 
   private fallbackIndex = 0;
 

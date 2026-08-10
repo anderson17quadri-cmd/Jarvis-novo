@@ -39,6 +39,7 @@ import { setVoiceExecutor } from '@/services/voice/executor';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
+import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-store';
 import { useSessionStore } from '@/stores/use-session-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useTaskStore } from '@/stores/use-task-store';
@@ -131,9 +132,16 @@ export function App(): React.JSX.Element {
     return automationService.start(
       {
         openWindow: (appId) => launch(appId as AppId),
-        notify: (title, description) => notificationService.info(title, description, {
-          category: 'automacao',
-        }),
+        notify: (title, description) => {
+          // A permissão de notificações do plugin "Motor de automações"
+          // (Parte 14 §Permissões por plugin) é a sério aqui: recusada,
+          // nenhuma notificação sai — não é só um estado guardado sem efeito.
+          if (selectPermissionDenied(usePluginStore.getState(), 'automations', 'notifications')) {
+            logService.audit(`Notificação de automação bloqueada: "${title}"`, 'recusado');
+            return;
+          }
+          notificationService.info(title, description, { category: 'automacao' });
+        },
         setTheme: (theme) => setTheme(theme as ThemeId),
         setSystemState: (state) => {
           useSystemStateStore.getState().set(state as SystemStateId);

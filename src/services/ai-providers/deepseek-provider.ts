@@ -59,6 +59,7 @@ export interface StreamResult {
 export class DeepSeekProvider implements AiProvider {
   readonly id = 'deepseek';
   readonly name = 'DeepSeek';
+  readonly isRemote = true;
 
   /**
    * A escolha da última resposta (Parte 12 §Seleção automática).

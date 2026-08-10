@@ -18,6 +18,7 @@ import type { AiProvider } from '@/types/assistant';
 function brokenProvider(kind: AiFailureKind, textBefore = ''): AiProvider {
   return {
     id: 'regras',
+    isRemote: false,
     name: 'partido',
     isConfigured: () => true,
     async *stream(): AsyncIterable<string> {
@@ -31,6 +32,7 @@ function brokenProvider(kind: AiFailureKind, textBefore = ''): AiProvider {
 function workingProvider(text: string): AiProvider {
   return {
     id: 'regras',
+    isRemote: false,
     name: 'a funcionar',
     isConfigured: () => true,
     async *stream(): AsyncIterable<string> {

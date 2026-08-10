@@ -116,6 +116,15 @@ export const MEMORY_PROMPT_LIMIT = 20;
 export interface AiProvider {
   readonly id: string;
   readonly name: string;
+  /**
+   * `true` quando responder implica mandar o pedido para fora da máquina —
+   * a DeepSeek, o Claude. `false` para o `RuleProvider` (nunca fala com
+   * ninguém) e para o Ollama (corre no próprio dispositivo, ver
+   * Parte 7.2 §AI Orchestrator). É o que a permissão de rede do plugin
+   * "Assistente JARVIS" (Parte 14 §Permissões por plugin) condiciona de
+   * verdade — ver `ai-service.ts`.
+   */
+  readonly isRemote: boolean;
   /** `false` quando falta configuração (uma chave de API, por exemplo). */
   isConfigured(): boolean;
   /**

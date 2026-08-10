@@ -1,4 +1,5 @@
 import { selectMessages, useAssistantStore } from '@/stores/use-assistant-store';
+import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-store';
 import { notificationService } from './notification-service';
 import type { AiProvider, AiRequest } from '@/types/assistant';
 import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
@@ -33,6 +34,14 @@ import { AiFailure, planFallback } from '@/types/ai-failure';
  */
 /** Quantas idas ao modelo se permitem antes de se parar. */
 const TOOL_ROUNDS = 5;
+
+/**
+ * O plugin que o catálogo usa para descrever o assistente (Parte 14
+ * §Permissões por plugin) — não executa código próprio, como nenhum
+ * plugin executa, mas a permissão de rede dele é a sério: ver
+ * `AIService.networkBlocked`.
+ */
+const ASSISTANT_PLUGIN_ID = 'core-assistant';
 
 /** Uma ferramenta destrutiva à espera de resposta. */
 export interface PendingConfirmation {
@@ -76,6 +85,19 @@ export class AIService {
   }
 
   /**
+   * `true` quando o provedor atual mandaria o pedido para fora da máquina e
+   * a permissão de rede do plugin "Assistente JARVIS" está recusada (Parte
+   * 14 §Permissões por plugin). O `RuleProvider` e o Ollama nunca batem
+   * aqui — `isRemote` é `false` nos dois, porque nenhum sai da máquina.
+   */
+  private networkBlocked(): boolean {
+    return (
+      this.provider.isRemote &&
+      selectPermissionDenied(usePluginStore.getState(), ASSISTANT_PLUGIN_ID, 'network')
+    );
+  }
+
+  /**
    * Envia uma mensagem e escreve a resposta no store.
    * Devolve o texto completo, para quem quiser lê-lo em voz alta.
    */
@@ -96,6 +118,23 @@ export class AIService {
 
     const messageId = store.addMessage('assistant', '', true);
     let full = '';
+
+    // A permissão bloqueia antes de qualquer pedido sair — não é uma falha
+    // de rede a sério, é a rede nem chegar a ser tentada.
+    if (this.networkBlocked()) {
+      return await this.recover(new AiFailure('permissao'), {
+        messageId,
+        request: {
+          prompt,
+          history: selectMessages(useAssistantStore.getState()),
+          context: readContext(),
+          memory: memoryService.current,
+          signal,
+        },
+        text: '',
+        isAborted: false,
+      });
+    }
     let hasStartedSpeaking = false;
 
     try {
@@ -180,6 +219,15 @@ export class AIService {
 
     const messages: unknown[] = [...buildMessages(request)];
     const pending: PendingConfirmation[] = [];
+
+    // A DeepSeek (única a chegar aqui, ver o `instanceof` acima) é sempre
+    // remota — a mesma verificação de `send()`, antes de qualquer pedido.
+    if (this.networkBlocked()) {
+      const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
+      await this.recover(new AiFailure('permissao'), { messageId, request, text: '', isAborted: false });
+      this.controller = null;
+      return pending;
+    }
 
     for (let round = 0; round < TOOL_ROUNDS; round += 1) {
       const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
@@ -318,6 +366,18 @@ export class AIService {
       const step = nextStep(this.chain, this.provider.name, failure, state.isAborted);
 
       if (step.action === 'tentar' && step.member) {
+        // O próximo da cadeia também é remoto e também está bloqueado: nem
+        // se tenta, nem se avisa "trocado" para uma troca que nunca chega a
+        // acontecer a sério. `this.provider` avança na mesma, para o
+        // `nextStep` da recursão seguinte não voltar a propor este mesmo.
+        if (
+          step.member.provider.isRemote &&
+          selectPermissionDenied(usePluginStore.getState(), ASSISTANT_PLUGIN_ID, 'network')
+        ) {
+          this.provider = step.member.provider;
+          return await this.recover(new AiFailure('permissao'), state);
+        }
+
         notificationService.warn('Provedor de IA trocado', step.notice, {
           category: 'assistente',
         });

@@ -26,7 +26,13 @@ export type AiFailureKind =
   /** Respondeu, mas sem corpo. */
   | 'vazio'
   /** Falta a chave — não é uma falha da rede, é uma configuração por fazer. */
-  | 'configuracao';
+  | 'configuracao'
+  /**
+   * A permissão de rede do plugin "Assistente JARVIS" foi recusada na
+   * Privacidade (Parte 14 §Permissões por plugin) — nunca chega a sair
+   * nenhum pedido, ao contrário de todas as outras (essas já tentaram).
+   */
+  | 'permissao';
 
 /** O que se diz a quem está à espera. Sem códigos, sem jargão. */
 export const AI_FAILURE_REASONS: Record<AiFailureKind, string> = {
@@ -38,6 +44,7 @@ export const AI_FAILURE_REASONS: Record<AiFailureKind, string> = {
   demora: 'demorou demasiado',
   vazio: 'respondeu sem conteúdo',
   configuracao: 'falta a chave',
+  permissao: 'a permissão de rede do assistente está recusada',
 };
 
 /** O que a pessoa tem de fazer, quando há alguma coisa a fazer. */
@@ -46,6 +53,7 @@ export const AI_FAILURE_FIXES: Partial<Record<AiFailureKind, string>> = {
   saldo: 'Carregue a conta da DeepSeek.',
   configuracao: 'Abra a Personalização e cole a chave em Assistente.',
   limite: 'Espere um pouco antes de tentar outra vez.',
+  permissao: 'Permita a rede ao "Assistente JARVIS" na Privacidade → Permissões.',
 };
 
 export class AiFailure extends Error {
