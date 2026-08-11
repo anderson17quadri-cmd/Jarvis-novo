@@ -16,6 +16,7 @@ export function seedProjects(now: number = Date.now()): readonly Project[] {
       tags: ['SaaS', 'clientes'],
       updatedAt: now - 3 * HOUR_MS,
       openTasks: 4,
+      attachments: [],
     },
     {
       id: 'p2',
@@ -26,6 +27,7 @@ export function seedProjects(now: number = Date.now()): readonly Project[] {
       tags: ['Tauri', 'React', 'Rust'],
       updatedAt: now - 40 * 60_000,
       openTasks: 7,
+      attachments: [],
     },
     {
       id: 'p3',
@@ -36,6 +38,7 @@ export function seedProjects(now: number = Date.now()): readonly Project[] {
       tags: ['web', 'clientes'],
       updatedAt: now - 9 * DAY_MS,
       openTasks: 2,
+      attachments: [],
     },
     {
       id: 'p4',
@@ -46,6 +49,7 @@ export function seedProjects(now: number = Date.now()): readonly Project[] {
       tags: ['infra'],
       updatedAt: now - 21 * DAY_MS,
       openTasks: 0,
+      attachments: [],
     },
   ];
 }

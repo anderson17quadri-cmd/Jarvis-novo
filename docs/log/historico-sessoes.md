@@ -812,3 +812,39 @@ primeira renderização). Confirmado por um teste que espia
 O resto da revisão (sandbox de plugins, Fase 3.1 — controlo direto,
 editor de automações) não encontrou mais nada — sem temporizadores nem
 `addEventListener` por limpar nessas peças.
+
+## 2026-08-11 — Anexos a sério: tipo partilhado, três janelas
+
+Pedido: anexos nas três janelas (Emails, Tarefas, Projetos), não só nos
+Emails. Usar o diálogo nativo que já existia, com nome/tamanho e
+pré-visualização para imagens.
+
+**Tipo partilhado** (`types/attachment.ts`): `Attachment` com `id`, `name`,
+`sizeBytes`, `kind` (derivado da extensão — `attachmentKind()`) e
+`dataUri`. `formatAttachmentSize()` para mostrar "1.2 MB" etc.
+
+**Componente partilhado** (`components/attachments/AttachmentList.tsx`):
+ícone por tipo (lucide), nome clicável para pré-visualização de imagem,
+tamanho formatado, modo só de leitura quando `onAttach`/`onRemove` não
+são passados.
+
+**Hook partilhado** (`hooks/use-attachments.ts`): `useAttachments()` gere a
+lista local; `attachViaNativeDialog()` tenta o diálogo nativo primeiro
+(`openAttachmentDialog` + `readFileAsDataUri`) — imagens ≤5 MB ganham
+data URI, os outros tipos ficam sem pré-visualização. Browser cai para
+`FileReader.readAsDataURL()` via `<input type="file">`.
+
+**Três janelas:**
+1. **Emails — leitura:** `AttachmentList` só de leitura abaixo do corpo.
+   O MockMailProvider ganhou amostras (PDF na Stripe, XLSX no fornecedor,
+   PDF nos domínios).
+2. **Tarefas — edição:** `addAttachment`/`removeAttachment` na store,
+   botão "Anexar" nativo-primeiro em cada `TaskRow`, pré-visualização
+   expansível, persistência imediata.
+3. **Projetos — leitura:** `AttachmentList` só de leitura em cada
+   `ProjectCard` (os projetos são sementes, sem edição).
+
+**Dados corrigidos:** `data/tasks.ts`, `data/projects.ts`, `mail-provider.ts`
+— todos com `attachments: []` (ou amostras) para o tipo `Task`/`Project`/
+`MailMessage` que agora exige o campo. Testes atualizados (`copilot.test.ts`,
+`task-store.test.ts`, `productivity-widgets.test.tsx`).

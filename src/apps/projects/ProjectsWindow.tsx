@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { CircleDot, ListTodo, Pause, Check } from 'lucide-react';
 
+import { AttachmentList } from '@/components/attachments/AttachmentList';
 import { seedProjects } from '@/data/projects';
 import { cn } from '@/lib/cn';
 import { PROJECT_STATUS_LABELS, type Project, type ProjectStatus } from '@/types/project';
@@ -105,6 +106,12 @@ function ProjectCard({ project }: { readonly project: Project }): React.JSX.Elem
           </span>
         ))}
       </p>
+
+      {project.attachments.length > 0 && (
+        <div className="mt-2.5 border-t border-line pt-2">
+          <AttachmentList attachments={project.attachments} />
+        </div>
+      )}
     </li>
   );
 }

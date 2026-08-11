@@ -14,6 +14,7 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     subtasks: [],
     isDone: false,
     createdAt: 0,
+    attachments: [],
     ...overrides,
   };
 }

@@ -26,17 +26,18 @@ const SEED: readonly Seed[] = [
     preview: 'Bom dia. Gostaríamos de ver o sistema a funcionar antes de decidir.',
     body: `Bom dia.
 
-Gostaríamos de ver o sistema a funcionar antes de decidir. Temos duas cadeiras e cerca de quarenta marcações por semana, quase todas por telefone.
+	Gostaríamos de ver o sistema a funcionar antes de decidir. Temos duas cadeiras e cerca de quarenta marcações por semana, quase todas por telefone.
 
-Interessa-nos sobretudo perceber como funcionam os lembretes por SMS e se conseguimos gerir os horários de dois barbeiros em simultâneo.
+	Interessa-nos sobretudo perceber como funcionam os lembretes por SMS e se conseguimos gerir os horários de dois barbeiros em simultâneo.
 
-Fica disponível esta semana para uma demonstração?
+	Fica disponível esta semana para uma demonstração?
 
-Cumprimentos,
-João Silva`,
+	Cumprimentos,
+	João Silva`,
     folder: 'inbox',
     priority: 'acao',
     hasAttachments: false,
+    attachments: [],
   },
   {
     id: 'm2',
@@ -46,13 +47,22 @@ João Silva`,
     preview: 'O pagamento de €49,00 foi processado e será transferido em 2 dias úteis.',
     body: `O pagamento de €49,00 foi processado e será transferido em 2 dias úteis.
 
-Referência: pi_3QxK2mF8sT
-Método: Visa terminado em 4242
+	Referência: pi_3QxK2mF8sT
+	Método: Visa terminado em 4242
 
-Pode consultar o recibo no painel da Stripe.`,
+	Pode consultar o recibo no painel da Stripe.`,
     folder: 'inbox',
     priority: 'info',
     hasAttachments: true,
+    attachments: [
+      {
+        id: 'att_recibo_stripe',
+        name: 'recibo-pagamento.pdf',
+        sizeBytes: 245_000,
+        kind: 'pdf',
+        dataUri: null,
+      },
+    ],
   },
   {
     id: 'm3',
@@ -62,14 +72,15 @@ Pode consultar o recibo no painel da Stripe.`,
     preview: 'anderson17quadri-cmd fez push de 3 commits para o branch principal.',
     body: `anderson17quadri-cmd fez push de 3 commits para o branch principal.
 
-- Corrige o cálculo dos intervalos entre marcações
-- Acrescenta validação ao formulário de cliente
-- Atualiza as dependências de segurança
+	- Corrige o cálculo dos intervalos entre marcações
+	- Acrescenta validação ao formulário de cliente
+	- Atualiza as dependências de segurança
 
-Ver as alterações no repositório.`,
+	Ver as alterações no repositório.`,
     folder: 'inbox',
     priority: 'info',
     hasAttachments: false,
+    attachments: [],
   },
   {
     id: 'm4',
@@ -79,14 +90,23 @@ Ver as alterações no repositório.`,
     preview: 'Seguem os preços revistos para a configuração que pediu.',
     body: `Seguem os preços revistos para a configuração que pediu.
 
-Portátil de desenvolvimento — 32 GB, 1 TB NVMe: €1.480
-Monitor 27" 1440p: €310
-Estação de ancoragem: €165
+	Portátil de desenvolvimento — 32 GB, 1 TB NVMe: €1.480
+	Monitor 27" 1440p: €310
+	Estação de ancoragem: €165
 
-Os valores mantêm-se válidos durante 15 dias. Precisamos de confirmação até sexta-feira para garantir o stock.`,
+	Os valores mantêm-se válidos durante 15 dias. Precisamos de confirmação até sexta-feira para garantir o stock.`,
     folder: 'inbox',
     priority: 'acao',
     hasAttachments: true,
+    attachments: [
+      {
+        id: 'att_orcamento_hw',
+        name: 'orcamento-atualizado.xlsx',
+        sizeBytes: 128_500,
+        kind: 'outro',
+        dataUri: null,
+      },
+    ],
   },
   {
     id: 'm5',
@@ -96,12 +116,13 @@ Os valores mantêm-se válidos durante 15 dias. Precisamos de confirmação até
     preview: 'Podemos remarcar para quinta-feira à tarde?',
     body: `Podemos remarcar para quinta-feira à tarde?
 
-A reunião de terça bateu com a apresentação ao cliente e preferíamos não a fazer à pressa. Quinta às 15h00 dá-nos tempo para rever o protótipo antes.
+	A reunião de terça bateu com a apresentação ao cliente e preferíamos não a fazer à pressa. Quinta às 15h00 dá-nos tempo para rever o protótipo antes.
 
-Diga se lhe serve.`,
+	Diga se lhe serve.`,
     folder: 'inbox',
     priority: 'acao',
     hasAttachments: false,
+    attachments: [],
   },
   {
     id: 'm6',
@@ -111,10 +132,11 @@ Diga se lhe serve.`,
     preview: 'Obrigado. Confirmo até sexta, depois de falar com a contabilidade.',
     body: `Obrigado pelos valores revistos.
 
-Confirmo até sexta-feira, depois de falar com a contabilidade. Se houver risco de rutura de stock no monitor, avise-me antes.`,
+	Confirmo até sexta-feira, depois de falar com a contabilidade. Se houver risco de rutura de stock no monitor, avise-me antes.`,
     folder: 'sent',
     priority: 'info',
     hasAttachments: false,
+    attachments: [],
   },
   {
     id: 'm7',
@@ -124,10 +146,19 @@ Confirmo até sexta-feira, depois de falar com a contabilidade. Se houver risco 
     preview: 'O domínio agendado.pt foi renovado por mais 12 meses.',
     body: `O domínio agendado.pt foi renovado por mais 12 meses.
 
-Próxima renovação automática daqui a um ano. Pode desativá-la no painel a qualquer momento.`,
+	Próxima renovação automática daqui a um ano. Pode desativá-la no painel a qualquer momento.`,
     folder: 'archive',
     priority: 'info',
     hasAttachments: true,
+    attachments: [
+      {
+        id: 'att_fatura_dominio',
+        name: 'fatura-renovacao.pdf',
+        sizeBytes: 89_200,
+        kind: 'pdf',
+        dataUri: null,
+      },
+    ],
   },
 ];
 

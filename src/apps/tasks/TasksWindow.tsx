@@ -1,9 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  File,
+  FileImage,
+  FileText,
+  Music,
+  Paperclip,
+  Plus,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { formatShortDate } from '@/lib/format';
+import { attachViaNativeDialog } from '@/hooks/use-attachments';
 import { sortByUrgency, useTaskStore } from '@/stores/use-task-store';
+import { attachmentKind, formatAttachmentSize, type Attachment, type AttachmentKind } from '@/types/attachment';
 import {
   isOverdue,
   taskProgress,
@@ -34,6 +47,8 @@ export default function TasksWindow(): React.JSX.Element {
   const toggleSubtask = useTaskStore((state) => state.toggleSubtask);
   const remove = useTaskStore((state) => state.remove);
   const clearDone = useTaskStore((state) => state.clearDone);
+  const addAttachment = useTaskStore((state) => state.addAttachment);
+  const removeAttachment = useTaskStore((state) => state.removeAttachment);
   const persist = useTaskStore((state) => state.persist);
   const hydrate = useTaskStore((state) => state.hydrate);
   const isHydrated = useTaskStore((state) => state.isHydrated);
@@ -161,6 +176,14 @@ export default function TasksWindow(): React.JSX.Element {
               remove(task.id);
               void persist();
             }}
+            onAddAttachment={(attachment) => {
+              addAttachment(task.id, attachment);
+              void persist();
+            }}
+            onRemoveAttachment={(attachmentId) => {
+              removeAttachment(task.id, attachmentId);
+              void persist();
+            }}
           />
         ))}
 
@@ -179,11 +202,66 @@ interface TaskRowProps {
   readonly onToggle: () => void;
   readonly onToggleSubtask: (subtaskId: string) => void;
   readonly onRemove: () => void;
+  readonly onAddAttachment: (attachment: Attachment) => void;
+  readonly onRemoveAttachment: (attachmentId: string) => void;
 }
 
-function TaskRow({ task, onToggle, onToggleSubtask, onRemove }: TaskRowProps): React.JSX.Element {
+const TASK_KIND_ICON: Record<AttachmentKind, React.ComponentType<{ className?: string }>> = {
+  imagem: FileImage,
+  pdf: FileText,
+  audio: Music,
+  video: Video,
+  outro: File,
+};
+
+function TaskRow({
+  task,
+  onToggle,
+  onToggleSubtask,
+  onRemove,
+  onAddAttachment,
+  onRemoveAttachment,
+}: TaskRowProps): React.JSX.Element {
   const progress = taskProgress(task);
   const overdue = isOverdue(task);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  const handleNativeAttach = async (): Promise<void> => {
+    const attachment = await attachViaNativeDialog();
+    if (attachment) onAddAttachment(attachment);
+    // Se o diálogo nativo não estiver disponível (null), abre o input do browser.
+    else fileInputRef.current?.click();
+  };
+
+  const handleBrowserFile = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+
+    const kind = attachmentKind(file.name);
+    const id = `att_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+
+    // Imagens pequenas: lê como data URI para pré-visualização.
+    if (kind === 'imagem' && file.size <= 5 * 1024 * 1024) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        onAddAttachment({
+          id,
+          name: file.name,
+          sizeBytes: file.size,
+          kind,
+          dataUri: reader.result as string,
+        });
+      };
+      reader.onerror = () => {
+        onAddAttachment({ id, name: file.name, sizeBytes: file.size, kind, dataUri: null });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      onAddAttachment({ id, name: file.name, sizeBytes: file.size, kind, dataUri: null });
+    }
+  };
 
   return (
     <li className="rounded-input border border-line bg-tint/[.02] p-2.5">
@@ -283,6 +361,86 @@ function TaskRow({ task, onToggle, onToggleSubtask, onRemove }: TaskRowProps): R
           <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
         </button>
       </div>
+
+      {/* Anexos */}
+      {task.attachments.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {task.attachments.map((att) => {
+            const Icon = TASK_KIND_ICON[att.kind];
+            const isPreviewOpen = previewId === att.id;
+
+            return (
+              <li key={att.id}>
+                <div
+                  className={cn(
+                    'flex items-center gap-2 rounded-input border border-line bg-tint/[.02] px-2.5 py-1.5',
+                    'text-[11px]',
+                  )}
+                >
+                  <Icon className="h-3 w-3 flex-shrink-0 text-t3" aria-hidden="true" />
+
+                  <button
+                    type="button"
+                    onClick={() => setPreviewId(isPreviewOpen ? null : att.id)}
+                    className="min-w-0 flex-1 truncate text-left text-t2 transition-colors hover:text-accent"
+                  >
+                    {att.name}
+                  </button>
+
+                  <span className="mono flex-shrink-0 text-[10px] text-t3">
+                    {formatAttachmentSize(att.sizeBytes)}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => onRemoveAttachment(att.id)}
+                    aria-label={`Remover ${att.name}`}
+                    className="flex-shrink-0 rounded p-0.5 text-t3 transition-colors hover:text-danger"
+                  >
+                    <X className="h-2.5 w-2.5" />
+                  </button>
+                </div>
+
+                {isPreviewOpen && att.kind === 'imagem' && att.dataUri !== null && (
+                  <div className="mt-1 overflow-hidden rounded-input border border-line">
+                    <img
+                      src={att.dataUri}
+                      alt={att.name}
+                      className="max-h-[160px] w-full object-contain"
+                    />
+                  </div>
+                )}
+
+                {isPreviewOpen && att.kind !== 'imagem' && (
+                  <p className="mt-1 px-2.5 text-[10.5px] text-t3">
+                    Pré-visualização disponível só para imagens.
+                  </p>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      <button
+        type="button"
+        onClick={() => void handleNativeAttach()}
+        className={cn(
+          'mt-2 flex items-center gap-1.5 rounded-input border border-line px-2 py-1.5',
+          'text-[11px] text-t3 transition-all duration-hover',
+          'hover:border-accent/35 hover:text-accent',
+        )}
+      >
+        <Paperclip className="h-3 w-3" aria-hidden="true" />
+        Anexar
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        aria-label="Anexar ficheiro à tarefa"
+        onChange={handleBrowserFile}
+      />
     </li>
   );
 }

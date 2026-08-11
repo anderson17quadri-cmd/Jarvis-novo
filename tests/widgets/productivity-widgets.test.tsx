@@ -113,6 +113,7 @@ describe('widget de Tarefas', () => {
           subtasks: [],
           isDone: false,
           createdAt: 0,
+          attachments: [],
         },
         {
           id: 'atrasada',
@@ -123,6 +124,7 @@ describe('widget de Tarefas', () => {
           subtasks: [],
           isDone: false,
           createdAt: 0,
+          attachments: [],
         },
       ],
     });
@@ -147,6 +149,7 @@ describe('widget de Tarefas', () => {
           subtasks: [],
           isDone: true,
           createdAt: 0,
+          attachments: [],
         },
       ],
     });

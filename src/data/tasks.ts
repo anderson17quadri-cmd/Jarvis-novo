@@ -28,6 +28,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       ],
       isDone: false,
       createdAt: inDays(-6, now),
+      attachments: [],
     },
     {
       id: 't2',
@@ -42,6 +43,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       ],
       isDone: false,
       createdAt: inDays(-4, now),
+      attachments: [],
     },
     {
       id: 't3',
@@ -52,6 +54,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       subtasks: [],
       isDone: false,
       createdAt: inDays(-3, now),
+      attachments: [],
     },
     {
       id: 't4',
@@ -62,6 +65,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       subtasks: [],
       isDone: false,
       createdAt: inDays(-1, now),
+      attachments: [],
     },
     {
       id: 't5',
@@ -72,6 +76,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       subtasks: [],
       isDone: false,
       createdAt: inDays(-8, now),
+      attachments: [],
     },
     {
       id: 't6',
@@ -82,6 +87,7 @@ export function seedTasks(now: number = Date.now()): readonly Task[] {
       subtasks: [],
       isDone: true,
       createdAt: inDays(-12, now),
+      attachments: [],
     },
   ];
 }

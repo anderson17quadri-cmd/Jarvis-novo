@@ -4,6 +4,7 @@ import { seedTasks } from '@/data/tasks';
 import { createId } from '@/lib/id';
 import { eventBus } from '@/services/event-bus';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
+import type { Attachment } from '@/types/attachment';
 import { TASK_PRIORITY_ORDER, type Task, type TaskPriority } from '@/types/task';
 
 /**
@@ -25,6 +26,8 @@ interface TaskState {
   remove: (id: string) => void;
   /** Apaga as concluídas de uma vez. */
   clearDone: () => void;
+  addAttachment: (taskId: string, attachment: Attachment) => void;
+  removeAttachment: (taskId: string, attachmentId: string) => void;
 
   persist: () => Promise<void>;
   hydrate: () => Promise<void>;
@@ -49,6 +52,7 @@ export const useTaskStore = create<TaskState>((set, get) => ({
         subtasks: [],
         isDone: false,
         createdAt: Date.now(),
+        attachments: [],
       };
 
       return { tasks: [task, ...state.tasks] };
@@ -85,6 +89,24 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   remove: (id) => set((state) => ({ tasks: state.tasks.filter((task) => task.id !== id) })),
 
   clearDone: () => set((state) => ({ tasks: state.tasks.filter((task) => !task.isDone) })),
+
+  addAttachment: (taskId, attachment) =>
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, attachments: [...task.attachments, attachment] }
+          : task,
+      ),
+    })),
+
+  removeAttachment: (taskId, attachmentId) =>
+    set((state) => ({
+      tasks: state.tasks.map((task) =>
+        task.id === taskId
+          ? { ...task, attachments: task.attachments.filter((att) => att.id !== attachmentId) }
+          : task,
+      ),
+    })),
 
   persist: async () => {
     await storageService.set(STORAGE_KEYS.tasks, get().tasks);

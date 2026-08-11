@@ -1,5 +1,7 @@
 /** Email (Parte 6.2 §Widgets previstos). */
 
+import type { Attachment } from './attachment';
+
 export type MailFolder = 'inbox' | 'sent' | 'archive';
 /** Marcação que a triagem do assistente atribui. */
 export type MailPriority = 'acao' | 'info';
@@ -19,6 +21,8 @@ export interface MailMessage {
   readonly isRead: boolean;
   readonly isStarred: boolean;
   readonly hasAttachments: boolean;
+  /** Anexos reais (11/08/2026). Vazio para mensagens simuladas sem anexos. */
+  readonly attachments: readonly Attachment[];
 }
 
 export interface MailboxSnapshot {

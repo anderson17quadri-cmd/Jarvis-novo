@@ -342,7 +342,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Memória local (preferências, últimos comandos) | ✅ | `services/assistant/memory-service.ts` — só guarda o que for dito por palavras ("trata-me por…", "moro em…"). Deduzir preferências do resto da conversa seria inventar sobre uma pessoa e depois usá-lo como verdade |
 | Contexto (data, hora, clima, janelas abertas, notificações) | ✅ | `services/assistant/context.ts` — a data por extenso ("Hoje é terça-feira, 11 de agosto de 2026") passou a entrar no prompt do sistema (**11/08/2026**), para o modelo saber o dia sem adivinhar. O tema chegava por identificador (`oled`) em vez de nome (`OLED Black`), a mesma família de defeito das automações e da voz — corrigido com `lib/names.ts` em `App.tsx` |
 | **Provedor de IA real** | ✅ | **DeepSeek ligada.** `deepseek-provider.ts` — API compatível com a da OpenAI, streaming pedaço a pedaço, cancelável. Trocar de provedor é uma linha; nenhum componente muda. A chave é escrita pelo utilizador na Personalização e fica no dispositivo |
-| Anexos: imagens, PDF, áudio, vídeo | ⬜ | Precisa de sistema de ficheiros |
+| Anexos: imagens, PDF, áudio, vídeo | ✅ | Tipo `Attachment` partilhado, `AttachmentList`, diálogo nativo + browser. Emails (leitura + composição), Tarefas (adicionar/remover), Projetos (leitura) |
 
 > **O `RuleProvider` responde a sério ao que sabe** — hora, data, meteorologia,
 > janelas abertas, notificações por ler, estado, tema e memória. Ao que não

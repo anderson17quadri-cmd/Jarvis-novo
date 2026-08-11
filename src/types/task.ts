@@ -1,5 +1,7 @@
 /** Tarefas (Parte 6.2 §Widgets previstos — lista, filtros, prioridade, etiquetas, subtarefas). */
 
+import type { Attachment } from './attachment';
+
 export type TaskPriority = 'alta' | 'media' | 'baixa';
 
 export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
@@ -31,6 +33,8 @@ export interface Task {
   readonly subtasks: readonly Subtask[];
   readonly isDone: boolean;
   readonly createdAt: number;
+  /** Anexos (11/08/2026). */
+  readonly attachments: readonly Attachment[];
 }
 
 /**
