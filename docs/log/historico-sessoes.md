@@ -795,3 +795,20 @@ aberto.
 Confirmado ao vivo, com a app a correr: a aba abre, as seis entradas de
 exemplo aparecem, e os seis botões "Instalar" estão mesmo desativados.
 5 testes novos (`tests/apps/marketplace-tab.test.tsx`).
+
+## 2026-08-11 — Revisão de qualidade: fuga de blob URL nos anexos de email
+
+Pedido: percorrer o que se construiu hoje à procura de fugas de memória,
+condições de corrida e casos de borda esquecidos — não reescrever, só
+corrigir o que fosse real. `Compose` (Emails, sub-fase de anexos desta
+sessão) tinha exatamente esse buraco: cancelar ou fechar o rascunho com
+imagens anexadas nunca revogava as blob URLs das pré-visualizações — só o
+botão de remover, por anexo, o fazia. Um efeito de desmontagem revoga o
+que sobrar, com a lista atual guardada num `ref` (o próprio cleanup só
+corre uma vez, ao desmontar, e precisa do estado de então, não do da
+primeira renderização). Confirmado por um teste que espia
+`URL.revokeObjectURL` a sério, não só a leitura do código.
+
+O resto da revisão (sandbox de plugins, Fase 3.1 — controlo direto,
+editor de automações) não encontrou mais nada — sem temporizadores nem
+`addEventListener` por limpar nessas peças.
