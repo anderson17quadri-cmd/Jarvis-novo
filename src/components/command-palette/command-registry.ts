@@ -6,6 +6,7 @@ import {
   Monitor,
   Newspaper,
   Palette,
+  Puzzle,
   RotateCcw,
   type LucideIcon,
 } from 'lucide-react';
@@ -15,6 +16,7 @@ import { THEMES } from '@/design-system/tokens';
 import { ALL_WIDGETS } from '@/widgets/registry';
 import { ALL_SYSTEM_STATES } from '@/types/system-state';
 import { normalizeSearch as normalize } from '@/utils/text';
+import { getPluginCommands } from '@/plugins/runtime/plugin-bridge';
 import type { AppId } from '@/types/app';
 import type { ThemeId } from '@/design-system/tokens';
 import type { WidgetId } from '@/types/widget';
@@ -38,6 +40,7 @@ export type CommandGroup =
   | 'Aplicações'
   | 'Widgets'
   | 'Sistema'
+  | 'Plugins'
   | 'Desktops'
   | 'Layouts'
   | 'Estados'
@@ -50,6 +53,7 @@ const GROUP_ORDER: readonly CommandGroup[] = [
   'Aplicações',
   'Widgets',
   'Sistema',
+  'Plugins',
   'Desktops',
   'Layouts',
   'Estados',
@@ -243,6 +247,16 @@ export function buildCommands(
     },
   ];
 
+  // Comandos que plugins registaram via core.command.register().
+  const pluginCommands: Command[] = getPluginCommands().map((cmd) => ({
+    id: `plugin:${cmd.id}`,
+    group: 'Plugins' as const,
+    label: cmd.nome,
+    icon: Puzzle,
+    hint: cmd.descricao,
+    run: (actions: CommandActions) => actions.launchApp('plugins'),
+  }));
+
   // Ordenados por grupo, para os cabeçalhos não se repetirem na lista.
   return [
     ...mailCommands,
@@ -251,6 +265,7 @@ export function buildCommands(
     ...appCommands,
     ...widgetCommands,
     ...systemCommands,
+    ...pluginCommands,
     ...desktopCommands,
     ...layoutCommands,
     ...stateCommands,

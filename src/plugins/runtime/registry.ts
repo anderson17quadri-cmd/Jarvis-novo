@@ -1,7 +1,10 @@
+import abreJanelaSource from '@/plugins/examples/abre-janela/plugin.js?raw';
 import disparaAutomacaoSource from '@/plugins/examples/dispara-automacao/plugin.js?raw';
+import escutaEventosSource from '@/plugins/examples/escuta-eventos/plugin.js?raw';
 import olaFicheiroSource from '@/plugins/examples/ola-ficheiro/plugin.js?raw';
 import olaNotificacaoSource from '@/plugins/examples/ola-notificacao/plugin.js?raw';
 import olaRedeSource from '@/plugins/examples/ola-rede/plugin.js?raw';
+import registaComandoSource from '@/plugins/examples/regista-comando/plugin.js?raw';
 
 /**
  * Que plugins têm código a sério para correr na sandbox, e o botão que o
@@ -21,4 +24,7 @@ export const PLUGIN_RUNTIMES: Readonly<Record<string, RuntimeEntry>> = {
   'ola-ficheiro': { source: olaFicheiroSource, triggerLabel: 'Escrever e ler um ficheiro' },
   'ola-rede': { source: olaRedeSource, triggerLabel: 'Pedir à rede' },
   'dispara-automacao': { source: disparaAutomacaoSource, triggerLabel: 'Disparar automação' },
+  'abre-janela': { source: abreJanelaSource, triggerLabel: 'Abrir janela de Tarefas' },
+  'regista-comando': { source: registaComandoSource, triggerLabel: 'Registar comando na paleta' },
+  'escuta-eventos': { source: escutaEventosSource, triggerLabel: 'Subscrever evento de tema' },
 };

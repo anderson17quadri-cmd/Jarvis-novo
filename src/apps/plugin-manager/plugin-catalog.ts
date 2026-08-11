@@ -7,7 +7,9 @@ import {
   FolderOpen,
   Gamepad2,
   Globe,
+  LayoutGrid,
   Music,
+  Puzzle,
   Terminal,
   Wifi,
   Zap,
@@ -82,6 +84,9 @@ const NO_PERMISSIONS: PluginPermissions = {
   systemMetrics: false,
   notifications: false,
   shell: false,
+  windows: false,
+  commands: false,
+  events: false,
 };
 
 export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
@@ -281,6 +286,54 @@ export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
     requires: [],
   },
   {
+    id: 'abre-janela',
+    name: 'Abre janela',
+    tagline: 'Plugin de exemplo — abre uma janela do sistema.',
+    description:
+      'Quinta prova da sandbox: pede ao Core para abrir a janela de Tarefas. A permissão `windows` controla se o pedido é cumprido ou recusado.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: LayoutGrid,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, windows: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: ['windowManagement'],
+  },
+  {
+    id: 'regista-comando',
+    name: 'Regista comando',
+    tagline: 'Plugin de exemplo — regista um comando na paleta.',
+    description:
+      'Sexta prova da sandbox: regista um comando que aparece na Command Palette (Ctrl+K). A permissão `commands` controla se o registo é aceite.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Puzzle,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, commands: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
+  {
+    id: 'escuta-eventos',
+    name: 'Escuta eventos',
+    tagline: 'Plugin de exemplo — subscreve eventos do sistema.',
+    description:
+      'Sétima prova da sandbox: subscreve o evento `tema:alterado` e mostra uma notificação sempre que o tema muda. A permissão `events` controla se a subscrição é aceite.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Bell,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, events: true, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
+  {
     id: 'game-mode',
     name: 'Modo de jogo',
     tagline: 'Reduz o consumo do ambiente durante o jogo.',
@@ -305,6 +358,9 @@ export const PERMISSION_LABELS: Record<keyof PluginPermissions, string> = {
   systemMetrics: 'Métricas do sistema',
   notifications: 'Notificações',
   shell: 'Executar comandos',
+  windows: 'Janelas',
+  commands: 'Comandos na paleta',
+  events: 'Subscrever eventos',
 };
 
 /** As permissões pedidas, já em texto. */

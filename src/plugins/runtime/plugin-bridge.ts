@@ -1,13 +1,68 @@
+import { APP_REGISTRY } from '@/apps/registry';
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { automationService } from '@/services/automation-service';
+import { ALL_EVENTS, eventBus, type SystemEventName } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
 import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-store';
+import { useWindowStore } from '@/stores/use-window-store';
+import type { AppId } from '@/types/app';
+import type { WindowRect } from '@/types/window';
 import {
   PERMISSION_BY_MESSAGE_TYPE,
   type CoreAckMessage,
   type PluginToCoreMessage,
 } from './protocol';
+
+// ─── Comandos registados por plugins ────────────────────────────────────────
+
+export interface PluginCommand {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly nome: string;
+  readonly descricao: string;
+}
+
+const pluginCommands: PluginCommand[] = [];
+
+/** Comandos que plugins registaram na paleta — para `command-registry.ts`. */
+export function getPluginCommands(): readonly PluginCommand[] {
+  return pluginCommands;
+}
+
+/** Remove todos os comandos registados — para testes. */
+export function clearPluginCommands(): void {
+  pluginCommands.length = 0;
+}
+
+// ─── Subscrições de eventos ─────────────────────────────────────────────────
+
+interface PluginEventSubscription {
+  pluginId: string;
+  evento: SystemEventName;
+  unsubscribe: () => void;
+}
+
+const eventSubscriptions: PluginEventSubscription[] = [];
+
+/**
+ * Remove todas as subscrições de eventos de um plugin.
+ *
+ * Chamado pelo `PluginRuntime` quando o componente desmonta — sem isto, um
+ * plugin que deixasse de correr continuava a receber eventos para sempre.
+ */
+export function clearPluginSubscriptions(pluginId: string): void {
+  for (let i = eventSubscriptions.length - 1; i >= 0; i--) {
+    const sub = eventSubscriptions[i];
+    if (!sub) continue;
+    if (sub.pluginId === pluginId) {
+      sub.unsubscribe();
+      eventSubscriptions.splice(i, 1);
+    }
+  }
+}
+
+// ─── Ponte ──────────────────────────────────────────────────────────────────
 
 /**
  * Decide o que fazer com um pedido de um plugin, e fá-lo.
@@ -17,12 +72,17 @@ import {
  * usada em `App.tsx` (automações) e `ai-service.ts` (rede) — nunca decorativa,
  * sempre `selectPermissionDenied` sobre o estado real de `use-plugin-store.ts`.
  *
+ * `sendToPlugin` é opcional: só as capacidades que empurram dados para o
+ * plugin de forma assíncrona (eventos) precisam dele. As outras funcionam
+ * com a resposta síncrona do `ack`.
+ *
  * Devolve sempre uma Promise — as capacidades de ficheiros e rede são
  * assíncronas, e as síncronas (notificações) resolvem-se no próprio tick.
  */
 export async function handlePluginMessage(
   pluginId: string,
   message: PluginToCoreMessage,
+  sendToPlugin?: (message: Record<string, unknown>) => void,
 ): Promise<CoreAckMessage> {
   const permission = PERMISSION_BY_MESSAGE_TYPE[message.type];
   const isDenied = selectPermissionDenied(usePluginStore.getState(), pluginId, permission);
@@ -77,6 +137,68 @@ export async function handlePluginMessage(
       const run = automationService.run(automation.id);
       logService.audit(`Plugin ${pluginId}: ${message.type}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: run !== null, data: { runId: run?.id } };
+    }
+
+    case 'core.window.open': {
+      const appId = message.payload.app as AppId;
+      const definition = APP_REGISTRY[appId];
+      if (!definition) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'app-desconhecida' };
+      }
+      if (!definition.implemented) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'app-por-implementar' };
+      }
+      const titulo = message.payload.titulo ?? definition.title;
+      const rect: WindowRect = {
+        x: 120,
+        y: 80,
+        width: definition.defaultSize.width,
+        height: definition.defaultSize.height,
+      };
+      const windowId = useWindowStore.getState().open(appId, titulo, rect);
+      logService.audit(`Plugin ${pluginId}: abriu janela ${appId}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true, data: { windowId } };
+    }
+
+    case 'core.command.register': {
+      // Um plugin não pode registar o mesmo ID duas vezes.
+      if (pluginCommands.some((c) => c.pluginId === pluginId && c.id === message.payload.id)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'comando-ja-registado' };
+      }
+      pluginCommands.push({
+        pluginId,
+        id: message.payload.id,
+        nome: message.payload.nome,
+        descricao: message.payload.descricao,
+      });
+      logService.audit(`Plugin ${pluginId}: registou comando ${message.payload.id}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.event.subscribe': {
+      const evento = message.payload.evento;
+      // Só eventos que existem no barramento — nomes inventados são recusados.
+      if (!(ALL_EVENTS as readonly string[]).includes(evento)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'evento-desconhecido' };
+      }
+
+      const subscriptionId = `sub-${pluginId}-${evento}-${Date.now()}`;
+
+      if (sendToPlugin) {
+        const unsubscribe = eventBus.on(evento as SystemEventName, (payload) => {
+          sendToPlugin({
+            type: 'core.event',
+            subscriptionId,
+            evento,
+            payload,
+          });
+        });
+
+        eventSubscriptions.push({ pluginId, evento: evento as SystemEventName, unsubscribe });
+      }
+
+      logService.audit(`Plugin ${pluginId}: subscreveu evento ${evento}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true, data: { subscriptionId } };
     }
   }
 

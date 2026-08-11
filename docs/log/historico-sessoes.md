@@ -848,3 +848,35 @@ data URI, os outros tipos ficam sem pré-visualização. Browser cai para
 — todos com `attachments: []` (ou amostras) para o tipo `Task`/`Project`/
 `MailMessage` que agora exige o campo. Testes atualizados (`copilot.test.ts`,
 `task-store.test.ts`, `productivity-widgets.test.tsx`).
+
+## 2026-08-11 — Mais 3 capacidades da API do Core para plugins
+
+Três novas capacidades: Criar Janelas, Adicionar Comandos, Registar
+Eventos. Seguem o padrão das 4 capacidades já implementadas: tipo de
+mensagem próprio, verificação de permissão, handler em `plugin-bridge.ts`,
+SDK atualizada (`jarvis-plugin-sdk.js` e `.d.ts`), exemplo isolado com
+código a sério.
+
+**Criar Janelas** (`core.window.open`): valida o `appId` contra
+`APP_REGISTRY`, recusa aplicações por implementar, abre via
+`useWindowStore.open()` com geometria por omissão.
+
+**Adicionar Comandos** (`core.command.register`): regista num array
+módulo-específico em `plugin-bridge.ts`. A função `buildCommands()` do
+`command-registry.ts` inclui-os no grupo "Plugins". Cada plugin só pode
+registar um dado `id` uma vez, mas plugins diferentes podem partilhar ids.
+
+**Registar Eventos** (`core.event.subscribe`): assíncrono — o Core empurra
+eventos para o plugin via `sendToPlugin`, um callback passado ao
+`handlePluginMessage` pelo `PluginRuntime`. Valida o nome do evento contra
+`ALL_EVENTS`. As subscrições são limpas quando o `PluginRuntime` desmonta.
+
+**SDK:** `window.core.window.open(app, titulo?)`, `window.core.command.register(id, nome, descricao)`, `window.core.event.on(evento, callback)` — este último devolve uma função para cancelar.
+
+**Exemplos:** `abre-janela`, `regista-comando`, `escuta-eventos` — três
+novos plugins de exemplo com código real, registados no catálogo e no
+runtime, cada um a testar uma capacidade.
+
+**Testes:** 13 novos testes em `plugin-bridge.test.ts` (28 no total) —
+permissão recusada, validação de app/evento, duplicados, subscrição e
+cancelamento de eventos com o callback `sendToPlugin`.

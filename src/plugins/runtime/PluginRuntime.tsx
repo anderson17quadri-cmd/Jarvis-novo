@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import pluginSdkSource from '@/plugins/sdk/jarvis-plugin-sdk.js?raw';
-import { handlePluginMessage } from './plugin-bridge';
+import { clearPluginSubscriptions, handlePluginMessage } from './plugin-bridge';
 import { isPluginToCoreMessage, type CoreAckMessage, type PluginToCoreMessage } from './protocol';
 
 interface PluginRuntimeProps {
@@ -45,14 +45,21 @@ export function PluginRuntime({
       const message = event.data as PluginToCoreMessage;
       if (!isPluginToCoreMessage(message)) return;
 
-      void handlePluginMessage(pluginId, message).then((ack) => {
+      const sendToPlugin = (msg: Record<string, unknown>): void => {
+        iframeRef.current?.contentWindow?.postMessage(msg, '*');
+      };
+
+      void handlePluginMessage(pluginId, message, sendToPlugin).then((ack) => {
         setStatus(descricaoDoAck(message.type, ack));
         iframeRef.current?.contentWindow?.postMessage(ack, '*');
       });
     }
 
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+      clearPluginSubscriptions(pluginId);
+    };
   }, [pluginId]);
 
   const onRun = (): void => {
@@ -91,6 +98,10 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       'dominio-nao-autorizado': 'Domínio não autorizado.',
       'url-invalida': 'Endereço de rede inválido.',
       'automação-não-encontrada': 'Automação não encontrada.',
+      'app-desconhecida': 'Aplicação desconhecida.',
+      'app-por-implementar': 'Essa aplicação ainda não está implementada.',
+      'comando-ja-registado': 'Este comando já foi registado.',
+      'evento-desconhecido': 'Este evento não existe no sistema.',
     };
     const chave = ack.reason?.split(':')[0] ?? '';
     return razoes[chave] ?? `Recusado: ${ack.reason ?? 'desconhecido'}.`;
@@ -109,6 +120,12 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       return 'Pedido de rede concluído.';
     case 'core.automation.run':
       return 'Automação disparada.';
+    case 'core.window.open':
+      return 'Janela aberta.';
+    case 'core.command.register':
+      return 'Comando registado na paleta.';
+    case 'core.event.subscribe':
+      return 'Subscrição de evento ativa.';
     default:
       return 'Cumprido.';
   }

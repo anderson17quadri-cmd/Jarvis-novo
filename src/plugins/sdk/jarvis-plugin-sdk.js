@@ -13,15 +13,31 @@
   'use strict';
 
   var callbacks = {};
+  var eventListeners = {};
   var nextId = 1;
 
   window.addEventListener('message', function (event) {
     var data = event.data;
-    if (!data || data.type !== 'core.ack') return;
-    var cb = callbacks[data.requestId];
-    if (cb) {
-      delete callbacks[data.requestId];
-      cb(data);
+    if (!data) return;
+
+    // Resposta a um pedido do plugin (core.ack).
+    if (data.type === 'core.ack') {
+      var cb = callbacks[data.requestId];
+      if (cb) {
+        delete callbacks[data.requestId];
+        cb(data);
+      }
+      return;
+    }
+
+    // Evento empurrado pelo Core (core.event) — o plugin subscreveu com core.event.on().
+    if (data.type === 'core.event') {
+      var listeners = eventListeners[data.evento];
+      if (listeners) {
+        for (var i = 0; i < listeners.length; i++) {
+          try { listeners[i](data.payload); } catch (e) { /* não estraga os outros */ }
+        }
+      }
     }
   });
 
@@ -99,6 +115,52 @@
       run: function (nome) {
         return pedir('core.automation.run', { nome: nome }).then(function (ack) {
           return ack.ok;
+        });
+      },
+    },
+
+    /** Abre uma janela do sistema — `plugins.windows`. */
+    window: {
+      open: function (app, titulo) {
+        return pedir('core.window.open', { app: app, titulo: titulo || undefined }).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'window.open falhou');
+          return ack.data.windowId;
+        });
+      },
+    },
+
+    /** Regista um comando na paleta — `plugins.commands`. */
+    command: {
+      register: function (id, nome, descricao) {
+        return pedir('core.command.register', { id: id, nome: nome, descricao: descricao }).then(function (ack) {
+          return ack.ok;
+        });
+      },
+    },
+
+    /** Subscreve um evento do sistema — `plugins.events`. */
+    event: {
+      /**
+       * @param {string} evento — nome do evento (ex.: 'tarefa:concluida')
+       * @param {function} callback — chamado com o payload do evento
+       * @returns {Promise<function>} — devolve a função para cancelar a subscrição
+       */
+      on: function (evento, callback) {
+        return pedir('core.event.subscribe', { evento: evento }).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'event.on falhou');
+
+          // Regista o callback local para quando o Core empurrar core.event.
+          if (!eventListeners[evento]) eventListeners[evento] = [];
+          eventListeners[evento].push(callback);
+
+          // Devolve a função que remove este callback.
+          return function () {
+            var list = eventListeners[evento];
+            if (!list) return;
+            var idx = list.indexOf(callback);
+            if (idx >= 0) list.splice(idx, 1);
+            if (list.length === 0) delete eventListeners[evento];
+          };
         });
       },
     },

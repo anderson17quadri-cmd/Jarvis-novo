@@ -17,6 +17,12 @@ export interface PluginPermissions {
   readonly systemMetrics: boolean;
   readonly notifications: boolean;
   readonly shell: boolean;
+  /** Criar e fechar janelas (12/08/2026). */
+  readonly windows: boolean;
+  /** Registar comandos na paleta (12/08/2026). */
+  readonly commands: boolean;
+  /** Subscrever eventos do barramento (12/08/2026). */
+  readonly events: boolean;
 }
 
 export interface PluginManifest {

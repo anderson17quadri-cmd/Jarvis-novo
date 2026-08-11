@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { handlePluginMessage } from '@/plugins/runtime/plugin-bridge';
+import { clearPluginCommands, clearPluginSubscriptions, getPluginCommands, handlePluginMessage } from '@/plugins/runtime/plugin-bridge';
+import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
+import { useWindowStore } from '@/stores/use-window-store';
 
 /**
  * Ficheiros e rede correm fora do Tauri em teste — mockados aqui, porque a
@@ -239,5 +241,260 @@ describe('handlePluginMessage — rede (ola-rede, allowedDomains declarado)', ()
     expect(ack.ok).toBe(false);
     expect(ack.reason).toBe('permissao-negada');
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Capacidades novas (12/08/2026) — windows, commands, events
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── core.window.open ─────────────────────────────────────────────────────
+
+describe('handlePluginMessage — core.window.open', () => {
+  const WINDOW_PLUGIN_ID = 'abre-janela';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    useWindowStore.setState({ windows: [], topZIndex: 50, cascadeOffset: 0 });
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(WINDOW_PLUGIN_ID, 'windows', false);
+
+    const ack = await handlePluginMessage(WINDOW_PLUGIN_ID, {
+      type: 'core.window.open',
+      requestId: 'req-win-1',
+      payload: { app: 'tasks' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('aplicação desconhecida: devolve ok:false com razão', async () => {
+    const ack = await handlePluginMessage(WINDOW_PLUGIN_ID, {
+      type: 'core.window.open',
+      requestId: 'req-win-2',
+      payload: { app: 'app-que-nao-existe' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('app-desconhecida');
+  });
+
+  it('aplicação conhecida: abre a janela e devolve windowId', async () => {
+    const ack = await handlePluginMessage(WINDOW_PLUGIN_ID, {
+      type: 'core.window.open',
+      requestId: 'req-win-3',
+      payload: { app: 'tasks', titulo: 'Tarefas do plugin' },
+    });
+
+    expect(ack.ok).toBe(true);
+    expect(ack.data).toBeDefined();
+    const data = ack.data as { windowId: string };
+    expect(typeof data.windowId).toBe('string');
+
+    // A janela foi mesmo adicionada à store.
+    const windows = useWindowStore.getState().windows;
+    expect(windows).toHaveLength(1);
+    expect(windows[0]?.appId).toBe('tasks');
+    expect(windows[0]?.title).toBe('Tarefas do plugin');
+  });
+
+  it('aplicação não implementada (music): recusa', async () => {
+    const ack = await handlePluginMessage(WINDOW_PLUGIN_ID, {
+      type: 'core.window.open',
+      requestId: 'req-win-4',
+      payload: { app: 'music' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('app-por-implementar');
+  });
+});
+
+// ─── core.command.register ────────────────────────────────────────────────
+
+describe('handlePluginMessage — core.command.register', () => {
+  const CMD_PLUGIN_ID = 'regista-comando';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginCommands();
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(CMD_PLUGIN_ID, 'commands', false);
+
+    const ack = await handlePluginMessage(CMD_PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-1',
+      payload: { id: 'cmd-teste', nome: 'Teste', descricao: 'Um comando de teste.' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('regista um comando e fica disponível em getPluginCommands', async () => {
+    const ack = await handlePluginMessage(CMD_PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-2',
+      payload: { id: 'cmd-ola', nome: 'Dizer olá', descricao: 'Um comando que diz olá.' },
+    });
+
+    expect(ack.ok).toBe(true);
+    const commands = getPluginCommands();
+    expect(commands).toHaveLength(1);
+    expect(commands[0]?.pluginId).toBe(CMD_PLUGIN_ID);
+    expect(commands[0]?.id).toBe('cmd-ola');
+    expect(commands[0]?.nome).toBe('Dizer olá');
+  });
+
+  it('recusa registar o mesmo ID duas vezes pelo mesmo plugin', async () => {
+    const payload = { id: 'cmd-duplicado', nome: 'Duplicado', descricao: 'Teste.' };
+
+    const primeiro = await handlePluginMessage(CMD_PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-3',
+      payload,
+    });
+    expect(primeiro.ok).toBe(true);
+
+    const segundo = await handlePluginMessage(CMD_PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-4',
+      payload,
+    });
+
+    expect(segundo.ok).toBe(false);
+    expect(segundo.reason).toBe('comando-ja-registado');
+    expect(getPluginCommands()).toHaveLength(1);
+  });
+
+  it('dois plugins podem registar IDs iguais sem conflito', async () => {
+    const payload = { id: 'cmd-partilhado', nome: 'Partilhado', descricao: 'Teste.' };
+
+    await handlePluginMessage(CMD_PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-5',
+      payload,
+    });
+
+    await handlePluginMessage('outro-plugin', {
+      type: 'core.command.register',
+      requestId: 'req-cmd-6',
+      payload,
+    });
+
+    expect(getPluginCommands()).toHaveLength(2);
+  });
+});
+
+// ─── core.event.subscribe ─────────────────────────────────────────────────
+
+describe('handlePluginMessage — core.event.subscribe', () => {
+  const EVENT_PLUGIN_ID = 'escuta-eventos';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    eventBus.clear();
+  });
+
+  afterEach(() => {
+    clearPluginSubscriptions(EVENT_PLUGIN_ID);
+    eventBus.clear();
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(EVENT_PLUGIN_ID, 'events', false);
+
+    const ack = await handlePluginMessage(EVENT_PLUGIN_ID, {
+      type: 'core.event.subscribe',
+      requestId: 'req-ev-1',
+      payload: { evento: 'tema:alterado' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('evento desconhecido: recusa', async () => {
+    const ack = await handlePluginMessage(EVENT_PLUGIN_ID, {
+      type: 'core.event.subscribe',
+      requestId: 'req-ev-2',
+      payload: { evento: 'evento:inventado' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('evento-desconhecido');
+  });
+
+  it('evento conhecido: subscreve e devolve subscriptionId', async () => {
+    const ack = await handlePluginMessage(EVENT_PLUGIN_ID, {
+      type: 'core.event.subscribe',
+      requestId: 'req-ev-3',
+      payload: { evento: 'tema:alterado' },
+    });
+
+    expect(ack.ok).toBe(true);
+    const data = ack.data as { subscriptionId: string };
+    expect(typeof data.subscriptionId).toBe('string');
+    expect(data.subscriptionId).toContain('tema:alterado');
+  });
+
+  it('quando o evento dispara, sendToPlugin é chamado com o payload', async () => {
+    const mensagens: Record<string, unknown>[] = [];
+
+    await handlePluginMessage(
+      EVENT_PLUGIN_ID,
+      {
+        type: 'core.event.subscribe',
+        requestId: 'req-ev-4',
+        payload: { evento: 'tema:alterado' },
+      },
+      (msg) => mensagens.push(msg),
+    );
+
+    eventBus.emit('tema:alterado', { theme: 'dark' });
+
+    expect(mensagens).toHaveLength(1);
+    expect(mensagens[0]).toMatchObject({
+      type: 'core.event',
+      evento: 'tema:alterado',
+    });
+    const payload = mensagens[0]?.payload as { theme: string };
+    expect(payload.theme).toBe('dark');
+  });
+
+  it('clearPluginSubscriptions remove os ouvintes todos de um plugin', async () => {
+    const mensagens: Record<string, unknown>[] = [];
+
+    await handlePluginMessage(
+      EVENT_PLUGIN_ID,
+      {
+        type: 'core.event.subscribe',
+        requestId: 'req-ev-5',
+        payload: { evento: 'tema:alterado' },
+      },
+      (msg) => mensagens.push(msg),
+    );
+
+    clearPluginSubscriptions(EVENT_PLUGIN_ID);
+
+    eventBus.emit('tema:alterado', { theme: 'light' });
+    expect(mensagens).toHaveLength(0);
+  });
+
+  it('sem sendToPlugin, a subscrição não rebenta — simplesmente não empurra eventos', async () => {
+    const ack = await handlePluginMessage(EVENT_PLUGIN_ID, {
+      type: 'core.event.subscribe',
+      requestId: 'req-ev-6',
+      payload: { evento: 'tema:alterado' },
+    });
+
+    expect(ack.ok).toBe(true);
+    // Emitir o evento não deve rebentar.
+    eventBus.emit('tema:alterado', { theme: 'dark' });
   });
 });

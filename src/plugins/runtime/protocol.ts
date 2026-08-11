@@ -73,6 +73,42 @@ export interface PluginAutomationRunRequest {
   };
 }
 
+// ─── Janelas (criar, fechar) — plugins.windows (12/08/2026) ────────────
+
+export interface PluginWindowOpenRequest {
+  readonly type: 'core.window.open';
+  readonly requestId: string;
+  readonly payload: {
+    /** Identificador da janela (ex.: 'emails', 'tarefas'). */
+    readonly app: string;
+    /** Título opcional para a janela. */
+    readonly titulo?: string;
+  };
+}
+
+// ─── Comandos (registar na paleta) — plugins.commands (12/08/2026) ──────
+
+export interface PluginCommandRegisterRequest {
+  readonly type: 'core.command.register';
+  readonly requestId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly nome: string;
+    readonly descricao: string;
+  };
+}
+
+// ─── Eventos (subscrever o barramento) — plugins.events (12/08/2026) ────
+
+export interface PluginEventSubscribeRequest {
+  readonly type: 'core.event.subscribe';
+  readonly requestId: string;
+  readonly payload: {
+    /** Nome do evento a subscrever (ex.: 'tarefa:concluida'). */
+    readonly evento: string;
+  };
+}
+
 // ─── União ────────────────────────────────────────────────────────────────
 
 export type PluginToCoreMessage =
@@ -81,7 +117,10 @@ export type PluginToCoreMessage =
   | PluginFsWriteRequest
   | PluginFsListRequest
   | PluginFetchRequest
-  | PluginAutomationRunRequest;
+  | PluginAutomationRunRequest
+  | PluginWindowOpenRequest
+  | PluginCommandRegisterRequest
+  | PluginEventSubscribeRequest;
 
 /** A permissão que cada tipo de pedido exige. */
 export const PERMISSION_BY_MESSAGE_TYPE: Record<
@@ -94,6 +133,9 @@ export const PERMISSION_BY_MESSAGE_TYPE: Record<
   'core.fs.list': 'filesystem',
   'core.fetch': 'network',
   'core.automation.run': 'notifications',
+  'core.window.open': 'windows',
+  'core.command.register': 'commands',
+  'core.event.subscribe': 'events',
 };
 
 // ─── Resposta do Core ─────────────────────────────────────────────────────
@@ -116,6 +158,9 @@ const KNOWN_TYPES = new Set<PluginToCoreMessage['type']>([
   'core.fs.list',
   'core.fetch',
   'core.automation.run',
+  'core.window.open',
+  'core.command.register',
+  'core.event.subscribe',
 ]);
 
 /** Confirma que uma mensagem recebida por postMessage tem a forma esperada. */
@@ -142,6 +187,12 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
       return typeof payload.url === 'string';
     case 'core.automation.run':
       return typeof payload.nome === 'string';
+    case 'core.window.open':
+      return typeof payload.app === 'string';
+    case 'core.command.register':
+      return typeof payload.id === 'string' && typeof payload.nome === 'string' && typeof payload.descricao === 'string';
+    case 'core.event.subscribe':
+      return typeof payload.evento === 'string';
     default:
       return false;
   }

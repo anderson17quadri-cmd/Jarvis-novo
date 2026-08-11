@@ -39,6 +39,36 @@ export interface JarvisPluginSDK {
     /** Dispara uma automação já existente — nunca cria. `plugins.notifications`. */
     run(nome: string): Promise<boolean>;
   };
+
+  window: {
+    /**
+     * Abre uma janela do sistema. `plugins.windows`.
+     *
+     * `app` tem de ser um identificador de aplicação que exista
+     * (ex.: 'emails', 'tarefas', 'projects').
+     */
+    open(app: string, titulo?: string): Promise<string>;
+  };
+
+  command: {
+    /**
+     * Regista um comando na paleta. `plugins.commands`.
+     *
+     * O comando aparece na Command Palette (Ctrl+K) com o nome e a
+     * descrição dados. O `id` é usado para evitar duplicados.
+     */
+    register(id: string, nome: string, descricao: string): Promise<boolean>;
+  };
+
+  event: {
+    /**
+     * Subscreve um evento do sistema. `plugins.events`.
+     *
+     * `evento` é o nome do evento (ex.: 'tarefa:concluida', 'email:novo').
+     * Devolve uma função para cancelar a subscrição.
+     */
+    on(evento: string, callback: (payload: unknown) => void): Promise<() => void>;
+  };
 }
 
 declare global {
