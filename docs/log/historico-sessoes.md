@@ -1008,4 +1008,16 @@ passou a descrever os dois modos.
 Confirmado: `tsc` limpo, `eslint` sem erros, todos os testes passam (só a
 falha pré-existente em `fallback.test.ts`).
 
-Co-Authored-By: Claude <noreply@anthropic.com>
+## 2026-08-11 — Corrige modo preso em "thinking" ao cancelar durante a resolução de referências
+
+Verificação independente (`tsc` + `vitest`) depois de puxar o lote de anexos +
+resolução de referências + capacidades de plugins encontrou um teste real a
+falhar, não só em conjunto mas isolado: `fallback.test.ts` › "cancelar não
+deixa nota nenhuma de erro". A resolução de referências (commit anterior)
+inseriu um `await resolveReferences(...)` entre `setMode('thinking')` e o
+resto do fluxo de `AIService.send()`, com um retorno antecipado em
+`signal.aborted` que não repunha o modo. Cancelar um pedido exatamente nessa
+janela deixava a interface presa a "a pensar" para sempre — o mesmo padrão
+existia em `sendWithTools()`. Corrigido nos dois sítios: o retorno antecipado
+por cancelamento agora repõe `setMode('idle')` antes de sair. Suite completa
+volta a 1166/1166 a passar.
