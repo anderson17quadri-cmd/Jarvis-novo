@@ -70,6 +70,16 @@ propósito em vez de escondida atrás de uma string.
 | `core.fs.list` | `filesystem` | Lista ficheiros e pastas, idem |
 | `core.fetch` | `network` | Um pedido HTTP a um domínio da lista (`allowedDomains`) |
 | `core.automation.run` | `notifications` | Dispara (nunca cria) uma automação já existente pelo nome |
+| `core.window.open` | `windows` | Abre uma janela do sistema (`useWindowStore`) |
+| `core.command.register` | `commands` | Regista um comando na Command Palette |
+| `core.event.subscribe` | `events` | Subscreve um evento do barramento (`eventBus`) — empurrado ao plugin via `sendToPlugin` |
+| `core.storage.set/get/remove` | `storage` | Armazenamento isolado, prefixo `plugins:<id>:` |
+| `core.shortcut.register` | `shortcuts` | Regista um atalho de teclado, recusa reservados do sistema |
+| `core.widget.create` | `widgets` | Cria/atualiza um widget simples — só título e texto, **nunca** código nem markup |
+| `core.menu.add` | `menus` | Adiciona um item ao menu de contexto do ambiente de trabalho |
+| `core.setting.register` | `settings` | Declara o *schema* de uma definição — o valor vive no armazenamento, editável na Loja |
+| `core.service.register` | `services` | Regista um "serviço": o Core empurra um `core.service.tick` a um intervalo (mínimo 5s) |
+| `core.panel.add` | `panels` | Adiciona um painel de texto expansível |
 
 `handlePluginMessage()` (`plugin-bridge.ts`) verifica a permissão — a
 mesma `selectPermissionDenied` que já protegia automações (`App.tsx`) e a
@@ -124,6 +134,37 @@ primeiros exemplos fazem-no, de propósito, para o protocolo em si ficar
 claro); `dispara-automacao` usa a SDK, para mostrar o padrão mais simples
 que a maioria dos plugins reais vai querer.
 
+## Como o Core fala com um plugin já a correr
+
+`core.event.subscribe` já precisava disto — o barramento dispara em
+qualquer altura, não só como resposta a um pedido do plugin — e resolvia-o
+com um `sendToPlugin` passado diretamente a `handlePluginMessage` no
+momento da subscrição, capturado numa closure. Isso chega quando quem
+dispara está dentro do mesmo fluxo de mensagem; não chega quando quem
+dispara é outra coisa qualquer — um atalho de teclado premido, um clique
+num item de menu, um temporizador de serviço.
+
+**Bug real, encontrado ao construir `core.menu.add` (12/08/2026):**
+`core.shortcut.triggered` nunca chegava ao plugin. `App.tsx` mandava-o com
+`window.postMessage(msg, '*')` no `window` do Core — mas isso dispara um
+`MessageEvent` no *próprio* `window`, não desce sozinho a um iframe filho.
+E mesmo que descesse, `PluginRuntime` só aceita mensagens cujo
+`event.source === iframeRef.current.contentWindow` — a fonte de um
+`window.postMessage` do Core é o `window` do Core, nunca o iframe. O
+atalho registava-se sem erro, e nunca disparava nada ao ser premido. Só
+visível testando a sério (premir a tecla, ver se o plugin reage) — exatamente
+o motivo de nunca se confiar só na leitura do código.
+
+**Arranjo:** `registerPluginSender(pluginId, send)` / `unregisterPluginSender`
+(`plugin-bridge.ts`) — `PluginRuntime` regista-se ao montar, desregista-se
+ao desmontar (junto dos outros `clearPlugin*`). Qualquer parte do Core
+chama `pushToPlugin(pluginId, mensagem)` para falar com um plugin
+específico, de fora do fluxo normal de mensagens — usado por `App.tsx`
+(atalhos, agora a sério), pelo clique num item de `core.menu.add`
+(`DesktopContextMenu.tsx`), e pelo temporizador de `core.service.register`.
+`core.event.subscribe` manteve o `sendToPlugin` por parâmetro — está
+testado, funciona, e mudar sem necessidade seria reescrever por reescrever.
+
 ## Os plugins de exemplo
 
 Todos em `src/plugins/examples/`, JavaScript simples, importados com
@@ -137,6 +178,16 @@ capacidade funciona de ponta a ponta.
 | `ola-ficheiro` | `core.fs.write` → `core.fs.read` (encadeado pelo `core.ack`) | `core.run` |
 | `ola-rede` | `core.fetch` a `jsonplaceholder.typicode.com` | `core.run` |
 | `dispara-automacao` | `core.automation.run` (via SDK) | `core.run` |
+| `abre-janela` | `core.window.open` | `core.run` |
+| `regista-comando` | `core.command.register` | `core.run` |
+| `escuta-eventos` | `core.event.subscribe` (`tema:alterado`) | `core.run` |
+| `guarda-preferencias` | `core.storage.set/get` (conta visitas) | `core.run` |
+| `regista-atalho` | `core.shortcut.register` (Ctrl+Shift+H) | `core.run` |
+| `cria-widget` | `core.widget.create` | `core.run` |
+| `adiciona-menu` | `core.menu.add` — o clique chega via `pushToPlugin` | `core.run` |
+| `regista-definicao` | `core.setting.register` | `core.run` |
+| `cria-servico` | `core.service.register` (5s) — o "tick" chega via `pushToPlugin` | `core.run` |
+| `adiciona-painel` | `core.panel.add` | `core.run` |
 
 Todos ficam à espera de `core.run` (o botão na Loja de plugins) em vez de
 disparar sozinhos ao carregar — o mesmo plugin corre várias vezes na mesma
@@ -158,9 +209,10 @@ domain).
   fonte de plugins de terceiros a sério, só o catálogo local. Ver
   `docs/spec/plugins-marketplace.md` para o que falta decidir antes disso
   fazer sentido.
-- **As restantes onze capacidades da API do Core** avaliadas em
-  10/08/2026 (Widgets, Janelas, Menus, Comandos, Atalhos, Configurações,
-  Serviços, Voz, Memória, Preferências, Eventos) — cada uma pede o mesmo
-  desenho (tipo de mensagem + permissão + `handlePluginMessage`), mas
-  nenhuma tem plugin real a pedi-la ainda. Entram quando um caso de uso a
-  sério precisar, não antes.
+- **Três capacidades do original ficam por decisão, não por esquecimento.**
+  Executar Voz, Ler Memória e Guardar Preferências mexem em microfone e
+  dados guardados do utilizador — exigem autorização explícita antes de
+  se desenhar sequer o protocolo, não só antes de o construir. Das
+  restantes dez do original (`docs/spec/jarvis-spec-completo.md:568`),
+  todas têm agora um tipo de mensagem, uma permissão e pelo menos um
+  plugin de exemplo a sério (12/08/2026).

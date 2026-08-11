@@ -1046,3 +1046,71 @@ componente chamar o `themeService`). A `useWallpaperStore` subscreve o
 
 **SPEC.md:** 10/14 serviços desacoplados, 10/18 stores separadas.
 `tsc` limpo, `eslint` limpo, 1166/1166 testes passam.
+
+## 2026-08-12 — Mais 5 capacidades da API do Core para plugins, e um bug real de entrega
+
+Pedido: continuar a API do Core para plugins — Criar Widgets, Adicionar
+Menus, Adicionar Configurações, Criar Serviços, Adicionar Painéis (o
+pedido original também listava Adicionar Atalhos, já feito numa sessão
+anterior — confirmado antes de repetir trabalho). Executar Voz, Ler
+Memória e Guardar Preferências ficaram de fora de propósito — mexem em
+microfone e dados do utilizador, por autorizar primeiro.
+
+Cada capacidade seguiu exatamente o molde do lote anterior: tipo de
+mensagem em `protocol.ts`, permissão em `PluginPermissions`, validação em
+`handlePluginMessage`, função na SDK, um plugin de exemplo a sério
+registado no catálogo e no `registry.ts`, testes em `plugin-bridge.test.ts`.
+
+- **`core.widget.create`** (`widgets`) — só título e texto, nunca código
+  nem markup: o Core mostra o texto tal como chega, nunca o interpreta.
+- **`core.menu.add`** (`menus`) — item real no menu de contexto do
+  ambiente de trabalho (botão direito). O clique tem de chegar de volta
+  ao plugin isolado — o que expôs o bug abaixo.
+- **`core.setting.register`** (`settings`) — o plugin declara o *schema*
+  (chave, rótulo, tipo, valor por omissão); o valor em si vive no mesmo
+  armazenamento isolado de `core.storage`, editado diretamente pela
+  interface de confiança (nunca vai e volta pelo protocolo do plugin) e
+  semeado só se ainda não houver nada guardado — reabrir o plugin não
+  apaga a escolha de quem usa.
+- **`core.service.register`** (`services`) — o Core empurra um "tick" a
+  um intervalo, com um mínimo de 5 segundos para nenhum plugin martelar
+  o sistema. Limpo a sério ao desmontar (`clearPluginServices` para o
+  `setInterval`, não só o esquece).
+- **`core.panel.add`** (`panels`) — bloco de texto expansível, mais
+  espaço do que um widget dá.
+
+**Bug real, encontrado a construir `core.menu.add`:** `core.shortcut.
+triggered` (da sessão anterior) nunca chegava mesmo ao plugin.
+`App.tsx` mandava-o com `window.postMessage(msg, '*')` no `window` do
+Core — isso nunca desce sozinho a um iframe filho, e `PluginRuntime`
+só aceita mensagens com `event.source === iframe.contentWindow`, que
+nunca é verdade para uma mensagem postada no `window` de fora. O atalho
+registava-se sem erro nenhum e nunca disparava ao ser premido — só
+visível ao testar a sério (premir a tecla, ver se o plugin reage), nunca
+só a ler o código. `registerPluginSender`/`unregisterPluginSender`/
+`pushToPlugin` (`plugin-bridge.ts`) resolvem isto de vez: `PluginRuntime`
+regista-se ao montar, e qualquer parte do Core fala com um plugin
+específico de fora do fluxo normal de mensagens. Corrigido em `App.tsx`
+(atalhos) e usado por `core.menu.add`/`core.service.register`.
+
+**Outro buraco encontrado ao rever o padrão existente, antes de construir
+mais em cima dele:** `guarda-preferencias` e `regista-atalho` (armazenamento
+e atalhos, sessão anterior) tinham código de exemplo completo e entrada no
+catálogo, mas nunca tinham sido ligados ao `registry.ts` — instalá-los na
+Loja não mostrava botão nenhum para os correr. E nenhum dos dois tinha
+teste próprio em `plugin-bridge.test.ts`, apesar do histórico anterior
+dizer que sim. Os dois corrigidos: ligados ao `registry.ts`, e 11 testes
+novos a cobri-los a sério (permissão, duplicados, atalho reservado).
+
+**Confirmado ao vivo, com a app a correr**, não só nos testes: os cinco
+plugins novos instalados e executados pela Loja — o widget aparece, a
+definição aparece com um interruptor a sério que muda o valor no
+armazenamento real (confirmado no ficheiro `jarvis.store.json`, não só
+por leitura de código), o painel expande e recolhe, o item de menu
+aparece no menu de contexto real (botão direito no ambiente) e o clique
+chega ao plugin — a notificação de confirmação aparece —, e o serviço
+gera "ticks" reais a cada 5 segundos, cada um com uma notificação a
+sério.
+
+62 testes em `plugin-bridge.test.ts` (eram 28), todos a passar. `tsc`
+limpo, `eslint` limpo, suite completa sem regressões.
