@@ -1114,3 +1114,21 @@ sério.
 
 62 testes em `plugin-bridge.test.ts` (eram 28), todos a passar. `tsc`
 limpo, `eslint` limpo, suite completa sem regressões.
+
+## 2026-08-11 — Verificação independente do lote de plugins + Fase 2 + voz
+
+Verificação independente (`npm ci` limpo, `tsc`, `eslint`, `vitest run`)
+depois de puxar dez commits novos: as 5 capacidades de plugins que faltavam
+(widgets, menus, definições, serviços, painéis), Fase 2 a desacoplar Weather/
+Clock/Wallpaper, três correções de voz (timeout no `/ouvir`, evita loop
+infinito no re-engate do microfone, `stopListening` antes de falar), e
+testes E2E novos com Playwright.
+
+Um problema real: `playwright.config.ts` chegou sem entrar em nenhum dos
+dois `tsconfig` que o ESLint usa para lint com tipos — `parserOptions.project`
+falhava a analisá-lo, um erro (não aviso) a bloquear o lint. Corrigido:
+entra no `tsconfig.node.json`, ao lado de `vite.config.ts`. `npm ci` também
+foi preciso — o `@playwright/test` já estava declarado no `package.json`
+mas o `node_modules` local estava desatualizado.
+
+Confirmado: 1200/1200 testes, `tsc` e `eslint` limpos.
