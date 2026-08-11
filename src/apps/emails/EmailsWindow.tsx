@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   Inbox,
@@ -16,6 +16,7 @@ import {
   pickAttachmentsNative,
   type DraftAttachment,
 } from '@/platform/attachments';
+import { AttachmentList } from '@/components/attachments/AttachmentList';
 import { useDataService } from '@/hooks/use-data-service';
 import { cn } from '@/lib/cn';
 import { formatShortDate, formatTime } from '@/lib/format';
@@ -251,6 +252,12 @@ function Reading({
         {message.body}
       </div>
 
+      {message.attachments.length > 0 && (
+        <div className="flex-shrink-0 border-t border-line pt-s2">
+          <AttachmentList attachments={message.attachments} />
+        </div>
+      )}
+
       <p className="flex-shrink-0 text-cap text-t3">
         Responder exige um provedor de envio real — ainda não ligado.
       </p>
@@ -273,6 +280,24 @@ function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Eleme
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<readonly DraftAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // As pré-visualizações são blob URLs — sem isto, cancelar ou fechar o
+  // rascunho com anexos por remover deixava-as vivas até fechar a página
+  // inteira. `attachmentsRef` guarda a lista mais recente para o cleanup
+  // (que só corre uma vez, ao desmontar) não ver a lista vazia do primeiro
+  // render — atualizado num efeito próprio, nunca durante o render.
+  const attachmentsRef = useRef(attachments);
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(() => {
+    return () => {
+      for (const attachment of attachmentsRef.current) {
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      }
+    };
+  }, []);
 
   const onAttach = async (): Promise<void> => {
     const picked = await pickAttachmentsNative();

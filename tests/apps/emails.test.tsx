@@ -188,4 +188,23 @@ describe('escrever uma mensagem — anexos', () => {
     expect(screen.getByText('Pedido de demonstração do Agendado')).toBeInTheDocument();
     expect(screen.queryByText('Rascunho de teste')).toBeNull();
   });
+
+  it('cancelar com uma imagem anexada revoga a pré-visualização — sem isto, a blob URL fica viva para sempre', async () => {
+    const user = userEvent.setup();
+    await renderMailbox();
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL');
+
+    await user.click(screen.getByRole('button', { name: /nova mensagem/i }));
+    await user.click(screen.getByRole('button', { name: /^anexar$/i }));
+    const image = new File(['fake-png'], 'foto.png', { type: 'image/png' });
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    await user.upload(input, image);
+    const preview = await screen.findByAltText<HTMLImageElement>('foto.png');
+    const previewUrl = preview.src;
+
+    await user.click(screen.getByRole('button', { name: /cancelar/i }));
+
+    expect(revokeSpy).toHaveBeenCalledWith(previewUrl);
+    revokeSpy.mockRestore();
+  });
 });
