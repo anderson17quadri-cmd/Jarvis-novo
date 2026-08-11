@@ -19,6 +19,7 @@ import { useIdleLock } from '@/hooks/use-idle-lock';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAiSettings } from '@/hooks/use-ai-settings';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
+import { getPluginShortcuts } from '@/plugins/runtime/plugin-bridge';
 import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
@@ -266,6 +267,34 @@ export function App(): React.JSX.Element {
   }, []);
 
   useKeyboardShortcut({ key: 'k', ctrlOrMeta: true }, openPalette, isDesktop);
+
+  // Atalhos registados por plugins — ouvidos com um keydown cru em vez de
+  // useKeyboardShortcut porque a lista pode mudar enquanto o componente está
+  // montado, e hooks não se podem chamar em ciclo.
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      // Não dispara dentro de inputs, textareas ou contenteditable.
+      const tag = (event.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || (event.target as HTMLElement).isContentEditable) return;
+
+      const shortcuts = getPluginShortcuts();
+      for (const s of shortcuts) {
+        if (event.key.toLowerCase() !== s.key.toLowerCase()) continue;
+        if (s.ctrlOrMeta !== (event.ctrlKey || event.metaKey)) continue;
+        if (s.shift !== event.shiftKey) continue;
+        if (s.alt !== event.altKey) continue;
+
+        event.preventDefault();
+        window.postMessage({ type: 'core.shortcut.triggered', id: s.id }, '*');
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isDesktop]);
 
   /**
    * Comandos de voz (Parte 10).

@@ -945,3 +945,32 @@ SPEC.md atualizado: 7/14 serviços desacoplados, 7/15 stores separadas.
 O test `fallback.test.ts` "cancelar não deixa nota nenhuma de erro" falha
 de forma consistente — é um bug pré-existente em `ai-service.ts` linha 126,
 onde o cancelamento durante `resolveReferences` não repõe o modo a `idle`.
+
+## 2026-08-11 — Mais 2 capacidades da API do Core para plugins: armazenamento e atalhos
+
+Tarefa #19 do sprint. Duas capacidades novas na API do Core para plugins:
+armazenamento isolado e atalhos de teclado. Cada uma segue o molde exato das
+9 já existentes: tipo de mensagem próprio, permissão, handler em
+`plugin-bridge.ts`, SDK atualizada, exemplo isolado com código a sério.
+
+**Armazenamento** (`core.storage.set/get/remove`, permissão `storage`): usa
+o `getPlatformAdapter()` para persistir — chaves com prefixo automático
+`plugins:<pluginId>:` para isolamento total entre plugins. O `StorageService`
+não serve porque as chaves são dinâmicas (não fazem parte do union
+`STORAGE_KEYS`); o adapter aceita qualquer string. Plugin de exemplo
+`guarda-preferencias` conta visitas entre sessões.
+
+**Atalhos** (`core.shortcut.register`, permissão `shortcuts`): regista atalhos
+de teclado com validação — recusa duplicados do mesmo plugin e atalhos
+reservados do sistema (`RESERVED_SHORTCUTS`: k, e, t, p, m). O `App.tsx`
+ganhou um `useEffect` que ouve `keydown` e dispara
+`{type: 'core.shortcut.triggered', id}` no `window` quando um atalho de
+plugin coincide — o `PluginRuntime` não precisa de saber de atalhos. Plugin
+de exemplo `regista-atalho` ouve Ctrl+Shift+H e notifica.
+
+**SDK**: `window.core.storage.set/get/remove` e `window.core.shortcut.register`
+com a mesma `Promise` das capacidades anteriores.
+
+**Confirmação:** `tsc` limpo, `eslint` limpo (só warnings pré-existentes),
+todos os testes passam (a única falha é a pré-existente em `fallback.test.ts`).
+SPEC.md atualizado: 9 de 13 capacidades da API do Core implementadas.

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import pluginSdkSource from '@/plugins/sdk/jarvis-plugin-sdk.js?raw';
-import { clearPluginSubscriptions, handlePluginMessage } from './plugin-bridge';
+import { clearPluginShortcuts, clearPluginSubscriptions, handlePluginMessage } from './plugin-bridge';
 import { isPluginToCoreMessage, type CoreAckMessage, type PluginToCoreMessage } from './protocol';
 
 interface PluginRuntimeProps {
@@ -59,6 +59,7 @@ export function PluginRuntime({
     return () => {
       window.removeEventListener('message', onMessage);
       clearPluginSubscriptions(pluginId);
+      clearPluginShortcuts(pluginId);
     };
   }, [pluginId]);
 
@@ -102,6 +103,8 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       'app-por-implementar': 'Essa aplicação ainda não está implementada.',
       'comando-ja-registado': 'Este comando já foi registado.',
       'evento-desconhecido': 'Este evento não existe no sistema.',
+      'atalho-ja-registado': 'Este atalho já foi registado.',
+      'atalho-reservado': 'Este atalho pertence ao sistema.',
     };
     const chave = ack.reason?.split(':')[0] ?? '';
     return razoes[chave] ?? `Recusado: ${ack.reason ?? 'desconhecido'}.`;
@@ -126,6 +129,14 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       return 'Comando registado na paleta.';
     case 'core.event.subscribe':
       return 'Subscrição de evento ativa.';
+    case 'core.storage.set':
+      return 'Preferência guardada.';
+    case 'core.storage.get':
+      return 'Preferência lida.';
+    case 'core.storage.remove':
+      return 'Preferência removida.';
+    case 'core.shortcut.register':
+      return 'Atalho registado.';
     default:
       return 'Cumprido.';
   }

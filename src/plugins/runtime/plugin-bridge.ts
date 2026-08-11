@@ -4,6 +4,7 @@ import { automationService } from '@/services/automation-service';
 import { ALL_EVENTS, eventBus, type SystemEventName } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
+import { getPlatformAdapter } from '@/platform';
 import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import type { AppId } from '@/types/app';
@@ -33,6 +34,49 @@ export function getPluginCommands(): readonly PluginCommand[] {
 /** Remove todos os comandos registados — para testes. */
 export function clearPluginCommands(): void {
   pluginCommands.length = 0;
+}
+
+// ─── Atalhos registados por plugins ──────────────────────────────────────────
+
+export interface PluginShortcut {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly key: string;
+  readonly ctrlOrMeta: boolean;
+  readonly shift: boolean;
+  readonly alt: boolean;
+}
+
+const pluginShortcuts: PluginShortcut[] = [];
+
+/** Atalhos que plugins registaram — para `App.tsx` os ouvir. */
+export function getPluginShortcuts(): readonly PluginShortcut[] {
+  return pluginShortcuts;
+}
+
+/** Remove todos os atalhos de um plugin. */
+export function clearPluginShortcuts(pluginId: string): void {
+  for (let i = pluginShortcuts.length - 1; i >= 0; i--) {
+    if (pluginShortcuts[i]?.pluginId === pluginId) pluginShortcuts.splice(i, 1);
+  }
+}
+
+/** Remove todos os atalhos registados — para testes. */
+export function clearAllPluginShortcuts(): void {
+  pluginShortcuts.length = 0;
+}
+
+/** Atalhos reservados do sistema — plugins nunca podem usurpá-los. */
+const RESERVED_SHORTCUTS = new Set([
+  'k',  // Command Palette (Ctrl+K)
+  'e',  // Emails (Ctrl+E)
+  't',  // Tarefas (Ctrl+T)
+  'p',  // Projetos (Ctrl+P)
+  'm',  // microfone
+]);
+
+function isReservedShortcut(key: string, ctrl: boolean): boolean {
+  return ctrl && RESERVED_SHORTCUTS.has(key.toLowerCase());
 }
 
 // ─── Subscrições de eventos ─────────────────────────────────────────────────
@@ -199,6 +243,44 @@ export async function handlePluginMessage(
 
       logService.audit(`Plugin ${pluginId}: subscreveu evento ${evento}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: true, data: { subscriptionId } };
+    }
+
+    case 'core.storage.set': {
+      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      await getPlatformAdapter().storageSet(prefixedKey, message.payload.valor);
+      logService.audit(`Plugin ${pluginId}: storage.set ${message.payload.chave}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.storage.get': {
+      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      const valor = await getPlatformAdapter().storageGet<unknown>(prefixedKey, message.payload.fallback ?? null);
+      return { type: 'core.ack', requestId: message.requestId, ok: true, data: { valor } };
+    }
+
+    case 'core.storage.remove': {
+      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      await getPlatformAdapter().storageRemove(prefixedKey);
+      logService.audit(`Plugin ${pluginId}: storage.remove ${message.payload.chave}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.shortcut.register': {
+      const { id, key, ctrlOrMeta = false, shift = false, alt = false } = message.payload;
+
+      // Duplicados do mesmo plugin são recusados.
+      if (pluginShortcuts.some((s) => s.pluginId === pluginId && s.id === id)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'atalho-ja-registado' };
+      }
+
+      // Atalhos reservados do sistema não se cedem a plugins.
+      if (isReservedShortcut(key, ctrlOrMeta)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'atalho-reservado' };
+      }
+
+      pluginShortcuts.push({ pluginId, id, key, ctrlOrMeta, shift, alt });
+      logService.audit(`Plugin ${pluginId}: registou atalho ${id}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
     }
   }
 

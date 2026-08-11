@@ -164,5 +164,63 @@
         });
       },
     },
+
+    /** Preferências com prefixo isolado — `plugins.storage`. */
+    storage: {
+      set: function (chave, valor) {
+        return pedir('core.storage.set', { chave: chave, valor: valor }).then(function (ack) {
+          return ack.ok;
+        });
+      },
+
+      get: function (chave, fallback) {
+        return pedir('core.storage.get', { chave: chave, fallback: fallback }).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'storage.get falhou');
+          return ack.data.valor;
+        });
+      },
+
+      remove: function (chave) {
+        return pedir('core.storage.remove', { chave: chave }).then(function (ack) {
+          return ack.ok;
+        });
+      },
+    },
+
+    /** Atalhos de teclado — `plugins.shortcuts`. */
+    shortcut: {
+      /**
+       * @param {string} id — identificador único do atalho
+       * @param {string} key — tecla principal (ex.: 's', 'F1')
+       * @param {object} modifiers — { ctrlOrMeta, shift, alt }
+       * @param {function} callback — chamado quando o atalho é premido
+       * @returns {Promise<function>} — devolve a função para cancelar o registo
+       */
+      register: function (id, key, modifiers, callback) {
+        modifiers = modifiers || {};
+        return pedir('core.shortcut.register', {
+          id: id,
+          key: key,
+          ctrlOrMeta: modifiers.ctrlOrMeta || false,
+          shift: modifiers.shift || false,
+          alt: modifiers.alt || false,
+        }).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'shortcut.register falhou');
+
+          // Ouve o evento empurrado pelo Core quando o atalho é premido.
+          var handler = function (event) {
+            if (
+              event.data &&
+              event.data.type === 'core.shortcut.triggered' &&
+              event.data.id === id
+            ) {
+              try { callback(); } catch (e) { /* não estraga os outros */ }
+            }
+          };
+          window.addEventListener('message', handler);
+          return function () { window.removeEventListener('message', handler); };
+        });
+      },
+    },
   };
 })();

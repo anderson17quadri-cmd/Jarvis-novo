@@ -87,6 +87,8 @@ const NO_PERMISSIONS: PluginPermissions = {
   windows: false,
   commands: false,
   events: false,
+  storage: false,
+  shortcuts: false,
 };
 
 export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
@@ -349,6 +351,38 @@ export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
     isBuiltIn: false,
     requires: ['systemMetrics', 'windowManagement'],
   },
+  {
+    id: 'guarda-preferencias',
+    name: 'Guarda preferências',
+    tagline: 'Plugin de exemplo — guarda e lê com core.storage.',
+    description:
+      'Oitava prova da sandbox: conta quantas vezes foi aberto, usando o armazenamento isolado do Core. A permissão `storage` controla se as leituras e escritas são cumpridas.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: FolderOpen,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, storage: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: ['nativeStorage'],
+  },
+  {
+    id: 'regista-atalho',
+    name: 'Regista atalho',
+    tagline: 'Plugin de exemplo — regista um atalho de teclado.',
+    description:
+      'Nona prova da sandbox: regista Ctrl+Shift+H para mostrar uma notificação, usando `core.shortcut.register`. A permissão `shortcuts` controla se o registo é aceite.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Zap,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, shortcuts: true, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
 ];
 
 /** Etiquetas legíveis das permissões, para o cartão as explicar. */
@@ -361,6 +395,8 @@ export const PERMISSION_LABELS: Record<keyof PluginPermissions, string> = {
   windows: 'Janelas',
   commands: 'Comandos na paleta',
   events: 'Subscrever eventos',
+  storage: 'Guardar preferências',
+  shortcuts: 'Atalhos de teclado',
 };
 
 /** As permissões pedidas, já em texto. */

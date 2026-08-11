@@ -69,6 +69,44 @@ export interface JarvisPluginSDK {
      */
     on(evento: string, callback: (payload: unknown) => void): Promise<() => void>;
   };
+
+  storage: {
+    /**
+     * Guarda um valor no armazenamento do plugin. `plugins.storage`.
+     *
+     * As chaves recebem automaticamente o prefixo `plugins:<pluginId>:`
+     * — um plugin nunca lê as preferências de outro.
+     */
+    set(chave: string, valor: unknown): Promise<boolean>;
+
+    /**
+     * Lê um valor do armazenamento do plugin. `plugins.storage`.
+     *
+     * `fallback` é devolvido se a chave não existir (por omissão `null`).
+     */
+    get<T>(chave: string, fallback?: T): Promise<T>;
+
+    /** Remove uma chave do armazenamento do plugin. `plugins.storage`. */
+    remove(chave: string): Promise<boolean>;
+  };
+
+  shortcut: {
+    /**
+     * Regista um atalho de teclado. `plugins.shortcuts`.
+     *
+     * `key` é a tecla (ex.: 'h', 'j'). `modifiers` controla Ctrl/Meta,
+     * Shift e Alt. `callback` é chamado quando o atalho é premido.
+     * Devolve uma função para cancelar o registo.
+     *
+     * Atalhos reservados do sistema (Ctrl+K, Ctrl+E, etc.) são recusados.
+     */
+    register(
+      id: string,
+      key: string,
+      modifiers: { ctrlOrMeta?: boolean; shift?: boolean; alt?: boolean },
+      callback: () => void,
+    ): Promise<() => void>;
+  };
 }
 
 declare global {

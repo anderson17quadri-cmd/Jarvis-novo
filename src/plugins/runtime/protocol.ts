@@ -109,6 +109,51 @@ export interface PluginEventSubscribeRequest {
   };
 }
 
+// ─── Armazenamento (guardar preferências) — plugins.storage (11/08/2026) ──
+
+export interface PluginStorageSetRequest {
+  readonly type: 'core.storage.set';
+  readonly requestId: string;
+  readonly payload: {
+    /** Chave — o Core aplica o prefixo `plugins:<id>:` automaticamente. */
+    readonly chave: string;
+    readonly valor: unknown;
+  };
+}
+
+export interface PluginStorageGetRequest {
+  readonly type: 'core.storage.get';
+  readonly requestId: string;
+  readonly payload: {
+    readonly chave: string;
+    /** Valor devolvido quando a chave não existe. */
+    readonly fallback?: unknown;
+  };
+}
+
+export interface PluginStorageRemoveRequest {
+  readonly type: 'core.storage.remove';
+  readonly requestId: string;
+  readonly payload: {
+    readonly chave: string;
+  };
+}
+
+// ─── Atalhos (registar atalhos de teclado) — plugins.shortcuts (11/08/2026)
+
+export interface PluginShortcutRegisterRequest {
+  readonly type: 'core.shortcut.register';
+  readonly requestId: string;
+  readonly payload: {
+    readonly id: string;
+    /** Tecla principal (ex.: 's', 'F1'). */
+    readonly key: string;
+    readonly ctrlOrMeta?: boolean;
+    readonly shift?: boolean;
+    readonly alt?: boolean;
+  };
+}
+
 // ─── União ────────────────────────────────────────────────────────────────
 
 export type PluginToCoreMessage =
@@ -120,7 +165,11 @@ export type PluginToCoreMessage =
   | PluginAutomationRunRequest
   | PluginWindowOpenRequest
   | PluginCommandRegisterRequest
-  | PluginEventSubscribeRequest;
+  | PluginEventSubscribeRequest
+  | PluginStorageSetRequest
+  | PluginStorageGetRequest
+  | PluginStorageRemoveRequest
+  | PluginShortcutRegisterRequest;
 
 /** A permissão que cada tipo de pedido exige. */
 export const PERMISSION_BY_MESSAGE_TYPE: Record<
@@ -136,6 +185,10 @@ export const PERMISSION_BY_MESSAGE_TYPE: Record<
   'core.window.open': 'windows',
   'core.command.register': 'commands',
   'core.event.subscribe': 'events',
+  'core.storage.set': 'storage',
+  'core.storage.get': 'storage',
+  'core.storage.remove': 'storage',
+  'core.shortcut.register': 'shortcuts',
 };
 
 // ─── Resposta do Core ─────────────────────────────────────────────────────
@@ -161,6 +214,10 @@ const KNOWN_TYPES = new Set<PluginToCoreMessage['type']>([
   'core.window.open',
   'core.command.register',
   'core.event.subscribe',
+  'core.storage.set',
+  'core.storage.get',
+  'core.storage.remove',
+  'core.shortcut.register',
 ]);
 
 /** Confirma que uma mensagem recebida por postMessage tem a forma esperada. */
@@ -193,6 +250,13 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
       return typeof payload.id === 'string' && typeof payload.nome === 'string' && typeof payload.descricao === 'string';
     case 'core.event.subscribe':
       return typeof payload.evento === 'string';
+    case 'core.storage.set':
+    case 'core.storage.get':
+      return typeof payload.chave === 'string';
+    case 'core.storage.remove':
+      return typeof payload.chave === 'string';
+    case 'core.shortcut.register':
+      return typeof payload.id === 'string' && typeof payload.key === 'string';
     default:
       return false;
   }

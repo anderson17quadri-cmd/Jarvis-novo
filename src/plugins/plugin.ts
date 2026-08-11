@@ -23,6 +23,10 @@ export interface PluginPermissions {
   readonly commands: boolean;
   /** Subscrever eventos do barramento (12/08/2026). */
   readonly events: boolean;
+  /** Guardar preferências com prefixo isolado por plugin (11/08/2026). */
+  readonly storage: boolean;
+  /** Registar atalhos de teclado (11/08/2026). */
+  readonly shortcuts: boolean;
 }
 
 export interface PluginManifest {
