@@ -188,8 +188,13 @@ export function useVoice(): {
   }, [limparReengate, makeListeningCallbacks]);
 
   // Atualiza o ref para que os callbacks internos vejam sempre a versão mais
-  // recente, sem criar dependência circular no próprio `useCallback`.
-  tentarReengatarRef.current = tentarReengatar;
+  // recente, sem criar dependência circular no próprio `useCallback`. Num
+  // efeito, nunca durante o render — mutar um ref a meio do render é o
+  // mesmo erro já corrigido no rascunho de anexos de email (Compose,
+  // EmailsWindow.tsx), desta vez aqui.
+  useEffect(() => {
+    tentarReengatarRef.current = tentarReengatar;
+  }, [tentarReengatar]);
 
   // ── Falar ──────────────────────────────────────────────────────────────
 
