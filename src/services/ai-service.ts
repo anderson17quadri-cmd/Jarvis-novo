@@ -8,6 +8,7 @@ import { nextStep, type ChainMember } from './ai-providers/provider-chain';
 import { RuleProvider } from './ai-providers/rule-provider';
 import { runTool, type ToolCall } from './assistant/tool-runner';
 import { readContext } from './assistant/context';
+import { resolveReferences } from './assistant/reference-resolver';
 import { memoryService } from './assistant/memory-service';
 import { logService } from './log-service';
 import { AiFailure, planFallback } from '@/types/ai-failure';
@@ -116,6 +117,14 @@ export class AIService {
     store.addMessage('user', prompt);
     store.setMode('thinking');
 
+    // Resolve referências ambíguas ("esse ficheiro", "isso") contra o
+    // histórico da conversa, usando o próprio provedor de IA — sem regras
+    // escritas à mão. Se a resolução falhar ou não for precisa, o pedido
+    // original segue na mesma.
+    const history = selectMessages(useAssistantStore.getState());
+    const resolvedPrompt = await resolveReferences(prompt, history, this.provider, signal);
+    if (signal.aborted) return '';
+
     const messageId = store.addMessage('assistant', '', true);
     let full = '';
 
@@ -125,7 +134,7 @@ export class AIService {
       return await this.recover(new AiFailure('permissao'), {
         messageId,
         request: {
-          prompt,
+          prompt: resolvedPrompt,
           history: selectMessages(useAssistantStore.getState()),
           context: readContext(),
           memory: memoryService.current,
@@ -139,7 +148,7 @@ export class AIService {
 
     try {
       for await (const chunk of this.provider.stream({
-        prompt,
+        prompt: resolvedPrompt,
         history: selectMessages(useAssistantStore.getState()),
         context: readContext(),
         memory: memoryService.current,
@@ -160,7 +169,7 @@ export class AIService {
       return await this.recover(error, {
         messageId,
         request: {
-          prompt,
+          prompt: resolvedPrompt,
           history: selectMessages(useAssistantStore.getState()),
           context: readContext(),
           memory: memoryService.current,
@@ -209,8 +218,13 @@ export class AIService {
     store.addMessage('user', prompt);
     store.setMode('thinking');
 
+    // Resolve referências também no caminho com ferramentas.
+    const toolsHistory = selectMessages(useAssistantStore.getState());
+    const toolsResolvedPrompt = await resolveReferences(prompt, toolsHistory, provider, signal);
+    if (signal.aborted) return [];
+
     const request: AiRequest = {
-      prompt,
+      prompt: toolsResolvedPrompt,
       history: selectMessages(useAssistantStore.getState()),
       context: readContext(),
       memory: memoryService.current,
