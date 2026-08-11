@@ -775,3 +775,23 @@ quando houver uma chave DeepSeek na máquina de testes.
 sobre um ficheiro (abrir, resumir, o que for) para uma referência desse
 tipo ter alguma coisa a resolver-se — construir uma ferramenta dessas do
 zero seria maior do que "resolver contexto", e não foi pedido em separado.
+
+## 2026-08-11 — Esboço do Marketplace de plugins
+
+Pedido: só desenho e uma interface de catálogo, dados de exemplo, sem
+ligar a nenhuma origem remota real — e escrever o que falta decidir
+antes disso. Terceira aba na Loja de plugins ("Loja", "Instalados",
+agora "Marketplace"), seis entradas escritas à mão
+(`marketplace-sample-data.ts`) sem ficheiro, servidor ou API por trás.
+"Instalar" fica sempre desativado, com o porquê no `title`.
+
+`docs/spec/plugins-marketplace.md` regista o que falta decidir antes de
+ligar a uma fonte a sério, e porquê cada ponto não se resolve sozinho:
+registo próprio vs. formato aberto sobre Git (a pergunta de que todas as
+outras dependem), assinatura, atualizações, rollback, dinheiro,
+moderação. Nenhuma resposta fingida — cada uma fica como pergunta em
+aberto.
+
+Confirmado ao vivo, com a app a correr: a aba abre, as seis entradas de
+exemplo aparecem, e os seis botões "Instalar" estão mesmo desativados.
+5 testes novos (`tests/apps/marketplace-tab.test.tsx`).

@@ -5,6 +5,7 @@ import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { normalizeSearch } from '@/utils/text';
+import { MarketplaceTab } from './MarketplaceTab';
 import { PluginCard } from './PluginCard';
 import {
   PLUGIN_CATALOG,
@@ -26,7 +27,7 @@ import {
  * plataforma estamos.
  */
 
-type Tab = 'loja' | 'instalados';
+type Tab = 'loja' | 'instalados' | 'marketplace';
 
 /** `null` é "Todas". */
 type CategoryFilter = PluginCategory | null;
@@ -75,52 +76,63 @@ export default function PluginManagerWindow(): React.JSX.Element {
           <TabButton isActive={tab === 'instalados'} onClick={() => setTab('instalados')}>
             Instalados ({installedCount})
           </TabButton>
+          <TabButton isActive={tab === 'marketplace'} onClick={() => setTab('marketplace')}>
+            Marketplace
+          </TabButton>
         </div>
 
-        <label className="relative ml-auto flex min-w-[150px] flex-1 items-center">
-          <Search
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-t3"
-            aria-hidden="true"
-          />
-          <span className="sr-only">Pesquisar plugins</span>
-          <input
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Pesquisar…"
-            className={cn(
-              'w-full rounded-input border border-line bg-tint/[.03] py-2 pl-8 pr-2.5',
-              'text-[12.5px] text-t1 outline-none transition-colors duration-hover',
-              'placeholder:text-t3 focus:border-accent/45',
-            )}
-          />
-        </label>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Categorias">
-        <CategoryChip isActive={category === null} onClick={() => setCategory(null)}>
-          Todas
-        </CategoryChip>
-        {(Object.keys(PLUGIN_CATEGORY_LABELS) as PluginCategory[]).map((id) => (
-          <CategoryChip key={id} isActive={category === id} onClick={() => setCategory(id)}>
-            {PLUGIN_CATEGORY_LABELS[id]}
-          </CategoryChip>
-        ))}
-      </div>
-
-      <ul className="flex flex-col gap-2.5 overflow-y-auto pr-0.5">
-        {visible.map((entry: CatalogEntry) => (
-          <PluginCard key={entry.id} entry={entry} capabilities={capabilities} />
-        ))}
-
-        {visible.length === 0 && (
-          <li className="py-s3 text-center text-desc text-t3">
-            {tab === 'instalados'
-              ? 'Ainda não instalou nenhum plugin desta categoria.'
-              : 'Nenhum plugin corresponde à pesquisa.'}
-          </li>
+        {tab !== 'marketplace' && (
+          <label className="relative ml-auto flex min-w-[150px] flex-1 items-center">
+            <Search
+              className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-t3"
+              aria-hidden="true"
+            />
+            <span className="sr-only">Pesquisar plugins</span>
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Pesquisar…"
+              className={cn(
+                'w-full rounded-input border border-line bg-tint/[.03] py-2 pl-8 pr-2.5',
+                'text-[12.5px] text-t1 outline-none transition-colors duration-hover',
+                'placeholder:text-t3 focus:border-accent/45',
+              )}
+            />
+          </label>
         )}
-      </ul>
+      </div>
+
+      {tab === 'marketplace' ? (
+        <MarketplaceTab />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Categorias">
+            <CategoryChip isActive={category === null} onClick={() => setCategory(null)}>
+              Todas
+            </CategoryChip>
+            {(Object.keys(PLUGIN_CATEGORY_LABELS) as PluginCategory[]).map((id) => (
+              <CategoryChip key={id} isActive={category === id} onClick={() => setCategory(id)}>
+                {PLUGIN_CATEGORY_LABELS[id]}
+              </CategoryChip>
+            ))}
+          </div>
+
+          <ul className="flex flex-col gap-2.5 overflow-y-auto pr-0.5">
+            {visible.map((entry: CatalogEntry) => (
+              <PluginCard key={entry.id} entry={entry} capabilities={capabilities} />
+            ))}
+
+            {visible.length === 0 && (
+              <li className="py-s3 text-center text-desc text-t3">
+                {tab === 'instalados'
+                  ? 'Ainda não instalou nenhum plugin desta categoria.'
+                  : 'Nenhum plugin corresponde à pesquisa.'}
+              </li>
+            )}
+          </ul>
+        </>
+      )}
     </div>
   );
 }
