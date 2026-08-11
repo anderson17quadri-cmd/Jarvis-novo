@@ -110,40 +110,65 @@ export function useVoice(): {
 
   // ── Callbacks de escuta — partilhados entre o microfone manual e o re-engate ──
 
-  const makeListeningCallbacks = useCallback(
-    (): Parameters<typeof voiceService.toggleListening>[0] => ({
-      onStart: () => setMode('listening'),
-      onEnd: () => {
-        if (useAssistantStore.getState().mode === 'listening') setMode('idle');
-        // No modo conversa, o fim de uma escuta sem transcrição re-engata.
-        tentarReengatarRef.current();
-      },
-      onError: (kind) => {
-        setMode('error');
-        logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
+  /**
+   * `true` durante o ciclo de escuta atual se já houve um erro que não seja
+   * `no-speech` — evita re-engatar o microfone quando o serviço está em baixo
+   * ou o microfone está desligado, o que criaria um ciclo infinito.
+   */
+  const erroFatalRef = useRef(false);
 
-        if (kind === 'no-speech') {
-          voiceService.incrementNoSpeech();
-          if (voiceService.consecutiveNoSpeechCount >= MAX_NO_SPEECH_ATTEMPTS) {
-            voiceService.setConversationMode(false);
-            notificationService.info(
-              'Modo conversa',
-              `Desliguei o modo conversa — ${MAX_NO_SPEECH_ATTEMPTS} tentativas seguidas sem ninguém falar.`,
-            );
+  const makeListeningCallbacks = useCallback(
+    (): Parameters<typeof voiceService.toggleListening>[0] => {
+      erroFatalRef.current = false;
+
+      return {
+        onStart: () => setMode('listening'),
+        onEnd: () => {
+          if (useAssistantStore.getState().mode === 'listening') setMode('idle');
+          // Só re-engata se não houve erro fatal neste ciclo.
+          if (!erroFatalRef.current) {
+            tentarReengatarRef.current();
+          }
+        },
+        onError: (kind) => {
+          setMode('error');
+          logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
+
+          // `no-speech` e `a-falar` são transientes — vale a pena tentar
+          // outra vez. Os outros erros (serviço em baixo, microfone desligado)
+          // são persistentes: re-engatar seria um ciclo infinito.
+          const transiente = kind === 'no-speech' || kind === 'a-falar';
+
+          if (!transiente) {
+            erroFatalRef.current = true;
+            notificationService.error('Microfone', describeVoiceError(kind));
+            setTimeout(() => setMode('idle'), 2_000);
             return;
           }
-        } else {
-          notificationService.error('Microfone', describeVoiceError(kind));
-          setTimeout(() => setMode('idle'), 2_000);
-        }
 
-        tentarReengatarRef.current();
-      },
-      onTranscript: (text) => {
-        voiceService.resetNoSpeech();
-        processTranscript(text);
-      },
-    }),
+          // `no-speech` acumula para desligar o modo conversa ao fim de
+          // N tentativas. `a-falar` não conta — o sistema estar a falar
+          // não é culpa de ninguém.
+          if (kind === 'no-speech') {
+            voiceService.incrementNoSpeech();
+            if (voiceService.consecutiveNoSpeechCount >= MAX_NO_SPEECH_ATTEMPTS) {
+              voiceService.setConversationMode(false);
+              notificationService.info(
+                'Modo conversa',
+                `Desliguei o modo conversa — ${MAX_NO_SPEECH_ATTEMPTS} tentativas seguidas sem ninguém falar.`,
+              );
+              erroFatalRef.current = true;
+              return;
+            }
+          }
+          // Transiente — o `onEnd` que vem a seguir re-engata.
+        },
+        onTranscript: (text) => {
+          voiceService.resetNoSpeech();
+          processTranscript(text);
+        },
+      };
+    },
     [setMode, processTranscript],
   );
 
@@ -170,7 +195,11 @@ export function useVoice(): {
 
   const speak = useCallback(
     (text: string): void => {
+      // Cancela qualquer re-engate pendente E para a escuta atual, se
+      // houver uma — sem isto, o microfone podia estar ativo enquanto
+      // a IA fala, e ouvia-se a si mesma pelas colunas.
       limparReengate();
+      voiceService.stopListening();
 
       voiceService.speak(text, {
         onStart: () => setMode('speaking'),

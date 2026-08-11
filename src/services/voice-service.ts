@@ -560,7 +560,14 @@ export class VoiceService {
       const forma = new FormData();
       forma.append('ficheiro', new Blob(chunks, { type: mimeType ?? 'audio/webm' }), 'gravacao.webm');
 
-      const resposta = await fetch(`${CLONE_SERVICE_URL}/ouvir`, { method: 'POST', body: forma });
+      // Timeout de 30s: o Whisper pode demorar com áudio mais longo, mas não
+      // deve bloquear a interface para sempre — sem isto, um fetch pendurado
+      // deixava o núcleo preso em "a ouvir" sem pista nenhuma de porquê.
+      const resposta = await fetch(`${CLONE_SERVICE_URL}/ouvir`, {
+        method: 'POST',
+        body: forma,
+        signal: AbortSignal.timeout(30_000),
+      });
       if (!resposta.ok) throw new Error(`o serviço local devolveu ${resposta.status}`);
 
       const corpo = (await resposta.json()) as { texto?: string };
