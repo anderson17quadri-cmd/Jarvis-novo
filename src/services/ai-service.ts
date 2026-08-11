@@ -123,7 +123,10 @@ export class AIService {
     // original segue na mesma.
     const history = selectMessages(useAssistantStore.getState());
     const resolvedPrompt = await resolveReferences(prompt, history, this.provider, signal);
-    if (signal.aborted) return '';
+    if (signal.aborted) {
+      useAssistantStore.getState().setMode('idle');
+      return '';
+    }
 
     const messageId = store.addMessage('assistant', '', true);
     let full = '';
@@ -221,7 +224,10 @@ export class AIService {
     // Resolve referências também no caminho com ferramentas.
     const toolsHistory = selectMessages(useAssistantStore.getState());
     const toolsResolvedPrompt = await resolveReferences(prompt, toolsHistory, provider, signal);
-    if (signal.aborted) return [];
+    if (signal.aborted) {
+      useAssistantStore.getState().setMode('idle');
+      return [];
+    }
 
     const request: AiRequest = {
       prompt: toolsResolvedPrompt,
