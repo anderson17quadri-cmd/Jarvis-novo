@@ -2,9 +2,8 @@ import { useCallback, useEffect, useRef } from 'react';
 
 import { getDevicePixelRatio, useAnimationFrame } from '@/hooks/use-animation-frame';
 import { useIsCoarsePointer, useReducedMotion } from '@/hooks/use-media-query';
-import { themeService } from '@/services/theme-service';
-import { useThemeStore } from '@/stores/use-theme-store';
-import { parseHexColor, WallpaperField, type RGB } from './wallpaper-field';
+import { wallpaperService } from '@/services/wallpaper-service';
+import { useWallpaperStore } from '@/stores/use-wallpaper-store';
 
 /** Amplitude do parallax da grelha, em pixels. */
 const PARALLAX_RANGE = 14;
@@ -26,18 +25,16 @@ export function Wallpaper(): React.JSX.Element {
   const particleRef = useRef<HTMLCanvasElement>(null);
   const lineRef = useRef<HTMLCanvasElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
-  const fieldRef = useRef(new WallpaperField());
-  const accentRef = useRef<RGB>({ r: 0, g: 207, b: 255 });
 
-  const theme = useThemeStore((state) => state.theme);
+  const accentColor = useWallpaperStore((s) => s.accentColor);
   const reducedMotion = useReducedMotion();
   const isCoarsePointer = useIsCoarsePointer();
 
-  // O canvas não resolve `var(--accent)`: a cor tem de vir já calculada, e é
-  // relida sempre que o tema muda.
+  // A cor de acento vem da store, que se mantém sincronizada com o tema
+  // via `eventBus`. O canvas não resolve `var(--accent)` — tem de ser RGB.
   useEffect(() => {
-    accentRef.current = parseHexColor(themeService.readAccentColor());
-  }, [theme]);
+    return useWallpaperStore.getState().hydrate();
+  }, []);
 
   const resize = useCallback((): void => {
     const particleCanvas = particleRef.current;
@@ -55,7 +52,7 @@ export function Wallpaper(): React.JSX.Element {
       canvas.style.height = `${window.innerHeight}px`;
     }
 
-    fieldRef.current.resize(width, height, dpr, reducedMotion);
+    wallpaperService.resize(width, height, dpr, reducedMotion);
   }, [reducedMotion]);
 
   useEffect(() => {
@@ -70,8 +67,8 @@ export function Wallpaper(): React.JSX.Element {
       const lineCtx = lineRef.current?.getContext('2d');
       if (!particleCtx || !lineCtx) return;
 
-      fieldRef.current.draw(particleCtx, lineCtx, accentRef.current);
-    }, []),
+      wallpaperService.draw(particleCtx, lineCtx, accentColor);
+    }, [accentColor]),
     !reducedMotion,
   );
 

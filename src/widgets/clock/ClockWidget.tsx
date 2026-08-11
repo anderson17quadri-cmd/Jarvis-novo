@@ -1,4 +1,7 @@
-import { useClock } from '@/hooks/use-clock';
+import { useEffect } from 'react';
+
+import { useIsVisible } from '@/hooks/use-platform';
+import { useClockStore } from '@/stores/use-clock-store';
 import { formatLongDate, formatTime } from '@/lib/format';
 
 /**
@@ -8,7 +11,19 @@ import { formatLongDate, formatTime } from '@/lib/format';
  * login — um só temporizador para os três, que pára em segundo plano.
  */
 export default function ClockWidget(): React.JSX.Element {
-  const now = useClock();
+  const now = useClockStore((s) => s.now);
+  const isVisible = useIsVisible();
+
+  /** Liga a subscrição ao serviço enquanto o widget está montado. */
+  useEffect(() => {
+    const unsub = useClockStore.getState().hydrate();
+    return unsub;
+  }, []);
+
+  /** Suspende o temporizador quando a janela vai para segundo plano. */
+  useEffect(() => {
+    useClockStore.getState().setPaused(!isVisible);
+  }, [isVisible]);
 
   return (
     <div className="flex h-full flex-col justify-center">

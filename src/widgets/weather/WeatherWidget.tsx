@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+
 import {
   Cloud,
   CloudDrizzle,
@@ -13,9 +15,10 @@ import {
 } from 'lucide-react';
 
 import { WidgetSkeleton } from '@/components/widgets/WidgetStates';
-import { useDataService } from '@/hooks/use-data-service';
+import { useIsVisible } from '@/hooks/use-platform';
 import { formatTime } from '@/lib/format';
 import { weatherService } from '@/services/weather/weather-service';
+import { useWeatherStore } from '@/stores/use-weather-store';
 import { WEATHER_LABELS, type WeatherCondition } from '@/types/weather';
 
 /** Um ícone Lucide por condição — nunca emoji, como a Parte 2 exige. */
@@ -40,11 +43,24 @@ const WEEKDAY = new Intl.DateTimeFormat('pt-PT', { weekday: 'short' });
  * widget diz isso em vez de os apresentar como reais.
  */
 export default function WeatherWidget(): React.JSX.Element {
-  const { data, isLoading } = useDataService(weatherService);
+  const snapshot = useWeatherStore((s) => s.snapshot);
+  const isLoading = useWeatherStore((s) => s.isLoading);
+  const isVisible = useIsVisible();
 
-  if (isLoading || !data) return <WidgetSkeleton />;
+  /** Liga a subscrição ao serviço enquanto o widget está montado. */
+  useEffect(() => {
+    const unsub = useWeatherStore.getState().hydrate();
+    return unsub;
+  }, []);
 
-  const { now, forecast, location } = data;
+  /** Suspende a sondagem quando a janela vai para segundo plano. */
+  useEffect(() => {
+    weatherService.setPaused(!isVisible);
+  }, [isVisible]);
+
+  if (isLoading || !snapshot) return <WidgetSkeleton />;
+
+  const { now, forecast, location } = snapshot;
   const Icon = CONDITION_ICONS[now.condition];
 
   return (
@@ -102,7 +118,7 @@ export default function WeatherWidget(): React.JSX.Element {
         })}
       </ul>
 
-      {data.isSimulated && (
+      {snapshot.isSimulated && (
         <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Dados simulados</p>
       )}
     </div>

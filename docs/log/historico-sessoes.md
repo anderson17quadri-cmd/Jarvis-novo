@@ -1021,3 +1021,28 @@ janela deixava a interface presa a "a pensar" para sempre — o mesmo padrão
 existia em `sendWithTools()`. Corrigido nos dois sítios: o retorno antecipado
 por cancelamento agora repõe `setMode('idle')` antes de sair. Suite completa
 volta a 1166/1166 a passar.
+
+## 2026-08-11 — Desacopla Weather, Clock e Wallpaper (Fase 2, +3 serviços)
+
+Pedido: aplicar o padrão serviço puro → store Zustand fina → componente só
+lê da store a três serviços que faltavam na Fase 2.
+
+**Weather:** já tinha um `WeatherService` puro (herda de `PollingDataService`).
+Criou-se a `useWeatherStore` e o `WeatherWidget` passou de `useDataService`
+para a store. O `App.tsx` também lia `weatherService.current` diretamente —
+agora lê `useWeatherStore.getState().snapshot`.
+
+**Clock:** o `useClock()` tinha um `setInterval` próprio por componente.
+Extraiu-se um `ClockService` puro (um só temporizador para todos,
+pára quando ninguém subscreve) e uma `useClockStore`. O hook `useClock`
+continua a funcionar para os 6 consumidores atuais, mas agora lê da store.
+O `ClockWidget` foi atualizado para ler da store diretamente.
+
+**Wallpaper:** o `WallpaperField` já era uma classe pura. Criou-se um
+`WallpaperService` que o encapsula e fornece `readAccentColor()` (sem o
+componente chamar o `themeService`). A `useWallpaperStore` subscreve o
+`eventBus` para manter a cor de acento sincronizada com o tema. O
+`Wallpaper.tsx` já não cria o campo nem chama o `themeService` diretamente.
+
+**SPEC.md:** 10/14 serviços desacoplados, 10/18 stores separadas.
+`tsc` limpo, `eslint` limpo, 1166/1166 testes passam.

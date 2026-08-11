@@ -1,26 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import { useIsVisible } from './use-platform';
-
-/** Atualização a cada 15 segundos — chega para um relógio de horas e minutos. */
-const TICK_MS = 15_000;
+import { useClockStore } from '@/stores/use-clock-store';
 
 /**
- * Relógio partilhado pelo header e pelo login.
+ * Relógio partilhado pelo header, login, calendário e widget do relógio.
  *
- * Pára quando a janela vai para segundo plano e atualiza-se logo ao voltar, para
- * a hora não aparecer congelada no primeiro frame.
+ * A hora vem da `useClockStore`, que por sua vez subscreve o `ClockService`
+ * — um só temporizador para todos os componentes, que pára quando a janela
+ * vai para segundo plano.
  */
 export function useClock(): Date {
-  const [now, setNow] = useState(() => new Date());
+  const now = useClockStore((s) => s.now);
   const isVisible = useIsVisible();
 
   useEffect(() => {
-    if (!isVisible) return;
+    const unsub = useClockStore.getState().hydrate();
+    return unsub;
+  }, []);
 
-    setNow(new Date());
-    const timer = setInterval(() => setNow(new Date()), TICK_MS);
-    return () => clearInterval(timer);
+  useEffect(() => {
+    useClockStore.getState().setPaused(!isVisible);
   }, [isVisible]);
 
   return now;

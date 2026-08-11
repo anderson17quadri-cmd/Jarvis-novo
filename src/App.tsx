@@ -19,7 +19,7 @@ import { useIdleLock } from '@/hooks/use-idle-lock';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAiSettings } from '@/hooks/use-ai-settings';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
-import { getPluginShortcuts } from '@/plugins/runtime/plugin-bridge';
+import { getPluginShortcuts, pushToPlugin } from '@/plugins/runtime/plugin-bridge';
 import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
@@ -35,7 +35,7 @@ import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
-import { weatherService } from '@/services/weather/weather-service';
+import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
 import { setVoiceExecutor } from '@/services/voice/executor';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
@@ -214,7 +214,7 @@ export function App(): React.JSX.Element {
    */
   useEffect(() => {
     return setContextSource(() => {
-      const weather = weatherService.current;
+      const weather = useWeatherStore.getState().snapshot;
 
       return {
         now: new Date(),
@@ -287,7 +287,7 @@ export function App(): React.JSX.Element {
         if (s.alt !== event.altKey) continue;
 
         event.preventDefault();
-        window.postMessage({ type: 'core.shortcut.triggered', id: s.id }, '*');
+        pushToPlugin(s.pluginId, { type: 'core.shortcut.triggered', id: s.id });
         return;
       }
     };
