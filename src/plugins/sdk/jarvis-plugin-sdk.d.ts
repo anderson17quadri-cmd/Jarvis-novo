@@ -90,6 +90,56 @@ export interface JarvisPluginSDK {
     remove(chave: string): Promise<boolean>;
   };
 
+  widget: {
+    /**
+     * Cria (ou atualiza) um widget simples — só título e texto, nunca
+     * código nem markup. `plugins.widgets`.
+     */
+    create(id: string, titulo: string, texto: string): Promise<boolean>;
+  };
+
+  menu: {
+    /**
+     * Adiciona um item ao menu de contexto do ambiente de trabalho.
+     * `plugins.menus`.
+     *
+     * Devolve uma função para deixar de ouvir os cliques.
+     */
+    add(id: string, rotulo: string, callback: () => void): Promise<() => void>;
+  };
+
+  setting: {
+    /**
+     * Declara uma definição editável — o valor fica no armazenamento do
+     * próprio plugin, editável pela interface do Core. `plugins.settings`.
+     */
+    register(
+      chave: string,
+      rotulo: string,
+      tipo: 'boolean' | 'texto',
+      valorOmissao: boolean | string,
+    ): Promise<boolean>;
+  };
+
+  service: {
+    /**
+     * Regista um "serviço" — o Core chama `callback` a cada `intervalMs`
+     * (com um mínimo de 5000). `plugins.services`.
+     *
+     * Devolve uma função para parar de ouvir os "ticks" (o serviço em si
+     * só para quando o plugin deixa de correr).
+     */
+    register(id: string, intervalMs: number, callback: () => void): Promise<() => void>;
+  };
+
+  panel: {
+    /**
+     * Adiciona um painel de texto expansível, mostrado ao lado do plugin
+     * na Loja. `plugins.panels`.
+     */
+    add(id: string, titulo: string, texto: string): Promise<boolean>;
+  };
+
   shortcut: {
     /**
      * Regista um atalho de teclado. `plugins.shortcuts`.

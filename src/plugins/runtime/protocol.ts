@@ -154,6 +154,69 @@ export interface PluginShortcutRegisterRequest {
   };
 }
 
+// ─── Widgets (título + texto, nunca código nem markup) — plugins.widgets ───
+
+export interface PluginWidgetCreateRequest {
+  readonly type: 'core.widget.create';
+  readonly requestId: string;
+  readonly payload: {
+    /** Identificador do widget, único dentro do próprio plugin. */
+    readonly id: string;
+    readonly titulo: string;
+    readonly texto: string;
+  };
+}
+
+// ─── Menus (item no menu de contexto do ambiente) — plugins.menus ─────────
+
+export interface PluginMenuAddRequest {
+  readonly type: 'core.menu.add';
+  readonly requestId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly rotulo: string;
+  };
+}
+
+// ─── Configurações (schema; o valor vive no armazenamento) — plugins.settings
+
+export type PluginSettingType = 'boolean' | 'texto';
+
+export interface PluginSettingRegisterRequest {
+  readonly type: 'core.setting.register';
+  readonly requestId: string;
+  readonly payload: {
+    readonly chave: string;
+    readonly rotulo: string;
+    readonly tipo: PluginSettingType;
+    readonly valorOmissao: boolean | string;
+  };
+}
+
+// ─── Serviços (o Core empurra um "tick" a um intervalo) — plugins.services ─
+
+export interface PluginServiceRegisterRequest {
+  readonly type: 'core.service.register';
+  readonly requestId: string;
+  readonly payload: {
+    readonly id: string;
+    /** Milissegundos entre "ticks" — o Core aplica um mínimo (ver plugin-bridge.ts). */
+    readonly intervalMs: number;
+  };
+}
+
+// ─── Painéis (bloco de texto expansível) — plugins.panels ─────────────────
+
+export interface PluginPanelAddRequest {
+  readonly type: 'core.panel.add';
+  readonly requestId: string;
+  readonly payload: {
+    readonly id: string;
+    readonly titulo: string;
+    readonly texto: string;
+  };
+}
+
 // ─── União ────────────────────────────────────────────────────────────────
 
 export type PluginToCoreMessage =
@@ -169,7 +232,12 @@ export type PluginToCoreMessage =
   | PluginStorageSetRequest
   | PluginStorageGetRequest
   | PluginStorageRemoveRequest
-  | PluginShortcutRegisterRequest;
+  | PluginShortcutRegisterRequest
+  | PluginWidgetCreateRequest
+  | PluginMenuAddRequest
+  | PluginSettingRegisterRequest
+  | PluginServiceRegisterRequest
+  | PluginPanelAddRequest;
 
 /** A permissão que cada tipo de pedido exige. */
 export const PERMISSION_BY_MESSAGE_TYPE: Record<
@@ -189,6 +257,11 @@ export const PERMISSION_BY_MESSAGE_TYPE: Record<
   'core.storage.get': 'storage',
   'core.storage.remove': 'storage',
   'core.shortcut.register': 'shortcuts',
+  'core.widget.create': 'widgets',
+  'core.menu.add': 'menus',
+  'core.setting.register': 'settings',
+  'core.service.register': 'services',
+  'core.panel.add': 'panels',
 };
 
 // ─── Resposta do Core ─────────────────────────────────────────────────────
@@ -218,6 +291,11 @@ const KNOWN_TYPES = new Set<PluginToCoreMessage['type']>([
   'core.storage.get',
   'core.storage.remove',
   'core.shortcut.register',
+  'core.widget.create',
+  'core.menu.add',
+  'core.setting.register',
+  'core.service.register',
+  'core.panel.add',
 ]);
 
 /** Confirma que uma mensagem recebida por postMessage tem a forma esperada. */
@@ -257,6 +335,29 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
       return typeof payload.chave === 'string';
     case 'core.shortcut.register':
       return typeof payload.id === 'string' && typeof payload.key === 'string';
+    case 'core.widget.create':
+      return (
+        typeof payload.id === 'string' &&
+        typeof payload.titulo === 'string' &&
+        typeof payload.texto === 'string'
+      );
+    case 'core.menu.add':
+      return typeof payload.id === 'string' && typeof payload.rotulo === 'string';
+    case 'core.setting.register':
+      return (
+        typeof payload.chave === 'string' &&
+        typeof payload.rotulo === 'string' &&
+        (payload.tipo === 'boolean' || payload.tipo === 'texto') &&
+        (typeof payload.valorOmissao === 'boolean' || typeof payload.valorOmissao === 'string')
+      );
+    case 'core.service.register':
+      return typeof payload.id === 'string' && typeof payload.intervalMs === 'number';
+    case 'core.panel.add':
+      return (
+        typeof payload.id === 'string' &&
+        typeof payload.titulo === 'string' &&
+        typeof payload.texto === 'string'
+      );
     default:
       return false;
   }

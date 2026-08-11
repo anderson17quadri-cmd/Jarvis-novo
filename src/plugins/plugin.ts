@@ -27,6 +27,16 @@ export interface PluginPermissions {
   readonly storage: boolean;
   /** Registar atalhos de teclado (11/08/2026). */
   readonly shortcuts: boolean;
+  /** Criar widgets simples (título + texto) — nunca código nem markup (12/08/2026). */
+  readonly widgets: boolean;
+  /** Adicionar itens ao menu de contexto do ambiente de trabalho (12/08/2026). */
+  readonly menus: boolean;
+  /** Declarar definições editáveis, guardadas no armazenamento do plugin (12/08/2026). */
+  readonly settings: boolean;
+  /** Correr em segundo plano a um intervalo — o Core empurra o "tick" (12/08/2026). */
+  readonly services: boolean;
+  /** Adicionar um painel de texto expansível à sua própria entrada (12/08/2026). */
+  readonly panels: boolean;
 }
 
 export interface PluginManifest {

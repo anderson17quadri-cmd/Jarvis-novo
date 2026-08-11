@@ -4,6 +4,7 @@ import {
   LayoutGrid,
   Palette,
   Plus,
+  Puzzle,
   RotateCcw,
   Settings,
   StickyNote,
@@ -12,6 +13,7 @@ import {
 
 import { useIsCoarsePointer } from '@/hooks/use-media-query';
 import { cn } from '@/lib/cn';
+import { getPluginMenuItems, pushToPlugin } from '@/plugins/runtime/plugin-bridge';
 import { notificationService } from '@/services/notification-service';
 import type { AppId } from '@/types/app';
 
@@ -146,6 +148,10 @@ export function DesktopContextMenu({
 
   if (!position) return null;
 
+  // Lido no momento de abrir o menu — a lista muda conforme plugins correm
+  // ou deixam de correr, e este componente só existe enquanto o menu está aberto.
+  const pluginMenuItems = getPluginMenuItems();
+
   return (
     <div
       ref={menuRef}
@@ -180,6 +186,31 @@ export function DesktopContextMenu({
             {action.label}
           </button>
         ),
+      )}
+
+      {pluginMenuItems.length > 0 && (
+        <>
+          <div className="mx-1 my-1.5 h-px bg-line" />
+          {pluginMenuItems.map((item) => (
+            <button
+              key={`${item.pluginId}:${item.id}`}
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                close();
+                pushToPlugin(item.pluginId, { type: 'core.menu.triggered', id: item.id });
+              }}
+              className={cn(
+                'flex w-full items-center gap-[11px] rounded-[10px] px-[11px] py-[9px]',
+                'text-[13.5px] text-t2 transition-colors duration-hover',
+                'hover:bg-accent/10 hover:text-accent',
+              )}
+            >
+              <Puzzle className="h-4 w-4 flex-shrink-0 opacity-80" aria-hidden="true" />
+              {item.rotulo}
+            </button>
+          ))}
+        </>
       )}
     </div>
   );

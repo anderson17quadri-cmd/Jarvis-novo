@@ -79,6 +79,40 @@ function isReservedShortcut(key: string, ctrl: boolean): boolean {
   return ctrl && RESERVED_SHORTCUTS.has(key.toLowerCase());
 }
 
+// ─── Alcance de cada plugin a correr ─────────────────────────────────────────
+
+/**
+ * Como falar com o iframe de um plugin a partir de fora do fluxo normal de
+ * mensagens — atalhos, itens de menu e "ticks" de serviço não nascem de um
+ * pedido do próprio plugin, por isso não há nenhum `sendToPlugin` à mão como
+ * há para `core.event.subscribe`.
+ *
+ * `PluginRuntime` regista-se aqui ao montar e desregista-se ao desmontar. Sem
+ * isto, um atalho premido nunca chegava ao plugin: `window.postMessage` no
+ * `window` do Core não entra num iframe filho sozinho, e nada mais na cadeia
+ * o reencaminhava — um buraco real, só visível ao testar a sério (prima a
+ * tecla, o plugin nunca reage).
+ */
+type PluginSender = (message: Record<string, unknown>) => void;
+
+const pluginSenders = new Map<string, PluginSender>();
+
+export function registerPluginSender(pluginId: string, send: PluginSender): void {
+  pluginSenders.set(pluginId, send);
+}
+
+export function unregisterPluginSender(pluginId: string): void {
+  pluginSenders.delete(pluginId);
+}
+
+/** Empurra uma mensagem para um plugin a correr. `false` se não estiver montado. */
+export function pushToPlugin(pluginId: string, message: Record<string, unknown>): boolean {
+  const send = pluginSenders.get(pluginId);
+  if (!send) return false;
+  send(message);
+  return true;
+}
+
 // ─── Subscrições de eventos ─────────────────────────────────────────────────
 
 interface PluginEventSubscription {
@@ -103,6 +137,150 @@ export function clearPluginSubscriptions(pluginId: string): void {
       sub.unsubscribe();
       eventSubscriptions.splice(i, 1);
     }
+  }
+}
+
+// ─── Widgets registados por plugins ──────────────────────────────────────────
+
+export interface PluginWidget {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly titulo: string;
+  readonly texto: string;
+}
+
+const pluginWidgets: PluginWidget[] = [];
+
+/** Widgets de um plugin — para `PluginRuntime` os mostrar depois de os criar. */
+export function getPluginWidgets(pluginId: string): readonly PluginWidget[] {
+  return pluginWidgets.filter((w) => w.pluginId === pluginId);
+}
+
+/** Remove todos os widgets de um plugin — chamado ao desmontar. */
+export function clearPluginWidgets(pluginId: string): void {
+  for (let i = pluginWidgets.length - 1; i >= 0; i--) {
+    if (pluginWidgets[i]?.pluginId === pluginId) pluginWidgets.splice(i, 1);
+  }
+}
+
+// ─── Itens de menu registados por plugins ────────────────────────────────────
+
+export interface PluginMenuItem {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly rotulo: string;
+}
+
+const pluginMenuItems: PluginMenuItem[] = [];
+
+/** Todos os itens de menu de todos os plugins — para `DesktopContextMenu`. */
+export function getPluginMenuItems(): readonly PluginMenuItem[] {
+  return pluginMenuItems;
+}
+
+/** Remove todos os itens de menu de um plugin — chamado ao desmontar. */
+export function clearPluginMenuItems(pluginId: string): void {
+  for (let i = pluginMenuItems.length - 1; i >= 0; i--) {
+    if (pluginMenuItems[i]?.pluginId === pluginId) pluginMenuItems.splice(i, 1);
+  }
+}
+
+// ─── Definições registadas por plugins ───────────────────────────────────────
+
+export interface PluginSetting {
+  readonly pluginId: string;
+  readonly chave: string;
+  readonly rotulo: string;
+  readonly tipo: 'boolean' | 'texto';
+  readonly valorOmissao: boolean | string;
+}
+
+const pluginSettings: PluginSetting[] = [];
+
+/** O schema das definições de um plugin — o valor vive no armazenamento. */
+export function getPluginSettings(pluginId: string): readonly PluginSetting[] {
+  return pluginSettings.filter((s) => s.pluginId === pluginId);
+}
+
+/** Remove o schema das definições de um plugin — chamado ao desmontar. */
+export function clearPluginSettings(pluginId: string): void {
+  for (let i = pluginSettings.length - 1; i >= 0; i--) {
+    if (pluginSettings[i]?.pluginId === pluginId) pluginSettings.splice(i, 1);
+  }
+}
+
+/**
+ * Lê/escreve o valor de uma definição — a mesma chave prefixada de
+ * `core.storage`, mas chamada diretamente do lado do Core (confia-se em si
+ * própria) em vez de ir e voltar pelo protocolo do plugin, que é para quem
+ * está de fora da sandbox, não para a própria interface de definições.
+ */
+export async function getPluginSettingValue<T extends boolean | string>(
+  pluginId: string,
+  chave: string,
+  fallback: T,
+): Promise<T> {
+  return getPlatformAdapter().storageGet<T>(`plugins:${pluginId}:${chave}`, fallback);
+}
+
+export async function setPluginSettingValue(
+  pluginId: string,
+  chave: string,
+  valor: boolean | string,
+): Promise<void> {
+  await getPlatformAdapter().storageSet(`plugins:${pluginId}:${chave}`, valor);
+}
+
+// ─── Serviços registados por plugins ─────────────────────────────────────────
+
+interface PluginService {
+  pluginId: string;
+  id: string;
+  intervalId: ReturnType<typeof setInterval>;
+}
+
+const pluginServices: PluginService[] = [];
+
+/** Nunca mais depressa do que isto — um plugin não pode martelar o Core. */
+const MIN_SERVICE_INTERVAL_MS = 5_000;
+
+/** Remove (e para) todos os serviços de um plugin — chamado ao desmontar. */
+export function clearPluginServices(pluginId: string): void {
+  for (let i = pluginServices.length - 1; i >= 0; i--) {
+    const service = pluginServices[i];
+    if (!service) continue;
+    if (service.pluginId === pluginId) {
+      clearInterval(service.intervalId);
+      pluginServices.splice(i, 1);
+    }
+  }
+}
+
+/** Quantos serviços um plugin tem ativos — só para a interface o mostrar. */
+export function getPluginServiceCount(pluginId: string): number {
+  return pluginServices.filter((s) => s.pluginId === pluginId).length;
+}
+
+// ─── Painéis registados por plugins ──────────────────────────────────────────
+
+export interface PluginPanel {
+  readonly pluginId: string;
+  readonly id: string;
+  readonly titulo: string;
+  readonly texto: string;
+}
+
+const pluginPanels: PluginPanel[] = [];
+
+/** Painéis de um plugin — para `PluginRuntime` os mostrar depois de os criar. */
+export function getPluginPanels(pluginId: string): readonly PluginPanel[] {
+  return pluginPanels.filter((p) => p.pluginId === pluginId);
+}
+
+/** Remove todos os painéis de um plugin — chamado ao desmontar. */
+export function clearPluginPanels(pluginId: string): void {
+  for (let i = pluginPanels.length - 1; i >= 0; i--) {
+    if (pluginPanels[i]?.pluginId === pluginId) pluginPanels.splice(i, 1);
   }
 }
 
@@ -280,6 +458,81 @@ export async function handlePluginMessage(
 
       pluginShortcuts.push({ pluginId, id, key, ctrlOrMeta, shift, alt });
       logService.audit(`Plugin ${pluginId}: registou atalho ${id}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.widget.create': {
+      const { id, titulo, texto } = message.payload;
+      const existing = pluginWidgets.findIndex((w) => w.pluginId === pluginId && w.id === id);
+      const widget: PluginWidget = { pluginId, id, titulo, texto };
+      if (existing >= 0) {
+        pluginWidgets[existing] = widget;
+      } else {
+        pluginWidgets.push(widget);
+      }
+      logService.audit(`Plugin ${pluginId}: criou o widget ${id}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.menu.add': {
+      const { id, rotulo } = message.payload;
+      if (pluginMenuItems.some((m) => m.pluginId === pluginId && m.id === id)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'item-ja-registado' };
+      }
+      pluginMenuItems.push({ pluginId, id, rotulo });
+      logService.audit(`Plugin ${pluginId}: adicionou o item de menu ${id}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.setting.register': {
+      const { chave, rotulo, tipo, valorOmissao } = message.payload;
+      const existing = pluginSettings.findIndex((s) => s.pluginId === pluginId && s.chave === chave);
+      const setting: PluginSetting = { pluginId, chave, rotulo, tipo, valorOmissao };
+      if (existing >= 0) {
+        pluginSettings[existing] = setting;
+      } else {
+        pluginSettings.push(setting);
+      }
+      // Só semeia o valor por omissão se ainda não houver nada guardado —
+      // reabrir o plugin não pode apagar o que a pessoa já escolheu.
+      const prefixedKey = `plugins:${pluginId}:${chave}`;
+      const jaTinhaValor = (await getPlatformAdapter().storageGet<unknown>(prefixedKey, null)) !== null;
+      if (!jaTinhaValor) {
+        await getPlatformAdapter().storageSet(prefixedKey, valorOmissao);
+      }
+      logService.audit(`Plugin ${pluginId}: registou a definição ${chave}`, 'executado');
+      return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.service.register': {
+      const { id, intervalMs } = message.payload;
+      if (pluginServices.some((s) => s.pluginId === pluginId && s.id === id)) {
+        return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'servico-ja-registado' };
+      }
+
+      const intervaloReal = Math.max(intervalMs, MIN_SERVICE_INTERVAL_MS);
+      const intervalId = setInterval(() => {
+        pushToPlugin(pluginId, { type: 'core.service.tick', id });
+      }, intervaloReal);
+
+      pluginServices.push({ pluginId, id, intervalId });
+      logService.audit(
+        `Plugin ${pluginId}: registou o serviço ${id} (a cada ${intervaloReal}ms)`,
+        'executado',
+      );
+      return { type: 'core.ack', requestId: message.requestId, ok: true, data: { intervalMs: intervaloReal } };
+    }
+
+    case 'core.panel.add': {
+      const { id, titulo, texto } = message.payload;
+      const existing = pluginPanels.findIndex((p) => p.pluginId === pluginId && p.id === id);
+      const panel: PluginPanel = { pluginId, id, titulo, texto };
+      if (existing >= 0) {
+        pluginPanels[existing] = panel;
+      } else {
+        pluginPanels.push(panel);
+      }
+      logService.audit(`Plugin ${pluginId}: adicionou o painel ${id}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: true };
     }
   }

@@ -1,7 +1,26 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { cn } from '@/lib/cn';
 import pluginSdkSource from '@/plugins/sdk/jarvis-plugin-sdk.js?raw';
-import { clearPluginShortcuts, clearPluginSubscriptions, handlePluginMessage } from './plugin-bridge';
+import {
+  clearPluginPanels,
+  clearPluginServices,
+  clearPluginSettings,
+  clearPluginShortcuts,
+  clearPluginSubscriptions,
+  clearPluginWidgets,
+  getPluginPanels,
+  getPluginSettingValue,
+  getPluginSettings,
+  getPluginWidgets,
+  handlePluginMessage,
+  registerPluginSender,
+  setPluginSettingValue,
+  unregisterPluginSender,
+  type PluginPanel,
+  type PluginSetting,
+  type PluginWidget,
+} from './plugin-bridge';
 import { isPluginToCoreMessage, type CoreAckMessage, type PluginToCoreMessage } from './protocol';
 
 interface PluginRuntimeProps {
@@ -32,40 +51,85 @@ export function PluginRuntime({
 }: PluginRuntimeProps): React.JSX.Element {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [widgets, setWidgets] = useState<readonly PluginWidget[]>([]);
+  const [panels, setPanels] = useState<readonly PluginPanel[]>([]);
+  const [settings, setSettings] = useState<readonly PluginSetting[]>([]);
+  const [settingValues, setSettingValues] = useState<Readonly<Record<string, boolean | string>>>(
+    {},
+  );
 
   const srcDoc = useMemo(
     () => `<!doctype html><html><body><script>${pluginSdkSource}</script><script>${source}</script></body></html>`,
     [source],
   );
 
+  /** Relê o que o plugin tem registado, depois de um pedido que pode ter mudado algo. */
+  const refreshRegistrations = async (): Promise<void> => {
+    setWidgets(getPluginWidgets(pluginId));
+    setPanels(getPluginPanels(pluginId));
+    const schema = getPluginSettings(pluginId);
+    setSettings(schema);
+
+    const values: Record<string, boolean | string> = {};
+    for (const setting of schema) {
+      values[setting.chave] = await getPluginSettingValue(
+        pluginId,
+        setting.chave,
+        setting.valorOmissao,
+      );
+    }
+    setSettingValues(values);
+  };
+
   useEffect(() => {
+    const sendToPlugin = (msg: Record<string, unknown>): void => {
+      iframeRef.current?.contentWindow?.postMessage(msg, '*');
+    };
+    registerPluginSender(pluginId, sendToPlugin);
+
     function onMessage(event: MessageEvent): void {
       if (event.source !== iframeRef.current?.contentWindow) return;
 
       const message = event.data as PluginToCoreMessage;
       if (!isPluginToCoreMessage(message)) return;
 
-      const sendToPlugin = (msg: Record<string, unknown>): void => {
-        iframeRef.current?.contentWindow?.postMessage(msg, '*');
-      };
-
       void handlePluginMessage(pluginId, message, sendToPlugin).then((ack) => {
         setStatus(descricaoDoAck(message.type, ack));
         iframeRef.current?.contentWindow?.postMessage(ack, '*');
+
+        if (
+          ack.ok &&
+          (message.type === 'core.widget.create' ||
+            message.type === 'core.panel.add' ||
+            message.type === 'core.setting.register')
+        ) {
+          void refreshRegistrations();
+        }
       });
     }
 
     window.addEventListener('message', onMessage);
     return () => {
       window.removeEventListener('message', onMessage);
+      unregisterPluginSender(pluginId);
       clearPluginSubscriptions(pluginId);
       clearPluginShortcuts(pluginId);
+      clearPluginWidgets(pluginId);
+      clearPluginSettings(pluginId);
+      clearPluginServices(pluginId);
+      clearPluginPanels(pluginId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshRegistrations depende só de pluginId, redeclará-la de propósito
   }, [pluginId]);
 
   const onRun = (): void => {
     setStatus('A pedir…');
     iframeRef.current?.contentWindow?.postMessage({ type: 'core.run' }, '*');
+  };
+
+  const onSettingChange = (setting: PluginSetting, valor: boolean | string): void => {
+    setSettingValues((prev) => ({ ...prev, [setting.chave]: valor }));
+    void setPluginSettingValue(pluginId, setting.chave, valor);
   };
 
   return (
@@ -85,6 +149,89 @@ export function PluginRuntime({
         {triggerLabel}
       </button>
       {status !== null && <p className="mt-2 text-cap text-t3">{status}</p>}
+
+      {widgets.length > 0 && (
+        <div className="mt-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-t3">Widgets</p>
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {widgets.map((widget) => (
+              <li
+                key={widget.id}
+                className="rounded-input border border-line bg-tint/[.03] px-2 py-1.5 text-[11px]"
+              >
+                <p className="font-medium text-t1">{widget.titulo}</p>
+                <p className="text-t3">{widget.texto}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {settings.length > 0 && (
+        <div className="mt-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-t3">Definições</p>
+          <ul className="mt-1 space-y-1.5">
+            {settings.map((setting) => (
+              <li key={setting.chave} className="flex items-center gap-2 text-[11.5px]">
+                <span className="flex-1 text-t2">{setting.rotulo}</span>
+                {setting.tipo === 'boolean' ? (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={Boolean(settingValues[setting.chave])}
+                    aria-label={setting.rotulo}
+                    onClick={() => onSettingChange(setting, !settingValues[setting.chave])}
+                    className={cn(
+                      'rounded-full border px-2 py-0.5 text-[10.5px]',
+                      settingValues[setting.chave]
+                        ? 'border-ok/45 bg-ok/[.08] text-ok'
+                        : 'border-line text-t3',
+                    )}
+                  >
+                    {settingValues[setting.chave] ? 'Ligado' : 'Desligado'}
+                  </button>
+                ) : (
+                  <input
+                    type="text"
+                    aria-label={setting.rotulo}
+                    value={(settingValues[setting.chave] as string | undefined) ?? ''}
+                    onChange={(event) => onSettingChange(setting, event.target.value)}
+                    className="w-28 rounded-input border border-line bg-tint/[.03] px-1.5 py-1 text-[11px] outline-none focus:border-accent/45"
+                  />
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {panels.length > 0 && (
+        <div className="mt-2.5 space-y-1.5">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-t3">Painéis</p>
+          {panels.map((panel) => (
+            <PluginPanelBlock key={panel.id} panel={panel} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PluginPanelBlock({ panel }: { readonly panel: PluginPanel }): React.JSX.Element {
+  const [isOpen, setOpen] = useState(false);
+
+  return (
+    <div className="rounded-input border border-line bg-tint/[.03]">
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        aria-expanded={isOpen}
+        className="flex w-full items-center justify-between px-2.5 py-1.5 text-left text-[11.5px] font-medium text-t1"
+      >
+        {panel.titulo}
+        <span className="text-t3">{isOpen ? '−' : '+'}</span>
+      </button>
+      {isOpen && <p className="border-t border-line px-2.5 py-1.5 text-[11px] text-t2">{panel.texto}</p>}
     </div>
   );
 }
@@ -105,6 +252,8 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       'evento-desconhecido': 'Este evento não existe no sistema.',
       'atalho-ja-registado': 'Este atalho já foi registado.',
       'atalho-reservado': 'Este atalho pertence ao sistema.',
+      'item-ja-registado': 'Este item de menu já foi registado.',
+      'servico-ja-registado': 'Este serviço já foi registado.',
     };
     const chave = ack.reason?.split(':')[0] ?? '';
     return razoes[chave] ?? `Recusado: ${ack.reason ?? 'desconhecido'}.`;
@@ -137,6 +286,16 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       return 'Preferência removida.';
     case 'core.shortcut.register':
       return 'Atalho registado.';
+    case 'core.widget.create':
+      return 'Widget criado.';
+    case 'core.menu.add':
+      return 'Item de menu adicionado.';
+    case 'core.setting.register':
+      return 'Definição registada.';
+    case 'core.service.register':
+      return 'Serviço a correr em segundo plano.';
+    case 'core.panel.add':
+      return 'Painel adicionado.';
     default:
       return 'Cumprido.';
   }

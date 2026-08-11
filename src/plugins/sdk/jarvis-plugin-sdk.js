@@ -187,6 +187,104 @@
       },
     },
 
+    /** Widgets simples — título + texto, nunca código nem markup. `plugins.widgets`. */
+    widget: {
+      create: function (id, titulo, texto) {
+        return pedir('core.widget.create', { id: id, titulo: titulo, texto: texto }).then(
+          function (ack) {
+            return ack.ok;
+          },
+        );
+      },
+    },
+
+    /** Itens no menu de contexto do ambiente de trabalho — `plugins.menus`. */
+    menu: {
+      /**
+       * @param {string} id — identificador único do item, dentro do próprio plugin
+       * @param {string} rotulo — texto mostrado no menu
+       * @param {function} callback — chamado quando a pessoa clica no item
+       * @returns {Promise<function>} — devolve a função para deixar de ouvir
+       */
+      add: function (id, rotulo, callback) {
+        return pedir('core.menu.add', { id: id, rotulo: rotulo }).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'menu.add falhou');
+
+          var handler = function (event) {
+            if (
+              event.data &&
+              event.data.type === 'core.menu.triggered' &&
+              event.data.id === id
+            ) {
+              try { callback(); } catch (e) { /* não estraga os outros */ }
+            }
+          };
+          window.addEventListener('message', handler);
+          return function () { window.removeEventListener('message', handler); };
+        });
+      },
+    },
+
+    /** Definições editáveis, guardadas no armazenamento do plugin — `plugins.settings`. */
+    setting: {
+      /**
+       * @param {string} chave
+       * @param {string} rotulo
+       * @param {'boolean'|'texto'} tipo
+       * @param {boolean|string} valorOmissao
+       */
+      register: function (chave, rotulo, tipo, valorOmissao) {
+        return pedir('core.setting.register', {
+          chave: chave,
+          rotulo: rotulo,
+          tipo: tipo,
+          valorOmissao: valorOmissao,
+        }).then(function (ack) {
+          return ack.ok;
+        });
+      },
+    },
+
+    /** Correr a um intervalo em segundo plano — `plugins.services`. */
+    service: {
+      /**
+       * @param {string} id
+       * @param {number} intervalMs — o Core aplica um mínimo (5s)
+       * @param {function} callback — chamado a cada "tick"
+       * @returns {Promise<function>} — devolve a função para deixar de ouvir
+       */
+      register: function (id, intervalMs, callback) {
+        return pedir('core.service.register', { id: id, intervalMs: intervalMs }).then(
+          function (ack) {
+            if (!ack.ok) throw new Error(ack.reason || 'service.register falhou');
+
+            var handler = function (event) {
+              if (
+                event.data &&
+                event.data.type === 'core.service.tick' &&
+                event.data.id === id
+              ) {
+                try { callback(); } catch (e) { /* não estraga os outros */ }
+              }
+            };
+            window.addEventListener('message', handler);
+            return function () { window.removeEventListener('message', handler); };
+          },
+        );
+      },
+    },
+
+    /** Painel de texto expansível, ao lado do plugin na Loja — `plugins.panels`. */
+    panel: {
+      add: function (id, titulo, texto) {
+        return pedir('core.panel.add', { id: id, titulo: titulo, texto: texto }).then(
+          function (ack) {
+            return ack.ok;
+          },
+        );
+      },
+    },
+
     /** Atalhos de teclado — `plugins.shortcuts`. */
     shortcut: {
       /**

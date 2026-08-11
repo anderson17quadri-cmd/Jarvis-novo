@@ -1,6 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { clearPluginCommands, clearPluginSubscriptions, getPluginCommands, handlePluginMessage } from '@/plugins/runtime/plugin-bridge';
+import {
+  clearAllPluginShortcuts,
+  clearPluginCommands,
+  clearPluginMenuItems,
+  clearPluginPanels,
+  clearPluginServices,
+  clearPluginSettings,
+  clearPluginSubscriptions,
+  clearPluginWidgets,
+  getPluginCommands,
+  getPluginMenuItems,
+  getPluginPanels,
+  getPluginSettingValue,
+  getPluginSettings,
+  getPluginShortcuts,
+  getPluginWidgets,
+  handlePluginMessage,
+  pushToPlugin,
+  registerPluginSender,
+  setPluginSettingValue,
+  unregisterPluginSender,
+} from '@/plugins/runtime/plugin-bridge';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
@@ -496,5 +517,553 @@ describe('handlePluginMessage — core.event.subscribe', () => {
     expect(ack.ok).toBe(true);
     // Emitir o evento não deve rebentar.
     eventBus.emit('tema:alterado', { theme: 'dark' });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Armazenamento e atalhos — cobertura em falta (12/08/2026): as duas
+// capacidades já corriam a sério na app, mas nunca tinham testes próprios.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('handlePluginMessage — core.storage', () => {
+  const STORAGE_PLUGIN_ID = 'guarda-preferencias';
+
+  beforeEach(() => {
+    localStorage.clear();
+    usePluginStore.setState({ deniedPermissions: {} });
+  });
+
+  it('permissão recusada: set não escreve nada', async () => {
+    usePluginStore.getState().setPermission(STORAGE_PLUGIN_ID, 'storage', false);
+
+    const ack = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-1',
+      payload: { chave: 'visitas', valor: 1 },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+    expect(localStorage.getItem('jarvis.plugins:guarda-preferencias:visitas')).toBeNull();
+  });
+
+  it('escreve e lê de volta', async () => {
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-2',
+      payload: { chave: 'visitas', valor: 3 },
+    });
+
+    const leitura = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.get',
+      requestId: 'st-3',
+      payload: { chave: 'visitas' },
+    });
+
+    expect((leitura.data as { valor: unknown }).valor).toBe(3);
+  });
+
+  it('chave nunca guardada devolve o fallback pedido', async () => {
+    const ack = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.get',
+      requestId: 'st-4',
+      payload: { chave: 'nunca-guardada', fallback: 'omissao' },
+    });
+
+    expect((ack.data as { valor: unknown }).valor).toBe('omissao');
+  });
+
+  it('remove apaga a chave a sério', async () => {
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-5',
+      payload: { chave: 'temp', valor: 'x' },
+    });
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.remove',
+      requestId: 'st-6',
+      payload: { chave: 'temp' },
+    });
+
+    const leitura = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.get',
+      requestId: 'st-7',
+      payload: { chave: 'temp', fallback: null },
+    });
+
+    expect((leitura.data as { valor: unknown }).valor).toBeNull();
+  });
+
+  it('dois plugins com a mesma chave não se veem — o prefixo isola', async () => {
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-8',
+      payload: { chave: 'k', valor: 'a' },
+    });
+    await handlePluginMessage('outro-plugin', {
+      type: 'core.storage.set',
+      requestId: 'st-9',
+      payload: { chave: 'k', valor: 'b' },
+    });
+
+    const leituraA = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.get',
+      requestId: 'st-10',
+      payload: { chave: 'k' },
+    });
+
+    expect((leituraA.data as { valor: unknown }).valor).toBe('a');
+  });
+});
+
+describe('handlePluginMessage — core.shortcut.register', () => {
+  const SHORTCUT_PLUGIN_ID = 'regista-atalho';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearAllPluginShortcuts();
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(SHORTCUT_PLUGIN_ID, 'shortcuts', false);
+
+    const ack = await handlePluginMessage(SHORTCUT_PLUGIN_ID, {
+      type: 'core.shortcut.register',
+      requestId: 'sc-1',
+      payload: { id: 'mostrar-hora', key: 'h', ctrlOrMeta: true, shift: true },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('regista e fica em getPluginShortcuts', async () => {
+    const ack = await handlePluginMessage(SHORTCUT_PLUGIN_ID, {
+      type: 'core.shortcut.register',
+      requestId: 'sc-2',
+      payload: { id: 'mostrar-hora', key: 'h', ctrlOrMeta: true, shift: true },
+    });
+
+    expect(ack.ok).toBe(true);
+    const shortcuts = getPluginShortcuts();
+    expect(shortcuts).toHaveLength(1);
+    expect(shortcuts[0]).toMatchObject({ pluginId: SHORTCUT_PLUGIN_ID, id: 'mostrar-hora', key: 'h' });
+  });
+
+  it('recusa registar o mesmo ID duas vezes pelo mesmo plugin', async () => {
+    const payload = { id: 'duplicado', key: 'x' };
+    await handlePluginMessage(SHORTCUT_PLUGIN_ID, { type: 'core.shortcut.register', requestId: 'sc-3', payload });
+
+    const segundo = await handlePluginMessage(SHORTCUT_PLUGIN_ID, {
+      type: 'core.shortcut.register',
+      requestId: 'sc-4',
+      payload,
+    });
+
+    expect(segundo.ok).toBe(false);
+    expect(segundo.reason).toBe('atalho-ja-registado');
+  });
+
+  it('recusa um atalho reservado do sistema (Ctrl+K)', async () => {
+    const ack = await handlePluginMessage(SHORTCUT_PLUGIN_ID, {
+      type: 'core.shortcut.register',
+      requestId: 'sc-5',
+      payload: { id: 'palete', key: 'k', ctrlOrMeta: true },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('atalho-reservado');
+  });
+
+  it('a mesma tecla sem Ctrl/Meta não é reservada', async () => {
+    const ack = await handlePluginMessage(SHORTCUT_PLUGIN_ID, {
+      type: 'core.shortcut.register',
+      requestId: 'sc-6',
+      payload: { id: 'letra-k', key: 'k', ctrlOrMeta: false },
+    });
+
+    expect(ack.ok).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Capacidades novas (12/08/2026) — widgets, menus, definições, serviços, painéis
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('registerPluginSender / pushToPlugin — entrega para o iframe certo', () => {
+  afterEach(() => {
+    unregisterPluginSender('plugin-x');
+  });
+
+  it('sem sender registado, devolve false e não rebenta', () => {
+    expect(pushToPlugin('inexistente', { type: 'core.shortcut.triggered', id: 'a' })).toBe(false);
+  });
+
+  it('com sender registado, a mensagem é mesmo entregue', () => {
+    const recebidas: Record<string, unknown>[] = [];
+    registerPluginSender('plugin-x', (msg) => recebidas.push(msg));
+
+    const entregue = pushToPlugin('plugin-x', { type: 'core.shortcut.triggered', id: 'a' });
+
+    expect(entregue).toBe(true);
+    expect(recebidas).toEqual([{ type: 'core.shortcut.triggered', id: 'a' }]);
+  });
+
+  it('depois de desregistado, deixa de entregar — a fuga que o bug original tinha', () => {
+    registerPluginSender('plugin-x', () => {
+      throw new Error('não devia ser chamado');
+    });
+    unregisterPluginSender('plugin-x');
+
+    expect(pushToPlugin('plugin-x', { type: 'core.shortcut.triggered', id: 'a' })).toBe(false);
+  });
+});
+
+describe('handlePluginMessage — core.widget.create', () => {
+  const WIDGET_PLUGIN_ID = 'cria-widget';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginWidgets(WIDGET_PLUGIN_ID);
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(WIDGET_PLUGIN_ID, 'widgets', false);
+
+    const ack = await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-1',
+      payload: { id: 'resumo', titulo: 'T', texto: 'X' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('cria e fica disponível em getPluginWidgets', async () => {
+    const ack = await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-2',
+      payload: { id: 'resumo', titulo: 'Resumo', texto: 'Texto do widget' },
+    });
+
+    expect(ack.ok).toBe(true);
+    const widgets = getPluginWidgets(WIDGET_PLUGIN_ID);
+    expect(widgets).toHaveLength(1);
+    expect(widgets[0]).toMatchObject({ id: 'resumo', titulo: 'Resumo', texto: 'Texto do widget' });
+  });
+
+  it('criar com o mesmo id substitui em vez de duplicar', async () => {
+    await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-3',
+      payload: { id: 'resumo', titulo: 'Primeiro', texto: 'A' },
+    });
+    await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-4',
+      payload: { id: 'resumo', titulo: 'Segundo', texto: 'B' },
+    });
+
+    const widgets = getPluginWidgets(WIDGET_PLUGIN_ID);
+    expect(widgets).toHaveLength(1);
+    expect(widgets[0]?.titulo).toBe('Segundo');
+  });
+
+  it('dois plugins não se misturam', async () => {
+    await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-5',
+      payload: { id: 'resumo', titulo: 'A', texto: 'A' },
+    });
+    await handlePluginMessage('outro-plugin', {
+      type: 'core.widget.create',
+      requestId: 'w-6',
+      payload: { id: 'resumo', titulo: 'B', texto: 'B' },
+    });
+
+    expect(getPluginWidgets(WIDGET_PLUGIN_ID)).toHaveLength(1);
+    expect(getPluginWidgets('outro-plugin')).toHaveLength(1);
+    clearPluginWidgets('outro-plugin');
+  });
+
+  it('clearPluginWidgets esvazia tudo', async () => {
+    await handlePluginMessage(WIDGET_PLUGIN_ID, {
+      type: 'core.widget.create',
+      requestId: 'w-7',
+      payload: { id: 'resumo', titulo: 'A', texto: 'A' },
+    });
+    clearPluginWidgets(WIDGET_PLUGIN_ID);
+
+    expect(getPluginWidgets(WIDGET_PLUGIN_ID)).toHaveLength(0);
+  });
+});
+
+describe('handlePluginMessage — core.menu.add', () => {
+  const MENU_PLUGIN_ID = 'adiciona-menu';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginMenuItems(MENU_PLUGIN_ID);
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(MENU_PLUGIN_ID, 'menus', false);
+
+    const ack = await handlePluginMessage(MENU_PLUGIN_ID, {
+      type: 'core.menu.add',
+      requestId: 'm-1',
+      payload: { id: 'saudacao', rotulo: 'Saudação' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('adiciona e fica disponível em getPluginMenuItems, visível a todos os plugins', async () => {
+    const ack = await handlePluginMessage(MENU_PLUGIN_ID, {
+      type: 'core.menu.add',
+      requestId: 'm-2',
+      payload: { id: 'saudacao', rotulo: 'Saudação do plugin' },
+    });
+
+    expect(ack.ok).toBe(true);
+    const itens = getPluginMenuItems();
+    expect(itens.some((item) => item.pluginId === MENU_PLUGIN_ID && item.id === 'saudacao')).toBe(true);
+  });
+
+  it('recusa registar o mesmo ID duas vezes pelo mesmo plugin', async () => {
+    const payload = { id: 'duplicado', rotulo: 'X' };
+    await handlePluginMessage(MENU_PLUGIN_ID, { type: 'core.menu.add', requestId: 'm-3', payload });
+
+    const segundo = await handlePluginMessage(MENU_PLUGIN_ID, {
+      type: 'core.menu.add',
+      requestId: 'm-4',
+      payload,
+    });
+
+    expect(segundo.ok).toBe(false);
+    expect(segundo.reason).toBe('item-ja-registado');
+  });
+
+  it('um clique (pushToPlugin) chega ao plugin certo como core.menu.triggered', async () => {
+    const recebidas: Record<string, unknown>[] = [];
+    registerPluginSender(MENU_PLUGIN_ID, (msg) => recebidas.push(msg));
+
+    await handlePluginMessage(MENU_PLUGIN_ID, {
+      type: 'core.menu.add',
+      requestId: 'm-5',
+      payload: { id: 'saudacao', rotulo: 'Saudação' },
+    });
+
+    pushToPlugin(MENU_PLUGIN_ID, { type: 'core.menu.triggered', id: 'saudacao' });
+
+    expect(recebidas).toEqual([{ type: 'core.menu.triggered', id: 'saudacao' }]);
+    unregisterPluginSender(MENU_PLUGIN_ID);
+  });
+});
+
+describe('handlePluginMessage — core.setting.register', () => {
+  const SETTING_PLUGIN_ID = 'regista-definicao';
+
+  beforeEach(() => {
+    localStorage.clear();
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginSettings(SETTING_PLUGIN_ID);
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(SETTING_PLUGIN_ID, 'settings', false);
+
+    const ack = await handlePluginMessage(SETTING_PLUGIN_ID, {
+      type: 'core.setting.register',
+      requestId: 'set-1',
+      payload: { chave: 'maiusculas', rotulo: 'Maiúsculas', tipo: 'boolean', valorOmissao: false },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('regista o schema e semeia o valor por omissão no armazenamento', async () => {
+    const ack = await handlePluginMessage(SETTING_PLUGIN_ID, {
+      type: 'core.setting.register',
+      requestId: 'set-2',
+      payload: { chave: 'maiusculas', rotulo: 'Maiúsculas', tipo: 'boolean', valorOmissao: false },
+    });
+
+    expect(ack.ok).toBe(true);
+    const schema = getPluginSettings(SETTING_PLUGIN_ID);
+    expect(schema).toHaveLength(1);
+    expect(schema[0]).toMatchObject({ chave: 'maiusculas', tipo: 'boolean' });
+
+    const valor = await getPluginSettingValue(SETTING_PLUGIN_ID, 'maiusculas', true);
+    expect(valor).toBe(false);
+  });
+
+  it('não pisa um valor já guardado ao registar de novo — reabrir não apaga a escolha', async () => {
+    await setPluginSettingValue(SETTING_PLUGIN_ID, 'maiusculas', true);
+
+    await handlePluginMessage(SETTING_PLUGIN_ID, {
+      type: 'core.setting.register',
+      requestId: 'set-3',
+      payload: { chave: 'maiusculas', rotulo: 'Maiúsculas', tipo: 'boolean', valorOmissao: false },
+    });
+
+    const valor = await getPluginSettingValue(SETTING_PLUGIN_ID, 'maiusculas', false);
+    expect(valor).toBe(true);
+  });
+
+  it('setPluginSettingValue muda o valor a sério, lido de volta por getPluginSettingValue', async () => {
+    await handlePluginMessage(SETTING_PLUGIN_ID, {
+      type: 'core.setting.register',
+      requestId: 'set-4',
+      payload: { chave: 'maiusculas', rotulo: 'Maiúsculas', tipo: 'boolean', valorOmissao: false },
+    });
+
+    await setPluginSettingValue(SETTING_PLUGIN_ID, 'maiusculas', true);
+
+    expect(await getPluginSettingValue(SETTING_PLUGIN_ID, 'maiusculas', false)).toBe(true);
+  });
+});
+
+describe('handlePluginMessage — core.service.register', () => {
+  const SERVICE_PLUGIN_ID = 'cria-servico';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginServices(SERVICE_PLUGIN_ID);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    clearPluginServices(SERVICE_PLUGIN_ID);
+    vi.useRealTimers();
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(SERVICE_PLUGIN_ID, 'services', false);
+
+    const ack = await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-1',
+      payload: { id: 'contador', intervalMs: 5_000 },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('um intervalo abaixo do mínimo é elevado a 5000ms', async () => {
+    const ack = await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-2',
+      payload: { id: 'contador', intervalMs: 100 },
+    });
+
+    expect(ack.ok).toBe(true);
+    expect((ack.data as { intervalMs: number }).intervalMs).toBe(5_000);
+  });
+
+  it('empurra um tick a cada intervalo, via pushToPlugin', async () => {
+    const recebidas: Record<string, unknown>[] = [];
+    registerPluginSender(SERVICE_PLUGIN_ID, (msg) => recebidas.push(msg));
+
+    await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-3',
+      payload: { id: 'contador', intervalMs: 5_000 },
+    });
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(recebidas).toHaveLength(1);
+    expect(recebidas[0]).toEqual({ type: 'core.service.tick', id: 'contador' });
+
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(recebidas).toHaveLength(2);
+
+    unregisterPluginSender(SERVICE_PLUGIN_ID);
+  });
+
+  it('recusa registar o mesmo id duas vezes', async () => {
+    const payload = { id: 'contador', intervalMs: 5_000 };
+    await handlePluginMessage(SERVICE_PLUGIN_ID, { type: 'core.service.register', requestId: 'sv-4', payload });
+
+    const segundo = await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-5',
+      payload,
+    });
+
+    expect(segundo.ok).toBe(false);
+    expect(segundo.reason).toBe('servico-ja-registado');
+  });
+
+  it('clearPluginServices para o temporizador — nenhum tick depois de limpo', async () => {
+    const recebidas: Record<string, unknown>[] = [];
+    registerPluginSender(SERVICE_PLUGIN_ID, (msg) => recebidas.push(msg));
+
+    await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-6',
+      payload: { id: 'contador', intervalMs: 5_000 },
+    });
+
+    clearPluginServices(SERVICE_PLUGIN_ID);
+    await vi.advanceTimersByTimeAsync(20_000);
+
+    expect(recebidas).toHaveLength(0);
+    unregisterPluginSender(SERVICE_PLUGIN_ID);
+  });
+});
+
+describe('handlePluginMessage — core.panel.add', () => {
+  const PANEL_PLUGIN_ID = 'adiciona-painel';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginPanels(PANEL_PLUGIN_ID);
+  });
+
+  it('permissão recusada: devolve ok:false', async () => {
+    usePluginStore.getState().setPermission(PANEL_PLUGIN_ID, 'panels', false);
+
+    const ack = await handlePluginMessage(PANEL_PLUGIN_ID, {
+      type: 'core.panel.add',
+      requestId: 'p-1',
+      payload: { id: 'detalhes', titulo: 'Detalhes', texto: 'Texto longo' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+  });
+
+  it('adiciona e fica disponível em getPluginPanels', async () => {
+    const ack = await handlePluginMessage(PANEL_PLUGIN_ID, {
+      type: 'core.panel.add',
+      requestId: 'p-2',
+      payload: { id: 'detalhes', titulo: 'Detalhes', texto: 'Texto longo' },
+    });
+
+    expect(ack.ok).toBe(true);
+    const paineis = getPluginPanels(PANEL_PLUGIN_ID);
+    expect(paineis).toHaveLength(1);
+    expect(paineis[0]).toMatchObject({ id: 'detalhes', titulo: 'Detalhes' });
+  });
+
+  it('adicionar com o mesmo id substitui em vez de duplicar', async () => {
+    await handlePluginMessage(PANEL_PLUGIN_ID, {
+      type: 'core.panel.add',
+      requestId: 'p-3',
+      payload: { id: 'detalhes', titulo: 'Primeiro', texto: 'A' },
+    });
+    await handlePluginMessage(PANEL_PLUGIN_ID, {
+      type: 'core.panel.add',
+      requestId: 'p-4',
+      payload: { id: 'detalhes', titulo: 'Segundo', texto: 'B' },
+    });
+
+    expect(getPluginPanels(PANEL_PLUGIN_ID)).toHaveLength(1);
+    expect(getPluginPanels(PANEL_PLUGIN_ID)[0]?.titulo).toBe('Segundo');
   });
 });

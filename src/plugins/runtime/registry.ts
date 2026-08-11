@@ -1,4 +1,8 @@
 import abreJanelaSource from '@/plugins/examples/abre-janela/plugin.js?raw';
+import adicionaMenuSource from '@/plugins/examples/adiciona-menu/plugin.js?raw';
+import adicionaPainelSource from '@/plugins/examples/adiciona-painel/plugin.js?raw';
+import criaServicoSource from '@/plugins/examples/cria-servico/plugin.js?raw';
+import criaWidgetSource from '@/plugins/examples/cria-widget/plugin.js?raw';
 import disparaAutomacaoSource from '@/plugins/examples/dispara-automacao/plugin.js?raw';
 import escutaEventosSource from '@/plugins/examples/escuta-eventos/plugin.js?raw';
 import guardaPreferenciasSource from '@/plugins/examples/guarda-preferencias/plugin.js?raw';
@@ -7,6 +11,7 @@ import olaNotificacaoSource from '@/plugins/examples/ola-notificacao/plugin.js?r
 import olaRedeSource from '@/plugins/examples/ola-rede/plugin.js?raw';
 import registaAtalhoSource from '@/plugins/examples/regista-atalho/plugin.js?raw';
 import registaComandoSource from '@/plugins/examples/regista-comando/plugin.js?raw';
+import registaDefinicaoSource from '@/plugins/examples/regista-definicao/plugin.js?raw';
 
 /**
  * Que plugins têm código a sério para correr na sandbox, e o botão que o
@@ -31,4 +36,9 @@ export const PLUGIN_RUNTIMES: Readonly<Record<string, RuntimeEntry>> = {
   'escuta-eventos': { source: escutaEventosSource, triggerLabel: 'Subscrever evento de tema' },
   'guarda-preferencias': { source: guardaPreferenciasSource, triggerLabel: 'Contar visita' },
   'regista-atalho': { source: registaAtalhoSource, triggerLabel: 'Registar Ctrl+Shift+H' },
+  'cria-widget': { source: criaWidgetSource, triggerLabel: 'Criar widget' },
+  'adiciona-menu': { source: adicionaMenuSource, triggerLabel: 'Adicionar item ao menu' },
+  'regista-definicao': { source: registaDefinicaoSource, triggerLabel: 'Registar definição' },
+  'cria-servico': { source: criaServicoSource, triggerLabel: 'Registar serviço' },
+  'adiciona-painel': { source: adicionaPainelSource, triggerLabel: 'Adicionar painel' },
 };
