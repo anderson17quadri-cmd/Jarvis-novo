@@ -1,4 +1,4 @@
-import { Bell, Menu, Mic, Search } from 'lucide-react';
+import { Bell, Menu, MessagesSquare, Mic, Search } from 'lucide-react';
 
 import { useClock } from '@/hooks/use-clock';
 import { useIsCompact, useIsTight } from '@/hooks/use-media-query';
@@ -16,6 +16,8 @@ interface HeaderProps {
   readonly onOpenPalette: () => void;
   readonly onToggleDrawer: () => void;
   readonly onToggleMicrophone: () => void;
+  readonly isConversationMode: boolean;
+  readonly onToggleConversationMode: () => void;
   readonly onOpenNotifications: () => void;
 }
 
@@ -24,6 +26,8 @@ export function Header({
   onOpenPalette,
   onToggleDrawer,
   onToggleMicrophone,
+  isConversationMode,
+  onToggleConversationMode,
   onOpenNotifications,
 }: HeaderProps): React.JSX.Element {
   const now = useClock();
@@ -117,6 +121,15 @@ export function Header({
         )}
 
         <IconButton
+          label={isConversationMode ? 'Desligar modo conversa' : 'Ligar modo conversa'}
+          onClick={onToggleConversationMode}
+          isActive={isConversationMode}
+          activeColor="accent"
+        >
+          <MessagesSquare />
+        </IconButton>
+
+        <IconButton
           label={isListening ? 'Desligar microfone' : 'Ligar microfone'}
           onClick={onToggleMicrophone}
           isActive={isListening}
@@ -173,6 +186,8 @@ interface IconButtonProps {
   readonly onClick: () => void;
   readonly children: React.ReactNode;
   readonly isActive?: boolean;
+  /** Cor do estado ativo: `danger` (microfone) ou `accent` (modo conversa). */
+  readonly activeColor?: 'danger' | 'accent';
   readonly hasBadge?: boolean;
 }
 
@@ -181,8 +196,14 @@ function IconButton({
   onClick,
   children,
   isActive = false,
+  activeColor = 'danger',
   hasBadge = false,
 }: IconButtonProps): React.JSX.Element {
+  const activeClass =
+    activeColor === 'accent'
+      ? 'border-accent/30 bg-accent/10 text-accent hover:text-accent shadow-glow'
+      : 'border-danger/30 bg-danger/10 text-danger hover:text-danger';
+
   return (
     <button
       type="button"
@@ -194,7 +215,7 @@ function IconButton({
         'border border-transparent text-t2 transition-all duration-hover ease-out',
         'hover:border-line hover:bg-card-hover hover:text-accent active:scale-95',
         '[&>svg]:h-[18px] [&>svg]:w-[18px]',
-        isActive && 'border-danger/30 bg-danger/10 text-danger hover:text-danger',
+        isActive && activeClass,
       )}
     >
       {children}

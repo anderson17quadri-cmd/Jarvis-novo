@@ -974,3 +974,38 @@ com a mesma `Promise` das capacidades anteriores.
 **Confirmação:** `tsc` limpo, `eslint` limpo (só warnings pré-existentes),
 todos os testes passam (a única falha é a pré-existente em `fallback.test.ts`).
 SPEC.md atualizado: 9 de 13 capacidades da API do Core implementadas.
+
+## 2026-08-11 — Modo conversa: microfone automático pós-resposta
+
+Tarefa #18 do sprint. Implementou-se o modo conversa — o microfone liga-se
+automaticamente após cada resposta do assistente, fechando o ciclo sem
+intervenção manual. Era o último modo de escuta que faltava (a wake word e
+o contínuo continuam por fazer — decisão de privacidade por tomar).
+
+**Ciclo:** `voiceService.speak()` → `onEnd` → se modo conversa ativo,
+`setTimeout(1100ms)` (margem sobre o `SPEAK_GUARD_MS` de 900ms) →
+`toggleListening()`. A transcrição processa comandos/perguntas, e o
+`speak()` da resposta fecha o ciclo.
+
+**Timeout de inatividade:** 3 tentativas seguidas sem fala detetada
+(`no-speech`) desligam o modo conversa automaticamente — ~36s de silêncio
+(3 × 12s de gravação local). O contador (`consecutiveNoSpeech`) é gerido
+pelo `VoiceService` e reiniciado a cada transcrição com sucesso.
+
+**Interface:** botão `MessagesSquare` no header, ao lado do microfone, com
+cor de destaque (accent) quando ativo — distinto do microfone (danger).
+Clicar no microfone com o modo conversa ativo desliga-o — é mais natural
+do que continuar a ouvir quando a pessoa claramente quer parar. Aviso na
+primeira ativação por sessão (`sessionStorage`).
+
+**Segundo plano:** o `useEffect` existente já parava microfone e fala
+quando a janela perde o foco; agora também limpa o temporizador de
+re-engate e deixa o modo conversa ativo (retoma-se ao voltar).
+
+**Privacidade:** `src/types/privacy.ts` atualizado — o texto do microfone
+passou a descrever os dois modos.
+
+Confirmado: `tsc` limpo, `eslint` sem erros, todos os testes passam (só a
+falha pré-existente em `fallback.test.ts`).
+
+Co-Authored-By: Claude <noreply@anthropic.com>

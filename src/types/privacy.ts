@@ -48,7 +48,7 @@ export const CAPABILITY_PRIVACY: readonly CapabilityPrivacyNote[] = [
   {
     capability: 'voice',
     label: 'Microfone',
-    whenGranted: 'Só escuta enquanto o botão estiver ativo. Não há escuta contínua.',
+    whenGranted: 'Modo manual: só escuta enquanto o botão estiver ativo. Modo conversa: liga o microfone automaticamente após cada resposta — o indicador no núcleo mostra quando está ativo.',
     whenDenied: 'O microfone não é usado.',
   },
   {

@@ -113,7 +113,7 @@ export function App(): React.JSX.Element {
   const { goToDesktop, applyLayout } = useWorkspace();
   const idleLockMinutes = useAppearanceStore((state) => state.appearance.idleLockMinutes);
   const openWindowCount = useWindowStore((state) => state.windows.length);
-  const { toggleListening, speak } = useVoice();
+  const { toggleListening, speak, isConversationMode, toggleConversationMode } = useVoice();
 
   // O email passa a produzir notificações assim que o desktop está de pé.
   useNotificationSources(isDesktop);
@@ -567,6 +567,8 @@ export function App(): React.JSX.Element {
         onLaunchApp={launch}
         onOpenPalette={openPalette}
         onToggleMicrophone={toggleListening}
+        isConversationMode={isConversationMode}
+        onToggleConversationMode={toggleConversationMode}
         onOpenNotifications={() => useNotificationStore.getState().togglePanel()}
         onLogout={logout}
       >

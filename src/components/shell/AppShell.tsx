@@ -20,6 +20,8 @@ interface AppShellProps {
   readonly onLaunchApp: (appId: AppId) => void;
   readonly onOpenPalette: () => void;
   readonly onToggleMicrophone: () => void;
+  readonly isConversationMode: boolean;
+  readonly onToggleConversationMode: () => void;
   readonly onOpenNotifications: () => void;
   readonly onLogout: () => void;
 }
@@ -37,6 +39,8 @@ export function AppShell({
   onLaunchApp,
   onOpenPalette,
   onToggleMicrophone,
+  isConversationMode,
+  onToggleConversationMode,
   onOpenNotifications,
   onLogout,
 }: AppShellProps): React.JSX.Element {
@@ -81,6 +85,8 @@ export function AppShell({
         onOpenPalette={onOpenPalette}
         onToggleDrawer={() => setDrawerOpen((open) => !open)}
         onToggleMicrophone={onToggleMicrophone}
+        isConversationMode={isConversationMode}
+        onToggleConversationMode={onToggleConversationMode}
         onOpenNotifications={onOpenNotifications}
       />
 

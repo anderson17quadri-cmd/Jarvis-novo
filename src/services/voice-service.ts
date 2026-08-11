@@ -278,6 +278,40 @@ export class VoiceService {
     return this.speaking || Date.now() < this.speakGuardUntil;
   }
 
+  /**
+   * Modo conversa (Parte 7.2 §Modos de escuta): o microfone liga-se
+   * automaticamente após cada resposta, em vez de voltar a `idle`.
+   *
+   * Desligar o modo conversa também para a escuta atual — o utilizador
+   * pediu para parar, não faz sentido continuar a ouvir.
+   */
+  private conversationMode = false;
+
+  /** Conta tentativas seguidas sem fala detetada, para desligar sozinho. */
+  private consecutiveNoSpeech = 0;
+
+  get isConversationMode(): boolean {
+    return this.conversationMode;
+  }
+
+  setConversationMode(enabled: boolean): void {
+    this.conversationMode = enabled;
+    this.consecutiveNoSpeech = 0;
+    if (!enabled) this.stopListening();
+  }
+
+  get consecutiveNoSpeechCount(): number {
+    return this.consecutiveNoSpeech;
+  }
+
+  incrementNoSpeech(): void {
+    this.consecutiveNoSpeech += 1;
+  }
+
+  resetNoSpeech(): void {
+    this.consecutiveNoSpeech = 0;
+  }
+
   private onSpeechStart(): void {
     this.speaking = true;
   }

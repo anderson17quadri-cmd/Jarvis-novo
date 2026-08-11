@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { useCapabilities } from '@/hooks/use-platform';
 import { useIsVisible } from '@/hooks/use-platform';
@@ -12,11 +12,6 @@ import { describeIntent, isCritical, parseSpeech } from '@/services/voice/intent
 
 /**
  * O que dizer por cada código de erro do reconhecimento.
- *
- * Sem isto, "não foi possível aceder ao microfone" era a única frase para
- * "sem permissão", "sem microfone" e "o motor de voz deste PC não tem
- * serviço de reconhecimento nenhum" — três problemas com três arranjos bem
- * diferentes, escondidos atrás da mesma frase.
  */
 const VOICE_ERROR_MESSAGES: Partial<Record<string, string>> = {
   'not-allowed':
@@ -37,24 +32,28 @@ const VOICE_ERROR_MESSAGES: Partial<Record<string, string>> = {
     'Espera só um instante — ainda estou a falar. Ligar o microfone agora arriscava ouvir-me a mim mesmo pelas colunas.',
 };
 
-/** A frase para um erro sem entrada na tabela acima. */
 function describeVoiceError(kind: SpeechRecognitionErrorKind | null): string {
   if (kind && VOICE_ERROR_MESSAGES[kind]) return VOICE_ERROR_MESSAGES[kind];
   if (kind) return `Não foi possível aceder ao microfone (${kind}).`;
   return 'Não foi possível aceder ao microfone.';
 }
 
+const MAX_NO_SPEECH_ATTEMPTS = 3;
+const REENGAGE_DELAY_MS = 1_100;
+const CONVERSATION_WARN_KEY = 'jarvis.conversation-warned';
+
 /**
  * Liga a voz ao núcleo e ao assistente.
  *
- * É aqui que o modo do `AICore` deixa de ser decorativo: escutar põe-no em
- * `listening`, uma transcrição manda-o para `thinking` através do `AIService`, e
- * a leitura da resposta põe-no em `speaking`.
+ * Com o modo conversa ativo, o microfone liga-se automaticamente após cada
+ * resposta — o ciclo fecha-se sem intervenção manual.
  */
 export function useVoice(): {
   readonly isSupported: boolean;
   readonly toggleListening: () => void;
   readonly speak: (text: string) => void;
+  readonly isConversationMode: boolean;
+  readonly toggleConversationMode: () => void;
 } {
   const capabilities = useCapabilities();
   const isVisible = useIsVisible();
@@ -63,15 +62,131 @@ export function useVoice(): {
 
   const isSupported = capabilities.voice && voiceService.isRecognitionSupported;
 
+  // ── Re-engate do modo conversa ──────────────────────────────────────────
+
+  const reengageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** Guarda a versão mais recente do callback de re-engate para evitar
+   *  dependência circular no próprio `useCallback`. */
+  const tentarReengatarRef = useRef<() => void>(() => undefined);
+
+  const limparReengate = useCallback((): void => {
+    if (reengageTimerRef.current !== null) {
+      clearTimeout(reengageTimerRef.current);
+      reengageTimerRef.current = null;
+    }
+  }, []);
+
+  // ── Processamento do que se ouviu ──────────────────────────────────────
+
+  const processTranscript = useCallback((text: string): void => {
+    const parsed = parseSpeech(text);
+
+    for (const intent of parsed.intents) {
+      if (isCritical(intent)) {
+        notificationService.warn('Confirma?', `Ouvi: "${text}". ${describeIntent(intent)}.`, {
+          category: 'assistente',
+          durationMs: null,
+          actions: [
+            { id: 'confirmar', label: 'Confirmar', run: () => runIntent(intent) },
+            { id: 'corrigir', label: 'Corrigir', run: () => useVoiceCorrectionStore.getState().open(text) },
+          ],
+        });
+        continue;
+      }
+      runIntent(intent);
+    }
+
+    const commands = parsed.intents.filter((intent) => intent.kind !== 'perguntar');
+    if (commands.length > 0) {
+      notificationService.info(`"${text}"`, commands.map(describeIntent).join(' · '), {
+        category: 'assistente',
+        actions: [
+          { id: 'corrigir', label: 'Corrigir', run: () => useVoiceCorrectionStore.getState().open(text) },
+        ],
+      });
+    }
+  }, []);
+
+  // ── Callbacks de escuta — partilhados entre o microfone manual e o re-engate ──
+
+  const makeListeningCallbacks = useCallback(
+    (): Parameters<typeof voiceService.toggleListening>[0] => ({
+      onStart: () => setMode('listening'),
+      onEnd: () => {
+        if (useAssistantStore.getState().mode === 'listening') setMode('idle');
+        // No modo conversa, o fim de uma escuta sem transcrição re-engata.
+        tentarReengatarRef.current();
+      },
+      onError: (kind) => {
+        setMode('error');
+        logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
+
+        if (kind === 'no-speech') {
+          voiceService.incrementNoSpeech();
+          if (voiceService.consecutiveNoSpeechCount >= MAX_NO_SPEECH_ATTEMPTS) {
+            voiceService.setConversationMode(false);
+            notificationService.info(
+              'Modo conversa',
+              `Desliguei o modo conversa — ${MAX_NO_SPEECH_ATTEMPTS} tentativas seguidas sem ninguém falar.`,
+            );
+            return;
+          }
+        } else {
+          notificationService.error('Microfone', describeVoiceError(kind));
+          setTimeout(() => setMode('idle'), 2_000);
+        }
+
+        tentarReengatarRef.current();
+      },
+      onTranscript: (text) => {
+        voiceService.resetNoSpeech();
+        processTranscript(text);
+      },
+    }),
+    [setMode, processTranscript],
+  );
+
+  // ── Re-engate do microfone após a resposta ─────────────────────────────
+
+  const tentarReengatar = useCallback((): void => {
+    limparReengate();
+    if (!voiceService.isConversationMode) return;
+    if (voiceService.isListening) return;
+
+    reengageTimerRef.current = setTimeout(() => {
+      reengageTimerRef.current = null;
+      if (!voiceService.isConversationMode) return;
+
+      voiceService.toggleListening(makeListeningCallbacks());
+    }, REENGAGE_DELAY_MS);
+  }, [limparReengate, makeListeningCallbacks]);
+
+  // Atualiza o ref para que os callbacks internos vejam sempre a versão mais
+  // recente, sem criar dependência circular no próprio `useCallback`.
+  tentarReengatarRef.current = tentarReengatar;
+
+  // ── Falar ──────────────────────────────────────────────────────────────
+
   const speak = useCallback(
     (text: string): void => {
+      limparReengate();
+
       voiceService.speak(text, {
         onStart: () => setMode('speaking'),
-        onEnd: () => setMode('idle'),
+        onEnd: () => {
+          if (voiceService.isConversationMode) {
+            tentarReengatar();
+          } else {
+            setMode('idle');
+          }
+        },
       });
     },
-    [setMode],
+    [setMode, limparReengate, tentarReengatar],
   );
+
+  // ── Microfone manual ───────────────────────────────────────────────────
 
   const toggleListening = useCallback((): void => {
     pulse();
@@ -84,84 +199,60 @@ export function useVoice(): {
       return;
     }
 
-    voiceService.toggleListening({
-      onStart: () => setMode('listening'),
-      onEnd: () => {
-        // Só voltar a repouso se não houver já um pedido a decorrer.
-        if (useAssistantStore.getState().mode === 'listening') setMode('idle');
-      },
-      onError: (kind) => {
-        setMode('error');
-        logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
-        notificationService.error('Microfone', describeVoiceError(kind));
-        setTimeout(() => setMode('idle'), 2_000);
-      },
-      onTranscript: (text) => {
-        const parsed = parseSpeech(text);
+    // Clicar no microfone com o modo conversa ativo desliga-o.
+    if (voiceService.isConversationMode) {
+      voiceService.setConversationMode(false);
+      limparReengate();
+      setMode('idle');
+      return;
+    }
 
-        for (const intent of parsed.intents) {
-          /*
-           * Ações que não se desfazem esperam por confirmação (Parte 10).
-           *
-           * A confirmação é uma notificação com ação, e não um diálogo: já
-           * existe, aparece sem tapar o ecrã, e se o utilizador a ignorar o
-           * comando simplesmente não acontece — que é o resultado seguro.
-           */
-          if (isCritical(intent)) {
-            notificationService.warn('Confirma?', `Ouvi: "${text}". ${describeIntent(intent)}.`, {
-              category: 'assistente',
-              durationMs: null,
-              actions: [
-                {
-                  id: 'confirmar',
-                  label: 'Confirmar',
-                  run: () => runIntent(intent),
-                },
-                // Se o comando que não se desfaz nem sequer é o que se pediu,
-                // a saída não pode ser só "ignorar e repetir em voz alta".
-                {
-                  id: 'corrigir',
-                  label: 'Corrigir',
-                  run: () => useVoiceCorrectionStore.getState().open(text),
-                },
-              ],
-            });
-            continue;
-          }
+    voiceService.toggleListening(makeListeningCallbacks());
+  }, [isSupported, pulse, setMode, limparReengate, makeListeningCallbacks]);
 
-          runIntent(intent);
-        }
+  // ── Modo conversa ──────────────────────────────────────────────────────
 
-        /*
-         * O que foi reconhecido fica à vista, e emendável (Parte 10 §Correção
-         * de erros). Sem isto, um comando mal ouvido executa outra coisa e
-         * ninguém percebe porquê. As perguntas não entram: a resposta já é o
-         * eco.
-         */
-        const commands = parsed.intents.filter((intent) => intent.kind !== 'perguntar');
-        if (commands.length > 0) {
-          notificationService.info(`"${text}"`, commands.map(describeIntent).join(' · '), {
-            category: 'assistente',
-            actions: [
-              {
-                id: 'corrigir',
-                label: 'Corrigir',
-                run: () => useVoiceCorrectionStore.getState().open(text),
-              },
-            ],
-          });
-        }
-      },
-    });
-  }, [isSupported, pulse, setMode]);
+  const toggleConversationMode = useCallback((): void => {
+    const ativo = !voiceService.isConversationMode;
+    voiceService.setConversationMode(ativo);
 
-  // Falar com a aplicação em segundo plano é ruído sem contexto.
+    if (ativo) {
+      if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(CONVERSATION_WARN_KEY)) {
+        sessionStorage.setItem(CONVERSATION_WARN_KEY, '1');
+        notificationService.info(
+          'Modo conversa',
+          'O microfone liga-se automaticamente após cada resposta. Pode desligá-lo a qualquer momento no botão ao lado do microfone.',
+          { category: 'assistente', durationMs: 8_000 },
+        );
+      }
+
+      if (!voiceService.isListening) {
+        tentarReengatar();
+      }
+    } else {
+      limparReengate();
+    }
+  }, [limparReengate, tentarReengatar]);
+
+  // ── Segundo plano ──────────────────────────────────────────────────────
+
   useEffect(() => {
     if (!isVisible) {
       voiceService.stopSpeaking();
       voiceService.stopListening();
+      limparReengate();
     }
-  }, [isVisible]);
+  }, [isVisible, limparReengate]);
 
-  return { isSupported, toggleListening, speak };
+  useEffect(() => {
+    return () => limparReengate();
+  }, [limparReengate]);
+
+  return {
+    isSupported,
+    toggleListening,
+    speak,
+    isConversationMode: voiceService.isConversationMode,
+    toggleConversationMode,
+  };
 }
