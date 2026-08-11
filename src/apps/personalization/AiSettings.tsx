@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Search, Trash2, Wand2 } from 'lucide-react';
 
+import { useAiSettings } from '@/hooks/use-ai-settings';
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
 import { CLAUDE_MODELS } from '@/services/ai-providers/claude-provider';
@@ -25,6 +26,11 @@ import {
  * sem o dizer trai quem o usa, por muito bem que responda depois.
  */
 export function AiSettings(): React.JSX.Element {
+  // Aplica as preferências ao serviço sempre que mudam — o hook está aqui e
+  // em App.tsx; é redundante mas inofensivo, e garante que a aplicação
+  // acontece mesmo quando este componente é montado em testes.
+  useAiSettings();
+
   const settings = useAiSettingsStore((state) => state.settings);
   const setProvider = useAiSettingsStore((state) => state.setProvider);
   const setApiKey = useAiSettingsStore((state) => state.setApiKey);

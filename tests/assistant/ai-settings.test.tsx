@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AiSettings } from '@/apps/personalization/AiSettings';
+import { applyAiSettings } from '@/hooks/use-ai-settings';
 import { aiService } from '@/services/ai-service';
 import { logService } from '@/services/log-service';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
@@ -14,6 +15,7 @@ beforeEach(() => {
   localStorage.clear();
   logService.clear();
   useAiSettingsStore.setState({ settings: DEFAULT_AI_SETTINGS });
+  applyAiSettings(DEFAULT_AI_SETTINGS);
 });
 
 describe('escolha do provedor', () => {
@@ -141,10 +143,12 @@ describe('a chave', () => {
   it('sobrevive a recarregar, e o provedor volta a ser ligado', async () => {
     useAiSettingsStore.getState().setProvider('deepseek');
     useAiSettingsStore.getState().setApiKey(KEY);
+    applyAiSettings(useAiSettingsStore.getState().settings);
     await useAiSettingsStore.getState().persist();
 
     useAiSettingsStore.setState({ settings: DEFAULT_AI_SETTINGS });
     await useAiSettingsStore.getState().hydrate();
+    applyAiSettings(useAiSettingsStore.getState().settings);
 
     expect(useAiSettingsStore.getState().settings.apiKey).toBe(KEY);
     expect(aiService.providerName).toBe('DeepSeek');
@@ -152,6 +156,7 @@ describe('a chave', () => {
 
   it('sem nada gravado, arranca no local', async () => {
     await useAiSettingsStore.getState().hydrate();
+    applyAiSettings(useAiSettingsStore.getState().settings);
 
     expect(useAiSettingsStore.getState().settings.provider).toBe('regras');
     expect(aiService.providerName).toBe('Contexto local');

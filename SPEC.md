@@ -241,8 +241,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 |---|:--:|---|
 | Fluxo `Component → Hook → Service → API` | ✅ | Com `PlatformAdapter` entre o serviço e o nativo |
 | Componentes de responsabilidade única | ✅ | |
-| Serviços desacoplados | 🟡 | 6 dos 14: System, AI, Voice, Storage, Theme, Notification. Os restantes (Weather, Calendar, News, Email, Search, Device, Clock, Wallpaper, Plugin) são Fase 2 |
-| Stores separadas | 🟡 | 6 das 15, pelo mesmo motivo |
+| Serviços desacoplados | 🟡 | 7 dos 14: System, AI, Voice, Storage, Theme, Notification, Workspace. O Workspace usa `WorkspaceStores` + `getWorkspaceStores()` (injeção). O Notification ganhou a opção `silent` e perdeu o `useAssistantStore`. Os restantes (Weather, Calendar, News, Email, Search, Device, Clock, Wallpaper, Plugin) são Fase 2 |
+| Stores separadas | 🟡 | 7 das 15. A `use-ai-settings-store` é agora só estado + persistência; o hook `useAiSettings` aplica ao `aiService` |
 | Sistema de janelas completo | ✅ | `stores/use-window-store.ts` |
 | Nomenclatura | ✅ | |
 | **Estrutura de pastas** | ⚠️ | Ver abaixo |

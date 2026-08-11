@@ -17,6 +17,7 @@ import { useAppLauncher } from '@/hooks/use-app-launcher';
 import { useEntranceCascade } from '@/hooks/use-entrance-cascade';
 import { useIdleLock } from '@/hooks/use-idle-lock';
 import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
+import { useAiSettings } from '@/hooks/use-ai-settings';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
@@ -115,6 +116,9 @@ export function App(): React.JSX.Element {
 
   // O email passa a produzir notificações assim que o desktop está de pé.
   useNotificationSources(isDesktop);
+
+  // Aplica as preferências de IA ao serviço sempre que mudam.
+  useAiSettings();
 
   useEffect(() => {
     // O registo escuta o Event Bus a partir daqui — é o inspetor de eventos

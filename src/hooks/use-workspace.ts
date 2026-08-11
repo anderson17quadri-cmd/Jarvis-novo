@@ -4,7 +4,7 @@ import { getAppDefinition } from '@/apps/registry';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { soundService } from '@/services/sound-service';
-import { applyWorkspace } from '@/services/workspace-service';
+import { applyWorkspace, getWorkspaceStores } from '@/services/workspace-service';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import { useWorkspaceStore } from '@/stores/use-workspace-store';
@@ -41,6 +41,7 @@ export function useWorkspace(): {
           const hasGeometry = entry.rect.width > 0 && entry.rect.height > 0;
           return isCompact || !hasGeometry ? centeredRect(definition.defaultSize) : entry.rect;
         },
+        getWorkspaceStores(),
         scope,
       );
 

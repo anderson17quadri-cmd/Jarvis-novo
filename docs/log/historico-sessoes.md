@@ -908,3 +908,40 @@ manualmente.
 botão "Instalar"; o primeiro é muitas vezes um que está desativado no
 browser (exige capacidades nativas) — o teste usa `li:has-text("Olá,
 notificação")` para isolar o cartão certo.
+
+## 2026-08-11 — Desacoplar serviços e stores (Fase 2)
+
+Tarefa #17 do sprint. O objectivo era continuar o desacoplamento de serviços
+e stores que ainda importavam outras stores diretamente. Três frentes:
+
+**`workspace-service.ts`:** o caso mais grave — importava 5 stores
+(theme, appearance, windows, widgets, plugins). Criou-se a interface
+`WorkspaceStores` e o helper `getWorkspaceStores()` que devolve as stores
+reais com getters para leitura e métodos para escrita. As funções
+`captureWorkspace()` e `applyWorkspace()` passaram a receber as stores por
+parâmetro. Os callers (`use-workspace-store.ts`, `use-workspace.ts`,
+`workspace-service.test.ts`, `profiles.test.ts`) foram todos atualizados.
+A interface usa os tipos branded (`ThemeId`, `AppId`, `WidgetId`,
+`WindowInstance`, `Appearance`, `Ambience`) em vez de `string` — 78 testes
+passam, tsc e eslint limpos.
+
+**`notification-service.ts`:** removida a dependência do
+`useAssistantStore` (o `celebrate()` no `success()` passou para o caller).
+Adicionada a opção `silent` aos métodos `info()`/`warn()`/`error()`/
+`success()` — quando verdadeira, suprime a notificação nativa e o som, mas
+mantém o toast interno. Manteve-se o `useSystemStateStore` porque o
+`allowsToast()` é um guarda de sistema, não uma preferência pontual.
+
+**`use-ai-settings-store.ts`:** a store tinha lógica de negócio — construía
+provedores e chamava `aiService.setProvider()`/`setChain()` em cada setter
+e no `hydrate()`. Extraiu-se essa lógica para um hook novo,
+`use-ai-settings.ts`, que subscreve `settings` com `useEffect` e aplica ao
+`aiService`. A store ficou só com estado e persistência. O hook é montado
+em `App.tsx` e em `AiSettings.tsx` (para funcionar nos testes que montam o
+componente isolado). A função `applyAiSettings` é exportada para os testes
+a poderem chamar após mutações diretas da store. 24 testes passam.
+
+SPEC.md atualizado: 7/14 serviços desacoplados, 7/15 stores separadas.
+O test `fallback.test.ts` "cancelar não deixa nota nenhuma de erro" falha
+de forma consistente — é um bug pré-existente em `ai-service.ts` linha 126,
+onde o cancelamento durante `resolveReferences` não repõe o modo a `idle`.

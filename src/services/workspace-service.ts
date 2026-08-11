@@ -1,5 +1,6 @@
 import { getAppDefinition } from '@/apps/registry';
 import { clampPlacement } from '@/components/widgets/grid';
+import type { ThemeId } from '@/design-system/tokens';
 import { soundService } from '@/services/sound-service';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
@@ -7,8 +8,10 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { useWidgetStore } from '@/stores/use-widget-store';
 import { useWindowStore } from '@/stores/use-window-store';
 import { ALL_WIDGETS } from '@/widgets/registry';
-import { ambienceOf } from '@/types/appearance';
-import type { WindowRect } from '@/types/window';
+import type { AppId } from '@/types/app';
+import { ambienceOf, type Ambience, type Appearance } from '@/types/appearance';
+import type { WindowInstance, WindowRect } from '@/types/window';
+import type { WidgetId, WidgetInstance, WidgetPlacement } from '@/types/widget';
 import type { WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
 
 /**
@@ -19,7 +22,65 @@ import type { WorkspaceScope, WorkspaceSnapshot } from '@/types/workspace';
  * maneira de lhes acrescentar desktops sem arriscar uma regressão é **não lhes
  * tocar**: este serviço lê o que elas já expõem e escreve pelas ações que elas
  * já têm.
+ *
+ * As funções recebem as stores por parâmetro (`WorkspaceStores`) em vez de as
+ * importarem — isto permite testar `captureWorkspace` e `applyWorkspace` sem
+ * montar o sistema de stores real. O helper `getWorkspaceStores()` devolve a
+ * forma que as stores reais têm, para os callers que as conhecem.
  */
+
+/** A forma mínima das stores que o serviço precisa. */
+export interface WorkspaceStores {
+  readonly theme: { readonly theme: ThemeId; setTheme(t: ThemeId): void };
+  readonly appearance: {
+    readonly appearance: Appearance;
+    applyAmbience(a: Ambience): void;
+    persist(): Promise<void>;
+  };
+  readonly windows: {
+    readonly windows: readonly WindowInstance[];
+    open(appId: AppId, title: string, rect: WindowRect): string;
+    close(id: string): void;
+  };
+  readonly widgets: {
+    readonly widgets: readonly WidgetInstance[];
+    replaceWidgets(ws: readonly { readonly id: WidgetId; readonly placement: WidgetPlacement; readonly isVisible: boolean }[]): void;
+  };
+  readonly plugins: {
+    readonly installed: Record<string, { readonly id: string; readonly isEnabled: boolean }>;
+    setEnabled(id: string, enabled: boolean): void;
+    persist(): Promise<void>;
+  };
+}
+
+/** As stores reais, no formato que o serviço espera. */
+export function getWorkspaceStores(): WorkspaceStores {
+  return {
+    theme: {
+      get theme() { return useThemeStore.getState().theme; },
+      setTheme: (t) => useThemeStore.getState().setTheme(t),
+    },
+    appearance: {
+      get appearance() { return useAppearanceStore.getState().appearance; },
+      applyAmbience: (a) => useAppearanceStore.getState().applyAmbience(a),
+      persist: () => useAppearanceStore.getState().persist(),
+    },
+    windows: {
+      get windows() { return useWindowStore.getState().windows; },
+      open: (appId, title, rect) => useWindowStore.getState().open(appId, title, rect),
+      close: (id) => useWindowStore.getState().close(id),
+    },
+    widgets: {
+      get widgets() { return useWidgetStore.getState().widgets; },
+      replaceWidgets: (ws) => useWidgetStore.setState({ widgets: ws }),
+    },
+    plugins: {
+      get installed() { return usePluginStore.getState().installed; },
+      setEnabled: (id, enabled) => usePluginStore.getState().setEnabled(id, enabled),
+      persist: () => usePluginStore.getState().persist(),
+    },
+  };
+}
 
 /** Onde uma janela reaparece quando a geometria guardada não serve. */
 export interface ViewportInsets {
@@ -27,9 +88,9 @@ export interface ViewportInsets {
   readonly height: number;
 }
 
-export function captureWorkspace(): WorkspaceSnapshot {
-  const windows = useWindowStore.getState().windows;
-  const widgets = useWidgetStore.getState().widgets;
+export function captureWorkspace(stores: WorkspaceStores): WorkspaceSnapshot {
+  const windows = stores.windows.windows;
+  const widgets = stores.widgets.widgets;
 
   return {
     windows: windows.map((window) => ({
@@ -45,13 +106,13 @@ export function captureWorkspace(): WorkspaceSnapshot {
       placement: widget.placement,
       isVisible: widget.isVisible,
     })),
-    theme: useThemeStore.getState().theme,
-    ambience: ambienceOf(useAppearanceStore.getState().appearance),
+    theme: stores.theme.theme,
+    ambience: ambienceOf(stores.appearance.appearance),
     sound: soundService.snapshot(),
     // Ordenado por identificador: uma fotografia tirada duas vezes seguidas
     // tem de dar o mesmo ficheiro, e a ordem de inserção de um objeto não é
     // coisa em que se confie para isso.
-    plugins: Object.values(usePluginStore.getState().installed)
+    plugins: Object.values(stores.plugins.installed)
       .map((plugin) => ({ id: plugin.id, isEnabled: plugin.isEnabled }))
       .sort((a, b) => a.id.localeCompare(b.id)),
   };
@@ -71,9 +132,10 @@ export function captureWorkspace(): WorkspaceSnapshot {
 export function applyWorkspace(
   snapshot: WorkspaceSnapshot,
   rectFor: (entry: WorkspaceSnapshot['windows'][number]) => WindowRect,
+  stores: WorkspaceStores,
   scope: WorkspaceScope = 'desktop',
 ): void {
-  const windowStore = useWindowStore.getState();
+  const windowStore = stores.windows;
 
   // Fechar antes de abrir: sem isto, mudar de desktop deixava as janelas do
   // anterior por cima das novas.
@@ -81,25 +143,25 @@ export function applyWorkspace(
 
   for (const entry of snapshot.windows) {
     const definition = getAppDefinition(entry.appId);
-    useWindowStore.getState().open(entry.appId, definition.title, rectFor(entry));
+    windowStore.open(entry.appId, definition.title, rectFor(entry));
   }
 
   // Um widget guardado que já não exista no registo é descartado, como na
   // hidratação — acontece ao remover um widget entre versões.
   const known = new Set(ALL_WIDGETS.map((definition) => definition.id));
-  useWidgetStore.setState({
-    widgets: snapshot.widgets
+  stores.widgets.replaceWidgets(
+    snapshot.widgets
       .filter((entry) => known.has(entry.id))
       .map((entry) => ({
         id: entry.id,
         placement: clampPlacement(entry.placement),
         isVisible: entry.isVisible,
       })),
-  });
+  );
 
-  useThemeStore.getState().setTheme(snapshot.theme);
-  useAppearanceStore.getState().applyAmbience(snapshot.ambience);
-  void useAppearanceStore.getState().persist();
+  stores.theme.setTheme(snapshot.theme);
+  stores.appearance.applyAmbience(snapshot.ambience);
+  void stores.appearance.persist();
 
   if (scope !== 'perfil') return;
 
@@ -109,10 +171,10 @@ export function applyWorkspace(
   }
 
   if (snapshot.plugins.length > 0) {
-    const plugins = usePluginStore.getState();
+    const plugins = stores.plugins;
     // `setEnabled` ignora identificadores que não conhece, e é o que se quer:
     // um plugin removido da loja entre versões não pode partir a reposição.
     for (const entry of snapshot.plugins) plugins.setEnabled(entry.id, entry.isEnabled);
-    void usePluginStore.getState().persist();
+    void plugins.persist();
   }
 }

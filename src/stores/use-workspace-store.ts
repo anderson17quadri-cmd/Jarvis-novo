@@ -5,7 +5,7 @@ import { createId } from '@/lib/id';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
-import { captureWorkspace } from '@/services/workspace-service';
+import { captureWorkspace, getWorkspaceStores } from '@/services/workspace-service';
 import {
   defaultDesktops,
   normaliseSnapshot,
@@ -75,7 +75,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     const state = get();
     if (id === state.current) return null;
 
-    const outgoing = captureWorkspace();
+    const outgoing = captureWorkspace(getWorkspaceStores());
     const target = state.desktops.find((desktop) => desktop.id === id);
 
     set({
@@ -108,7 +108,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   syncCurrent: () => {
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     set((state) => ({
       desktops: state.desktops.map((desktop) =>
@@ -125,7 +125,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       name: name.trim().length > 0 ? name.trim() : 'Layout sem nome',
       description,
       createdAt: Date.now(),
-      snapshot: captureWorkspace(),
+      snapshot: captureWorkspace(getWorkspaceStores()),
       isBuiltIn: false,
     };
 

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { builtInLayouts } from '@/data/layouts';
 import { soundService } from '@/services/sound-service';
-import { applyWorkspace, captureWorkspace } from '@/services/workspace-service';
+import { applyWorkspace, captureWorkspace, getWorkspaceStores } from '@/services/workspace-service';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useThemeStore } from '@/stores/use-theme-store';
@@ -43,7 +43,7 @@ describe('o que um perfil guarda', () => {
     appearance.set('wallpaperIntensity', 0.4);
     appearance.set('fontFamily', 'plex-sans');
 
-    expect(captureWorkspace().ambience).toEqual({
+    expect(captureWorkspace(getWorkspaceStores()).ambience).toEqual({
       wallpaper: 'liso',
       wallpaperIntensity: 0.4,
       coreParticles: 0.5,
@@ -61,7 +61,7 @@ describe('o que um perfil guarda', () => {
     soundService.setVolume(0.3);
     soundService.setCategoryVolume('interface', 0);
 
-    expect(captureWorkspace().sound).toEqual({
+    expect(captureWorkspace(getWorkspaceStores()).sound).toEqual({
       isEnabled: true,
       volume: 0.3,
       categoryVolumes: { interface: 0, avisos: 1, sistema: 1 },
@@ -69,18 +69,18 @@ describe('o que um perfil guarda', () => {
   });
 
   it('apanha os plugins instalados, por ordem estável', () => {
-    const plugins = captureWorkspace().plugins;
+    const plugins = captureWorkspace(getWorkspaceStores()).plugins;
     const ids = plugins.map((entry) => entry.id);
 
     expect(ids.length).toBeGreaterThan(0);
     expect(ids).toEqual([...ids].sort());
     // Tirar a mesma fotografia duas vezes tem de dar o mesmo ficheiro.
-    expect(captureWorkspace().plugins).toEqual(plugins);
+    expect(captureWorkspace(getWorkspaceStores()).plugins).toEqual(plugins);
   });
 
   it('a fotografia do som é uma cópia: mexer no cursor depois não a muda', () => {
     soundService.setVolume(0.8);
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     soundService.setCategoryVolume('avisos', 0);
 
@@ -96,7 +96,7 @@ describe('o que um perfil nunca leva', () => {
     appearance.set('uiScale', 1.25);
     appearance.set('idleLockMinutes', 1);
 
-    const captured = captureWorkspace().ambience;
+    const captured = captureWorkspace(getWorkspaceStores()).ambience;
 
     // A asserção é sobre as chaves, e não sobre os valores: uma chave nova em
     // `AMBIENCE_KEYS` que fosse de acessibilidade cai aqui.
@@ -108,7 +108,7 @@ describe('o que um perfil nunca leva', () => {
   });
 
   it('aplicar um perfil não desfaz a correção de daltonismo nem o contraste', () => {
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     const appearance = useAppearanceStore.getState();
     appearance.set('daltonism', 'protanopia');
@@ -116,7 +116,7 @@ describe('o que um perfil nunca leva', () => {
     appearance.set('uiScale', 1.3);
     appearance.set('idleLockMinutes', 5);
 
-    applyWorkspace(snapshot, rectFor, 'perfil');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'perfil');
 
     const after = useAppearanceStore.getState().appearance;
     expect(after.daltonism).toBe('protanopia');
@@ -131,12 +131,12 @@ describe('âmbito: desktop contra perfil', () => {
     soundService.setEnabled(true);
     soundService.setVolume(0.2);
     useAppearanceStore.getState().set('wallpaper', 'grelha');
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     soundService.setVolume(0.9);
     useAppearanceStore.getState().set('wallpaper', 'nebulosa');
 
-    applyWorkspace(snapshot, rectFor, 'desktop');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'desktop');
 
     expect(useAppearanceStore.getState().appearance.wallpaper).toBe('grelha');
     expect(soundService.currentVolume).toBe(0.9);
@@ -145,43 +145,43 @@ describe('âmbito: desktop contra perfil', () => {
   it('aplicar um perfil repõe o volume', () => {
     soundService.setEnabled(true);
     soundService.setVolume(0.2);
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     soundService.setVolume(0.9);
-    applyWorkspace(snapshot, rectFor, 'perfil');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'perfil');
 
     expect(soundService.currentVolume).toBe(0.2);
   });
 
   it('saltar de desktop não desliga plugins', () => {
-    const [first] = captureWorkspace().plugins;
+    const [first] = captureWorkspace(getWorkspaceStores()).plugins;
     if (!first) throw new Error('sem plugins instalados para o teste');
 
     usePluginStore.getState().setEnabled(first.id, false);
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     usePluginStore.getState().setEnabled(first.id, true);
-    applyWorkspace(snapshot, rectFor, 'desktop');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'desktop');
 
     expect(usePluginStore.getState().installed[first.id]?.isEnabled).toBe(true);
   });
 
   it('aplicar um perfil repõe que plugins estavam ativos', () => {
-    const [first] = captureWorkspace().plugins;
+    const [first] = captureWorkspace(getWorkspaceStores()).plugins;
     if (!first) throw new Error('sem plugins instalados para o teste');
 
     usePluginStore.getState().setEnabled(first.id, false);
-    const snapshot = captureWorkspace();
+    const snapshot = captureWorkspace(getWorkspaceStores());
 
     usePluginStore.getState().setEnabled(first.id, true);
-    applyWorkspace(snapshot, rectFor, 'perfil');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'perfil');
 
     expect(usePluginStore.getState().installed[first.id]?.isEnabled).toBe(false);
   });
 
   it('um plugin instalado depois de o perfil ser guardado fica como está', () => {
     const snapshot = normaliseSnapshot({
-      ...captureWorkspace(),
+      ...captureWorkspace(getWorkspaceStores()),
       // A fotografia não conhecia nenhum plugin.
       plugins: [],
     });
@@ -190,7 +190,7 @@ describe('âmbito: desktop contra perfil', () => {
     if (!first) throw new Error('sem plugins instalados para o teste');
     usePluginStore.getState().setEnabled(first.id, true);
 
-    applyWorkspace(snapshot, rectFor, 'perfil');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'perfil');
 
     expect(usePluginStore.getState().installed[first.id]?.isEnabled).toBe(true);
   });
@@ -212,7 +212,7 @@ describe('fotografias de versões anteriores', () => {
     soundService.setEnabled(true);
     soundService.setVolume(0.75);
 
-    applyWorkspace(snapshot, rectFor, 'perfil');
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'perfil');
 
     expect(soundService.isEnabled).toBe(true);
     expect(soundService.currentVolume).toBe(0.75);
@@ -221,7 +221,7 @@ describe('fotografias de versões anteriores', () => {
   it('uma fotografia vazia não rebenta e deixa o ecrã sem janelas', () => {
     useWindowStore.getState().open('emails', 'Emails', RECT);
 
-    applyWorkspace(normaliseSnapshot({}), rectFor, 'perfil');
+    applyWorkspace(normaliseSnapshot({}), rectFor, getWorkspaceStores(), 'perfil');
 
     expect(useWindowStore.getState().windows).toHaveLength(0);
   });
