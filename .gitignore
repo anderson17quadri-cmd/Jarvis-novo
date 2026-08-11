@@ -35,6 +35,10 @@ coverage/
 # Scripts locais com segredos
 claude-deepseek.ps1
 
+# Playwright
+playwright-report/
+test-results/
+
 # Python (root — voice-clone-service tem o seu próprio .gitignore também)
 .venv/
 venv/

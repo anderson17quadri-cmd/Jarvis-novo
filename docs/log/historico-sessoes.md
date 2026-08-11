@@ -880,3 +880,31 @@ runtime, cada um a testar uma capacidade.
 **Testes:** 13 novos testes em `plugin-bridge.test.ts` (28 no total) —
 permissão recusada, validação de app/evento, duplicados, subscrição e
 cancelamento de eventos com o callback `sendToPlugin`.
+
+## 2026-08-11 — Suite E2E com Playwright
+
+Primeira suite de testes end-to-end do projeto. Usa Playwright com Chromium
+contra o servidor de desenvolvimento do Vite (localhost:1420), sem depender de
+APIs Tauri — os cenários de login, janelas, temas, plugins e voz correm todos
+contra React/Zustand em modo browser.
+
+**Infraestrutura:** `playwright.config.ts` com timeout de 60s, `tests/e2e/`
+como diretório de testes, fixtures partilhadas (`skipBoot`, `login`,
+`openWindow`, `closeWindow`, `openCommandPalette`). O boot é saltado via
+`addInitScript` que escreve `jarvis.booted` no localStorage antes de React
+arrancar. Todos os seletores são semânticos (role, aria-label,
+placeholder, texto) — sem `data-testid`.
+
+**10 cenários:** login com sucesso, login com palavra-passe vazia, abrir e
+fechar janela pelo Dock, abrir janela pela Paleta de Comandos, mudar para
+OLED Black e voltar ao Classic, tema Arctic White, instalar e executar o
+plugin Olá-notificação, recusar permissão de notificações via localStorage,
+ligar microfone com SpeechRecognition mockado, ligar e desligar microfone
+manualmente.
+
+**Correcções:** o theme-service remove `data-theme` para o tema Classic
+(`DEFAULT_THEME`) em vez de o pôr a `"classic"` — o teste verifica
+`html:not([data-theme])`. O catálogo de plugins tem vários cartões com
+botão "Instalar"; o primeiro é muitas vezes um que está desativado no
+browser (exige capacidades nativas) — o teste usa `li:has-text("Olá,
+notificação")` para isolar o cartão certo.
