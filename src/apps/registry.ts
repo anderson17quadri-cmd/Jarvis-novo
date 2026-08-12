@@ -12,6 +12,7 @@ import {
   Palette,
   Puzzle,
   ShieldCheck,
+  SquareTerminal,
   Terminal,
   Zap,
 } from 'lucide-react';
@@ -129,16 +130,18 @@ export const APP_REGISTRY: Readonly<Record<AppId, AppDefinition>> = {
     component: lazy(() => import('./automations/AutomationsWindow')),
     implemented: true,
   },
-
-  // ── Fase 2: registadas para o dock e a paleta as mostrarem, sem implementação ──
   terminal: {
     id: 'terminal',
     title: 'Terminal',
-    icon: Terminal,
-    defaultSize: { width: 460, height: 300 },
-    component: NotImplemented,
-    implemented: false,
+    icon: SquareTerminal,
+    // Mais larga do que a maioria das janelas — um terminal a 460px de
+    // largura corta linhas de comando reais a cada instante.
+    defaultSize: { width: 640, height: 420 },
+    component: lazy(() => import('./terminal/TerminalWindow')),
+    implemented: true,
   },
+
+  // ── Fase 2: registadas para o dock e a paleta as mostrarem, sem implementação ──
   music: {
     id: 'music',
     title: 'Música',

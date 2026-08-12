@@ -9,8 +9,13 @@ import { arch as osArch, platform as osPlatform, version as osVersion } from '@t
 import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo, PlatformKind } from '@/types/platform';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
+import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import { detectTouch } from './detect-platform';
 import { isAllowedExternalUrl } from './url-policy';
+
+/** Nomes dos eventos que o Rust emite — ver `src-tauri/src/terminal/session.rs`. */
+const TERMINAL_OUTPUT_EVENT = 'terminal://output';
+const TERMINAL_EXIT_EVENT = 'terminal://exit';
 
 /** Ficheiro do plugin `store` onde as preferências persistem. */
 const STORE_FILE = 'jarvis.store.json';
@@ -191,6 +196,52 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     if (!this.capabilities.globalShortcut) return () => undefined;
     try {
       const unlisten = await listen(GLOBAL_INVOKE_EVENT, () => handler());
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
+  }
+
+  // ── Terminal ─────────────────────────────────────────────────────────────
+
+  async terminalSpawn(cols: number, rows: number): Promise<string | null> {
+    if (!this.capabilities.terminal) return null;
+    return this.tryInvoke<string>('terminal_spawn', null, { cols, rows });
+  }
+
+  async terminalWrite(sessionId: string, data: string): Promise<void> {
+    if (!this.capabilities.terminal) return;
+    await this.tryInvoke('terminal_write', null, { sessionId, data });
+  }
+
+  async terminalResize(sessionId: string, cols: number, rows: number): Promise<void> {
+    if (!this.capabilities.terminal) return;
+    await this.tryInvoke('terminal_resize', null, { sessionId, cols, rows });
+  }
+
+  async terminalKill(sessionId: string): Promise<void> {
+    if (!this.capabilities.terminal) return;
+    await this.tryInvoke('terminal_kill', null, { sessionId });
+  }
+
+  async onTerminalOutput(handler: (event: TerminalOutputEvent) => void): Promise<() => void> {
+    if (!this.capabilities.terminal) return () => undefined;
+    try {
+      const unlisten = await listen<TerminalOutputEvent>(TERMINAL_OUTPUT_EVENT, (event) =>
+        handler(event.payload),
+      );
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
+  }
+
+  async onTerminalExit(handler: (event: TerminalExitEvent) => void): Promise<() => void> {
+    if (!this.capabilities.terminal) return () => undefined;
+    try {
+      const unlisten = await listen<TerminalExitEvent>(TERMINAL_EXIT_EVENT, (event) =>
+        handler(event.payload),
+      );
       return unlisten;
     } catch {
       return () => undefined;

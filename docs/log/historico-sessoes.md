@@ -1602,3 +1602,84 @@ primeiro.
 O worktree da DeepSeek fica ocioso, pronto para a próxima tarefa. O da
 Qwen fica por usar até a cota voltar; essa decisão fica para o
 utilizador, não se relança sozinha.
+
+## 2026-08-12 — Código nativo a sério, peça 1: Terminal
+
+O utilizador desbloqueou trabalho nativo a sério (código Rust, capabilities
+do Tauri, verificação ao vivo na máquina Windows) — quatro peças grandes,
+repartidas entre esta sessão e a DeepSeek (cada uma no seu worktree, sem
+repetir peça). Esta sessão (Claude Sonnet 5) ficou com o Terminal.
+
+**Rust** (`src-tauri/src/terminal/`): `TerminalRegistry` (estado gerido,
+`Mutex<HashMap<id, TerminalSession>>`) e `TerminalSession`, que abre um PTY
+a sério via `portable-pty` (o motor por trás do WezTerm — ConPTY no
+Windows), arranca `powershell.exe` — sempre este programa fixo, nunca
+escolhido pela interface — e põe uma thread a ler a saída, emitindo-a por
+eventos Tauri (`terminal://output`, `terminal://exit`). Quatro comandos
+(`terminal_spawn`, `terminal_write`, `terminal_resize`, `terminal_kill`),
+só no desktop: o `lib.rs` já tinha o `invoke_handler` a correr antes do
+bloco `#[cfg(desktop)]`, por isso passou a chamar-se outra vez dentro desse
+bloco, com a lista toda (base + terminal) — chamar duas vezes substitui, não
+acumula.
+
+**Sem capability nova.** Confirmado antes de escrever uma: os comandos da
+própria app (diferente dos de plugin, tipo `fs:allow-read-text-file`) não
+passam pelo sistema de ACL deste projeto — `build.rs` não gera esquema de
+permissões próprio, e os comandos de sistema já existentes (`get_system_
+snapshot`, etc.) também não estão em nenhum `capabilities/*.json`. O escopo
+estreito que a spec pedia vem do desenho do próprio comando: `terminal_
+spawn` nunca recebe um caminho de programa, só texto para escrever no
+stdin de uma sessão já aberta — o mesmo que um humano faria a escrever
+num terminal a sério.
+
+**Sem confirmação para comandos destrutivos**, decisão documentada em
+`terminal/mod.rs`: o critério do projeto ("dá para desfazer?") aplica-se a
+ações que o *assistente* decide por conta própria a partir de uma frase
+interpretada por um modelo. Um terminal é o oposto — a pessoa escreve, à
+mão, exatamente o comando que quer correr. Filtrar por padrões de texto
+seria frágil (contornável) e surpreendente (nenhum terminal a sério pede
+confirmação para `del`).
+
+**`@xterm/xterm` + `@xterm/addon-fit`**, não uma solução caseira: entende
+sequências ANSI (cores, cursor) que um `<div>` teria de reimplementar à
+mão, e só entra no bundle quando a janela abre (`lazy()` no registo de
+apps) — o custo que a spec pedia para se justificar fica pago por nunca
+carregar em quem não abre um terminal. Cores seguem o tema ativo (lidas
+das variáveis CSS, `--card`/`--t1`/`--accent`/`--tint-rgb`), atualizadas
+ao vivo via `eventBus.on('tema:alterado', …)`.
+
+**`PlatformCapabilities.terminal`** novo, `true` só no `DesktopAdapter`.
+Ícone próprio no registo de apps (`SquareTerminal`, não `Terminal` — esse
+já era o do Centro de Programador, dois ícones iguais no dock confundiam).
+
+**Verificado ao vivo, não só por ler código** — `npm run tauri dev` a
+sério nesta máquina: compilação Rust completa sem avisos, login (a
+palavra-passe é simulada, qualquer texto não vazio entra — Fase 1), abrir
+o Terminal pela paleta de comandos, `PS C:\Users\UPTECHBOX>` real a
+aparecer, escrever `echo ola-do-terminal-jarvis` e ver a saída certa
+voltar. Automatizado com capturas de ecrã reais da janela (`PrintWindow`,
+não `CopyFromScreen` — a primeira tentativa apanhou sem querer outra
+janela por cima, uma sessão do Claude Code aberta no mesmo ecrã; corrigido
+para capturar só a janela do JARVIS diretamente).
+
+**Não confirmado ao vivo**: fechar a janela a matar mesmo o processo.
+Várias tentativas de clique sintético (`mouse_event`, depois `SendInput`
+com sequência mover+clicar, com correção de DPI) não conseguiram acionar
+nenhum controlo da janela — nem sequer minimizar, o que descarta ser um
+bug específico do botão fechar e aponta antes para uma limitação do
+automatismo usado (possivelmente WebView2 a exigir uma sequência de
+eventos que o `SendInput` sintético não estava a produzir). Confirmado por
+outra via, que importa mais para a segurança: matar o processo principal
+da app (`Stop-Process` a sério) não deixou `conhost.exe`/`powershell.exe`
+órfãos — o `portable-pty` liga o processo filho a um Job Object do
+Windows, por isso mesmo um crash a sério não deixa processos perdidos.
+Fica por confirmar, numa próxima sessão com acesso à máquina, se o clique
+no botão fechar dispara mesmo `terminal_kill` (o código do lado React
+chama-o no cleanup do `useEffect` — parece correto por leitura, só não foi
+visto a acontecer ao vivo).
+
+SPEC.md atualizado (Parte 6.2, e a entrada em "Fora de âmbito por decisão"
+passa a "Feito"). Confirmado: `tsc` limpo, `eslint` 0 erros, 1244/1244
+testes (12 novos, cobrindo os quatro métodos novos do `PlatformAdapter`
+nos três adapters), `cargo check` e a compilação completa do `tauri dev`
+sem avisos.

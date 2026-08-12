@@ -1,5 +1,6 @@
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
+import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 
 /**
  * O contrato que separa a interface do sistema operativo.
@@ -61,4 +62,21 @@ export interface PlatformAdapter {
    * plataforma não suporta atalhos (aí é uma função vazia).
    */
   onGlobalInvoke(handler: () => void): Promise<() => void>;
+
+  // ── Terminal ─────────────────────────────────────────────────────────────
+  /**
+   * Abre uma sessão de terminal nova (um PTY a sério, do lado Rust) e devolve
+   * o seu id. `null` onde `capabilities.terminal` é `false`.
+   */
+  terminalSpawn(cols: number, rows: number): Promise<string | null>;
+  /** Escreve texto no stdin da sessão — um comando, ou uma tecla. */
+  terminalWrite(sessionId: string, data: string): Promise<void>;
+  /** A janela mudou de tamanho — o shell precisa de saber. */
+  terminalResize(sessionId: string, cols: number, rows: number): Promise<void>;
+  /** Termina o processo e liberta a sessão. */
+  terminalKill(sessionId: string): Promise<void>;
+  /** Ouve a saída de todas as sessões — quem chama filtra pelo `sessionId`. */
+  onTerminalOutput(handler: (event: TerminalOutputEvent) => void): Promise<() => void>;
+  /** Ouve o fim de qualquer sessão. */
+  onTerminalExit(handler: (event: TerminalExitEvent) => void): Promise<() => void>;
 }

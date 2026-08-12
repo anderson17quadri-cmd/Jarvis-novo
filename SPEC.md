@@ -191,12 +191,11 @@ construir, cada uma com a sua razão — e duas em que a decisão foi revista.
 | O quê | Porque não |
 |---|---|
 | **Workspace — múltiplos desktops e layouts guardados** | ✅ **Feito.** O receio era mexer no `use-window-store` e no `use-widget-store`, as duas peças mais bem testadas do projeto. A solução foi **não lhes tocar**: o `workspace-service` lê o que elas já expõem e escreve pelas ações que elas já têm. Os 568 testes que existiam antes continuam a passar sem uma linha alterada |
-| **Terminal** | Um terminal que não executa nada é estrutura a fingir. Precisa de um comando Rust e de sandbox |
+| **Terminal** | ✅ **Feito**, 12/08/2026, com PC a sério. PTY real via `portable-pty` (`src-tauri/src/terminal/`) — `powershell.exe` no Windows, `xterm.js` do lado da interface. Ver Parte 6.2 |
 | **Motor de automações** | ✅ **Feito.** A avaliação inicial estava errada: gatilhos por hora e por evento interno são reais dentro do browser. Só os do sistema — ficheiros, USB, bateria — é que exigem nativo |
 | **Widget de GPU** | O `sysinfo` não lê a GPU. Mostrar um número inventado é pior do que não mostrar nada, e é a mesma razão pela qual o Monitor de recursos também não tem cartão de GPU |
 
-O Terminal entra quando houver PC. O widget de GPU entra se e quando houver uma
-forma honesta de ler a GPU.
+O widget de GPU entra se e quando houver uma forma honesta de ler a GPU.
 
 ---
 
@@ -324,7 +323,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Janelas: Emails, Tarefas, Projetos, Arquivos | ✅ | Emails em cima do `mailService`, agora com "Nova mensagem" — anexar ficheiros (diálogo nativo, `platform/attachments.ts`, com queda para `<input type="file">` sem Tauri), nome/tamanho de cada um, e pré-visualização para imagens. Enviar continua fora de âmbito, tal como responder — exige provedor real, dito de frente. Tarefas com prioridade, prazo, subtarefas e persistência; Projetos em leitura; Arquivos com árvore **simulada** |
 | Janela: Automações | ✅ | Motor a sério — ver Parte 13 |
 | Janelas: Centro de Programador e Privacidade | ✅ | Partes 16 e 14 |
-| Janela: Terminal | ⬜ | Fora de âmbito por decisão — ver §5 |
+| Janela: Terminal | ✅ | PTY a sério (`portable-pty`, `powershell.exe` no Windows) via `src-tauri/src/terminal/`; `xterm.js` do lado da interface — cores e redimensionamento reais, sem reimplementar o parser ANSI à mão. `SearchService`/`DeviceService` já tinham o precedente do padrão serviço+store; o Terminal soma-se ao invoke handler condicional (`#[cfg(desktop)]`) do `lib.rs`. Sem confirmação para comandos destrutivos — é a pessoa a escrever à mão, não o assistente a decidir; ver o comentário em `terminal/mod.rs`. Sem capability nova em `capabilities/*.json`: comandos da app (não de plugin) não passam pelo sistema de ACL deste projeto — o escopo estreito vem do próprio desenho do comando (só spawna o shell fixo, nunca um programa escolhido pela interface), não de uma allow-list. Confirmado ao vivo: `npm run tauri dev`, login, abrir a janela pela paleta, `echo` real a devolver a saída certa. **Não confirmado ao vivo**: o fecho da janela a matar o processo (o clique sintético via `SendInput` não chegou a nenhum botão de controlo da janela, nem sequer minimizar — parece uma limitação do automatismo usado para testar, não um bug; confirmado por outra via que não fica processo órfão nem num crash a sério, porque o `portable-pty` liga o filho a um Job Object do Windows) |
 | **Plugin Manager** | 🟡 | Loja completa em interface — catálogo, categorias, pesquisa, permissões, instalar/ativar/remover, persistido. **Não carrega código**: ver §2 |
 
 ---

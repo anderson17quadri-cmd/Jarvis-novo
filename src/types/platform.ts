@@ -30,6 +30,8 @@ export interface PlatformCapabilities {
   readonly voice: boolean;
   /** Autenticação biométrica. */
   readonly biometrics: boolean;
+  /** Janela de Terminal com um shell a sério (PTY), não simulado. */
+  readonly terminal: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

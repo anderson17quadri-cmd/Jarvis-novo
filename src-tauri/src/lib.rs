@@ -5,11 +5,15 @@ mod system;
 #[cfg(desktop)]
 mod shortcuts;
 #[cfg(desktop)]
+mod terminal;
+#[cfg(desktop)]
 mod tray;
 #[cfg(desktop)]
 mod voice_clone;
 
 use system::SystemMonitor;
+#[cfg(desktop)]
+use terminal::TerminalRegistry;
 
 /// Ponto de entrada partilhado por desktop e Android.
 ///
@@ -39,6 +43,21 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
+        .manage(TerminalRegistry::default())
+        // O Terminal só existe no desktop — sem isto, `generate_handler!`
+        // teria de referenciar comandos que não compilam no Android. Chamar
+        // `invoke_handler` outra vez substitui o anterior (não acumula), por
+        // isso esta lista repete os três comandos base e acrescenta os
+        // quatro do terminal.
+        .invoke_handler(tauri::generate_handler![
+            commands::system::get_system_snapshot,
+            commands::system::get_static_system_info,
+            commands::system::get_top_processes,
+            commands::terminal::terminal_spawn,
+            commands::terminal::terminal_write,
+            commands::terminal::terminal_resize,
+            commands::terminal::terminal_kill,
+        ])
         .setup(|app| {
             tray::setup(app.handle())?;
             shortcuts::setup(app.handle())?;

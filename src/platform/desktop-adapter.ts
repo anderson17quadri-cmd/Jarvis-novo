@@ -20,5 +20,7 @@ export class DesktopAdapter extends TauriAdapterBase {
     voice: true,
     // Biometria real exigiria Windows Hello; por agora é simulada no login.
     biometrics: false,
+    // PTY a sério via `portable-pty` — só existe no desktop.
+    terminal: true,
   };
 }

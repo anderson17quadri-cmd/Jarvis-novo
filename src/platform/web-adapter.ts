@@ -30,6 +30,10 @@ export class WebAdapter implements PlatformAdapter {
     nativeStorage: false,
     voice: typeof window !== 'undefined' && 'speechSynthesis' in window,
     biometrics: false,
+    // Sem processo nenhum para abrir um shell dentro de. Um terminal simulado
+    // não passaria por real — a janela fica escondida, como o resto do que o
+    // browser não sabe fazer.
+    terminal: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -126,6 +130,30 @@ export class WebAdapter implements PlatformAdapter {
   async onGlobalInvoke(): Promise<() => void> {
     // Sem atalhos globais. Devolve uma função de cancelamento válida à mesma,
     // para quem chama não precisar de verificar nada.
+    return () => undefined;
+  }
+
+  async terminalSpawn(): Promise<string | null> {
+    return null;
+  }
+
+  async terminalWrite(): Promise<void> {
+    /* sem terminal, sem sessão para escrever */
+  }
+
+  async terminalResize(): Promise<void> {
+    /* idem */
+  }
+
+  async terminalKill(): Promise<void> {
+    /* idem */
+  }
+
+  async onTerminalOutput(): Promise<() => void> {
+    return () => undefined;
+  }
+
+  async onTerminalExit(): Promise<() => void> {
     return () => undefined;
   }
 }

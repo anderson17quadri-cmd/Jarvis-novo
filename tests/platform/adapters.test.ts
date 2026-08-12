@@ -33,6 +33,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'nativeStorage',
       'voice',
       'biometrics',
+      'terminal',
     ] as const;
 
     for (const key of required) {
@@ -86,6 +87,44 @@ describe('WebAdapter simula em vez de falhar', () => {
 
   it('devolve o valor por omissão quando a chave não existe', async () => {
     await expect(web.storageGet('inexistente', 42)).resolves.toBe(42);
+  });
+});
+
+describe('terminal — nenhum adapter lança, só o desktop diz que suporta', () => {
+  it('Web e Android não têm terminal', () => {
+    expect(new WebAdapter().capabilities.terminal).toBe(false);
+    expect(new AndroidAdapter().capabilities.terminal).toBe(false);
+  });
+
+  it('Desktop diz que suporta', () => {
+    expect(new DesktopAdapter().capabilities.terminal).toBe(true);
+  });
+
+  it.each(adapters)('%s: abrir sessão nunca lança, mesmo sem IPC real', async (_name, adapter) => {
+    const sessionId = await adapter.terminalSpawn(80, 24);
+    expect(sessionId === null || typeof sessionId === 'string').toBe(true);
+  });
+
+  it.each(adapters)('%s: escrever, redimensionar e matar sem sessão nunca lançam', async (_name, adapter) => {
+    await expect(adapter.terminalWrite('inexistente', 'ls\n')).resolves.toBeUndefined();
+    await expect(adapter.terminalResize('inexistente', 80, 24)).resolves.toBeUndefined();
+    await expect(adapter.terminalKill('inexistente')).resolves.toBeUndefined();
+  });
+
+  it.each(adapters)('%s: subscrever saída e fim devolve sempre uma função de cancelamento', async (_name, adapter) => {
+    const unsubOutput = await adapter.onTerminalOutput(() => undefined);
+    const unsubExit = await adapter.onTerminalExit(() => undefined);
+    expect(typeof unsubOutput).toBe('function');
+    expect(typeof unsubExit).toBe('function');
+    expect(() => unsubOutput()).not.toThrow();
+    expect(() => unsubExit()).not.toThrow();
+  });
+
+  it('Web e Android nunca abrem sessão nenhuma (sem capability, sem tentar IPC)', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    const android: PlatformAdapter = new AndroidAdapter();
+    await expect(web.terminalSpawn(80, 24)).resolves.toBeNull();
+    await expect(android.terminalSpawn(80, 24)).resolves.toBeNull();
   });
 });
 

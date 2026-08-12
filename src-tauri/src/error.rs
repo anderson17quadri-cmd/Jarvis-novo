@@ -16,6 +16,14 @@ pub enum Error {
     #[error("falha ao ler o estado do sistema: {0}")]
     SystemRead(String),
 
+    #[cfg_attr(any(mobile, target_os = "android", target_os = "ios"), allow(dead_code))]
+    #[error("sessão de terminal desconhecida: {0}")]
+    UnknownSession(String),
+
+    #[cfg_attr(any(mobile, target_os = "android", target_os = "ios"), allow(dead_code))]
+    #[error("falha no terminal: {0}")]
+    Terminal(String),
+
     #[error("erro do Tauri: {0}")]
     Tauri(#[from] tauri::Error),
 }

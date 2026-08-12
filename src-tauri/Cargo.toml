@@ -28,13 +28,16 @@ serde_json = "1"
 sysinfo = "0.33"
 thiserror = "2"
 
-# Bandeja, atalho global e gestão de processos só existem no desktop.
-# Declarar por alvo evita puxar dependências que não compilam no Android — e a
-# feature `tray-icon` do Tauri só é ativada onde há mesmo bandeja.
+# Bandeja, atalho global, gestão de processos e o terminal só existem no
+# desktop. Declarar por alvo evita puxar dependências que não compilam no
+# Android — e a feature `tray-icon` do Tauri só é ativada onde há mesmo
+# bandeja. O `portable-pty` também entra aqui: a janela de Terminal (Parte
+# 6.2) é uma funcionalidade de desktop, sem equivalente no Android.
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-process = "2"
+portable-pty = "0.9"
 
 [features]
 # Ativado pelo `tauri build` — não usar diretamente.
