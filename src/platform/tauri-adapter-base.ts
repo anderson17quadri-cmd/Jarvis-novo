@@ -221,6 +221,23 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     }
   }
 
+  // ── Biometria ────────────────────────────────────────────────────────────
+
+  async checkBiometricAvailability(): Promise<boolean> {
+    if (!this.capabilities.biometrics) return false;
+    return (await this.tryInvoke<boolean>('windows_hello_available', false)) ?? false;
+  }
+
+  async requestBiometricVerification(message: string): Promise<'verified' | 'denied' | 'unavailable'> {
+    if (!this.capabilities.biometrics) return 'unavailable';
+    const result = await this.tryInvoke<'verified' | 'denied' | 'unavailable'>(
+      'windows_hello_verify',
+      'unavailable',
+      { message },
+    );
+    return result ?? 'unavailable';
+  }
+
   // ── Terminal ─────────────────────────────────────────────────────────────
 
   async terminalSpawn(cols: number, rows: number): Promise<string | null> {

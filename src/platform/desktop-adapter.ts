@@ -18,8 +18,11 @@ export class DesktopAdapter extends TauriAdapterBase {
     fileDialogs: true,
     nativeStorage: true,
     voice: true,
-    // Biometria real exigiria Windows Hello; por agora é simulada no login.
-    biometrics: false,
+    // Windows Hello a sério (windows_hello_available/_verify no Rust). Fora
+    // do Windows os comandos devolvem "indisponível" em vez de não
+    // compilar — checkBiometricAvailability() é quem confirma em runtime se
+    // esta máquina concreta tem sensor ou PIN configurado.
+    biometrics: true,
     // PTY a sério via `portable-pty` — só existe no desktop.
     terminal: true,
     secretVault: true,

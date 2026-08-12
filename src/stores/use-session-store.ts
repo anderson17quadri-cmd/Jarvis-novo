@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { clearAutoLoginSession } from '@/services/auto-login-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
 /** Fases por que a aplicação passa desde que abre. */
@@ -15,7 +16,9 @@ interface SessionState {
    * Termina a sessão e volta ao login.
    *
    * O arranque não se repete: a flag `booted` fica guardada, por isso quem
-   * termina a sessão vê o login e não os dez passos outra vez.
+   * termina a sessão vê o login e não os dez passos outra vez. Também apaga
+   * a sessão automática do Windows Hello — sem isto, sair "a sério" cairia
+   * logo de volta ao desktop sozinho na vez seguinte.
    */
   logout: () => void;
   /**
@@ -32,7 +35,10 @@ export const useSessionStore = create<SessionState>((set) => ({
   phase: 'booting',
   completeBoot: () => set({ phase: 'login' }),
   authenticate: () => set({ phase: 'desktop' }),
-  logout: () => set({ phase: 'login' }),
+  logout: () => {
+    void clearAutoLoginSession();
+    set({ phase: 'login' });
+  },
 
   restartBootSequence: async () => {
     await storageService.set(STORAGE_KEYS.booted, false);

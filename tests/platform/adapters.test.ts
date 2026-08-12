@@ -129,6 +129,29 @@ describe('terminal — nenhum adapter lança, só o desktop diz que suporta', ()
   });
 });
 
+describe('biometria — nenhum adapter lança, e sem sensor cai para indisponível', () => {
+  it.each(adapters)('%s: verificar disponibilidade nunca lança', async (_name, adapter) => {
+    const available = await adapter.checkBiometricAvailability();
+    expect(typeof available).toBe('boolean');
+  });
+
+  it.each(adapters)('%s: pedir verificação sem disponibilidade devolve unavailable', async (_name, adapter) => {
+    const outcome = await adapter.requestBiometricVerification('teste');
+    expect(['verified', 'denied', 'unavailable']).toContain(outcome);
+  });
+
+  it('Web nunca tem biometria disponível', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    await expect(web.checkBiometricAvailability()).resolves.toBe(false);
+    await expect(web.requestBiometricVerification('teste')).resolves.toBe('unavailable');
+  });
+
+  it('Android, sem Windows Hello ligado, também não tem biometria', async () => {
+    const android: PlatformAdapter = new AndroidAdapter();
+    await expect(android.checkBiometricAvailability()).resolves.toBe(false);
+  });
+});
+
 describe('a política de URLs só deixa passar https e mailto', () => {
   it.each([
     ['https://anthropic.com', true],

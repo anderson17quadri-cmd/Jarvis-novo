@@ -71,6 +71,24 @@ export interface PlatformAdapter {
    */
   onGlobalInvoke(handler: () => void): Promise<() => void>;
 
+  // ── Biometria ────────────────────────────────────────────────────────────
+  /**
+   * `true` se este dispositivo tem o Windows Hello (ou equivalente)
+   * configurado — verificação em runtime, não só se a plataforma o suporta
+   * em teoria. `capabilities.biometrics` diz se vale a pena perguntar;
+   * isto diz se a máquina concreta tem sensor/PIN prontos.
+   */
+  checkBiometricAvailability(): Promise<boolean>;
+  /**
+   * Pede a verificação a sério — dispara o ecrã nativo. `message` explica à
+   * pessoa porque está a ser pedida.
+   *
+   * `'unavailable'` cobre tanto "esta plataforma não tem" como "este
+   * dispositivo não tem sensor configurado" — quem chama trata os dois da
+   * mesma forma (cai para a palavra-passe).
+   */
+  requestBiometricVerification(message: string): Promise<'verified' | 'denied' | 'unavailable'>;
+
   // ── Terminal ─────────────────────────────────────────────────────────────
   /**
    * Abre uma sessão de terminal nova (um PTY a sério, do lado Rust) e devolve

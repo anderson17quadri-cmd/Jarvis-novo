@@ -10,6 +10,8 @@ mod terminal;
 mod tray;
 #[cfg(desktop)]
 mod voice_clone;
+#[cfg(target_os = "windows")]
+mod windows_hello;
 
 use system::SystemMonitor;
 #[cfg(desktop)]
@@ -46,11 +48,14 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
-        // O Terminal e o cofre de segredos só existem no desktop — sem isto,
-        // `generate_handler!` teria de referenciar comandos que não compilam
-        // no Android. Só há UM `invoke_handler` por ramo: chamá-lo outra vez
-        // substitui o anterior em vez de acumular, por isso esta lista já
-        // inclui os três comandos base mais os do terminal e os do cofre.
+        // O Terminal, o cofre de segredos e o Windows Hello só existem no
+        // desktop — sem isto, `generate_handler!` teria de referenciar
+        // comandos que não compilam no Android. Só há UM `invoke_handler`
+        // por ramo: chamá-lo outra vez substitui o anterior em vez de
+        // acumular, por isso esta lista já inclui os três comandos base
+        // mais os do terminal, os do cofre e os do Windows Hello (que têm a
+        // mesma assinatura em qualquer desktop — em Linux/macOS devolvem
+        // "indisponível" em vez de não compilar, ver commands/windows_hello.rs).
         .invoke_handler(tauri::generate_handler![
             commands::system::get_system_snapshot,
             commands::system::get_static_system_info,
@@ -62,6 +67,8 @@ pub fn run() {
             commands::secrets::secret_set,
             commands::secrets::secret_get,
             commands::secrets::secret_delete,
+            commands::windows_hello::windows_hello_available,
+            commands::windows_hello::windows_hello_verify,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

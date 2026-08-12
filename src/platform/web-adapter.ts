@@ -150,6 +150,14 @@ export class WebAdapter implements PlatformAdapter {
     return () => undefined;
   }
 
+  async checkBiometricAvailability(): Promise<boolean> {
+    return false;
+  }
+
+  async requestBiometricVerification(): Promise<'verified' | 'denied' | 'unavailable'> {
+    return 'unavailable';
+  }
+
   async terminalSpawn(): Promise<string | null> {
     return null;
   }

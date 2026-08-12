@@ -282,14 +282,16 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Campo 56px, mostrar/ocultar | ✅ | |
 | Indicador de CAPS LOCK | ✅ | |
 | Indicador de força | ✅ | `password-strength.ts` |
-| Biometria facial e digital | ✅ | Simuladas |
+| Biometria facial e digital | ✅ | Windows Hello a sério quando o dispositivo o tem configurado (`checkBiometricAvailability`/`requestBiometricVerification`, WinRT `UserConsentVerifier`); cai para a simulação original numa máquina sem sensor nem PIN. Ver nota abaixo |
 | Teclado PIN | ✅ | `PinKeypad.tsx` |
 | Erros: shake, glow vermelho, foco mantido | ✅ | |
 | Mensagens da IA com digitação | ✅ | |
 | Atalhos do rodapé | 🟡 | Presentes, mas informam que a gestão de energia é Fase 2 |
 | IA cumprimenta por voz na transição | ✅ | |
-| Windows Hello, chave física, sessão automática | ⬜ | Exigem integração nativa |
+| Windows Hello, chave física, sessão automática | 🟡 | **Windows Hello e sessão automática ✅**, 12/08/2026, com PC a sério — ver nota abaixo para o que se confirmou ao vivo e o que não deu. **Chave física (FIDO2/WebAuthn) continua por fazer**, não fazia parte deste lote |
 | Avatar "viaja" até ao canto superior direito | ✅ | A transição usa `transform`/`opacity` — o avatar desliza do centro do ecrã de login (posição real por `getBoundingClientRect`) até ao canto do header |
+
+**Nota sobre o Windows Hello (12/08/2026):** `UserConsentVerifier` (WinRT) por trás de `windows_hello_available`/`windows_hello_verify` (`src-tauri/src/windows_hello/`). Confirmado ao vivo nesta máquina: `checkBiometricAvailability()` devolve `true` (esta máquina tem PIN do Windows Hello configurado), e clicar em "Reconhecimento facial" dispara mesmo o diálogo nativo do Windows — `Segurança do Windows` / `CredentialUIBroker.exe` a sério, confirmado pelo processo a aparecer. **Não confirmado ao vivo**: o desfecho "verificado" — o diálogo corre no ambiente de trabalho seguro do Windows, isolado de propósito contra automação (nem `SendInput` sintético nem terminar o processo a partir de uma sessão não elevada conseguem tocar-lhe — `Acesso negado`, o que é o comportamento correto de segurança, não um bug). Fica documentado como esperado em vez de fingido; o próximo login real, feito à mão, confirma o resto. Sessão automática (`src/services/auto-login-service.ts`): token aleatório no cofre de segredos, válido 30 minutos, criado só depois de um "verified" real — nunca da palavra-passe nem do PIN simulado — e apagado no logout.
 
 ---
 

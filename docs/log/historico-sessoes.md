@@ -1804,3 +1804,78 @@ limpo.
 
 SPEC.md atualizado: "Cofre de segredos" passou de 🚫 para 🟡 (cofre ✅,
 criptografia/WebAuthn/2FA continuam por fazer).
+
+## 2026-08-12 — Código nativo a sério, peça 4: Windows Hello + sessão automática
+
+Última peça do primeiro lote (depois de Terminal, Cofre de segredos e
+Automações). Dependia do cofre de segredos (peça 2, da DeepSeek) para a
+sessão automática, por isso só começou depois de esse merge.
+
+**Rust** (`src-tauri/src/windows_hello/`): `UserConsentVerifier` (WinRT,
+`windows` crate v0.62, features `Security_Credentials_UI` + `Foundation`,
+só no alvo `target_os = "windows"` — ao contrário do `portable-pty`/
+`keyring`, que servem qualquer desktop, isto não existe no Linux nem no
+macOS). `IAsyncOperation<T>` da versão nova do `windows-future` implementa
+`IntoFuture`, não um `.get()` bloqueante como versões antigas — os
+comandos são `async fn` a sério, não threads com espera bloqueante.
+Comandos (`commands::windows_hello`) compilam em qualquer desktop: a
+implementação real fica atrás de `#[cfg(target_os = "windows")]`, e uma
+segunda implementação (mesma assinatura) devolve sempre "indisponível"
+fora do Windows — o mesmo padrão que `get_top_processes` já usava para
+mobile/desktop, agora esticado a um terceiro eixo (Windows/não-Windows).
+
+**Sem confirmação extra a pedir "tens a certeza":** o próprio Windows
+Hello já é a confirmação — pedir outra por cima seria redundante.
+
+**Frontend:** `checkBiometricAvailability`/`requestBiometricVerification`
+no `PlatformAdapter`, `capabilities.biometrics` passou a `true` no
+desktop (a disponibilidade real por máquina fica para a chamada em
+runtime, não para esta flag estática — o mesmo desenho do `terminal`).
+`LoginScreen`: `runRealOrSimulatedBiometrics` tenta o Windows Hello a
+sério primeiro; só cai para a simulação original (a que já existia) numa
+máquina sem sensor nem PIN — nunca quebra quem não tem o hardware.
+
+**Sessão automática** (`src/services/auto-login-service.ts`): token
+aleatório (`crypto.randomUUID`) com validade de 30 minutos, guardado no
+cofre de segredos — nunca a palavra-passe. Criado só depois de um
+"verified" real do Windows Hello (não da palavra-passe nem do PIN
+simulado, que já são o próprio ato de autenticação). `LoginScreen` lê o
+cofre no arranque e salta o formulário se houver uma sessão válida.
+`useSessionStore.logout()` apaga-a — sair a sério continua a sair a
+sério, sem a sessão automática trazer de volta sozinha.
+
+**Verificado ao vivo, não só por ler código** — segunda corrida de `npm
+run tauri dev` nesta máquina: confirmado primeiro, com um binário de
+diagnóstico à parte (removido depois de usar), que esta máquina tem
+Windows Hello configurado a sério (PIN) — `CheckAvailabilityAsync`
+devolveu `Available`. Depois, na app a sério: login por palavra-passe
+para entrar (não interfere com o resto), navegação por teclado (Tab) até
+ao botão de reconhecimento facial — os cliques sintéticos por
+`SendInput` não chegam a botões pequenos nesta configuração (o mesmo
+limite já visto no Terminal), mas o teclado funciona sempre — e Enter
+para acionar. **Confirmado a sério:** apareceu o diálogo nativo do
+Windows (`Segurança do Windows`, processo `CredentialUIBroker.exe`) —
+prova de que a chamada chegou mesmo à API do sistema operativo, não a
+uma simulação.
+
+**Não confirmado ao vivo:** o desfecho depois de completar o Windows
+Hello a sério. O diálogo corre isolado (ambiente de trabalho seguro, ou
+mecanismo equivalente) — nem `SendInput` sintético nem `Stop-Process`/
+`taskkill` a partir desta sessão não elevada conseguem tocar-lhe
+(`Acesso negado` em ambos). Isto é o comportamento de segurança correto,
+não um bug: um diálogo de credenciais que uma automação conseguisse
+fechar ou aprovar sozinha não estaria a proteger nada. O diálogo ficou
+por resolver (nem verificado nem cancelado) — confirmado que não bloqueia
+o resto do ambiente de trabalho (outras janelas continuam a ganhar foco
+normalmente), por isso não é urgente, mas fica à espera de alguém
+completar ou cancelar à mão. Não se tentou o caminho "não disponível"
+nem "recusado" — só o "a sério, com hardware presente" fazia sentido
+testar nesta máquina.
+
+Confirmado: `tsc` limpo, `eslint` 0 erros, 1258/1258 testes (96
+ficheiros, +14 desde o cofre — `auto-login-service.test.ts` novo, mais
+testes de biometria em `adapters.test.ts`), `cargo check` limpo.
+
+SPEC.md atualizado (Parte 5): Windows Hello e sessão automática ✅ com a
+nota acima; chave física (FIDO2/WebAuthn) continua por fazer, não fazia
+parte deste lote.

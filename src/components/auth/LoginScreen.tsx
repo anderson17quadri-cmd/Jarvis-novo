@@ -27,6 +27,8 @@ import { useReducedMotion } from '@/hooks/use-media-query';
 import { useTypewriter } from '@/hooks/use-typewriter';
 import { cn } from '@/lib/cn';
 import { formatLongDate, formatTime } from '@/lib/format';
+import { getPlatformAdapter } from '@/platform';
+import { createAutoLoginSession, hasValidAutoLoginSession } from '@/services/auto-login-service';
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
 import { measurePasswordStrength } from './password-strength';
@@ -57,9 +59,10 @@ interface LoginScreenProps {
 /**
  * Ecrã de autenticação (Parte 5).
  *
- * A biometria é simulada — é o que o MVP prevê. Está isolada em handlers
- * próprios para que ligar o Windows Hello mais tarde seja trocar o corpo de
- * `runFaceScan` e `runFingerprintScan`, sem tocar no resto do ecrã.
+ * A biometria tenta o Windows Hello a sério primeiro (`checkBiometric
+ * Availability`/`requestBiometricVerification`, via `runRealOrSimulated
+ * Biometrics`) e só cai para a simulação original em máquinas sem sensor
+ * nem PIN configurado — nunca quebra quem não tem o hardware.
  */
 export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.Element {
   const now = useClock();
@@ -132,6 +135,19 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     [onAuthenticated, reducedMotion],
   );
 
+  // Sessão automática (Parte 5 §Biometria): só entra sozinha se uma
+  // verificação Windows Hello recente ainda for válida — nunca substitui a
+  // palavra-passe nem o PIN, que continuam a exigir o formulário.
+  useEffect(() => {
+    void (async () => {
+      const valid = await hasValidAutoLoginSession();
+      if (valid && !isResolvedRef.current) grant('Sessão continuada — verificação recente ainda válida.');
+    })();
+    // `grant` nas deps por causa da regra, não porque isto deva repetir-se:
+    // é assíncrono, e se a identidade mudar antes de a leitura do cofre
+    // terminar, é correto usar a versão mais recente.
+  }, [grant]);
+
   const deny = useCallback((): void => {
     soundService.play('error');
     setShaking(true);
@@ -151,42 +167,78 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     }
   }, [deny, grant, password]);
 
+  /**
+   * Tenta o Windows Hello a sério primeiro; só simula se esta máquina não
+   * tiver sensor nem PIN configurado. `onSimulate` é o que cada botão fazia
+   * antes de existir verificação real — fica como fallback, não como o
+   * caminho principal.
+   */
+  const runRealOrSimulatedBiometrics = useCallback(
+    (onSimulate: () => void): void => {
+      void (async () => {
+        const available = await getPlatformAdapter().checkBiometricAvailability();
+        if (!available) {
+          onSimulate();
+          return;
+        }
+
+        soundService.play('scanner');
+        setHint({ text: 'A aguardar o Windows Hello…', tone: 'neutral' });
+        const outcome = await getPlatformAdapter().requestBiometricVerification(
+          'O JARVIS pede a sua verificação para iniciar sessão.',
+        );
+
+        if (outcome === 'verified') {
+          void createAutoLoginSession();
+          grant('Identidade confirmada pelo Windows Hello.');
+        } else {
+          deny();
+        }
+      })();
+    },
+    [deny, grant],
+  );
+
   const runFaceScan = useCallback((): void => {
-    setScanningFace(true);
-    // A categoria "sistema" já se descrevia como "arranque e leitura
-    // biométrica" (Parte 15 §Sons) sem nunca ter tocado nada — nem aqui, nem
-    // no arranque.
-    soundService.play('scanner');
-    setHint({ text: 'A analisar biometria…', tone: 'neutral' });
-    timersRef.current.push(
-      setTimeout(
-        () => {
-          setScanningFace(false);
-          grant('Acesso autorizado.');
-        },
-        reducedMotion ? 0 : FACE_SCAN_MS,
-      ),
-    );
-  }, [grant, reducedMotion]);
+    runRealOrSimulatedBiometrics(() => {
+      setScanningFace(true);
+      // A categoria "sistema" já se descrevia como "arranque e leitura
+      // biométrica" (Parte 15 §Sons) sem nunca ter tocado nada — nem aqui, nem
+      // no arranque.
+      soundService.play('scanner');
+      setHint({ text: 'A analisar biometria…', tone: 'neutral' });
+      timersRef.current.push(
+        setTimeout(
+          () => {
+            setScanningFace(false);
+            grant('Acesso autorizado.');
+          },
+          reducedMotion ? 0 : FACE_SCAN_MS,
+        ),
+      );
+    });
+  }, [grant, reducedMotion, runRealOrSimulatedBiometrics]);
 
   const runFingerprintScan = useCallback((): void => {
-    if (reducedMotion) {
-      grant('Identidade confirmada.');
-      return;
-    }
-
-    soundService.play('scanner');
-    let progress = 0;
-    const timer = setInterval(() => {
-      progress += 8 + Math.random() * 10;
-      if (progress >= 100) {
-        clearInterval(timer);
+    runRealOrSimulatedBiometrics(() => {
+      if (reducedMotion) {
         grant('Identidade confirmada.');
-      } else {
-        setHint({ text: `A ler impressão digital… ${Math.round(progress)}%`, tone: 'neutral' });
+        return;
       }
-    }, 130);
-  }, [grant, reducedMotion]);
+
+      soundService.play('scanner');
+      let progress = 0;
+      const timer = setInterval(() => {
+        progress += 8 + Math.random() * 10;
+        if (progress >= 100) {
+          clearInterval(timer);
+          grant('Identidade confirmada.');
+        } else {
+          setHint({ text: `A ler impressão digital… ${Math.round(progress)}%`, tone: 'neutral' });
+        }
+      }, 130);
+    });
+  }, [grant, reducedMotion, runRealOrSimulatedBiometrics]);
 
   /** CAPS LOCK só se sabe a partir de um evento de teclado, não do estado. */
   const trackCapsLock = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {

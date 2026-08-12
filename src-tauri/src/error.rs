@@ -24,6 +24,10 @@ pub enum Error {
     #[error("falha no terminal: {0}")]
     Terminal(String),
 
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    #[error("falha na biometria: {0}")]
+    Biometrics(String),
+
     #[error("erro do Tauri: {0}")]
     Tauri(#[from] tauri::Error),
 }
