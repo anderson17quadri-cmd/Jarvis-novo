@@ -1469,3 +1469,38 @@ A parar aqui, como pedido: nenhuma tarefa real por fazer dentro do que
 está autorizado. A Qwen fica sem se relançar até o utilizador decidir de
 manhã. A janela da DeepSeek fica aberta e ociosa, pronta a receber a
 próxima tarefa quando o utilizador voltar.
+
+## 2026-08-12 (tarde) — Worktrees isolados por sessão, e revisão pós-Fase-2
+
+O utilizador confirmou tudo do lado dele (1231/1231, `tsc`/`eslint`
+limpos) e pediu para continuar a tarde toda, com uma prioridade: o risco
+anotado ontem à noite (sessões a partilhar a mesma árvore de trabalho no
+disco) resolvido a sério, não só anotado.
+
+**Isolamento por `git worktree`:** `../jarvis-novo-deepseek` (branch
+`agents/deepseek`) e `../jarvis-novo-qwen` (branch `agents/qwen`), ambos
+a seguir `origin/claude/jarvis-ai-os-tauri-mvp-xa5km0` como upstream —
+`git pull`/`git push` normais em cada um já falam com o branch
+partilhado, sem precisar de `refspec` manual. `npm install` correu em
+cada um (0 vulnerabilidades, `node_modules` não é partilhado entre
+worktrees) e confirmou-se `tsc` limpo nos dois antes de confiar neles.
+Os lançadores `.ps1` (fora do repositório) passaram a `Set-Location`
+para o worktree de cada sessão, em vez da pasta principal.
+
+**Testado a sério, não só dado como feito:** tentou-se lançar a Qwen no
+worktree dela. Voltou o mesmo erro de ontem — `429`, cota semanal
+esgotada, reinicia 08-19 03:23 UTC. Confirmado pelo texto do erro que
+continua a ser cota, não código; por regra do utilizador, não se insiste
+nem se espera. A DeepSeek fica com as duas listas (a dela e a que seria
+da Qwen), a trabalhar sozinha no worktree dela — o isolamento por
+worktree já está validado do lado que importa agora (uma sessão a
+escrever na sua própria pasta, sem a orquestração nem outra sessão a
+mexer nos mesmos ficheiros ao mesmo tempo); o teste de duas sessões
+verdadeiramente em paralelo fica por confirmar quando a cota da Qwen
+voltar.
+
+**Tarefa da DeepSeek agora:** revisão de qualidade sobre as sete peças
+da Fase 2 (Calendar, News, Email, Music, Search, Device, Plugin) e a
+migração do Vitest — código morto deixado pela migração (consumidores
+esquecidos de `useDataService`, imports órfãos) e lacunas reais de
+cobertura de testes, não números a inflar.
