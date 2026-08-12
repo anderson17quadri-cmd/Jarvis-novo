@@ -38,6 +38,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'fileWatcher',
       'usbMonitor',
       'batteryMonitor',
+      'realFilesystem',
     ] as const;
 
     for (const key of required) {
@@ -190,6 +191,43 @@ describe('gatilhos nativos de automação — nenhum adapter lança sem IPC real
     const web: PlatformAdapter = new WebAdapter();
     await expect(web.watchFolder('C:/pasta')).resolves.toBeNull();
     await expect(web.getBatteryStatus()).resolves.toBeNull();
+  });
+});
+
+describe('sistema de ficheiros real — nenhum adapter lança sem IPC real', () => {
+  it.each(adapters)('%s: escolher pasta nunca lança', async (_name, adapter) => {
+    const picked = await adapter.pickFilesRoot();
+    expect(picked === null || typeof picked === 'string').toBe(true);
+  });
+
+  it.each(adapters)('%s: declarar raiz sem pasta escolhida nunca lança', async (_name, adapter) => {
+    const declared = await adapter.filesSetRoot('C:/pasta-qualquer');
+    expect(declared === null || typeof declared.path === 'string').toBe(true);
+  });
+
+  it.each(adapters)('%s: ler uma pasta sem raiz declarada nunca lança', async (_name, adapter) => {
+    const entries = await adapter.filesReadDir(null);
+    expect(entries === null || Array.isArray(entries)).toBe(true);
+  });
+
+  it('Web e Android nunca têm sistema de ficheiros real', () => {
+    expect(new WebAdapter().capabilities.realFilesystem).toBe(false);
+    expect(new AndroidAdapter().capabilities.realFilesystem).toBe(false);
+  });
+
+  it('Desktop diz que suporta', () => {
+    expect(new DesktopAdapter().capabilities.realFilesystem).toBe(true);
+  });
+
+  it('Web e Android nunca escolhem pasta nem declaram raiz (sem capability, sem tentar IPC)', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    const android: PlatformAdapter = new AndroidAdapter();
+    await expect(web.pickFilesRoot()).resolves.toBeNull();
+    await expect(web.filesSetRoot('C:/pasta')).resolves.toBeNull();
+    await expect(web.filesReadDir(null)).resolves.toBeNull();
+    await expect(android.pickFilesRoot()).resolves.toBeNull();
+    await expect(android.filesSetRoot('C:/pasta')).resolves.toBeNull();
+    await expect(android.filesReadDir(null)).resolves.toBeNull();
   });
 });
 

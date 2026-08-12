@@ -1,4 +1,5 @@
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
+import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 
@@ -125,4 +126,24 @@ export interface PlatformAdapter {
   onTerminalOutput(handler: (event: TerminalOutputEvent) => void): Promise<() => void>;
   /** Ouve o fim de qualquer sessão. */
   onTerminalExit(handler: (event: TerminalExitEvent) => void): Promise<() => void>;
+
+  // ── Sistema de ficheiros real ────────────────────────────────────────────
+  /**
+   * Abre o diálogo nativo para escolher uma pasta. `null` se a pessoa
+   * cancelar ou a plataforma não suportar — não distingue os dois casos, a
+   * interface reage da mesma forma a ambos.
+   */
+  pickFilesRoot(): Promise<string | null>;
+  /**
+   * Declara a pasta-raiz do Explorador real — nada fora dela fica acessível
+   * a partir daqui. `null` se o caminho não for uma pasta legível ou a
+   * plataforma não suportar.
+   */
+  filesSetRoot(path: string): Promise<RealFilesRoot | null>;
+  /**
+   * Lê um nível de uma pasta real — a raiz declarada, se `path` for `null`.
+   * `null` se ainda não houver raiz, o caminho estiver fora dela, ou a
+   * leitura falhar.
+   */
+  filesReadDir(path: string | null): Promise<readonly RealFileEntry[] | null>;
 }

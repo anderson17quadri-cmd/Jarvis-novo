@@ -28,6 +28,10 @@ pub enum Error {
     #[error("falha na biometria: {0}")]
     Biometrics(String),
 
+    #[cfg_attr(any(mobile, target_os = "android", target_os = "ios"), allow(dead_code))]
+    #[error("erro no sistema de ficheiros: {0}")]
+    Files(String),
+
     #[error("erro do Tauri: {0}")]
     Tauri(#[from] tauri::Error),
 }

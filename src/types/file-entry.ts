@@ -24,6 +24,37 @@ export interface FileEntry {
   readonly children?: readonly FileEntry[];
 }
 
+/** Extensão (sem o ponto, minúsculas) → o tipo que o ícone mostra. */
+const EXTENSION_KIND: Record<string, FileKind> = {
+  pdf: 'documento', doc: 'documento', docx: 'documento', odt: 'documento', rtf: 'documento',
+  txt: 'documento', md: 'documento', xls: 'documento', xlsx: 'documento', csv: 'documento',
+  ppt: 'documento', pptx: 'documento',
+  png: 'imagem', jpg: 'imagem', jpeg: 'imagem', gif: 'imagem', svg: 'imagem', webp: 'imagem',
+  bmp: 'imagem', ico: 'imagem',
+  mp4: 'video', mkv: 'video', avi: 'video', mov: 'video', webm: 'video',
+  mp3: 'audio', wav: 'audio', flac: 'audio', ogg: 'audio', m4a: 'audio',
+  ts: 'codigo', tsx: 'codigo', js: 'codigo', jsx: 'codigo', rs: 'codigo', py: 'codigo',
+  json: 'codigo', html: 'codigo', css: 'codigo', sql: 'codigo', toml: 'codigo', yaml: 'codigo',
+  yml: 'codigo', sh: 'codigo', ps1: 'codigo',
+  zip: 'arquivo', rar: 'arquivo', '7z': 'arquivo', tar: 'arquivo', gz: 'arquivo',
+};
+
+/**
+ * Adivinha o tipo de um ficheiro real pelo nome — usado só quando a origem é
+ * o disco a sério, que não vem com um `kind` já atribuído como a árvore
+ * simulada. Uma extensão desconhecida cai em `documento`: o ícone genérico
+ * mais parecido com "não sei o que é isto" do conjunto que já existe.
+ */
+export function fileKindFromName(name: string, isDirectory: boolean): FileKind {
+  if (isDirectory) return 'pasta';
+
+  const dot = name.lastIndexOf('.');
+  if (dot <= 0) return 'documento';
+
+  const extension = name.slice(dot + 1).toLowerCase();
+  return EXTENSION_KIND[extension] ?? 'documento';
+}
+
 /** Procura uma entrada pelo caminho de ids, a partir da raiz. */
 export function resolvePath(
   root: readonly FileEntry[],

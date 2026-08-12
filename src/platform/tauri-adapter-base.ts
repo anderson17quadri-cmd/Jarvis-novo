@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { open as openDialog } from '@tauri-apps/plugin-dialog';
 import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 import { open as shellOpen } from '@tauri-apps/plugin-shell';
 import { load, type Store } from '@tauri-apps/plugin-store';
@@ -8,6 +9,7 @@ import { arch as osArch, platform as osPlatform, version as osVersion } from '@t
 
 import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo, PlatformKind } from '@/types/platform';
+import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import { detectTouch } from './detect-platform';
@@ -352,6 +354,28 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     } catch {
       return () => undefined;
     }
+  }
+
+  // ── Sistema de ficheiros real ────────────────────────────────────────────
+
+  async pickFilesRoot(): Promise<string | null> {
+    if (!this.capabilities.realFilesystem) return null;
+    try {
+      const selected = await openDialog({ directory: true, multiple: false });
+      return typeof selected === 'string' ? selected : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async filesSetRoot(path: string): Promise<RealFilesRoot | null> {
+    if (!this.capabilities.realFilesystem) return null;
+    return this.tryInvoke<RealFilesRoot>('files_set_root', null, { path });
+  }
+
+  async filesReadDir(path: string | null): Promise<readonly RealFileEntry[] | null> {
+    if (!this.capabilities.realFilesystem) return null;
+    return this.tryInvoke<RealFileEntry[]>('files_read_dir', null, { path });
   }
 
   // ── Auxiliar ─────────────────────────────────────────────────────────────

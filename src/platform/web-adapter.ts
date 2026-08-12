@@ -1,5 +1,6 @@
 import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
+import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import { detectTouch } from './detect-platform';
 import { simulateSnapshot, simulateStaticInfo } from './simulated-metrics';
@@ -38,6 +39,7 @@ export class WebAdapter implements PlatformAdapter {
     fileWatcher: false,
     usbMonitor: false,
     batteryMonitor: false,
+    realFilesystem: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -209,5 +211,19 @@ export class WebAdapter implements PlatformAdapter {
 
   async onBatteryChanged(): Promise<() => void> {
     return () => undefined;
+  }
+
+  // ── Sistema de ficheiros real ────────────────────────────────────────────
+
+  async pickFilesRoot(): Promise<string | null> {
+    return null;
+  }
+
+  async filesSetRoot(): Promise<RealFilesRoot | null> {
+    return null;
+  }
+
+  async filesReadDir(): Promise<readonly RealFileEntry[] | null> {
+    return null;
   }
 }

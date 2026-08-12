@@ -30,5 +30,8 @@ export class DesktopAdapter extends TauriAdapterBase {
     fileWatcher: true,
     usbMonitor: true,
     batteryMonitor: true,
+    // `std::fs` a sério, atrás de uma pasta-raiz declarada — ver
+    // commands/files.rs (files_set_root/files_read_dir).
+    realFilesystem: true,
   };
 }

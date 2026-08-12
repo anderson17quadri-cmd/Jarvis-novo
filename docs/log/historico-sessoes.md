@@ -2044,3 +2044,68 @@ testes (97 ficheiros), todos passam.
 - A UI de "Instalar de ficheiro" na Loja
 - A infraestrutura de assinatura já está pronta para isso usar —
   `verifyAndInstallPlugin` com `isExternal: true`
+
+## 2026-08-12 — Peça 7, Lote 2: sistema de ficheiros real no Explorador
+
+Enquanto a DeepSeek tratava da Peça 5 (assinatura de plugins) no seu
+worktree, tratei da Peça 7 no principal — não bloqueia na 5 nem repete
+trabalho com ela, como pedido.
+
+**O que mudou:** o Explorador de Ficheiros passa a poder ler o disco a
+sério, ao lado da árvore simulada de sempre (que continua a ser o que
+abre por omissão). Um botão "Escolher pasta real…" abre o diálogo nativo
+de pasta (`@tauri-apps/plugin-dialog`); a pasta escolhida declara-se no
+Rust como a raiz (`files_set_root`) e fica gravada como a única fronteira
+que `files_read_dir` respeita — qualquer caminho fora dela é recusado no
+próprio Rust, depois de canonicalizar os dois lados, não só escondido na
+interface. Sem capability `fs:*` nova: em vez do plugin `fs` do Tauri
+(cujo sistema de scope estático não dá para uma pasta escolhida em tempo
+de execução), são comandos próprios da app com `std::fs` — o mesmo
+desenho já usado no Terminal, onde o escopo estreito vem do próprio
+comando, não de uma allow-list.
+
+A raiz escolhida persiste (`storageSet`, chave `files.real-root-path`) e
+tenta reabrir-se sozinha no arranque seguinte; se a pasta tiver
+desaparecido ou mudado de sítio entretanto, cai-se para a árvore simulada
+sem mostrar erro nenhum — não é um erro que a pessoa precise de ver. Um
+botão "Árvore simulada" volta atrás a qualquer momento e esquece a raiz
+guardada. O tipo de cada ficheiro real adivinha-se pela extensão
+(`fileKindFromName`, novo em `types/file-entry.ts`) — a árvore real não
+vem com um `kind` já atribuído como a simulada.
+
+O caminho pendente do assistente (`abrir_ficheiro`, de "esse ficheiro")
+continua a apontar só para a árvore simulada — não tem como saber de um
+caminho real. Se houver um pedido pendente na primeira leitura da janela,
+a reabertura automática da raiz real espera pela próxima montagem em vez
+de o atropelar.
+
+**Testes:** 20 novos — `tests/apps/files-real.test.tsx` (mocka
+`@/platform` inteiro, cobre escolher pasta, listar, descer um nível, erro
+de leitura, voltar ao simulado, reabertura automática, raiz desaparecida,
+e a prioridade do caminho pendente do assistente) e mais alguns em
+`tests/platform/adapters.test.ts` (os três adapters nunca lançam;
+`realFilesystem` só é `true` no Desktop). Suite inteira: 1329 testes (98
+ficheiros), `tsc` limpo, `eslint` 0 erros.
+
+**Confirmado ao vivo** (`npm run tauri dev`, login, abrir o Explorador):
+o diálogo nativo "Selecionar pasta" abriu mesmo sobre `Documentos` do
+utilizador; escolhi `WhirlwindFX` a sério e a janela listou as suas
+subpastas reais com as datas reais de modificação (não inventadas);
+descer a `Effects` mostrou "Pasta vazia." — porque a pasta está mesmo
+vazia no disco, confirmado por fora; voltar à árvore simulada limpou o
+estado e devolveu exatamente a árvore original. Screenshots capturados
+por `PrintWindow` (a mesma técnica desta noite, não `CopyFromScreen`, que
+já se sabia que apanhava a janela errada) em cada passo.
+
+**Não confirmado ao vivo:** a reabertura automática da raiz guardada
+depois de reiniciar a aplicação a sério (só testada nos 20 testes, não
+ao vivo — exigia fechar e reabrir a app dentro do mesmo ciclo de
+verificação) e uma tentativa a sério de escapar à raiz declarada (por
+desenho do comando e porque a interface nunca oferece um caminho fora do
+que já se navegou — não por um teste ao vivo a tentar mesmo escapar).
+
+Commit e push feitos depois de puxar a Peça 5 da DeepSeek — sem conflito
+real: só `plugin-catalog.ts` mudou dos dois lados, em zonas diferentes do
+ficheiro (a Peça 5 mexeu nos campos de assinatura do `CatalogEntry`, isto
+só acrescentou uma linha ao `CAPABILITY_LABELS`), `git stash`/`pull`/`pop`
+resolveu sem intervenção manual.

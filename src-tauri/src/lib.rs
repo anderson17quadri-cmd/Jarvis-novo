@@ -61,6 +61,7 @@ pub fn run() {
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
         .manage(commands::files::FileWatchers::new())
+        .manage(commands::files::FilesRoot::new())
         // O Terminal, o cofre de segredos, o Windows Hello e os gatilhos
         // nativos só existem no desktop — sem isto, `generate_handler!`
         // teria de referenciar comandos que não compilam no Android. Só há
@@ -68,8 +69,10 @@ pub fn run() {
         // anterior em vez de acumular. A lista inclui sistema (3), terminal
         // (4), cofre (3), Windows Hello (2, mesma assinatura em qualquer
         // desktop — "indisponível" em vez de não compilar fora do Windows,
-        // ver commands/windows_hello.rs), bateria (1), ficheiros (2) e USB
-        // (0 — não há comandos invocáveis, o monitor arranca sozinho no setup).
+        // ver commands/windows_hello.rs), bateria (1), ficheiros (4: dois
+        // gatilhos de automação + declarar raiz/ler pasta do Explorador
+        // real) e USB (0 — não há comandos invocáveis, o monitor arranca
+        // sozinho no setup).
         .invoke_handler(tauri::generate_handler![
             commands::system::get_system_snapshot,
             commands::system::get_static_system_info,
@@ -86,6 +89,8 @@ pub fn run() {
             commands::battery::get_battery_status,
             commands::files::watch_folder,
             commands::files::unwatch_folder,
+            commands::files::files_set_root,
+            commands::files::files_read_dir,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;
