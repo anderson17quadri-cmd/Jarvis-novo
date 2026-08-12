@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { newsService } from '@/services/news/news-service';
-import type { NewsCategory, NewsFeed } from '@/types/news';
+import type { NewsFeed } from '@/types/news';
 
 interface NewsState {
   /** Último feed de notícias. `null` até à primeira leitura. */
@@ -19,8 +19,6 @@ interface NewsState {
 
   readonly markRead: (articleId: string, isRead?: boolean) => Promise<void>;
   readonly toggleFavorite: (articleId: string) => Promise<void>;
-  /** Filtra a lista em memória, sem novo pedido ao provedor. */
-  readonly byCategory: (category: NewsCategory | 'todas') => NewsFeed['articles'];
 }
 
 export const useNewsStore = create<NewsState>((set, get) => ({
@@ -53,6 +51,4 @@ export const useNewsStore = create<NewsState>((set, get) => ({
     const snapshot = newsService.current;
     if (snapshot) set({ snapshot });
   },
-
-  byCategory: (category) => newsService.byCategory(category),
 }));

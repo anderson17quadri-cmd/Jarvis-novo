@@ -121,10 +121,6 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   },
 }));
 
-export function selectIsInstalled(state: PluginState, id: string): boolean {
-  return state.installed[id] !== undefined;
-}
-
 /**
  * Se uma permissão de um plugin foi recusada (Parte 14 §Permissões por
  * plugin). Nenhum plugin executa código próprio ainda, mas duas das
@@ -141,7 +137,3 @@ export function selectPermissionDenied(
   return (state.deniedPermissions[pluginId] ?? []).includes(permission);
 }
 
-/** Quantos estão instalados além dos que vêm com o sistema. */
-export function selectInstalledCount(state: PluginState): number {
-  return Object.keys(state.installed).length;
-}

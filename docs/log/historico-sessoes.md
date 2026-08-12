@@ -1504,3 +1504,62 @@ da Fase 2 (Calendar, News, Email, Music, Search, Device, Plugin) e a
 migração do Vitest — código morto deixado pela migração (consumidores
 esquecidos de `useDataService`, imports órfãos) e lacunas reais de
 cobertura de testes, não números a inflar.
+
+---
+
+## 2026-08-12 — Revisão de qualidade da Fase 2 concluída
+
+Pediu-se uma auditoria às sete peças da Fase 2 (SPEC.md Parte 3) depois da
+migração para o padrão serviço puro + store fina. A Qwen estava encarregue
+de Music, Search e Device, mas sem cota — ficou tudo para a DeepSeek, que
+reviu as sete.
+
+### Código morto encontrado e removido
+
+- **`useDataService`**: confirmado que não tem consumidores. O ficheiro
+  `src/hooks/use-data-service.ts` continua a existir (faz parte do contrato
+  público do `PollingDataService`), mas nenhum componente o importa — SPEC.md
+  já o documentava como "sem consumidores".
+
+- **News — `byCategory`**: removido do `NewsService` e da `useNewsStore`.
+  O `NewsWidget` faz a filtragem inline (`articles.filter(...)`) e nunca
+  chamou este método. O import de `NewsCategory` no serviço e na store
+  também saiu, porque deixou de ser usado.
+
+- **Plugin — `selectIsInstalled` e `selectInstalledCount`**: dois selectores
+  exportados de `use-plugin-store.ts` que nunca foram importados por nenhum
+  componente. Saíram. `selectPermissionDenied` continua — é usado por
+  `App.tsx`, `plugin-bridge.ts` e `ai-service.ts`.
+
+- **Calendar, Email, Music, Search, Device**: sem código morto. Todos os
+  imports e métodos são usados ou seguem o contrato comum dos serviços
+  (`providerName`, `isSimulated` como conveniência na API).
+
+### Cobertura de testes
+
+- **Calendar**: `CalendarService` estava ausente do teste parametrizado em
+  `data-service.test.ts` que cobre "os serviços expõem que os dados são
+  simulados" — os outros quatro serviços estavam lá, o calendário não.
+  Adicionado. (`tests/services/data-service.test.ts`, 24 testes → passam.)
+
+- **Music**: já coberto pelo bloco `MusicService` (12 testes dedicados:
+  togglePlay, next, previous, seek, volume) e pelo parametrizado comum.
+
+- **Search**: `tests/stores/search-store.test.ts` cobre pesquisa por comando,
+  por conteúdo, subscrição e cancelamento — sólido.
+
+- **Device**: a lógica é delegação trivial para `getPlatformAdapter()` /
+  `initializePlatform()`, sem condicionais nem edge cases próprios.
+  Escrever um teste aqui seria "fingir para subir um número" — não se fez.
+
+- **Plugin**: já tem `tests/stores/plugin-store.test.ts` e
+  `tests/services/plugin-service.test.ts` com cobertura de instalação,
+  remoção, permissões e persistência.
+
+### Verificações
+
+- `tsc --noEmit`: limpo.
+- `eslint` nos ficheiros alterados: limpo (os warnings que restam no
+  projeto são pré-existentes: CoreRings, BootChecks, CommandPalette,
+  use-entrance-cascade, use-typewriter — nenhum tocado nesta sessão).
+- `vitest run`: 95 ficheiros, 1232 testes — todos passam.

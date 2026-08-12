@@ -1,6 +1,6 @@
 import { PollingDataService } from '../data-service';
 import { MockNewsProvider, type NewsProvider } from './providers/news-provider';
-import type { NewsCategory, NewsFeed } from '@/types/news';
+import type { NewsFeed } from '@/types/news';
 
 /** As notícias renovam-se de quinze em quinze minutos. */
 const NEWS_INTERVAL_MS = 15 * 60_000;
@@ -21,14 +21,6 @@ export class NewsService extends PollingDataService<NewsFeed> {
   setProvider(provider: NewsProvider): void {
     this.provider = provider;
     void this.refresh();
-  }
-
-  /** Filtra a lista em memória, sem novo pedido ao provedor. */
-  byCategory(category: NewsCategory | 'todas'): NewsFeed['articles'] {
-    const articles = this.current?.articles ?? [];
-    return category === 'todas'
-      ? articles
-      : articles.filter((article) => article.category === category);
   }
 
   async markRead(articleId: string, isRead = true): Promise<void> {

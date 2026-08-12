@@ -9,6 +9,7 @@ import { WeatherService } from '@/services/weather/weather-service';
 import { NewsService } from '@/services/news/news-service';
 import { MailService } from '@/services/mail/mail-service';
 import { MusicService } from '@/services/music/music-service';
+import { CalendarService } from '@/services/calendar/calendar-service';
 
 /** Serviço mínimo, para exercitar a base sem depender de nenhum domínio. */
 class CounterService extends PollingDataService<number> {
@@ -228,6 +229,7 @@ describe('os serviços expõem que os dados são simulados', () => {
     ['notícias', new NewsService()],
     ['email', new MailService()],
     ['música', new MusicService()],
+    ['calendário', new CalendarService()],
   ])('%s', async (_name, service) => {
     await service.refresh();
     // A interface precisa disto para o dizer ao utilizador em vez de fingir.
