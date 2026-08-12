@@ -136,7 +136,7 @@ export async function selectAndInstallPluginFile(): Promise<InstallFromFileResul
 // ─── Validação ──────────────────────────────────────────────────────────────
 
 /** Valida a forma do pacote. Lança com mensagem em português se inválido. */
-function validatePackage(data: unknown): PluginPackage {
+export function validatePackage(data: unknown): PluginPackage {
   if (typeof data !== 'object' || data === null) {
     throw new Error('O ficheiro não é um JSON válido — esperava um objeto no nível de topo.');
   }
@@ -173,7 +173,7 @@ function validatePackage(data: unknown): PluginPackage {
 }
 
 /** Valida os campos obrigatórios do manifesto. Devolve `undefined` se OK. */
-function validateManifest(manifest: PluginManifest): string | undefined {
+export function validateManifest(manifest: PluginManifest): string | undefined {
   if (typeof manifest.id !== 'string' || manifest.id.length === 0) {
     return 'O manifesto não tem um identificador (id) válido.';
   }

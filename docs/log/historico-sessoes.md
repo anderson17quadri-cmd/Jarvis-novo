@@ -2209,3 +2209,64 @@ As cinco peças do Lote 2 estão concluídas:
 O Lote 2 fecha-se aqui. A próxima peça a decidir com o utilizador é o
 marketplace real (onde vivem os plugins de terceiros, quem os revê, como
 se atualizam) — ver `docs/spec/plugins-marketplace.md`.
+
+## 2026-08-12 — Revisão da Peça 9: dois `describe` que não testavam nada, e verificação ao vivo
+
+Antes de aceitar a Peça 9 da DeepSeek como fechada, puxei o commit para o
+worktree principal e corri a bateria completa por fora (não confiar só no
+relatório de quem fez a peça é a regra desde a primeira revisão desta
+noite, das Automações).
+
+`tsc --noEmit` apanhou logo um erro real: `validatePackage` declarada e
+nunca lida em `tests/plugins/install-from-file.test.ts`. A olhar para o
+porquê, o problema era maior do que uma variável a mais — o `describe`
+inteiro (`validatePackage (validação da forma do .jarvis-plugin)`) tinha
+uma função auxiliar que tentava chegar à função privada por um
+`_validatePackage` que nunca existiu no módulo, falhava sempre, e cada
+`it()` a seguir nunca a chamava — reimplementava a validação à mão, linha
+a linha, dentro do próprio teste. Um segundo `describe`
+(`validateManifest (campos obrigatórios)`) era pior ainda: os testes só
+verificavam que `testManifest({ id: '' }).id === ''`, ou seja, que o
+próprio auxiliar de teste sabia sobrepor um campo — nunca chamavam
+`validateManifest` nenhuma. As duas suites passavam sempre, mesmo que a
+validação real estivesse completamente partida, porque não tocavam nela.
+
+Corrigido: `validatePackage` e `validateManifest` passaram a exportadas
+de `install-from-file.ts` (eram privadas só por não se ter pensado em
+testá-las diretamente), os dois `describe` foram reescritos para chamar
+as funções a sério — incluindo casos que não existiam antes (`signature`
+vazia, `signerName` inválido a ser ignorado sem recusar o pacote,
+manifesto sem `permissions`, um pacote e um manifesto válidos a
+passarem). `eslint` apanhou mais um erro pequeno a seguir (variável de
+destructuring não usada) — resolvido com `delete` em vez de destructure.
+
+Com isso corrigido: `tsc` limpo, `eslint` 0 erros, `vitest` 1364 testes
+(99 ficheiros), todos a passar — incluindo os 9 testes novos que
+substituem os que não testavam nada.
+
+**Verificação ao vivo, a sério** (não só os testes): gerei um
+`.jarvis-plugin` real — chave Ed25519 gerada e manifesto assinado pelo
+próprio código de produção (`generateSigningKeyPair`/`signManifest` de
+`plugins/signature.ts`, correndo por fora via um teste descartável só
+para produzir o ficheiro, apagado a seguir). Com `npm run tauri dev` a
+correr: login, abri o Gestor de Plugins, cliquei "Instalar de ficheiro",
+o diálogo nativo abriu a sério, escrevi o caminho do ficheiro gerado,
+"Abrir" — Instalados subiu de 9 para 10, e o cartão novo mostrou
+"Assinado e verificado por Sonnet (verificação ao vivo)" a verde, com a
+descrição e o autor exatamente como escritos no manifesto. Removi o
+plugin a seguir (o cartão "Remover" funcionou, notificação de confirmação
+a sério) para não deixar o ambiente da pessoa com um plugin de teste
+instalado.
+
+Isto confirma o pipeline inteiro a funcionar de ponta a ponta na máquina
+real: diálogo nativo → comando Rust `read_plugin_file` → `JSON.parse` →
+`validatePackage` → `validateManifest` → `verifyAndInstallPlugin` (Ed25519
+a sério) → registo no `PluginStore` → interface a mostrar o estado
+correto. Os caminhos de recusa (JSON malformado, sem assinatura,
+assinatura inválida, chave revogada) ficam cobertos pelos 9 testes
+corrigidos, não por tentativa ao vivo — o caminho positivo é que
+justificava confirmar com a aplicação a correr a sério.
+
+Commit e push feitos depois deste conserto — o commit da DeepSeek
+(`b8b8384`) já estava no branch partilhado; isto soma-se por cima, não o
+substitui.

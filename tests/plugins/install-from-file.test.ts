@@ -18,6 +18,7 @@ import {
   generateSigningKeyPair,
   signManifest,
 } from '@/plugins/signature';
+import { validateManifest, validatePackage } from '@/plugins/install-from-file';
 import type { PluginManifest, PluginPackage } from '@/plugins/plugin';
 
 /**
@@ -198,88 +199,100 @@ describe('dynamic runtime registry', () => {
 // ─── Validação do pacote ─────────────────────────────────────────────────────
 
 describe('validatePackage (validação da forma do .jarvis-plugin)', () => {
-  // Importamos a função privada via dynamic import para a testar.
-  async function validatePackage(data: unknown): Promise<PluginPackage> {
-    const mod = await import('@/plugins/install-from-file');
-    // A função validatePackage é privada — testamos pelo fluxo público,
-    // mas podemos testar os cenários de erro indiretamente.
-    // Para este teste, validamos que JSON malformado dá erro.
-    return (mod as unknown as { _validatePackage: (d: unknown) => PluginPackage })._validatePackage?.(data) ??
-      // Fallback: validamos via install-from-file que não podemos chamar diretamente.
-      // Testamos os casos de erro que não dependem de Tauri.
-      (() => {
-        throw new Error('validatePackage is private — tested indirectly');
-      })();
-  }
-
   it('JSON inválido (não é objeto): recusado', () => {
-    // Testamos indiretamente: a função validatePackage espera um objeto.
-    // Se não é um objeto, lança erro com mensagem específica.
-    expect(() => {
-      if (typeof 'string' !== 'object' || 'string' === null) {
-        throw new Error('O ficheiro não é um JSON válido — esperava um objeto no nível de topo.');
-      }
-    }).toThrow('não é um JSON válido');
+    expect(() => validatePackage('isto não é um objeto')).toThrow('não é um JSON válido');
   });
 
-  it('JSON sem manifest: recusado', () => {
-    expect(() => {
-      const obj = { signature: 'x', signerPublicKey: 'y', code: 'z' };
-      if (typeof (obj as Record<string, unknown>).manifest !== 'object') {
-        throw new Error('O pacote não tem o campo "manifest".');
-      }
-    }).toThrow('não tem o campo "manifest"');
+  it('null: recusado', () => {
+    expect(() => validatePackage(null)).toThrow('não é um JSON válido');
   });
 
-  it('JSON sem signature: recusado', () => {
-    expect(() => {
-      const obj = { manifest: {}, signerPublicKey: 'y', code: 'z' };
-      if (typeof (obj as Record<string, unknown>).signature !== 'string' || (obj as Record<string, unknown>).signature === '') {
-        throw new Error('O pacote não tem o campo "signature"');
-      }
-    }).toThrow('não tem o campo "signature"');
+  it('sem manifest: recusado', () => {
+    expect(() => validatePackage({ signature: 'x', signerPublicKey: 'y', code: 'z' })).toThrow(
+      'não tem o campo "manifest"',
+    );
   });
 
-  it('JSON sem signerPublicKey: recusado', () => {
-    expect(() => {
-      const obj = { manifest: {}, signature: 'x', code: 'z' };
-      if (typeof (obj as Record<string, unknown>).signerPublicKey !== 'string') {
-        throw new Error('O pacote não tem o campo "signerPublicKey"');
-      }
-    }).toThrow('não tem o campo "signerPublicKey"');
+  it('sem signature: recusado', () => {
+    expect(() =>
+      validatePackage({ manifest: {}, signerPublicKey: 'y', code: 'z' }),
+    ).toThrow('não tem o campo "signature"');
   });
 
-  it('JSON sem code: recusado', () => {
-    expect(() => {
-      const obj = { manifest: {}, signature: 'x', signerPublicKey: 'y' };
-      if (typeof (obj as Record<string, unknown>).code !== 'string') {
-        throw new Error('O pacote não tem o campo "code"');
-      }
-    }).toThrow('não tem o campo "code"');
+  it('signature vazia: recusado', () => {
+    expect(() =>
+      validatePackage({ manifest: {}, signature: '', signerPublicKey: 'y', code: 'z' }),
+    ).toThrow('não tem o campo "signature"');
+  });
+
+  it('sem signerPublicKey: recusado', () => {
+    expect(() =>
+      validatePackage({ manifest: {}, signature: 'x', code: 'z' }),
+    ).toThrow('não tem o campo "signerPublicKey"');
+  });
+
+  it('sem code: recusado', () => {
+    expect(() =>
+      validatePackage({ manifest: {}, signature: 'x', signerPublicKey: 'y' }),
+    ).toThrow('não tem o campo "code"');
+  });
+
+  it('signerName inválido é ignorado, não recusa o pacote', () => {
+    const pkg = validatePackage({
+      manifest: {},
+      signature: 'x',
+      signerPublicKey: 'y',
+      code: 'z',
+      signerName: 42,
+    });
+    expect(pkg.signerName).toBeUndefined();
+  });
+
+  it('pacote válido: devolve os campos tal como vieram', () => {
+    const manifest = testManifest();
+    const pkg = validatePackage({
+      manifest,
+      signature: 'assinatura-base64',
+      signerPublicKey: 'chave-base64',
+      code: 'console.log(1)',
+      signerName: 'Autor de Teste',
+    });
+
+    expect(pkg.manifest).toEqual(manifest);
+    expect(pkg.signature).toBe('assinatura-base64');
+    expect(pkg.signerPublicKey).toBe('chave-base64');
+    expect(pkg.code).toBe('console.log(1)');
+    expect(pkg.signerName).toBe('Autor de Teste');
   });
 });
 
 // ─── Validação do manifesto ──────────────────────────────────────────────────
 
 describe('validateManifest (campos obrigatórios)', () => {
+  it('manifesto válido: sem erro', () => {
+    expect(validateManifest(testManifest())).toBeUndefined();
+  });
+
   it('manifesto sem id: recusado', () => {
-    const m = testManifest({ id: '' });
-    expect(m.id).toBe('');
+    expect(validateManifest(testManifest({ id: '' }))).toMatch('identificador');
   });
 
   it('manifesto sem name: recusado', () => {
-    const m = testManifest({ name: '' });
-    expect(m.name).toBe('');
+    expect(validateManifest(testManifest({ name: '' }))).toMatch('nome');
   });
 
   it('manifesto sem version: recusado', () => {
-    const m = testManifest({ version: '' });
-    expect(m.version).toBe('');
+    expect(validateManifest(testManifest({ version: '' }))).toMatch('versão');
   });
 
   it('manifesto sem author: recusado', () => {
-    const m = testManifest({ author: '' });
-    expect(m.author).toBe('');
+    expect(validateManifest(testManifest({ author: '' }))).toMatch('autor');
+  });
+
+  it('manifesto sem permissions: recusado', () => {
+    const manifest: Record<string, unknown> = { ...testManifest() };
+    delete manifest.permissions;
+    expect(validateManifest(manifest as unknown as PluginManifest)).toMatch('permissões');
   });
 });
 
