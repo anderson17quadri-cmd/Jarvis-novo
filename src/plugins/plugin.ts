@@ -51,6 +51,25 @@ export interface PluginManifest {
 }
 
 /**
+ * Manifesto assinado pelo autor.
+ *
+ * A assinatura cobre a representação canónica do `manifest` (chaves ordenadas,
+ * sem espaços). `signerPublicKey` é a chave pública Ed25519 em base64 (32 bytes
+ * raw). `signature` são os 64 bytes da assinatura Ed25519, também em base64.
+ *
+ * Ver `src/plugins/signature.ts` para gerar, assinar e verificar.
+ */
+export interface SignedManifest {
+  readonly manifest: PluginManifest;
+  /** Assinatura Ed25519 (64 bytes raw) codificada em base64. */
+  readonly signature: string;
+  /** Chave pública do signatário (32 bytes raw) codificada em base64. */
+  readonly signerPublicKey: string;
+  /** Nome legível do signatário — para a interface, não para verificação. */
+  readonly signerName?: string;
+}
+
+/**
  * Um plugin instalado.
  *
  * As janelas que contribui entram no registo de aplicações — daí reutilizar

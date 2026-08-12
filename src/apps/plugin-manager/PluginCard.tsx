@@ -1,12 +1,14 @@
-import { Check, Download, Power, ShieldAlert, Star, Trash2 } from 'lucide-react';
+import { Check, Download, Power, ShieldAlert, ShieldCheck, ShieldOff, ShieldX, Star, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 import { PluginRuntime } from '@/plugins/runtime/PluginRuntime';
 import { PLUGIN_RUNTIMES } from '@/plugins/runtime/registry';
+import { getSignatureStatus, type SignatureStatus } from '@/plugins/signature';
 import { notificationService } from '@/services/notification-service';
-import { usePluginStore } from '@/stores/use-plugin-store';
+import { usePluginStore, verifyAndInstallPlugin } from '@/stores/use-plugin-store';
 import type { PlatformCapabilities } from '@/types/platform';
-import { listPermissions, missingCapabilities, type CatalogEntry } from './plugin-catalog';
+import { listPermissions, missingCapabilities, toManifest, type CatalogEntry } from './plugin-catalog';
 
 /** Milhares com separador, à portuguesa. */
 const INSTALL_FORMATTER = new Intl.NumberFormat('pt-PT');
@@ -25,10 +27,12 @@ interface PluginCardProps {
  */
 export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.Element {
   const state = usePluginStore((store) => store.installed[entry.id]);
-  const install = usePluginStore((store) => store.install);
   const uninstall = usePluginStore((store) => store.uninstall);
   const toggleEnabled = usePluginStore((store) => store.toggleEnabled);
   const persist = usePluginStore((store) => store.persist);
+
+  const [sigStatus, setSigStatus] = useState<SignatureStatus>('sem-assinatura');
+  const [isInstalling, setIsInstalling] = useState(false);
 
   const Icon = entry.icon;
   const runtime = PLUGIN_RUNTIMES[entry.id];
@@ -37,14 +41,46 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
   const isAvailable = missing.length === 0;
   const isInstalled = state !== undefined;
 
-  const onInstall = (): void => {
-    install(entry.id);
-    void persist();
-    notificationService.success(
-      `${entry.name} instalado`,
-      'Registado localmente. A execução do plugin chega com a camada nativa.',
-      { category: 'plugins' },
-    );
+  // Verifica a assinatura ao montar — assíncrono porque envolve SubtleCrypto.
+  useEffect(() => {
+    let cancelled = false;
+    const manifest = toManifest(entry);
+    const params: { manifest: typeof manifest; signature?: string; signerPublicKey?: string } = {
+      manifest,
+    };
+    if (entry.signature) params.signature = entry.signature;
+    if (entry.signerPublicKey) params.signerPublicKey = entry.signerPublicKey;
+    void getSignatureStatus(params).then((status) => {
+      if (!cancelled) setSigStatus(status);
+    });
+    return () => { cancelled = true; };
+  }, [entry]);
+
+  const onInstall = async (): Promise<void> => {
+    setIsInstalling(true);
+    const params: { id: string; signature?: string; signerPublicKey?: string } = {
+      id: entry.id,
+    };
+    if (entry.signature) params.signature = entry.signature;
+    if (entry.signerPublicKey) params.signerPublicKey = entry.signerPublicKey;
+    const result = await verifyAndInstallPlugin(params);
+
+    if (result.ok) {
+      notificationService.success(
+        `${entry.name} instalado`,
+        entry.signature
+          ? `Assinatura verificada: ${entry.signerName ?? 'signatário desconhecido'}.`
+          : 'Plugin do catálogo local — sem assinatura.',
+        { category: 'plugins' },
+      );
+    } else {
+      notificationService.info(
+        `${entry.name} recusado`,
+        SIG_STATUS_LABEL[result.status] ?? 'Assinatura inválida.',
+        { category: 'plugins' },
+      );
+    }
+    setIsInstalling(false);
   };
 
   const onUninstall = (): void => {
@@ -96,6 +132,12 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
             </span>
             <span>{INSTALL_FORMATTER.format(entry.installs)} instalações</span>
           </p>
+
+          {/* Assinatura: estado visível, não escondido — Parte 5, Lote 2. */}
+          <SignatureBadge
+            status={sigStatus}
+            {...(entry.signerName ? { signerName: entry.signerName } : {})}
+          />
         </div>
       </div>
 
@@ -122,9 +164,9 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
 
       <div className="mt-3 flex flex-wrap gap-2">
         {!isInstalled && (
-          <CardButton onClick={onInstall} isDisabled={!isAvailable} isPrimary>
+          <CardButton onClick={() => { void onInstall(); }} isDisabled={!isAvailable || isInstalling} isPrimary>
             <Download className="h-3.5 w-3.5" aria-hidden="true" />
-            Instalar
+            {isInstalling ? 'A verificar…' : 'Instalar'}
           </CardButton>
         )}
 
@@ -161,6 +203,53 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
     </li>
   );
 }
+
+// ─── Indicador de assinatura ────────────────────────────────────────────────
+
+const SIG_STATUS_LABEL: Record<SignatureStatus, string> = {
+  'assinado-valido': 'Assinado e verificado',
+  'sem-assinatura': 'Sem assinatura',
+  'assinatura-invalida': 'Assinatura inválida',
+  'chave-revogada': 'Chave revogada',
+};
+
+const SIG_STATUS_ICON: Record<SignatureStatus, React.JSX.Element> = {
+  'assinado-valido': <ShieldCheck className="h-3 w-3 text-ok" aria-hidden="true" />,
+  'sem-assinatura': <ShieldOff className="h-3 w-3 text-t3" aria-hidden="true" />,
+  'assinatura-invalida': <ShieldX className="h-3 w-3 text-err" aria-hidden="true" />,
+  'chave-revogada': <ShieldAlert className="h-3 w-3 text-warn" aria-hidden="true" />,
+};
+
+interface SignatureBadgeProps {
+  readonly status: SignatureStatus;
+  readonly signerName?: string;
+}
+
+function SignatureBadge({ status, signerName }: SignatureBadgeProps): React.JSX.Element {
+  const label = SIG_STATUS_LABEL[status];
+  const icon = SIG_STATUS_ICON[status];
+
+  const textColor =
+    status === 'assinado-valido'
+      ? 'text-ok'
+      : status === 'assinatura-invalida'
+        ? 'text-err'
+        : status === 'chave-revogada'
+          ? 'text-warn'
+          : 'text-t3';
+
+  return (
+    <p className={cn('mt-1 flex items-center gap-1 text-[10.5px]', textColor)}>
+      {icon}
+      <span>
+        {label}
+        {status === 'assinado-valido' && signerName && ` por ${signerName}`}
+      </span>
+    </p>
+  );
+}
+
+// ─── Botão ──────────────────────────────────────────────────────────────────
 
 interface CardButtonProps {
   readonly onClick: () => void;

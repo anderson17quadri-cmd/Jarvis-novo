@@ -21,7 +21,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import type { PluginPermissions } from '@/plugins/plugin';
+import type { PluginManifest, PluginPermissions } from '@/plugins/plugin';
 import type { PlatformCapabilities } from '@/types/platform';
 
 /**
@@ -81,6 +81,44 @@ export interface CatalogEntry {
    * (ex.: `"api.github.com"`), validado pelo Core antes de cada pedido.
    */
   readonly allowedDomains?: readonly string[];
+  /**
+   * Assinatura Ed25519 do manifesto (64 bytes raw) em base64.
+   *
+   * Se ausente, o plugin é tratado como "não assinado" — aceite no catálogo
+   * local (confia-se na origem), mas recusado se vier de uma fonte externa.
+   * Ver `src/plugins/signature.ts`.
+   */
+  readonly signature?: string;
+  /**
+   * Chave pública Ed25519 do signatário (32 bytes raw) em base64.
+   *
+   * Só tem significado se `signature` também existir. Usada para verificar a
+   * assinatura e para cruzar com a lista de revogação.
+   */
+  readonly signerPublicKey?: string;
+  /**
+   * Nome legível do signatário — só para mostrar no cartão, não participa na
+   * verificação criptográfica.
+   */
+  readonly signerName?: string;
+}
+
+/**
+ * Constrói um `PluginManifest` a partir de uma entrada do catálogo.
+ *
+ * O catálogo tem mais campos do que o manifesto (ícone, categoria, etc.) —
+ * esta função extrai só o subconjunto que interessa para a assinatura.
+ */
+export function toManifest(entry: CatalogEntry): PluginManifest {
+  return {
+    id: entry.id,
+    name: entry.name,
+    version: entry.version,
+    description: entry.description,
+    author: entry.author,
+    permissions: entry.permissions,
+    platforms: ['desktop'],
+  };
 }
 
 const NO_PERMISSIONS: PluginPermissions = {

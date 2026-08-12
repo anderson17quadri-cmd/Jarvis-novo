@@ -1985,3 +1985,62 @@ Confirmado depois de tudo resolvido: `tsc` limpo, `eslint` 0 erros,
 6 testes de integração do cofre a continuar a passar a sério no
 Credential Manager, `npm run build` de produção com o `TerminalWindow`
 no seu próprio chunk.
+
+---
+
+## 2026-08-12 — Peça 5, Lote 2: Assinatura de plugins (Ed25519)
+
+Primeira peça do segundo lote de plugins — as outras quatro (ficheiro pelo
+assistente, sistema de ficheiros real, provedores de rede reais, instalar
+plugin local) ficam para depois. Esta é a que as restantes dependem.
+
+O que se pediu: um mecanismo de assinatura criptográfica real para plugins,
+sem ligação a marketplace remoto nenhum — só a infraestrutura, testada
+contra o catálogo local.
+
+**Confirmado:** Ed25519 via `crypto.subtle` (SubtleCrypto) funciona de
+verdade nesta stack — Node 24.19 no `vitest` e WebView2 do Windows 11 na app
+real. Teste de round-trip completo: gerar par, exportar pública (32 bytes) e
+privada (PKCS#8, 48 bytes), assinar, verificar, corromper um byte da
+assinatura e verificar que falha.
+
+**O que ficou construído (`src/plugins/signature.ts`):**
+- `generateSigningKeyPair()` — par Ed25519, chaves exportadas em base64
+- `signManifest(manifest, privateKey)` — assinatura canónica (JSON com chaves
+  ordenadas, incluindo `permissions` e `platforms`)
+- `verifyManifestSignature(manifest, sig, pubKey)` — verificação matemática
+- `verifySignedManifest(signed)` — verificação completa (matemática + revogação)
+- `getSignatureStatus(entry)` — devolve o estado para a interface mostrar
+- Lista de revogação: `revokeKey()`, `unrevokeKey()`, `isKeyRevoked()`,
+  `clearRevokedKeys()` — guardada em `localStorage`
+
+**Integração no fluxo existente:**
+- `PluginManifest` ganhou o wrapper `SignedManifest` (`plugin.ts`)
+- `CatalogEntry` ganhou campos opcionais `signature`, `signerPublicKey`,
+  `signerName` (`plugin-catalog.ts`) e a função `toManifest()` para extrair
+  o subconjunto que interessa para a assinatura
+- `usePluginStore` ganhou `verifyAndInstallPlugin()` — verifica a assinatura
+  antes de instalar; plugins do catálogo sem assinatura são aceites
+  (confia-se na origem); plugins externos sem assinatura são recusados
+- `PluginCard` mostra o estado de assinatura de forma visível, com ícone e
+  texto: assinado e verificado (ShieldCheck verde), sem assinatura
+  (ShieldOff cinzento), assinatura inválida (ShieldX vermelho), chave
+  revogada (ShieldAlert amarelo)
+
+**Testes:** 30 testes novos em `tests/plugins/signature.test.ts` — geração
+de pares, round-trip de assinatura, assinatura corrompida, chave errada,
+manifesto alterado depois de assinar, chave revogada (a matemática continua
+válida mas a política bloqueia), serialização canónica (ordem das chaves não
+afeta a assinatura), vários plugins do mesmo autor, integração com o fluxo
+de instalação. Todos os pares são gerados no próprio teste — zero chaves
+fixas no código.
+
+**Verificação:** `tsc` limpo (sem erros novos), `eslint` 0, `vitest` 1309
+testes (97 ficheiros), todos passam.
+
+**O que ainda falta para a Peça 8 (instalar plugin de ficheiro local):**
+- Um seletor de ficheiro `.jarvis-plugin` (diálogo nativo)
+- Um formato de pacote (manifesto assinado + código empacotado)
+- A UI de "Instalar de ficheiro" na Loja
+- A infraestrutura de assinatura já está pronta para isso usar —
+  `verifyAndInstallPlugin` com `isExternal: true`

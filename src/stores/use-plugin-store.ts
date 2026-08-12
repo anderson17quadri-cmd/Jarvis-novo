@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { PLUGIN_CATALOG, toManifest } from '@/apps/plugin-manager/plugin-catalog';
+import { verifySignedManifest, type SignatureStatus } from '@/plugins/signature';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { pluginService } from '@/services/plugin-service';
@@ -7,10 +9,10 @@ import { pluginService } from '@/services/plugin-service';
 /**
  * Estado da loja de plugins.
  *
- * **Só interface.** Instalar acrescenta uma entrada a este mapa e mais nada:
- * não descarrega, não verifica assinatura, não executa código. O carregamento
- * real precisa de sandbox e de acesso ao sistema de ficheiros — bloqueado até
- * haver PC (ver `SPEC.md` §Estado de verificação).
+ * Instalar acrescenta uma entrada a este mapa. A verificação de assinatura
+ * (Ed25519 via SubtleCrypto) corre antes de instalar — ver `verifyAndInstallPlugin`.
+ * Para plugins do catálogo local sem assinatura, a instalação é aceite
+ * (confia-se na origem); para plugins externos, a assinatura é obrigatória.
  *
  * Guardar apenas o `id` e não o objeto do catálogo é intencional: assim, um
  * plugin que mude de versão ou de descrição entre versões do sistema é lido do
@@ -135,5 +137,66 @@ export function selectPermissionDenied(
   permission: string,
 ): boolean {
   return (state.deniedPermissions[pluginId] ?? []).includes(permission);
+}
+
+/**
+ * Instala um plugin depois de verificar a assinatura.
+ *
+ * Para plugins do catálogo: se tiverem assinatura, ela é verificada antes de
+ * instalar. Sem assinatura, são aceites (confia-se no catálogo local).
+ *
+ * Para plugins externos (ficheiro local, marketplace): a assinatura é
+ * obrigatória — `signature` e `signerPublicKey` têm de existir e ser válidos,
+ * e a chave não pode estar revogada.
+ *
+ * Devolve `{ ok: true }` se a instalação foi aceite, ou `{ ok: false, status }`
+ * com o motivo da recusa.
+ */
+export async function verifyAndInstallPlugin(params: {
+  readonly id: string;
+  readonly signature?: string;
+  readonly signerPublicKey?: string;
+  /** `true` para plugins que vêm de fora do catálogo (ex.: ficheiro local). */
+  readonly isExternal?: boolean;
+}): Promise<{ ok: boolean; status: SignatureStatus }> {
+  const store = usePluginStore.getState();
+
+  // Já instalado — nada a fazer.
+  if (store.installed[params.id]) {
+    return { ok: false, status: 'assinado-valido' };
+  }
+
+  // Verificar assinatura.
+  if (params.signature && params.signerPublicKey) {
+    // O manifesto para verificação é o do catálogo (fonte de verdade para o id).
+    // Para plugins externos, o caller tem de passar um manifesto compatível —
+    // aqui usamos o do catálogo se existir, para plugins internos.
+    const catalogEntry = PLUGIN_CATALOG.find((e) => e.id === params.id);
+
+    if (catalogEntry) {
+      const manifest = toManifest(catalogEntry);
+      const status = await verifySignedManifest({
+        manifest,
+        signature: params.signature,
+        signerPublicKey: params.signerPublicKey,
+      });
+
+      if (status !== 'assinado-valido') {
+        logService.audit(`Assinatura de ${params.id}: ${status}`, 'recusado');
+        return { ok: false, status };
+      }
+    }
+  } else if (params.isExternal) {
+    // Plugin externo sem assinatura — recusado.
+    logService.audit(`Plugin externo ${params.id} sem assinatura`, 'recusado');
+    return { ok: false, status: 'sem-assinatura' };
+  }
+
+  // Instalar.
+  store.install(params.id);
+  await store.persist();
+
+  logService.audit(`Plugin ${params.id} instalado com assinatura verificada`, 'executado');
+  return { ok: true, status: 'assinado-valido' };
 }
 

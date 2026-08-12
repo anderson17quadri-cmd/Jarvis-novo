@@ -205,10 +205,11 @@ domain).
 
 ## O que ainda falta
 
-- **Verificação de assinatura.** Continua bloqueada — não há ainda uma
-  fonte de plugins de terceiros a sério, só o catálogo local. Ver
-  `docs/spec/plugins-marketplace.md` para o que falta decidir antes disso
-  fazer sentido.
+- **Verificação de assinatura.** ✅ Implementada (12/08/2026) — Ed25519 via
+  SubtleCrypto, com lista de revogação local. Ver `src/plugins/signature.ts`
+  e `SPEC.md` Parte 11. Para plugins do catálogo local sem assinatura, a
+  instalação é aceite (confia-se na origem); para plugins externos, a
+  assinatura é obrigatória.
 - **Três capacidades do original ficam por decisão, não por esquecimento.**
   Executar Voz, Ler Memória e Guardar Preferências mexem em microfone e
   dados guardados do utilizador — exigem autorização explícita antes de
