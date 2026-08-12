@@ -1390,3 +1390,82 @@ execução de código de plugins).
   `docs/spec/plugins-marketplace.md`)
 
 Confirmado: `tsc` limpo, `eslint` 0 erros, 1231/1231 testes (95 ficheiros).
+
+## 2026-08-12 05:12 — Fecho da noite: parar em vez de inventar trabalho
+
+Resumo do lado da orquestração (esta sessão, Claude Sonnet 5), a fechar a
+noite de trabalho autónomo pedida pelo utilizador com duas sessões
+paralelas (DeepSeek, Qwen) a correr em janelas `powershell` destacadas via
+`claude-deepseek-lancador.ps1` / `claude-qwen-lancador.ps1`.
+
+**Antes de lançar as duas sessões:** terminou-se "esse ficheiro" — a
+capacidade de o assistente encontrar um ficheiro pelo nome e abrir o
+Explorador na pasta certa (`procurar_ficheiro`/`abrir_ficheiro`), que uma
+sessão anterior (Kimi) tinha deixado a meio. `searchFiles()`,
+`use-pending-file-navigation-store` e o catálogo das ferramentas já
+existiam; faltava ligar o `tool-runner.ts` e o `App.tsx`. Commitado em
+`53864a9`.
+
+**Dois bugs reais nos lançadores**, ambos corrigidos e documentados nos
+próprios ficheiros `claude-<provedor>-lancador.ps1`:
+1. `Start-Process ... -Command "..."` com aspas aninhadas partia-se —
+   resolvido a passar para lançamento por ficheiro (`-File`) com o
+   comando por `-p` numa here-string.
+2. Uma here-string com aspas duplas literais lá dentro (ex.: a frase
+   `"npm audit fix --force"` dentro do texto do pedido) também parte —
+   o Windows PowerShell 5.1 requoteia mal a string ao entregá-la a um
+   executável nativo, e um pedaço como `--force` que estava dentro de
+   aspas no texto chega ao `claude` como uma opção a sério, que ele
+   recusa na hora (`unknown option`), sem produzir stdout nenhum — parece
+   exatamente um bloqueio silencioso. Diagnosticado com instrumentação
+   (`Out-File` antes/depois da linha do `claude`, mais uma captura
+   temporária com `*>&1`) em vez de assumir que "a janela abriu e não
+   fez nada" era um bloqueio. Lição para qualquer sessão futura a escrever
+   um destes lançadores: nunca pôr aspas duplas literais dentro do texto
+   do pedido.
+
+**A Qwen ficou sem cota** (erro 429 real, a assinatura esgotou a cota
+semanal, reinicia 08-19 03:23 UTC) a meio de começar a última peça da
+lista dela (Plugin) — não chegou a tocar em ficheiro nenhum. Confirmado
+pelo texto do erro que não era bug. Por regra do utilizador: a peça que
+sobrou passou para a fila da DeepSeek, sem se esperar pela cota nem se
+tentar relançar às cegas. Documentado às 05:02.
+
+**Toda a Fase 2 (SPEC.md Parte 3) ficou concluída esta noite** — 17/17
+serviços desacoplados, 17/26 stores no padrão (as outras 9 são estado
+local puro, confirmado por auditoria, sem serviço a inventar só para
+bater um número). Cada peça da DeepSeek foi verificada de forma
+independente antes de se commitar em nome dela (`tsc`, `eslint`, suite
+inteira de testes, e `npm run build` quando relevante) — a sessão corria
+com `-p` e saía sem commitar nas primeiras vezes; passou a fazê-lo sozinha
+depois de se lhe pedir explicitamente. Sete peças no total: Calendar,
+News, Email, Music, Search, Device, Plugin — mais a atualização a sério
+do Vitest para a v4 (causa raiz encontrada e corrigida, não revertida
+outra vez) e a auditoria às stores que corrigiu uma contagem desatualizada
+no SPEC.md.
+
+**Risco real encontrado a meio da noite, para se ter em conta em
+qualquer sessão futura com várias janelas em paralelo:** as sessões
+partilham a mesma árvore de trabalho no disco (não há `git worktree`
+separado por sessão). A dado momento a DeepSeek estava a meio de editar
+`vitest.config.ts`/`package.json` enquanto a Qwen tinha ficheiros do
+Search por commitar na mesma árvore — teria sido fácil commitar por
+engano metade do trabalho de uma sessão dentro do commit da outra. Evitou-
+se esperando por cada sessão terminar (processo `claude.exe` a sair) antes
+de mexer nos ficheiros dela, e só depois a verificar e commitar. Vale a
+pena considerar `git worktree` por sessão numa próxima vez, para não
+depender de sequenciar isto à mão.
+
+**O que falta a sério, tudo fora do que está autorizado sem perguntar
+primeiro:** Fase 3.2–3.5 (controlo direto nativo), o Terminal, wake word
+e escuta contínua (decisão de privacidade), Executar Voz / Ler Memória /
+Guardar Preferências na API de plugins, e o Marketplace real (carregar e
+executar plugins a sério). Confirmado com uma leitura completa ao
+`SPEC.md` (todos os `🟡`/`⬜`/`⚠️`) antes de se decidir parar — o que
+resta são decisões antigas já tomadas ou coisas bloqueadas por decisão,
+não trabalho esquecido.
+
+A parar aqui, como pedido: nenhuma tarefa real por fazer dentro do que
+está autorizado. A Qwen fica sem se relançar até o utilizador decidir de
+manhã. A janela da DeepSeek fica aberta e ociosa, pronta a receber a
+próxima tarefa quando o utilizador voltar.
