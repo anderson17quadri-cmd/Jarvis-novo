@@ -35,6 +35,9 @@ export class WebAdapter implements PlatformAdapter {
     // browser não sabe fazer.
     terminal: false,
     secretVault: false,
+    fileWatcher: false,
+    usbMonitor: false,
+    batteryMonitor: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -171,6 +174,32 @@ export class WebAdapter implements PlatformAdapter {
   }
 
   async onTerminalExit(): Promise<() => void> {
+    return () => undefined;
+  }
+
+  // ── Gatilhos nativos de automação ──────────────────────────────────────────
+
+  async watchFolder(): Promise<string | null> {
+    return null;
+  }
+
+  async unwatchFolder(): Promise<void> {
+    /* sem nativo, sem pasta para observar */
+  }
+
+  async getBatteryStatus(): Promise<null> {
+    return null;
+  }
+
+  async onFileChanged(): Promise<() => void> {
+    return () => undefined;
+  }
+
+  async onUsbChanged(): Promise<() => void> {
+    return () => undefined;
+  }
+
+  async onBatteryChanged(): Promise<() => void> {
     return () => undefined;
   }
 }

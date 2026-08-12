@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
-import { ArrowRight, Check, Clock, Globe, MessageSquare, Moon, Settings, Trash2 } from 'lucide-react';
+import { ArrowRight, BatteryMedium, Check, Clock, FolderOpen, Globe, MessageSquare, Moon, Settings, Trash2, Usb } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { appTitle, stateName, themeName, widgetName } from '@/lib/names';
@@ -63,6 +63,24 @@ const BLOCK_TEMPLATES: readonly BlockTemplate[] = [
     label: 'Execução manual',
     icon: <Settings className="h-3.5 w-3.5" />,
     create: (): AutomationTrigger => ({ kind: 'manual' }),
+  },
+  {
+    kind: 'quando',
+    label: 'Alteração de ficheiro',
+    icon: <FolderOpen className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'ficheiros', folderPath: 'C:\\Users\\' }),
+  },
+  {
+    kind: 'quando',
+    label: 'Dispositivo USB',
+    icon: <Usb className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'usb', action: 'ligado' }),
+  },
+  {
+    kind: 'quando',
+    label: 'Nível da bateria',
+    icon: <BatteryMedium className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'bateria', direction: 'abaixo', percent: 20 }),
   },
   // Condições (Se)
   {
@@ -130,6 +148,9 @@ function blockLabel(config: AutomationTrigger | AutomationCondition | Automation
     case 'intervalo': return `De ${config.everyMinutes} em ${config.everyMinutes} min`;
     case 'evento': return `Ao evento "${config.event}"`;
     case 'manual': return 'Execução manual';
+    case 'ficheiros': return `Muda em ${(config as { folderPath: string }).folderPath}`;
+    case 'usb': return `USB ${(config as { action: string }).action}`;
+    case 'bateria': return `Bateria ${(config as { direction: string }).direction} de ${(config as { percent: number }).percent}%`;
     case 'dia-da-semana': return config.days.map((d) => WEEKDAY_LABELS[d] ?? '?').join(', ');
     case 'faixa-horaria': return `${config.fromHour}h–${config.toHour}h`;
     case 'estado-sistema': return `Modo ${stateName(config.state)}`;
@@ -221,7 +242,7 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
     setGenerating(true);
     setNlError(null);
     try {
-      const prompt = `Interpreta esta frase em português como uma automação JARVIS com blocos QUANDO/SE/ENTÃO. Responde só com JSON válido, sem mais texto:\n\n"${nlPrompt.trim()}"\n\nEstrutura:\n{\n  "nome": "nome curto",\n  "descricao": "uma frase",\n  "quando": { gatilho },\n  "se": [condições],\n  "entao": [ações]\n}\n\nGatilhos: hora (hour,minute), intervalo (everyMinutes), evento (event), manual\nCondições: dia-da-semana (days: 0=dom..6=sáb), faixa-horaria (fromHour,toHour), estado-sistema (state)\nAções: abrir-janela (appId), notificar (title,description), tema (theme), estado-sistema (state), widget (widget,show), falar (text)\nIDs reais: apps=[${ALL_APPS.map(a => a.id).join(',')}], temas=[${THEMES.map(t => t.id).join(',')}], widgets=[${ALL_WIDGETS.map(w => w.id).join(',')}], estados=[${Object.keys(SYSTEM_STATES).join(',')}]`;
+      const prompt = `Interpreta esta frase em português como uma automação JARVIS com blocos QUANDO/SE/ENTÃO. Responde só com JSON válido, sem mais texto:\n\n"${nlPrompt.trim()}"\n\nEstrutura:\n{\n  "nome": "nome curto",\n  "descricao": "uma frase",\n  "quando": { gatilho },\n  "se": [condições],\n  "entao": [ações]\n}\n\nGatilhos: hora (hour,minute), intervalo (everyMinutes), evento (event), manual, ficheiros (folderPath), usb (action: ligado/desligado), bateria (direction: abaixo/acima, percent: 0–100)\nCondições: dia-da-semana (days: 0=dom..6=sáb), faixa-horaria (fromHour,toHour), estado-sistema (state)\nAções: abrir-janela (appId), notificar (title,description), tema (theme), estado-sistema (state), widget (widget,show), falar (text)\nIDs reais: apps=[${ALL_APPS.map(a => a.id).join(',')}], temas=[${THEMES.map(t => t.id).join(',')}], widgets=[${ALL_WIDGETS.map(w => w.id).join(',')}], estados=[${Object.keys(SYSTEM_STATES).join(',')}]`;
       const reply = await aiService.send(prompt);
       if (reply.length === 0) {
         setNlError('O assistente não respondeu nada — tente outra vez.');

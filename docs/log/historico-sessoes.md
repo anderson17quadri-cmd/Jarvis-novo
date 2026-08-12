@@ -1804,3 +1804,64 @@ limpo.
 
 SPEC.md atualizado: "Cofre de segredos" passou de 🚫 para 🟡 (cofre ✅,
 criptografia/WebAuthn/2FA continuam por fazer).
+
+## 2026-08-12 — Automações em segundo plano + gatilhos do sistema (ficheiros, USB, bateria)
+
+PECA 2 do pedido nativo: fazer o motor de automações continuar a disparar com
+a janela minimizada para a bandeja, e acrescentar três gatilhos novos do
+sistema operativo.
+
+**Segundo plano (close-to-tray):** `on_window_event` com `CloseRequested` no
+`lib.rs` — `prevent_close()` + `window.hide()`. A janela esconde-se em vez de
+fechar, o WebView continua vivo, e os temporizadores do `automationService`
+(tique a cada 20s) continuam a correr. Sair a sério só pelo item "Sair" do
+menu da bandeja, que chama `app.exit(0)` e mata os processos filhos (PTY,
+voice-clone-service).
+
+**Três novos comandos Rust, três novos ficheiros:**
+
+1. **Ficheiros** (`src-tauri/src/commands/files.rs`): `watch_folder` e
+   `unwatch_folder` via crate `notify` v7. `FileWatchers` como estado gerido
+   (`Mutex<HashMap<String, Arc<AtomicBool>>>`) — um watcher por pasta, sem
+   duplicados (caminhos canonicalizados). Emite `automation://file-changed`
+   com caminho e tipo de evento (`created`/`modified`/`removed`).
+
+2. **USB** (`src-tauri/src/commands/usb.rs`): `list_usb_devices` via
+   `SetupDiGetClassDevsW` da crate `windows` v0.58. `UsbMonitor` com polling
+   de 5s — compara os dispositivos atuais com a lista conhecida, emite
+   `automation://usb-changed` com ação (`ligado`/`desligado`) e nome do
+   dispositivo. O primeiro ciclo de polling é suprimido (não dispara "ligado"
+   para tudo o que já estava ligado no arranque).
+
+3. **Bateria** (`src-tauri/src/commands/battery.rs`): `get_battery_status`
+   via crate `battery` v0.7. `BatteryMonitor` com polling de 30s, emite
+   `automation://battery-changed` com percentagem, estado (carregar/descarga)
+   e tempo restante.
+
+**Interface e tipos:**
+
+- `src/types/automation.ts`: três novas interfaces de gatilho — `FileTrigger`
+  (`kind: 'ficheiros'`, `folderPath`), `UsbTrigger` (`kind: 'usb'`, `action`),
+  `BatteryTrigger` (`kind: 'bateria'`, `direction`, `percent`). União
+  `AutomationTrigger` alargada. `describeTrigger()` cobre os três casos.
+- `src/types/platform.ts`: três capacidades novas — `fileWatcher`, `usbMonitor`,
+  `batteryMonitor` (todas `boolean`).
+- `src/platform/platform-adapter.ts` + `tauri-adapter-base.ts`: 6 métodos
+  novos — `watchFolder`, `unwatchFolder`, `getBatteryStatus`, `onFileChanged`,
+  `onUsbChanged`, `onBatteryChanged`. Desktop `true`, Web/Android `false`.
+- `src/services/automation-service.ts`: `checkNativeTriggers(kind, payload)`
+  casa eventos nativos contra as regras ativas e regista as execuções no
+  histórico de 60. `lastBatteryPercent` para detetar cruzamentos de limiar
+  (primeiro valor só estabelece a linha de base, sem falso disparo).
+- `src/apps/automations/AutomationEditor.tsx`: três novos templates de bloco
+  — "Alteração de ficheiro", "Dispositivo USB", "Nível da bateria" — com
+  ícones próprios (`FolderOpen`, `Usb`, `BatteryMedium`). `blockLabel()` e
+  o prompt de geração NL atualizados.
+- `src/App.tsx`: useEffect novo que subscreve os três eventos nativos e chama
+  `automationService.checkNativeTriggers()`, mais registo de `watchFolder` para
+  automações de ficheiros ativas no arranque.
+
+**Verificação:** `tsc --noEmit` limpo, `eslint` 0 erros, `vitest run` 95
+ficheiros / 1244 testes todos a passar, `cargo build` sem erros (só um warning
+de linker pré-existente). SPEC.md atualizado: "Execução em segundo plano" ✅,
+"Gatilhos do sistema" 🟡 (ficheiros ✅, USB ✅, bateria ✅, rede 🚫).

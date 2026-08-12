@@ -117,6 +117,59 @@ export class AutomationService {
     this.executor = null;
   }
 
+  // ── Gatilhos nativos ──────────────────────────────────────────────────────
+
+  /** Última percentagem de bateria conhecida — para detetar cruzamentos de limiar. */
+  private lastBatteryPercent: number | null = null;
+
+  /**
+   * Chamado de fora (normalmente do App.tsx) quando um evento nativo chega.
+   *
+   * O motor não conhece o PlatformAdapter — quem liga os fios é a aplicação.
+   * Este método só percorre as automações e decide se alguma dispara.
+   */
+  checkNativeTriggers(kind: 'ficheiros' | 'usb' | 'bateria', payload: {
+    filePath?: string;
+    usbAction?: string;
+    batteryPercent?: number;
+  }): void {
+    this.runByTrigger((automation) => {
+      const trigger = automation.trigger;
+
+      if (trigger.kind === 'ficheiros' && kind === 'ficheiros') {
+        const changedPath = payload.filePath ?? '';
+        const folder = trigger.folderPath.replace(/\\/g, '/').toLowerCase();
+        const changed = changedPath.replace(/\\/g, '/').toLowerCase();
+        return changed.startsWith(folder);
+      }
+
+      if (trigger.kind === 'usb' && kind === 'usb') {
+        return trigger.action === (payload.usbAction ?? '');
+      }
+
+      if (trigger.kind === 'bateria' && kind === 'bateria') {
+        const current = payload.batteryPercent;
+        const previous = this.lastBatteryPercent;
+        if (current === undefined) return false;
+
+        let crossed = false;
+        if (previous !== null) {
+          if (trigger.direction === 'abaixo') {
+            crossed = previous > trigger.percent && current <= trigger.percent;
+          } else {
+            crossed = previous < trigger.percent && current >= trigger.percent;
+          }
+        }
+        // Atualiza o estado mesmo que não tenha cruzado — o próximo evento
+        // pode cruzar o limiar.
+        this.lastBatteryPercent = current;
+        return crossed;
+      }
+
+      return false;
+    });
+  }
+
   // ── Gestão ───────────────────────────────────────────────────────────────
 
   add(automation: Omit<Automation, 'id' | 'createdAt' | 'lastRunAt' | 'runCount'>): Automation {

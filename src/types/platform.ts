@@ -34,6 +34,12 @@ export interface PlatformCapabilities {
   readonly terminal: boolean;
   /** Cofre de segredos (Credential Manager no Windows, Keychain no macOS). */
   readonly secretVault: boolean;
+  /** Observador de pastas para gatilhos de automação. */
+  readonly fileWatcher: boolean;
+  /** Monitor de dispositivos USB para gatilhos de automação. */
+  readonly usbMonitor: boolean;
+  /** Monitor de bateria para gatilhos de automação. */
+  readonly batteryMonitor: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

@@ -57,6 +57,26 @@ export interface PlatformAdapter {
   /** Apaga um segredo. `false` se não disponível. */
   secretDelete(key: string): Promise<boolean>;
 
+  // ── Gatilhos nativos de automação ──────────────────────────────────────────
+  /**
+   * Começa a observar uma pasta. Devolve o `watchId` (caminho canonicalizado)
+   * ou `null` se a plataforma não suportar.
+   */
+  watchFolder(path: string): Promise<string | null>;
+  /** Pára de observar uma pasta. */
+  unwatchFolder(watchId: string): Promise<void>;
+  /**
+   * Lê o estado atual da bateria. `null` se não houver bateria (desktop fixo
+   * sem UPS) ou se a plataforma não suportar a leitura.
+   */
+  getBatteryStatus(): Promise<{ percent: number; isCharging: boolean; isPlugged: boolean } | null>;
+  /** Ouve eventos de alteração numa pasta. Devolve função para cancelar. */
+  onFileChanged(handler: (event: { path: string; watchId: string; changeKind: string }) => void): Promise<() => void>;
+  /** Ouve eventos de ligação/desligação USB. Devolve função para cancelar. */
+  onUsbChanged(handler: (event: { action: string; deviceName: string | null }) => void): Promise<() => void>;
+  /** Ouve eventos de mudança de bateria. Devolve função para cancelar. */
+  onBatteryChanged(handler: (event: { percent: number; isCharging: boolean; isPlugged: boolean }) => void): Promise<() => void>;
+
   // ── Janela nativa ────────────────────────────────────────────────────────
   /** Sem efeito onde não há gestão de janelas. */
   minimizeWindow(): Promise<void>;

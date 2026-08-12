@@ -11,6 +11,7 @@ mod tray;
 #[cfg(desktop)]
 mod voice_clone;
 
+use tauri::Manager;
 use system::SystemMonitor;
 #[cfg(desktop)]
 use terminal::TerminalRegistry;
@@ -31,7 +32,18 @@ pub fn run() {
         // O monitor de sistema é estado partilhado: o `sysinfo::System` precisa
         // de duas leituras para calcular a percentagem de CPU, por isso tem de
         // sobreviver entre chamadas em vez de ser criado a cada comando.
-        .manage(SystemMonitor::new());
+        .manage(SystemMonitor::new())
+        // Fechar a janela principal esconde-a na bandeja em vez de fechar a app.
+        // O motor de automações continua a correr com a janela escondida — só o
+        // item "Sair" da bandeja é que fecha mesmo.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        });
 
     #[cfg(not(desktop))]
     let builder = builder.invoke_handler(tauri::generate_handler![
@@ -46,11 +58,11 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
-        // O Terminal e o cofre de segredos só existem no desktop — sem isto,
-        // `generate_handler!` teria de referenciar comandos que não compilam
-        // no Android. Só há UM `invoke_handler` por ramo: chamá-lo outra vez
-        // substitui o anterior em vez de acumular, por isso esta lista já
-        // inclui os três comandos base mais os do terminal e os do cofre.
+        .manage(commands::files::FileWatchers::new())
+        // A ordem dentro de `generate_handler!` não importa — o Tauri resolve
+        // cada comando pelo nome. A lista inclui sistema (3), terminal (4),
+        // cofre (3), bateria (1), ficheiros (2) e USB (0 — não há comandos
+        // invocáveis, o monitor arranca sozinho no setup).
         .invoke_handler(tauri::generate_handler![
             commands::system::get_system_snapshot,
             commands::system::get_static_system_info,
@@ -62,11 +74,28 @@ pub fn run() {
             commands::secrets::secret_set,
             commands::secrets::secret_get,
             commands::secrets::secret_delete,
+            commands::battery::get_battery_status,
+            commands::files::watch_folder,
+            commands::files::unwatch_folder,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;
             shortcuts::setup(app.handle())?;
             voice_clone::setup(app.handle());
+
+            // Monitores de fundo para os gatilhos de automação (Parte 13).
+            // Cada um corre numa thread própria e emite eventos Tauri quando
+            // deteta mudanças. A interface escuta esses eventos e dispara as
+            // regras que correspondem.
+            //
+            // Guardados como estado gerido para viverem o tempo de vida da app.
+            // Sem isto, cairiam no fim do setup e as threads paravam.
+            let battery = commands::battery::BatteryMonitor::start(app.handle().clone());
+            let usb = commands::usb::UsbMonitor::start(app.handle().clone());
+
+            app.manage(battery);
+            app.manage(usb);
+
             Ok(())
         });
 

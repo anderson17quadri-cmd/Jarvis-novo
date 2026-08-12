@@ -40,6 +40,16 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-process = "2"
 portable-pty = "0.9"
 keyring = "2"
+notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+battery = "0.7"
+# O Tauri v2 já depende do `windows`, mas como dependência transitiva não nos
+# chega para o código da aplicação. Precisamos só do mínimo para ler
+# dispositivos USB — sem features de UI pesadas.
+windows = { version = "0.58", features = [
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_LibraryLoader",
+] }
 
 [features]
 # Ativado pelo `tauri build` — não usar diretamente.
