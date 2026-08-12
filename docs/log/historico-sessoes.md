@@ -1251,3 +1251,40 @@ do zero. Uma linha resolveu o que a sessão anterior reverteu.
 
 O vendor chunk vazio (0 kB) no build é pré-existente do Vite 6 e não está
 relacionado com esta mudança.
+
+## 2026-08-12 — Fase 2: Search e Device desacoplados (serviço + store)
+
+Sessão Qwen: mesmo padrão (`ThemeService`/`useThemeStore`), próximas duas
+peças da lista (Calendar/News/Email/Music já feitos pela DeepSeek).
+Verificado independentemente antes de commitar (a sessão tinha corrido
+`-p` e saído sem commitar, mesmo padrão das anteriores): `tsc`, `eslint`,
+a suite inteira (1217/1217, duas corridas) e `npm run build`, limpos.
+
+**Search** — não tinha origem externa para "sondar" como Weather ou
+Calendar; era a `CommandPalette` a importar cinco stores diretamente
+(mail, notícias, notificações, layouts, temas) para montar o conteúdo
+pesquisável. `SearchService` (`src/services/search-service.ts`) combina o
+catálogo de comandos (`buildCommands`/`filterCommands`, já existentes e
+inalterados) com esse conteúdo — sem React, sem conhecer stores.
+`useSearchStore` é quem reúne os inputs: subscreve as cinco stores de
+origem e recalcula os resultados sempre que alguma muda, hidratando mail
+e notícias (que só têm dados enquanto alguém subscreve). A
+`CommandPalette` ficou reduzida a UI — só conhece `useSearchStore`.
+
+**Device** — informação da plataforma (`PlatformAdapter.info`), que se
+resolve de forma assíncrona no arranque. Antes, `usePlatformInfo` lia
+`getPlatformAdapter().info` diretamente em cada render — um componente
+montado antes da inicialização acabar ficava preso à resposta parcial
+para sempre, sem re-renderizar quando a informação completa chegasse.
+`DeviceService`/`useDeviceStore` corrigem isso: a store guarda a
+informação e atualiza-se quando `initializePlatform` resolve;
+`usePlatformInfo` (`use-platform.ts`) passou a ler da store e hidrata no
+mount.
+
+**SPEC.md atualizado:** 16/17 serviços desacoplados, 16/18 stores
+separadas (falta só o Plugin). Corrigida também uma conta que não batia
+certo desde a entrada do Music (a lista de serviços feitos não incluía o
+Music apesar de o texto dizer que sim).
+
+Confirmado: `tsc` limpo, `eslint` 0 erros, 1217/1217 testes (duas
+corridas), `npm run build` de produção sem problemas.

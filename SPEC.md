@@ -241,8 +241,8 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 |---|:--:|---|
 | Fluxo `Component → Hook → Service → API` | ✅ | Com `PlatformAdapter` entre o serviço e o nativo |
 | Componentes de responsabilidade única | ✅ | |
-| Serviços desacoplados | 🟡 | 13 dos 14: System, AI, Voice, Storage, Theme, Notification, Workspace, Weather, Clock, Wallpaper, Calendar, News, Email. Calendar, News, Email e Music ganharam serviço + store Zustand (padrão `ThemeService`/`useThemeStore`) na Fase 2. Os restantes (Search, Device, Plugin) são Fase 3 |
-| Stores separadas | 🟡 | 14 das 18. A `use-ai-settings-store` é agora só estado + persistência; o hook `useAiSettings` aplica ao `aiService`. Weather, Clock, Wallpaper, Calendar, News, Mail e Music seguem o padrão: serviço puro → store fina → componente lê da store. `useDataService` já não tem consumidores — todos os widgets migraram para stores |
+| Serviços desacoplados | 🟡 | 16 dos 17: System, AI, Voice, Storage, Theme, Notification, Workspace, Weather, Clock, Wallpaper, Calendar, News, Email, Music, Search, Device. Search combina o catálogo de comandos com o conteúdo pesquisável (`SearchService`, sem React nem stores) — a `useSearchStore` subscreve as stores de origem (mail, news, notificações, layouts, temas) e recalcula sozinha; a `CommandPalette` deixou de conhecer essas cinco stores diretamente. Device (`DeviceService`/`useDeviceStore`) resolve a informação da plataforma de forma assíncrona — `usePlatformInfo` já não fica preso à resposta parcial de antes da inicialização. O restante (Plugin) ainda não tem serviço próprio |
+| Stores separadas | 🟡 | 16 das 18. A `use-ai-settings-store` é agora só estado + persistência; o hook `useAiSettings` aplica ao `aiService`. Weather, Clock, Wallpaper, Calendar, News, Mail, Music, Search e Device seguem o padrão: serviço puro → store fina → componente lê da store. `useDataService` já não tem consumidores — todos os widgets migraram para stores |
 | Sistema de janelas completo | ✅ | `stores/use-window-store.ts` |
 | Nomenclatura | ✅ | |
 | **Estrutura de pastas** | ⚠️ | Ver abaixo |

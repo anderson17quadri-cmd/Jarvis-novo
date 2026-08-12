@@ -1,15 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
-import { useShallow } from 'zustand/react/shallow';
 
-import { useNotificationStore } from '@/stores/use-notification-store';
-import { useNewsStore } from '@/stores/use-news-store';
-import { useMailStore } from '@/stores/use-mail-store';
-import { useCustomThemeStore } from '@/stores/use-custom-theme-store';
-import { useWorkspaceStore } from '@/stores/use-workspace-store';
-import { buildCommands, filterCommands, type CommandActions } from './command-registry';
+import { useSearchStore } from '@/stores/use-search-store';
+import type { CommandActions } from './command-registry';
 
 interface CommandPaletteProps {
   readonly isOpen: boolean;
@@ -36,48 +31,22 @@ export function CommandPalette({
   actions,
   initialQuery = '',
 }: CommandPaletteProps): React.JSX.Element | null {
-  const [query, setQuery] = useState('');
+  const query = useSearchStore((state) => state.query);
+  const results = useSearchStore((state) => state.results);
+  const setQuery = useSearchStore((state) => state.setQuery);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // O conteúdo pesquisável vem das stores, e muda a cada sondagem.
-  const mailbox = useMailStore((s) => s.snapshot);
-  const feed = useNewsStore((s) => s.snapshot);
-  const notifications = useNotificationStore(useShallow((state) => state.notifications));
-
-  useEffect(() => {
-    const unsubMail = useMailStore.getState().hydrate();
-    const unsubNews = useNewsStore.getState().hydrate();
-    return () => {
-      unsubMail();
-      unsubNews();
-    };
-  }, []);
-
-  const layouts = useWorkspaceStore((state) => state.layouts);
-  const customThemes = useCustomThemeStore((state) => state.themes);
-
-  const commands = useMemo(
-    () =>
-      buildCommands(
-        {
-          mail: mailbox?.messages ?? [],
-          news: feed?.articles ?? [],
-          notifications,
-        },
-        layouts,
-        customThemes,
-      ),
-    [customThemes, feed, layouts, mailbox, notifications],
-  );
-  const results = useMemo(() => filterCommands(commands, query), [commands, query]);
+  // O conteúdo pesquisável vem das stores de origem; a store de pesquisa
+  // subscreve-as e recalcula os resultados sozinha.
+  useEffect(() => useSearchStore.getState().hydrate(), []);
 
   // Cada abertura começa do zero — reabrir com a pesquisa anterior confunde.
   // A exceção é quem a abriu já com um texto, como o comando de voz.
   useEffect(() => {
     if (!isOpen) return;
-    setQuery(initialQuery);
+    useSearchStore.getState().setQuery(initialQuery);
     setSelectedIndex(0);
     const timer = setTimeout(() => inputRef.current?.focus(), 40);
     return () => clearTimeout(timer);
