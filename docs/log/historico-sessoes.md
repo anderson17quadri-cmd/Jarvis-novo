@@ -1563,3 +1563,42 @@ reviu as sete.
   projeto são pré-existentes: CoreRings, BootChecks, CommandPalette,
   use-entrance-cascade, use-typewriter — nenhum tocado nesta sessão).
 - `vitest run`: 95 ficheiros, 1232 testes — todos passam.
+
+## 2026-08-12 11:19 — Fecho da tarde: worktree validado de ponta a ponta, sem mais trabalho real
+
+Verificação independente do que a DeepSeek fez no worktree isolado
+(`../jarvis-novo-deepseek`, branch `agents/deepseek`): código morto
+confirmado sem referências nenhures antes de aceitar a remoção
+(`byCategory`, `selectIsInstalled`, `selectInstalledCount`), `tsc`
+limpo, `eslint` 0 erros, `vitest run` 1232/1232, e agora também `npm
+run build` de produção — chunks corretos, o mesmo aviso pré-existente
+de tamanho do vendor chunk, nada novo.
+
+**O isolamento por `git worktree` está validado de ponta a ponta.** A
+DeepSeek commitou na branch dela (`agents/deepseek`), fez `git push
+origin HEAD:claude/…` diretamente para o branch partilhado, e este
+worktree principal apanhou isso com um `git pull` normal — fast-forward
+limpo, sem conflito. Enquanto ela trabalhava, este worktree principal
+manteve-se completamente parado (`git status` limpo o tempo todo). O que
+faltava confirmar de ontem à noite — o caminho todo, de uma sessão a
+publicar até a outra apanhar sem colisão — está confirmado. Falta só
+testar com duas sessões verdadeiramente em paralelo, o que depende da
+cota da Qwen voltar (19/08).
+
+**Qwen tentada de novo** no worktree dela (`../jarvis-novo-qwen`), como
+pedido — mesmo erro 429, mesma cota esgotada até 19/08. Não se insistiu,
+não se relançou outra vez, sem surpresas.
+
+**Depois disto, releitura completa ao `SPEC.md`** à procura de qualquer
+`🟡`/`⬜`/`⚠️` que pudesse ser trabalho real esquecido — o mesmo resultado
+de ontem à noite: o que resta são decisões já tomadas (estrutura de
+pastas, stack, temas, o logo fora do núcleo — todas em "Divergências
+assumidas") ou coisas fora de alcance por decisão ou por dependerem de
+nativo/PC a sério (Terminal, Windows Hello, wake word, Marketplace real,
+Fase 3 além da 3.1). Nada disto é autorizado a mexer sem perguntar
+primeiro.
+
+**A parar aqui, como pedido — não há trabalho real e seguro por fazer.**
+O worktree da DeepSeek fica ocioso, pronto para a próxima tarefa. O da
+Qwen fica por usar até a cota voltar; essa decisão fica para o
+utilizador, não se relança sozinha.
