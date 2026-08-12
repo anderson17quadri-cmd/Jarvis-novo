@@ -1304,3 +1304,33 @@ passa para a fila normal da DeepSeek, a seguir ao que ela estiver a
 fazer agora. Se a cota da Qwen voltar sozinha antes das 08-19, não se
 relança por conta própria — fica para o utilizador decidir de manhã se
 vale a pena.
+
+## 2026-08-12 — Auditoria às 26 stores, correção da contagem no SPEC
+
+O SPEC dizia "16 das 18" stores separadas, mas o projeto tem hoje 26
+stores. Fiz uma auditoria completa, loja a loja:
+
+- **16 stores seguem o padrão serviço puro → store fina → componente:**
+  14 com subscrição direta (Theme, Voice, System State, Workspace,
+  Weather, Clock, Wallpaper, Calendar, News, Mail, Music, Search,
+  Device, Notification) e 2 por hook (`useAiSettings` → `aiService`,
+  `useSystemMetrics` → `systemService`).
+- **9 stores são estado local puro sem fonte externa:** janelas
+  (`use-window-store`), widgets (`use-widget-store`), tarefas
+  (`use-task-store`), sessão (`use-session-store`), aparência
+  (`use-appearance-store`), temas custom (`use-custom-theme-store`),
+  assistente (`use-assistant-store`), correção de voz
+  (`use-voice-correction-store`), navegação pendente
+  (`use-pending-file-navigation-store`). Nenhuma precisa de serviço —
+  ou são canais entre componentes (voz, ficheiros), ou gerem estado que
+  não vem de API externa (janelas, widgets, tarefas, conversas).
+- **1 store em curso:** Plugin (`use-plugin-store`), com serviço
+  próprio a ser feito.
+
+**Conclusão:** não há trabalho real de migração por fazer além do
+Plugin. A contagem antiga "18" era de quando o projeto tinha menos
+stores — o número de stores que seguem o padrão (16) sempre esteve
+correto. SPEC.md atualizado para "16 das 26", com o detalhe das que são
+estado local legítimo e não precisam de serviço.
+
+Confirmado: `tsc` limpo, `eslint` 0 erros (só se alterou o SPEC.md).
