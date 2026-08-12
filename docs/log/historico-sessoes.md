@@ -1208,3 +1208,46 @@ widget. SPEC.md atualizado: 14/18 stores separadas, `useDataService` sem
 consumidores.
 
 Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.
+
+## 2026-08-12 — Vitest 4: migração concluída, causa raiz encontrada e corrigida
+
+A entrada de 2026-08-10 ("Auditoria de dependências") documentou uma
+tentativa falhada de subir o Vitest para a v4 e cinco vulnerabilidades
+(`npm audit`) por resolver — incluindo uma crítica (CVSS 9.8, leitura e
+execução arbitrária de ficheiros com o servidor de UI do Vitest ligado).
+Na altura, 4 testes (`login-sound.test.tsx`, `boot-sound.test.tsx`)
+partiram e a decisão foi reverter para `vitest@2.1.8` e documentar como
+dívida técnica.
+
+Desta vez investigou-se a sério.
+
+**Diagnóstico.** O sintoma original ("passam isolados, falham em conjunto")
+enganou: os testes falham **até isolados** no Vitest 4 — dois em cada
+ficheiro, sempre os mesmos. Todos usam `vi.spyOn(soundService, 'play')`
+dentro de cada `it()`, e os que falham são os que verificam a **ausência**
+de um som (`not.toHaveBeenCalledWith('success')`,
+`not.toHaveBeenCalled()`). O histórico de chamadas do espião do teste
+anterior acumulava para o teste seguinte.
+
+**Causa raiz.** O Vitest 4 reescreveu o sistema de pools (removeu o
+`tinypool`, passou a usar `module-runner` em vez de `vite-node`) e
+reescreveu também a implementação de spies. Em teoria, `vi.spyOn` sobre
+um método já espiado devia restaurar o original e criar um espião novo com
+histórico limpo — mas na prática da v4, o espião anterior persistia e o
+`vi.spyOn` seguinte herdava-lhe as chamadas. O `isolate` e o `pool`
+continuam com os mesmos valores por omissão (`forks`, `isolate: true`),
+portanto não era uma mudança de configuração — era o comportamento interno
+do `vi.spyOn` que mudou.
+
+**Correção.** `vitest.config.ts`: `restoreMocks: true`. Com esta opção, o
+Vitest chama `vi.restoreAllMocks()` após cada teste — o método original
+(`soundService.play`) é reposto, e o `vi.spyOn` do teste seguinte começa
+do zero. Uma linha resolveu o que a sessão anterior reverteu.
+
+**Resultado.** `vitest@4.1.10` instalado. Suite completa: 1217/1217 testes
+(94 ficheiros), três corridas consecutivas sem flakiness. `tsc` limpo,
+`eslint` 0 erros, `npm run build` de produção com chunks corretos.
+`npm audit`: 0 vulnerabilidades — as cinco desapareceram com o upgrade.
+
+O vendor chunk vazio (0 kB) no build é pré-existente do Vite 6 e não está
+relacionado com esta mudança.
