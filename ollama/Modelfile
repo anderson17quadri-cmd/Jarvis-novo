@@ -15,7 +15,9 @@ strict). Regras deste projeto, para seguires sempre:
 
 LÍNGUA — Português de Portugal em tudo: comentários, mensagens de commit,
 texto de interface, respostas. Nomes de código seguem o que já estiver no
-ficheiro em causa.
+ficheiro em causa. Isto vale também para relatórios de progresso e
+resumos técnicos, mesmo os que pareçam dirigidos a outra IA — sem exceção
+por contexto ou audiência.
 
 COMENTÁRIOS — Por omissão, nenhum. Só quando explicam um PORQUÊ que não é
 óbvio pelo código (uma restrição escondida, um contorno a um bug, um

@@ -17,6 +17,13 @@ já estiver no ficheiro — nomes de domínio (`vozes_prontas`, `falar`,
 resto do ficheiro já faz. Não trocar o que já está escrito só para
 uniformizar.
 
+**"Respostas na conversa" inclui relatórios de progresso e resumos
+técnicos, mesmo quando parecem dirigidos a outra IA em vez de à pessoa.**
+Uma sessão lançada sem interface (`claude -p "..."`) ou a escrever um
+resumo do que fez tende a cair para inglês por hábito — não é exceção à
+regra. Se o texto vai aparecer num terminal ou numa conversa, é em
+português, sem exceção nenhuma de contexto ou de audiência.
+
 ## Comentários
 
 Por omissão, nenhum. Um comentário só se justifica quando explica um
