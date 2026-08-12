@@ -43,9 +43,10 @@ export class PluginService {
   /**
    * Lê o estado guardado e junta-o com os do sistema.
    *
-   * Um plugin guardado que já não exista no catálogo é descartado — acontece
-   * quando um plugin sai da loja, e sem isto ficaria instalado e invisível.
-   * Os do sistema são sempre repostos, mesmo que o ficheiro não os inclua.
+   * Um plugin guardado que já não exista no catálogo **é mantido** — são os
+   * plugins instalados de ficheiro, que sobrevivem a fechar e reabrir a
+   * aplicação. Os do sistema são sempre repostos, mesmo que o ficheiro não os
+   * inclua.
    */
   async load(): Promise<{
     installed: Record<string, InstalledPlugin>;
@@ -60,11 +61,9 @@ export class PluginService {
     const saved = Array.isArray(raw) ? raw : raw.installed;
     const deniedPermissions = Array.isArray(raw) ? {} : raw.deniedPermissions;
 
-    const known = new Set(PLUGIN_CATALOG.map((entry) => entry.id));
     const installed = this.getBuiltInState();
 
     for (const entry of saved) {
-      if (!known.has(entry.id)) continue;
       installed[entry.id] = entry;
     }
 

@@ -1,13 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Info, Search } from 'lucide-react';
+import { FileDown, Info, Search } from 'lucide-react';
 
 import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
+import { selectAndInstallPluginFile } from '@/plugins/install-from-file';
+import { notificationService } from '@/services/notification-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { normalizeSearch } from '@/utils/text';
 import { MarketplaceTab } from './MarketplaceTab';
 import { PluginCard } from './PluginCard';
 import {
+  getExternalCatalogEntries,
   PLUGIN_CATALOG,
   PLUGIN_CATEGORY_LABELS,
   type CatalogEntry,
@@ -36,14 +39,21 @@ export default function PluginManagerWindow(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>('loja');
   const [category, setCategory] = useState<CategoryFilter>(null);
   const [query, setQuery] = useState('');
+  const [isInstallingFile, setIsInstallingFile] = useState(false);
+  const [fileResult, setFileResult] = useState<string | null>(null);
 
   const installed = usePluginStore((state) => state.installed);
   const capabilities = useCapabilities();
 
   const visible = useMemo(() => {
+    const allEntries = [
+      ...PLUGIN_CATALOG,
+      ...getExternalCatalogEntries(),
+    ];
+
     const normalized = normalizeSearch(query);
 
-    return PLUGIN_CATALOG.filter((entry) => {
+    return allEntries.filter((entry) => {
       if (tab === 'instalados' && !installed[entry.id]) return false;
       if (category !== null && entry.category !== category) return false;
       if (normalized.length === 0) return true;
@@ -56,6 +66,23 @@ export default function PluginManagerWindow(): React.JSX.Element {
 
   const installedCount = Object.keys(installed).length;
 
+  const onInstallFile = async (): Promise<void> => {
+    setIsInstallingFile(true);
+    setFileResult(null);
+
+    const result = await selectAndInstallPluginFile();
+
+    if (result.ok) {
+      setFileResult(null);
+    } else if (result.error) {
+      setFileResult(result.error);
+      notificationService.info('Plugin recusado', result.error, { category: 'plugins' });
+    }
+    // Se `ok: false` sem `error`, a pessoa cancelou o diálogo — silêncio.
+
+    setIsInstallingFile(false);
+  };
+
   return (
     <div className="flex h-full flex-col gap-s3">
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
@@ -63,14 +90,14 @@ export default function PluginManagerWindow(): React.JSX.Element {
         <span>
           A maioria destes plugins ainda só regista a instalação — instalar escreve a escolha e
           mais nada. A sandbox de execução já existe (iframe restrito, permissões verificadas a
-          sério): os quatro "Olá, …" e "Dispara automação" correm código de verdade —
-          notificações, ficheiros e rede, cada um com a sua permissão.
+          sério): os catorze plugins de exemplo correm código de verdade. Plugins com assinatura
+          Ed25519 podem ser instalados de ficheiro.
         </span>
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
         <div role="tablist" aria-label="Vista" className="flex gap-1">
-          <TabButton isActive={tab === 'loja'} onClick={() => setTab('loja')}>
+          <TabButton isActive={tab === 'loja'} onClick={() => { setTab('loja'); setFileResult(null); }}>
             Loja
           </TabButton>
           <TabButton isActive={tab === 'instalados'} onClick={() => setTab('instalados')}>
@@ -80,6 +107,24 @@ export default function PluginManagerWindow(): React.JSX.Element {
             Marketplace
           </TabButton>
         </div>
+
+        {/* Botão de instalar de ficheiro — visível em todas as abas menos Marketplace */}
+        {tab !== 'marketplace' && (
+          <button
+            type="button"
+            onClick={() => { void onInstallFile(); }}
+            disabled={isInstallingFile}
+            className={cn(
+              'flex items-center gap-1.5 rounded-btn border px-3 py-2 text-[12px] font-medium',
+              'transition-all duration-hover ease-out active:scale-[.98]',
+              'border-accent/50 bg-accent/[.1] text-accent hover:bg-accent/[.16]',
+              'disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100',
+            )}
+          >
+            <FileDown className="h-3.5 w-3.5" aria-hidden="true" />
+            {isInstallingFile ? 'A instalar…' : 'Instalar de ficheiro'}
+          </button>
+        )}
 
         {tab !== 'marketplace' && (
           <label className="relative ml-auto flex min-w-[150px] flex-1 items-center">
@@ -102,6 +147,14 @@ export default function PluginManagerWindow(): React.JSX.Element {
           </label>
         )}
       </div>
+
+      {/* Resultado da instalação de ficheiro — erro ou recusa */}
+      {fileResult && (
+        <p className="flex items-start gap-1.5 rounded-input border border-err/30 bg-err/[.04] px-2.5 py-2 text-[11.5px] text-err">
+          <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+          <span>{fileResult}</span>
+        </p>
+      )}
 
       {tab === 'marketplace' ? (
         <MarketplaceTab />

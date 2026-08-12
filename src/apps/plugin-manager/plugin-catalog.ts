@@ -4,6 +4,7 @@ import {
   Calendar,
   Cloud,
   Code,
+  FileDown,
   FolderOpen,
   Gamepad2,
   Globe,
@@ -20,6 +21,8 @@ import {
   Zap,
   type LucideIcon,
 } from 'lucide-react';
+
+import { loadAllExternalPlugins } from '@/plugins/external-storage';
 
 import type { PluginManifest, PluginPermissions } from '@/plugins/plugin';
 import type { PlatformCapabilities } from '@/types/platform';
@@ -574,4 +577,40 @@ export function missingCapabilities(
   return entry.requires
     .filter((capability) => !capabilities[capability])
     .map((capability) => CAPABILITY_LABELS[capability]);
+}
+
+/**
+ * Entradas do catálogo para plugins instalados de ficheiro.
+ *
+ * Constrói `CatalogEntry` sintéticos a partir dos pacotes guardados em
+ * `localStorage` — assim o `PluginCard` mostra-os sem saber distinguir
+ * plugins de catálogo de plugins de ficheiro.
+ */
+export function getExternalCatalogEntries(): readonly CatalogEntry[] {
+  const packages = loadAllExternalPlugins();
+
+  return packages.map((pkg) => {
+    const base: CatalogEntry = {
+      id: pkg.manifest.id,
+      name: pkg.manifest.name,
+      tagline: pkg.manifest.description.slice(0, 80),
+      description: pkg.manifest.description,
+      author: pkg.manifest.author,
+      version: pkg.manifest.version,
+      icon: FileDown,
+      category: 'desenvolvimento' as const,
+      permissions: pkg.manifest.permissions,
+      installs: 1,
+      rating: 5,
+      isBuiltIn: false,
+      requires: [],
+      signature: pkg.signature,
+      signerPublicKey: pkg.signerPublicKey,
+    };
+
+    if (pkg.signerName) {
+      return { ...base, signerName: pkg.signerName };
+    }
+    return base;
+  });
 }

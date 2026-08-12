@@ -210,6 +210,10 @@ domain).
   e `SPEC.md` Parte 11. Para plugins do catálogo local sem assinatura, a
   instalação é aceite (confia-se na origem); para plugins externos, a
   assinatura é obrigatória.
+- **Instalar plugin de ficheiro local.** ✅ Implementada (12/08/2026) —
+  `src/plugins/install-from-file.ts`. Diálogo nativo, leitura via comando
+  Rust, validação em três camadas, integração com a verificação Ed25519.
+  Ver abaixo §Formato de ficheiro `.jarvis-plugin`.
 - **Três capacidades do original ficam por decisão, não por esquecimento.**
   Executar Voz, Ler Memória e Guardar Preferências mexem em microfone e
   dados guardados do utilizador — exigem autorização explícita antes de
@@ -217,3 +221,58 @@ domain).
   restantes dez do original (`docs/spec/jarvis-spec-completo.md:568`),
   todas têm agora um tipo de mensagem, uma permissão e pelo menos um
   plugin de exemplo a sério (12/08/2026).
+
+## Formato de ficheiro `.jarvis-plugin`
+
+Ficheiros de plugin para instalação local usam a extensão `.jarvis-plugin`.
+É um JSON simples — não é preciso zip nem empacotamento binário porque o
+conteúdo de um plugin é sempre texto (JavaScript, HTML). O formato:
+
+```json
+{
+  "manifest": {
+    "id": "meu-plugin",
+    "name": "Nome do plugin",
+    "version": "1.0.0",
+    "description": "O que faz.",
+    "author": "Quem o fez",
+    "permissions": { "notifications": true, "filesystem": false, "network": false, ... },
+    "platforms": ["desktop"]
+  },
+  "signature": "<base64, 64 bytes Ed25519>",
+  "signerPublicKey": "<base64, 32 bytes Ed25519>",
+  "signerName": "Nome do signatário (opcional)",
+  "code": "window.addEventListener('message', (event) => { ... });"
+}
+```
+
+**A assinatura cobre só o `manifest`** — o `code` não entra na assinatura
+porque `JSON.stringify` pode escapar caracteres de forma diferente entre
+motores JavaScript, e porque o código corre num `<iframe sandbox>` e não
+pode fazer nada além do que as permissões do manifesto declaram. A
+assinatura do manifesto prova a identidade do autor; as permissões limitam
+o que o código pode fazer, independentemente do que ele contenha.
+
+**Como criar um `.jarvis-plugin` assinado:**
+
+```typescript
+import { generateSigningKeyPair, signManifest } from './signature';
+
+const pair = await generateSigningKeyPair();
+const manifest = { id: 'meu-plugin', name: '...', ... };
+const signature = await signManifest(manifest, pair.privateKey);
+
+const pkg = {
+  manifest,
+  signature,
+  signerPublicKey: pair.publicKey,
+  signerName: 'O meu nome',
+  code: 'window.addEventListener("message", ...);',
+};
+
+// Gravar como ficheiro .jarvis-plugin (JSON).
+```
+
+A chave privada **nunca** entra no ficheiro — só a pública. Quem instala
+vê o nome do signatário (se declarado) e o estado da assinatura no cartão
+do plugin, como nos plugins do catálogo.

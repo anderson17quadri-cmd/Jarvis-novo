@@ -2,8 +2,9 @@ import { Check, Download, Power, ShieldAlert, ShieldCheck, ShieldOff, ShieldX, S
 import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/cn';
+import { removeExternalPlugin } from '@/plugins/external-storage';
 import { PluginRuntime } from '@/plugins/runtime/PluginRuntime';
-import { PLUGIN_RUNTIMES } from '@/plugins/runtime/registry';
+import { PLUGIN_RUNTIMES, unregisterPluginRuntime } from '@/plugins/runtime/registry';
 import { getSignatureStatus, type SignatureStatus } from '@/plugins/signature';
 import { notificationService } from '@/services/notification-service';
 import { usePluginStore, verifyAndInstallPlugin } from '@/stores/use-plugin-store';
@@ -86,6 +87,12 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
   const onUninstall = (): void => {
     uninstall(entry.id);
     void persist();
+
+    // Limpar o armazenamento de plugins externos (se for o caso).
+    // Idempotente — se o plugin não for externo, não faz nada.
+    removeExternalPlugin(entry.id);
+    unregisterPluginRuntime(entry.id);
+
     notificationService.info(`${entry.name} removido`, 'Deixou de constar dos instalados.', {
       category: 'plugins',
     });

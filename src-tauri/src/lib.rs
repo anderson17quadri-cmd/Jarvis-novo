@@ -91,6 +91,7 @@ pub fn run() {
             commands::files::unwatch_folder,
             commands::files::files_set_root,
             commands::files::files_read_dir,
+            commands::plugins::read_plugin_file,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

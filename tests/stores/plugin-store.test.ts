@@ -64,7 +64,7 @@ describe('estado dos plugins', () => {
     expect(usePluginStore.getState().installed[id]?.isEnabled).toBe(false);
   });
 
-  it('um plugin que saiu do catálogo é descartado ao recarregar', async () => {
+  it('um plugin que não está no catálogo é mantido ao recarregar (plugin externo)', async () => {
     const saved: InstalledPlugin[] = [
       { id: 'plugin-que-ja-nao-existe', installedAt: 1, isEnabled: true },
     ];
@@ -72,7 +72,8 @@ describe('estado dos plugins', () => {
 
     await usePluginStore.getState().hydrate();
 
-    expect(usePluginStore.getState().installed['plugin-que-ja-nao-existe']).toBeUndefined();
+    // Plugins de ficheiro (externos) sobrevivem — não são descartados.
+    expect(usePluginStore.getState().installed['plugin-que-ja-nao-existe']).toBeDefined();
   });
 
   it('recarregar repõe os do sistema mesmo que não estejam no que foi guardado', async () => {

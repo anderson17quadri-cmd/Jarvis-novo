@@ -2109,3 +2109,103 @@ real: só `plugin-catalog.ts` mudou dos dois lados, em zonas diferentes do
 ficheiro (a Peça 5 mexeu nos campos de assinatura do `CatalogEntry`, isto
 só acrescentou uma linha ao `CAPABILITY_LABELS`), `git stash`/`pull`/`pop`
 resolveu sem intervenção manual.
+
+## 2026-08-12 — Peça 9, Lote 2: instalar plugin de ficheiro local (DeepSeek)
+
+Última peça do Lote 2. Pedia-se: escolher um ficheiro `.jarvis-plugin` no
+disco, ler o conteúdo com um comando Rust próprio (padrão do `files.rs`),
+validar o pacote em três camadas — JSON → manifesto → assinatura Ed25519
+(Peça 5, `isExternal: true`) — e instalar o plugin com feedback claro em
+cada recusa. Quem pediu foi o Claude (Sonnet), que fez a Peça 7 (sistema
+de ficheiros real) enquanto a DeepSeek fazia a Peça 5.
+
+### O que ficou feito
+
+**Formato do pacote** (`PluginPackage` em `plugins/plugin.ts`): um JSON
+simples com `manifest` (PluginManifest), `signature` (base64, 64 bytes
+Ed25519), `signerPublicKey` (base64, 32 bytes), `signerName` (opcional) e
+`code` (JavaScript fonte). Decisão documentada: JSON chega, não é preciso
+zip — o código é sempre texto/JS simples, como os exemplos do catálogo. A
+assinatura cobre só o manifesto (canónico), não o código — o código corre
+num iframe sandboxed e não pode fazer nada além do que o manifesto declara.
+
+**Comando Rust** (`src-tauri/src/commands/plugins.rs`): `read_plugin_file`
+canonicaliza o caminho antes de ler, mesmo padrão do `files.rs` — nunca
+confiar cegamente no caminho que a interface manda. Registado em
+`mod.rs` e `lib.rs` (generate_handler do desktop).
+
+**Fluxo de instalação** (`plugins/install-from-file.ts`):
+1. `openDialog` com filtro `.jarvis-plugin` (plugin `dialog` do Tauri)
+2. `invoke('read_plugin_file', { path })` — Rust lê o ficheiro
+3. `JSON.parse` + validação da forma (manifest, signature, signerPublicKey, code)
+4. Validação dos campos obrigatórios do manifesto (id, name, version, author, permissions)
+5. `verifyAndInstallPlugin` com `isExternal: true` + `manifest` — verifica
+   assinatura contra o manifesto do ficheiro (antes, o código só usava o
+   manifesto do catálogo, o que deixava plugins externos com assinatura
+   passar sem verificação nenhuma — bug real, corrigido)
+6. Se aprovado: `saveExternalPlugin` (localStorage), `registerPluginRuntime`
+   (registo dinâmico no `registry.ts`), notificação de sucesso
+
+**UI** (`PluginManagerWindow.tsx`): botão "Instalar de ficheiro" visível
+nas abas Loja e Instalados, com estado de carregamento. Recusas aparecem
+como barra de erro vermelha com o motivo exato (manifesto malformado, sem
+assinatura, assinatura inválida, chave revogada, já instalado).
+
+**Runtime dinâmico** (`registry.ts`): `PLUGIN_RUNTIMES` passou de `const
+Record` para um `Proxy` sobre um `Map` dinâmico + built-ins. Funções
+`registerPluginRuntime`/`unregisterPluginRuntime` permitem que plugins de
+ficheiro corram como os do catálogo. `getPluginRuntime(id)` procura
+primeiro nos dinâmicos, depois nos built-in.
+
+**Armazenamento externo** (`plugins/external-storage.ts`): `save`/`load`/
+`remove` com chave `jarvis.plugin-package:<id>` em localStorage — manifesto
+e código sobrevivem a fechar e reabrir a aplicação.
+
+**Plugin de ficheiro removido:** `PluginCard.onUninstall` limpa o
+armazenamento externo e o runtime dinâmico ao remover — não fica lixo.
+
+**Correcção colateral:** `plugin-service.ts` já não descarta plugins que
+não estão no catálogo ao carregar — plugins de ficheiro sobrevivem a
+reiniciar a app. Os dois testes que verificavam o comportamento antigo
+foram atualizados.
+
+**Testes** (`tests/plugins/install-from-file.test.ts`, 29 novos): cobrem
+armazenamento externo, registo dinâmico de runtime, validação de pacote
+(sem manifest, sem signature, sem signerPublicKey, sem code), validação de
+manifesto (sem id, sem name, sem version, sem author), `verifyAndInstallPlugin`
+com `isExternal: true` (sem assinatura → recusado, assinatura inválida →
+recusado, chave revogada → recusado, assinatura válida → aceite, já
+instalado → recusado), fluxo completo de integração (instalar → guardar →
+aparece no catálogo externo → sobrevive a reload), remoção (limpa
+armazenamento e runtime), e que a assinatura cobre o manifesto mas não o
+código.
+
+### O que se confirmou e o que não deu
+
+**Confirmado:** `tsc --noEmit` limpo (fora erros pré-existentes do
+`@xterm`), ESLint limpo nos ficheiros tocados, `cargo check` limpo, 1358
+testes passam (99 ficheiros).
+
+**Não confirmado ao vivo** (`npm run tauri dev`): a instalação de um
+ficheiro `.jarvis-plugin` a sério pela interface — a máquina de
+desenvolvimento não estava disponível para abrir a app com Tauri.
+Confirmado por testes automatizados o coração da lógica (validação,
+assinatura, armazenamento, runtime). Para confirmar ao vivo: criar um
+`.jarvis-plugin` com `generateSigningKeyPair` + `signManifest`, gravar o
+JSON, abrir a app, clicar em "Instalar de ficheiro", escolher o ficheiro,
+ver o plugin aparecer na lista de Instalados e o botão "Executar" correr o
+código no iframe. Os comandos Rust e o diálogo nativo são variações diretas
+de padrões já confirmados ao vivo (Peça 7, sistema de ficheiros real).
+
+### Estado do Lote 2
+
+As cinco peças do Lote 2 estão concluídas:
+1. ✅ Terminal PTY real
+2. ✅ Cofre de segredos (Windows Credential Manager)
+3. ✅ Windows Hello + sessão automática
+4. ✅ Assinatura de plugins — Ed25519 via SubtleCrypto
+5. ✅ Instalar plugin de ficheiro local (esta peça)
+
+O Lote 2 fecha-se aqui. A próxima peça a decidir com o utilizador é o
+marketplace real (onde vivem os plugins de terceiros, quem os revê, como
+se atualizam) — ver `docs/spec/plugins-marketplace.md`.

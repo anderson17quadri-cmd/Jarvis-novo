@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { PLUGIN_CATALOG, toManifest } from '@/apps/plugin-manager/plugin-catalog';
+import type { PluginManifest } from '@/plugins/plugin';
 import { verifySignedManifest, type SignatureStatus } from '@/plugins/signature';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
@@ -147,7 +148,8 @@ export function selectPermissionDenied(
  *
  * Para plugins externos (ficheiro local, marketplace): a assinatura é
  * obrigatória — `signature` e `signerPublicKey` têm de existir e ser válidos,
- * e a chave não pode estar revogada.
+ * e a chave não pode estar revogada. O `manifest` passado por parâmetro é a
+ * fonte de verdade para a verificação (não o catálogo, que não conhece este id).
  *
  * Devolve `{ ok: true }` se a instalação foi aceite, ou `{ ok: false, status }`
  * com o motivo da recusa.
@@ -158,6 +160,14 @@ export async function verifyAndInstallPlugin(params: {
   readonly signerPublicKey?: string;
   /** `true` para plugins que vêm de fora do catálogo (ex.: ficheiro local). */
   readonly isExternal?: boolean;
+  /**
+   * Manifesto contra o qual verificar a assinatura.
+   *
+   * Para plugins do catálogo, usa-se o manifesto do catálogo. Para plugins
+   * externos, o manifesto vem do próprio ficheiro e é passado aqui — sem ele,
+   * a assinatura de um plugin externo não pode ser verificada.
+   */
+  readonly manifest?: PluginManifest;
 }): Promise<{ ok: boolean; status: SignatureStatus }> {
   const store = usePluginStore.getState();
 
@@ -168,13 +178,16 @@ export async function verifyAndInstallPlugin(params: {
 
   // Verificar assinatura.
   if (params.signature && params.signerPublicKey) {
-    // O manifesto para verificação é o do catálogo (fonte de verdade para o id).
-    // Para plugins externos, o caller tem de passar um manifesto compatível —
-    // aqui usamos o do catálogo se existir, para plugins internos.
-    const catalogEntry = PLUGIN_CATALOG.find((e) => e.id === params.id);
+    // Para plugins externos, o manifesto vem do ficheiro. Para plugins do
+    // catálogo, usa-se o manifesto do catálogo.
+    const manifest: PluginManifest | undefined =
+      params.manifest ??
+      (() => {
+        const catalogEntry = PLUGIN_CATALOG.find((e) => e.id === params.id);
+        return catalogEntry ? toManifest(catalogEntry) : undefined;
+      })();
 
-    if (catalogEntry) {
-      const manifest = toManifest(catalogEntry);
+    if (manifest) {
       const status = await verifySignedManifest({
         manifest,
         signature: params.signature,

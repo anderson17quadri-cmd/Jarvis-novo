@@ -89,3 +89,29 @@ export interface PluginManager {
   enable(id: PluginId): Promise<void>;
   disable(id: PluginId): Promise<void>;
 }
+
+/**
+ * Um pacote de plugin para instalação a partir de ficheiro local.
+ *
+ * É um ficheiro JSON com extensão `.jarvis-plugin`. Contém o manifesto
+ * assinado (manifesto + assinatura + chave pública do signatário), mais o
+ * código JavaScript que corre dentro da sandbox.
+ *
+ * A assinatura cobre só o `manifest` — o `code` não faz parte da assinatura
+ * porque não é serializado na forma canónica (pode conter caracteres que o
+ * `JSON.stringify` escape de forma diferente entre engines). Para plugins
+ * externos, a assinatura do manifesto é o suficiente para provar a
+ * identidade do autor; o código corre num iframe restrito e não pode fazer
+ * nada além do que o manifesto declara nas permissões.
+ */
+export interface PluginPackage {
+  readonly manifest: PluginManifest;
+  /** Assinatura Ed25519 (64 bytes raw) codificada em base64. */
+  readonly signature: string;
+  /** Chave pública do signatário (32 bytes raw) codificada em base64. */
+  readonly signerPublicKey: string;
+  /** Nome legível do signatário — para a interface, não para verificação. */
+  readonly signerName?: string;
+  /** Código JavaScript que corre dentro do iframe sandboxed. */
+  readonly code: string;
+}

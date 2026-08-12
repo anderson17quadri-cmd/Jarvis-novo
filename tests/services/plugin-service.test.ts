@@ -90,7 +90,7 @@ describe('PluginService', () => {
       expect(installed[id]?.installedAt).toBe(123);
     });
 
-    it('descarta um plugin que já não está no catálogo', async () => {
+    it('mantém um plugin que não está no catálogo (plugin externo)', async () => {
       const ghost: InstalledPlugin[] = [
         { id: 'plugin-que-ja-nao-existe', installedAt: 1, isEnabled: true },
       ];
@@ -98,7 +98,9 @@ describe('PluginService', () => {
 
       const { installed } = await service.load();
 
-      expect(installed['plugin-que-ja-nao-existe']).toBeUndefined();
+      // Plugins de ficheiro (externos) sobrevivem a recarregar — não são
+      // descartados só porque não estão no catálogo.
+      expect(installed['plugin-que-ja-nao-existe']).toBeDefined();
     });
 
     it('repõe os do sistema mesmo que o ficheiro não os inclua', async () => {
