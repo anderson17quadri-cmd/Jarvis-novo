@@ -1879,3 +1879,109 @@ testes de biometria em `adapters.test.ts`), `cargo check` limpo.
 SPEC.md atualizado (Parte 5): Windows Hello e sessão automática ✅ com a
 nota acima; chave física (FIDO2/WebAuthn) continua por fazer, não fazia
 parte deste lote.
+
+## 2026-08-12 — Automações em segundo plano + gatilhos do sistema (ficheiros, USB, bateria)
+
+PECA 2 do pedido nativo: fazer o motor de automações continuar a disparar com
+a janela minimizada para a bandeja, e acrescentar três gatilhos novos do
+sistema operativo.
+
+**Segundo plano (close-to-tray):** `on_window_event` com `CloseRequested` no
+`lib.rs` — `prevent_close()` + `window.hide()`. A janela esconde-se em vez de
+fechar, o WebView continua vivo, e os temporizadores do `automationService`
+(tique a cada 20s) continuam a correr. Sair a sério só pelo item "Sair" do
+menu da bandeja, que chama `app.exit(0)` e mata os processos filhos (PTY,
+voice-clone-service).
+
+**Três novos comandos Rust, três novos ficheiros:**
+
+1. **Ficheiros** (`src-tauri/src/commands/files.rs`): `watch_folder` e
+   `unwatch_folder` via crate `notify` v7. `FileWatchers` como estado gerido
+   (`Mutex<HashMap<String, Arc<AtomicBool>>>`) — um watcher por pasta, sem
+   duplicados (caminhos canonicalizados). Emite `automation://file-changed`
+   com caminho e tipo de evento (`created`/`modified`/`removed`).
+
+2. **USB** (`src-tauri/src/commands/usb.rs`): `list_usb_devices` via
+   `SetupDiGetClassDevsW` da crate `windows` v0.58. `UsbMonitor` com polling
+   de 5s — compara os dispositivos atuais com a lista conhecida, emite
+   `automation://usb-changed` com ação (`ligado`/`desligado`) e nome do
+   dispositivo. O primeiro ciclo de polling é suprimido (não dispara "ligado"
+   para tudo o que já estava ligado no arranque).
+
+3. **Bateria** (`src-tauri/src/commands/battery.rs`): `get_battery_status`
+   via crate `battery` v0.7. `BatteryMonitor` com polling de 30s, emite
+   `automation://battery-changed` com percentagem, estado (carregar/descarga)
+   e tempo restante.
+
+**Interface e tipos:**
+
+- `src/types/automation.ts`: três novas interfaces de gatilho — `FileTrigger`
+  (`kind: 'ficheiros'`, `folderPath`), `UsbTrigger` (`kind: 'usb'`, `action`),
+  `BatteryTrigger` (`kind: 'bateria'`, `direction`, `percent`). União
+  `AutomationTrigger` alargada. `describeTrigger()` cobre os três casos.
+- `src/types/platform.ts`: três capacidades novas — `fileWatcher`, `usbMonitor`,
+  `batteryMonitor` (todas `boolean`).
+- `src/platform/platform-adapter.ts` + `tauri-adapter-base.ts`: 6 métodos
+  novos — `watchFolder`, `unwatchFolder`, `getBatteryStatus`, `onFileChanged`,
+  `onUsbChanged`, `onBatteryChanged`. Desktop `true`, Web/Android `false`.
+- `src/services/automation-service.ts`: `checkNativeTriggers(kind, payload)`
+  casa eventos nativos contra as regras ativas e regista as execuções no
+  histórico de 60. `lastBatteryPercent` para detetar cruzamentos de limiar
+  (primeiro valor só estabelece a linha de base, sem falso disparo).
+- `src/apps/automations/AutomationEditor.tsx`: três novos templates de bloco
+  — "Alteração de ficheiro", "Dispositivo USB", "Nível da bateria" — com
+  ícones próprios (`FolderOpen`, `Usb`, `BatteryMedium`). `blockLabel()` e
+  o prompt de geração NL atualizados.
+- `src/App.tsx`: useEffect novo que subscreve os três eventos nativos e chama
+  `automationService.checkNativeTriggers()`, mais registo de `watchFolder` para
+  automações de ficheiros ativas no arranque.
+
+**Verificação:** `tsc --noEmit` limpo, `eslint` 0 erros, `vitest run` 95
+ficheiros / 1244 testes todos a passar, `cargo build` sem erros (só um warning
+de linker pré-existente). SPEC.md atualizado: "Execução em segundo plano" ✅,
+"Gatilhos do sistema" 🟡 (ficheiros ✅, USB ✅, bateria ✅, rede 🚫).
+
+## 2026-08-12 — Merge do lote de código nativo (Terminal + Cofre + Automações + Windows Hello)
+
+Fecha o primeiro lote inteiro: as quatro peças (Terminal e Windows Hello
+desta sessão; Cofre de segredos e Automações da DeepSeek) partilhavam os
+mesmos ficheiros centrais (`lib.rs`, `Cargo.toml`, `PlatformCapabilities`,
+os três adapters), por isso cada merge teve conflitos a sério, não só
+textuais.
+
+**Bug real encontrado a resolver, não só um conflito de texto:** o
+`Cargo.toml` tinha `windows` declarado duas vezes com versões diferentes
+— `0.58` (USB, da DeepSeek) num alvo, `0.62` (Windows Hello, desta
+sessão) noutro. As duas coexistiam sem erro no ficheiro, mas rebentavam a
+compilar: o Rust via duas crates chamadas `windows` para o mesmo alvo e
+recusava resolver `use windows::core::GUID` sem ambiguidade
+(`E0464: multiple candidates`). Unificado numa só declaração, versão
+0.62, com as features das duas peças juntas.
+
+**Corrigido de caminho, a mesma revisão:** `commands::usb` estava
+registado como `#[cfg(desktop)]` (qualquer desktop), mas o próprio
+ficheiro já usa `std::os::windows::ffi::OsStringExt` e
+`SetupDiGetClassDevsW` — nunca compilaria fora do Windows. O gate passou
+a `#[cfg(target_os = "windows")]`, a tornar explícito o que já era
+verdade, sem mudar nada do comportamento no Windows.
+
+**Cobertura reforçada durante o merge, não deixada para depois:** a peça
+de Automações trazia seis métodos novos no `PlatformAdapter`
+(`watchFolder`, `unwatchFolder`, `getBatteryStatus`, `onFileChanged`,
+`onUsbChanged`, `onBatteryChanged`) e o `checkNativeTriggers()` no
+`automationService`, sem um teste novo sequer — o "1244 testes" do
+commit original era só a suite antiga a continuar a passar, não prova
+nenhuma do código novo. Adicionados: bloco de graceful-degradation em
+`adapters.test.ts` (mesmo padrão do Terminal — nenhum adapter lança, Web
+nunca tenta IPC), e oito testes a sério em `automation-service.test.ts`
+para `checkNativeTriggers` — correspondência de pasta (com normalização
+de maiúsculas e barras), ação USB exata, e o caso mais subtil: o
+cruzamento de limiar da bateria não pode disparar na primeira leitura
+(não há "anterior" para comparar), tem de respeitar a direção
+(abaixo/acima), e não pode repetir enquanto o nível fica do mesmo lado.
+
+Confirmado depois de tudo resolvido: `tsc` limpo, `eslint` 0 erros,
+1279/1279 testes (96 ficheiros), `cargo check` limpo, `cargo test` com os
+6 testes de integração do cofre a continuar a passar a sério no
+Credential Manager, `npm run build` de produção com o `TerminalWindow`
+no seu próprio chunk.

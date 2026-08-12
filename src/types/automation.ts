@@ -45,7 +45,35 @@ export interface ManualTrigger {
   readonly kind: 'manual';
 }
 
-export type AutomationTrigger = TimeTrigger | IntervalTrigger | EventTrigger | ManualTrigger;
+/** Quando um ficheiro muda numa pasta observada (nativo). */
+export interface FileTrigger {
+  readonly kind: 'ficheiros';
+  /** Caminho absoluto da pasta a observar. */
+  readonly folderPath: string;
+}
+
+/** Quando um dispositivo USB é ligado ou desligado (nativo). */
+export interface UsbTrigger {
+  readonly kind: 'usb';
+  readonly action: 'ligado' | 'desligado';
+}
+
+/** Quando a bateria cruza um limiar (nativo). */
+export interface BatteryTrigger {
+  readonly kind: 'bateria';
+  readonly direction: 'abaixo' | 'acima';
+  /** Percentagem (0–100). */
+  readonly percent: number;
+}
+
+export type AutomationTrigger =
+  | TimeTrigger
+  | IntervalTrigger
+  | EventTrigger
+  | ManualTrigger
+  | FileTrigger
+  | UsbTrigger
+  | BatteryTrigger;
 
 // ── Condições ──────────────────────────────────────────────────────────────
 
@@ -172,6 +200,12 @@ export function describeTrigger(trigger: AutomationTrigger): string {
       return `Ao ${EVENT_LABELS[trigger.event].toLowerCase()}`;
     case 'manual':
       return 'Só quando pedir';
+    case 'ficheiros':
+      return `Quando algo muda em ${trigger.folderPath}`;
+    case 'usb':
+      return `Quando um dispositivo é ${trigger.action}`;
+    case 'bateria':
+      return `Quando a bateria ${trigger.direction === 'abaixo' ? 'desce abaixo' : 'sobe acima'} de ${trigger.percent}%`;
   }
 }
 

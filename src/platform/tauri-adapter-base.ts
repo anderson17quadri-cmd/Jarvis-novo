@@ -23,6 +23,11 @@ const STORE_FILE = 'jarvis.store.json';
 /** Evento emitido pelo Rust quando o atalho global dispara. */
 const GLOBAL_INVOKE_EVENT = 'jarvis://global-invoke';
 
+/** Eventos emitidos pelos monitores nativos de automação. */
+const BATTERY_EVENT = 'automation://battery-changed';
+const USB_EVENT = 'automation://usb-changed';
+const FILE_EVENT = 'automation://file-changed';
+
 /**
  * O que o desktop e o Android têm em comum: ambos correm dentro do Tauri e
  * partilham o IPC, o `store`, as notificações nativas e o `shell`.
@@ -178,6 +183,71 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     if (!this.capabilities.secretVault) return false;
     const result = await this.tryInvoke<null>('secret_delete', null, { key });
     return result !== null;
+  }
+
+  // ── Gatilhos nativos de automação ──────────────────────────────────────────
+
+  async watchFolder(path: string): Promise<string | null> {
+    if (!this.capabilities.fileWatcher) return null;
+    return this.tryInvoke<string>('watch_folder', null, { path });
+  }
+
+  async unwatchFolder(watchId: string): Promise<void> {
+    if (!this.capabilities.fileWatcher) return;
+    await this.tryInvoke('unwatch_folder', null, { watchId });
+  }
+
+  async getBatteryStatus(): Promise<{ percent: number; isCharging: boolean; isPlugged: boolean } | null> {
+    if (!this.capabilities.batteryMonitor) return null;
+    return this.tryInvoke<{ percent: number; isCharging: boolean; isPlugged: boolean }>(
+      'get_battery_status',
+      null,
+    );
+  }
+
+  async onFileChanged(
+    handler: (event: { path: string; watchId: string; changeKind: string }) => void,
+  ): Promise<() => void> {
+    if (!this.capabilities.fileWatcher) return () => undefined;
+    try {
+      const unlisten = await listen<{ path: string; watchId: string; changeKind: string }>(
+        FILE_EVENT,
+        (event) => handler(event.payload),
+      );
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
+  }
+
+  async onUsbChanged(
+    handler: (event: { action: string; deviceName: string | null }) => void,
+  ): Promise<() => void> {
+    if (!this.capabilities.usbMonitor) return () => undefined;
+    try {
+      const unlisten = await listen<{ action: string; deviceName: string | null }>(
+        USB_EVENT,
+        (event) => handler(event.payload),
+      );
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
+  }
+
+  async onBatteryChanged(
+    handler: (event: { percent: number; isCharging: boolean; isPlugged: boolean }) => void,
+  ): Promise<() => void> {
+    if (!this.capabilities.batteryMonitor) return () => undefined;
+    try {
+      const unlisten = await listen<{ percent: number; isCharging: boolean; isPlugged: boolean }>(
+        BATTERY_EVENT,
+        (event) => handler(event.payload),
+      );
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
   }
 
   // ── Janela nativa ────────────────────────────────────────────────────────

@@ -40,12 +40,22 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-process = "2"
 portable-pty = "0.9"
 keyring = "2"
+notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+battery = "0.7"
 
-# O Windows Hello (UserConsentVerifier) é uma API WinRT só do Windows — não
-# existe equivalente no Linux nem no macOS, por isso fica no seu próprio alvo
-# em vez de ir para o grupo "desktop" de cima.
+# O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
+# (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o
+# Windows Hello (Security_Credentials_UI, UserConsentVerifier) são só do
+# Windows — não existe equivalente no Linux nem no macOS. Uma versão só:
+# duas entradas com versões diferentes do mesmo crate (0.58 e 0.62)
+# coexistiam sem erro no Cargo.toml, mas rebentavam a compilar — o Rust via
+# duas crates chamadas `windows` para o mesmo alvo e não sabia qual usar
+# num `use windows::...` sem caminho completo.
 [target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.62", features = [
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_LibraryLoader",
   "Security_Credentials_UI",
   "Foundation",
 ] }

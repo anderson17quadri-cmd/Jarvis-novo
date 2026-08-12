@@ -32,6 +32,9 @@ export class AndroidAdapter extends TauriAdapterBase {
     // Sem shell de sistema exposto a aplicações isoladas.
     terminal: false,
     secretVault: false,
+    fileWatcher: false,
+    usbMonitor: false,
+    batteryMonitor: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

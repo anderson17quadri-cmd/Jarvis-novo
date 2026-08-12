@@ -26,5 +26,9 @@ export class DesktopAdapter extends TauriAdapterBase {
     // PTY a sério via `portable-pty` — só existe no desktop.
     terminal: true,
     secretVault: true,
+    // Gatilhos nativos para automações (Parte 13).
+    fileWatcher: true,
+    usbMonitor: true,
+    batteryMonitor: true,
   };
 }

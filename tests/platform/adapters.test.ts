@@ -35,6 +35,9 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'biometrics',
       'terminal',
       'secretVault',
+      'fileWatcher',
+      'usbMonitor',
+      'batteryMonitor',
     ] as const;
 
     for (const key of required) {
@@ -149,6 +152,44 @@ describe('biometria — nenhum adapter lança, e sem sensor cai para indisponív
   it('Android, sem Windows Hello ligado, também não tem biometria', async () => {
     const android: PlatformAdapter = new AndroidAdapter();
     await expect(android.checkBiometricAvailability()).resolves.toBe(false);
+  });
+});
+
+describe('gatilhos nativos de automação — nenhum adapter lança sem IPC real', () => {
+  it.each(adapters)('%s: observar uma pasta nunca lança', async (_name, adapter) => {
+    const watchId = await adapter.watchFolder('C:/pasta-qualquer');
+    expect(watchId === null || typeof watchId === 'string').toBe(true);
+  });
+
+  it.each(adapters)('%s: parar de observar uma pasta inexistente nunca lança', async (_name, adapter) => {
+    await expect(adapter.unwatchFolder('inexistente')).resolves.toBeUndefined();
+  });
+
+  it.each(adapters)('%s: ler a bateria nunca lança', async (_name, adapter) => {
+    const status = await adapter.getBatteryStatus();
+    expect(status === null || typeof status.percent === 'number').toBe(true);
+  });
+
+  it.each(adapters)(
+    '%s: subscrever ficheiros, USB e bateria devolve sempre uma função de cancelamento',
+    async (_name, adapter) => {
+      const unsubFile = await adapter.onFileChanged(() => undefined);
+      const unsubUsb = await adapter.onUsbChanged(() => undefined);
+      const unsubBattery = await adapter.onBatteryChanged(() => undefined);
+
+      expect(typeof unsubFile).toBe('function');
+      expect(typeof unsubUsb).toBe('function');
+      expect(typeof unsubBattery).toBe('function');
+      expect(() => unsubFile()).not.toThrow();
+      expect(() => unsubUsb()).not.toThrow();
+      expect(() => unsubBattery()).not.toThrow();
+    },
+  );
+
+  it('Web nunca observa pastas nem lê bateria (sem capability, sem tentar IPC)', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    await expect(web.watchFolder('C:/pasta')).resolves.toBeNull();
+    await expect(web.getBatteryStatus()).resolves.toBeNull();
   });
 });
 

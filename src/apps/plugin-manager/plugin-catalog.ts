@@ -516,6 +516,9 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   biometrics: 'biometria',
   terminal: 'terminal',
   secretVault: 'cofre de segredos',
+  fileWatcher: 'observador de pastas',
+  usbMonitor: 'monitor USB',
+  batteryMonitor: 'monitor de bateria',
 };
 
 /**

@@ -188,6 +188,50 @@ export function App(): React.JSX.Element {
     );
   }, [isDesktop, launch, setTheme, speak]);
 
+  /**
+   * Gatilhos nativos das automações (Parte 13).
+   *
+   * Liga os eventos que o Rust emite — ficheiros, USB, bateria — ao motor.
+   * Cada evento procura automações com o gatilho correspondente e dispara-as.
+   */
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const adapter = getPlatformAdapter();
+    const cleanups: (() => void)[] = [];
+
+    void (async () => {
+      cleanups.push(
+        await adapter.onFileChanged((event) => {
+          automationService.checkNativeTriggers('ficheiros', { filePath: event.path });
+        }),
+      );
+      cleanups.push(
+        await adapter.onUsbChanged((event) => {
+          automationService.checkNativeTriggers('usb', { usbAction: event.action });
+        }),
+      );
+      cleanups.push(
+        await adapter.onBatteryChanged((event) => {
+          automationService.checkNativeTriggers('bateria', { batteryPercent: event.percent });
+        }),
+      );
+
+      // Regista as pastas que as automações de ficheiros pedem para observar.
+      // A deduplicação é do lado Rust (FileWatchers) — chamar watch_folder
+      // para a mesma pasta duas vezes não cria duas threads.
+      for (const automation of automationService.list) {
+        if (automation.trigger.kind === 'ficheiros' && automation.isEnabled) {
+          await adapter.watchFolder(automation.trigger.folderPath);
+        }
+      }
+    })();
+
+    return () => {
+      for (const cleanup of cleanups) cleanup();
+    };
+  }, [isDesktop]);
+
   useEffect(() => {
     if (!isDesktop) return;
 

@@ -261,3 +261,99 @@ describe('exemplos', () => {
     }
   });
 });
+
+describe('gatilhos nativos (checkNativeTriggers)', () => {
+  it('ficheiros: dispara quando o caminho está dentro da pasta observada', () => {
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'ficheiros', folderPath: 'C:/Utilizadores/Anderson/Documentos' },
+      }),
+    );
+
+    service.checkNativeTriggers('ficheiros', {
+      filePath: 'C:/Utilizadores/Anderson/Documentos/nota.txt',
+    });
+
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('ficheiros: não dispara para um caminho fora da pasta observada', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'ficheiros', folderPath: 'C:/Documentos/Propostas' } }),
+    );
+
+    service.checkNativeTriggers('ficheiros', { filePath: 'C:/Documentos/Outra/ficheiro.txt' });
+
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('ficheiros: ignora maiúsculas e barras invertidas ao comparar', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'ficheiros', folderPath: 'C:/Documentos/Propostas' } }),
+    );
+
+    service.checkNativeTriggers('ficheiros', {
+      filePath: 'C:\\DOCUMENTOS\\Propostas\\orçamento.pdf',
+    });
+
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('usb: dispara só quando a ação corresponde (ligado vs desligado)', () => {
+    service.add(makeAutomation({ trigger: { kind: 'usb', action: 'ligado' } }));
+
+    service.checkNativeTriggers('usb', { usbAction: 'desligado' });
+    expect(executor.calls).toEqual([]);
+
+    service.checkNativeTriggers('usb', { usbAction: 'ligado' });
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('bateria: dispara ao cruzar o limiar por baixo, não antes de haver uma leitura anterior', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'bateria', direction: 'abaixo', percent: 20 } }),
+    );
+
+    // Primeira leitura: não há "anterior" para comparar, nunca dispara à
+    // primeira — senão uma bateria que já nasce a 15% disparava sem ter
+    // cruzado nada.
+    service.checkNativeTriggers('bateria', { batteryPercent: 15 });
+    expect(executor.calls).toEqual([]);
+
+    service.checkNativeTriggers('bateria', { batteryPercent: 25 });
+    expect(executor.calls).toEqual([]);
+
+    service.checkNativeTriggers('bateria', { batteryPercent: 18 });
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('bateria: dispara ao cruzar o limiar por cima', () => {
+    service.add(makeAutomation({ trigger: { kind: 'bateria', direction: 'acima', percent: 80 } }));
+
+    service.checkNativeTriggers('bateria', { batteryPercent: 70 });
+    service.checkNativeTriggers('bateria', { batteryPercent: 85 });
+
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('bateria: não dispara outra vez enquanto o nível se mantém do mesmo lado do limiar', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'bateria', direction: 'abaixo', percent: 20 } }),
+    );
+
+    service.checkNativeTriggers('bateria', { batteryPercent: 25 });
+    service.checkNativeTriggers('bateria', { batteryPercent: 18 });
+    service.checkNativeTriggers('bateria', { batteryPercent: 15 });
+
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('gatilhos de tipos diferentes não se confundem uns aos outros', () => {
+    service.add(makeAutomation({ trigger: { kind: 'usb', action: 'ligado' } }));
+
+    service.checkNativeTriggers('ficheiros', { filePath: 'C:/qualquer' });
+    service.checkNativeTriggers('bateria', { batteryPercent: 5 });
+
+    expect(executor.calls).toEqual([]);
+  });
+});
