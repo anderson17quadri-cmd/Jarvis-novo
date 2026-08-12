@@ -1,10 +1,12 @@
+import { useEffect } from 'react';
 import { Paperclip, Star } from 'lucide-react';
 
 import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
-import { useDataService } from '@/hooks/use-data-service';
+import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { formatTime } from '@/lib/format';
 import { mailService } from '@/services/mail/mail-service';
+import { useMailStore } from '@/stores/use-mail-store';
 import { MAIL_PRIORITY_LABELS } from '@/types/mail';
 
 /**
@@ -15,9 +17,23 @@ import { MAIL_PRIORITY_LABELS } from '@/types/mail';
  * com o servidor sem o widget mudar.
  */
 export default function MailWidget(): React.JSX.Element {
-  const { data, isLoading } = useDataService(mailService);
+  const snapshot = useMailStore((s) => s.snapshot);
+  const isLoadingStore = useMailStore((s) => s.isLoading);
+  const markRead = useMailStore((s) => s.markRead);
+  const isVisible = useIsVisible();
 
-  if (isLoading || !data) return <WidgetSkeleton />;
+  useEffect(() => {
+    const unsub = useMailStore.getState().hydrate();
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    mailService.setPaused(!isVisible);
+  }, [isVisible]);
+
+  const data = snapshot;
+
+  if (isLoadingStore || !data) return <WidgetSkeleton />;
   if (data.messages.length === 0) {
     return <WidgetEmpty message="A caixa de entrada está vazia." />;
   }
@@ -39,7 +55,7 @@ export default function MailWidget(): React.JSX.Element {
           <li key={message.id}>
             <button
               type="button"
-              onClick={() => void mailService.markRead(message.id, !message.isRead)}
+              onClick={() => void markRead(message.id, !message.isRead)}
               aria-label={`${message.isRead ? 'Marcar como não lida' : 'Marcar como lida'}: ${message.subject}`}
               className={cn(
                 'flex w-full items-start gap-2 rounded-lg border border-transparent p-2 text-left',

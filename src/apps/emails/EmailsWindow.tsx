@@ -17,10 +17,11 @@ import {
   type DraftAttachment,
 } from '@/platform/attachments';
 import { AttachmentList } from '@/components/attachments/AttachmentList';
-import { useDataService } from '@/hooks/use-data-service';
+import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { formatShortDate, formatTime } from '@/lib/format';
 import { mailService } from '@/services/mail/mail-service';
+import { useMailStore } from '@/stores/use-mail-store';
 import { MAIL_PRIORITY_LABELS, type MailFolder, type MailMessage } from '@/types/mail';
 import { normalizeSearch } from '@/utils/text';
 
@@ -36,14 +37,28 @@ import { normalizeSearch } from '@/utils/text';
  * duas colunas ilegíveis.
  */
 export default function EmailsWindow(): React.JSX.Element {
-  const { data, isLoading } = useDataService(mailService);
+  const snapshot = useMailStore((s) => s.snapshot);
+  const isLoadingStore = useMailStore((s) => s.isLoading);
+  const providerName = useMailStore((s) => s.providerName);
+  const markRead = useMailStore((s) => s.markRead);
+  const isVisible = useIsVisible();
+
+  useEffect(() => {
+    const unsub = useMailStore.getState().hydrate();
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    mailService.setPaused(!isVisible);
+  }, [isVisible]);
+
   const [folder, setFolder] = useState<MailFolder>('inbox');
   const [openId, setOpenId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [isComposing, setComposing] = useState(false);
 
   const messages = useMemo(() => {
-    const all = data?.messages ?? [];
+    const all = snapshot?.messages ?? [];
     const normalized = normalizeSearch(query);
 
     return all
@@ -56,11 +71,11 @@ export default function EmailsWindow(): React.JSX.Element {
             ),
       )
       .sort((a, b) => b.receivedAt - a.receivedAt);
-  }, [data, folder, query]);
+  }, [snapshot, folder, query]);
 
   const open = messages.find((message) => message.id === openId) ?? null;
 
-  if (isLoading) return <p className="text-desc text-t3">A ler a caixa de correio…</p>;
+  if (isLoadingStore) return <p className="text-desc text-t3">A ler a caixa de correio…</p>;
 
   if (isComposing) {
     return <Compose onClose={() => setComposing(false)} />;
@@ -91,7 +106,7 @@ export default function EmailsWindow(): React.JSX.Element {
           onClick={() => setFolder('inbox')}
           icon={Inbox}
           label="Entrada"
-          count={data?.unreadCount ?? 0}
+          count={snapshot?.unreadCount ?? 0}
         />
         <FolderTab
           isActive={folder === 'sent'}
@@ -136,7 +151,7 @@ export default function EmailsWindow(): React.JSX.Element {
                 type="button"
                 onClick={() => {
                   setOpenId(message.id);
-                  if (!message.isRead) void mailService.markRead(message.id);
+                  if (!message.isRead) void markRead(message.id);
                 }}
                 className="flex min-w-0 flex-1 items-start gap-2 text-left"
               >
@@ -188,7 +203,7 @@ export default function EmailsWindow(): React.JSX.Element {
       </ul>
 
       <p className="flex-shrink-0 text-cap text-t3">
-        Caixa simulada — {mailService.providerName}. Um provedor real entra sem esta janela mudar.
+        Caixa simulada — {providerName}. Um provedor real entra sem esta janela mudar.
       </p>
     </div>
   );
@@ -238,7 +253,9 @@ function Reading({
           <span
             className={cn(
               'rounded-full px-1.5 py-px text-[10px]',
-              message.priority === 'acao' ? 'bg-warn/[.12] text-warn' : 'bg-accent/[.1] text-accent',
+              message.priority === 'acao'
+                ? 'bg-warn/[.12] text-warn'
+                : 'bg-accent/[.1] text-accent',
             )}
           >
             {MAIL_PRIORITY_LABELS[message.priority]}
@@ -445,10 +462,12 @@ function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Eleme
 }
 
 function StarButton({ message }: { readonly message: MailMessage }): React.JSX.Element {
+  const toggleStar = useMailStore((s) => s.toggleStar);
+
   return (
     <button
       type="button"
-      onClick={() => void mailService.toggleStar(message.id)}
+      onClick={() => void toggleStar(message.id)}
       aria-label={message.isStarred ? 'Retirar dos favoritos' : 'Marcar como favorito'}
       aria-pressed={message.isStarred}
       className="rounded p-0.5 transition-colors duration-hover hover:text-accent"

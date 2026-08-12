@@ -1,23 +1,43 @@
+import { useEffect } from 'react';
+
 import { WidgetEmpty } from '@/components/widgets/WidgetStates';
-import { AGENDA, currentEntry, minutesUntil, nextEntry } from '@/data/agenda';
 import { useClock } from '@/hooks/use-clock';
+import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
+import { currentEntry, minutesUntil, nextEntry } from '@/lib/agenda';
+import { calendarService } from '@/services/calendar/calendar-service';
+import { useCalendarStore } from '@/stores/use-calendar-store';
 
 /**
  * Calendário (Parte 6.2 §Widgets previstos).
  *
  * O que está a decorrer, ou quanto falta para o próximo, e o resto do dia por
- * baixo. Lê a mesma agenda que a janela — quando ela vier de um provedor real,
- * os dois mudam ao mesmo tempo.
+ * baixo. Os dados vêm do `CalendarService` via `useCalendarStore` — o widget
+ * não importa `@/data/agenda` diretamente.
  */
 export default function CalendarWidget(): React.JSX.Element {
   const now = useClock();
+  const snapshot = useCalendarStore((s) => s.snapshot);
+  const isLoading = useCalendarStore((s) => s.isLoading);
+  const isVisible = useIsVisible();
 
-  const current = currentEntry(now);
-  const next = nextEntry(now);
-  const upcoming = AGENDA.filter((entry) => entry.id !== current?.id);
+  useEffect(() => {
+    const unsub = useCalendarStore.getState().hydrate();
+    return unsub;
+  }, []);
 
-  if (AGENDA.length === 0) return <WidgetEmpty message="Nada agendado para hoje." />;
+  useEffect(() => {
+    calendarService.setPaused(!isVisible);
+  }, [isVisible]);
+
+  if (isLoading || !snapshot) return <WidgetEmpty message="A ler a agenda…" />;
+
+  const entries = snapshot.entries;
+  const current = currentEntry(now, entries);
+  const next = nextEntry(now, entries);
+  const upcoming = entries.filter((entry) => entry.id !== current?.id);
+
+  if (entries.length === 0) return <WidgetEmpty message="Nada agendado para hoje." />;
 
   return (
     <div className="flex h-full flex-col">
@@ -69,7 +89,9 @@ export default function CalendarWidget(): React.JSX.Element {
         })}
       </ul>
 
-      <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Agenda simulada</p>
+      {snapshot.isSimulated && (
+        <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Agenda simulada</p>
+      )}
     </div>
   );
 }

@@ -1,18 +1,29 @@
-import { AGENDA, currentEntry } from '@/data/agenda';
+import { useEffect } from 'react';
+
 import { useClock } from '@/hooks/use-clock';
 import { cn } from '@/lib/cn';
 import { formatLongDate } from '@/lib/format';
+import { currentEntry } from '@/lib/agenda';
+import { useCalendarStore } from '@/stores/use-calendar-store';
 
 export default function CalendarWindow(): React.JSX.Element {
   const now = useClock();
-  const current = currentEntry(now);
+  const snapshot = useCalendarStore((s) => s.snapshot);
+
+  useEffect(() => {
+    const unsub = useCalendarStore.getState().hydrate();
+    return unsub;
+  }, []);
+
+  const entries = snapshot?.entries ?? [];
+  const current = currentEntry(now, entries);
 
   return (
     <div>
       <p className="t-label mb-3">{formatLongDate(now)}</p>
 
       <ul>
-        {AGENDA.map((entry) => (
+        {entries.map((entry) => (
           <li
             key={entry.id}
             className="flex gap-3 border-b border-line py-[11px] last:border-b-0"

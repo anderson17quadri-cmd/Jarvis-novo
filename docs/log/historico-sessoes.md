@@ -1162,3 +1162,32 @@ alterações não commitadas encontradas na mesma árvore de trabalho, de
 outra tarefa.
 
 Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.
+
+## 2026-08-12 — Fase 2: Calendar, News e Email desacoplados (serviço + store)
+
+Pedido: completar o desacoplamento dos serviços que faltavam na Fase 2
+(SPEC.md Parte 3, linha 244), usando o padrão `theme-service.ts`/
+`use-theme-store.ts`. Três peças, uma de cada vez.
+
+**Calendar** (a peça maior — não tinha serviço nem store):
+- Tipos movidos de `@/data/agenda` para `src/types/calendar.ts` (`AgendaEntry` + `CalendarSnapshot`).
+- `src/services/calendar/providers/calendar-provider.ts` — interface `CalendarProvider` + `MockCalendarProvider` com os mesmos dados de exemplo.
+- `src/services/calendar/calendar-service.ts` — herda de `PollingDataService<CalendarSnapshot>`, intervalo de 1h.
+- `src/stores/use-calendar-store.ts` — mesmo padrão das stores de Mail/News.
+- Funções puras (`minutesOf`, `currentEntry`, `nextEntry`, `minutesUntil`) extraídas para `src/lib/agenda.ts` — sem dependência de serviço nem store.
+- `CalendarWidget.tsx` e `CalendarWindow.tsx` refatorizados para usar a store + funções puras, em vez de `@/data/agenda` diretamente.
+- `@/data/agenda.ts` mantido como re-exportação com wrappers para compatibilidade — os 12 testes da agenda continuam a passar.
+
+**News** (a store já existia, mas o widget não a usava):
+- `NewsWidget.tsx` migrou de `useDataService(newsService)` para `useNewsStore` (snapshot, isLoading, markRead, toggleFavorite, hydrate).
+- Mantém `newsService.setPaused()` direto — mesmo padrão do MailWidget.
+
+**Email** (o mais usado — cuidado redobrado):
+- `useMailStore` ganhou `providerName` (o `EmailsWindow` usava `mailService.providerName` diretamente no rodapé).
+- `EmailsWindow.tsx` migrou de `useDataService(mailService)` para `useMailStore` — estado, ações (`markRead`, `toggleStar`), hydrate, e setPaused.
+- `StarButton` passou a usar `useMailStore.toggleStar` em vez de `mailService.toggleStar`.
+- `CommandPalette.tsx` migrou de `useDataService(mailService)`/`useDataService(newsService)` para `useMailStore`/`useNewsStore` com hydrate na montagem.
+
+**SPEC.md atualizado:** 13/14 serviços desacoplados (faltam Search, Device, Plugin), 13/18 stores separadas. `useDataService` continua a servir o `MusicWidget` (único consumidor restante).
+
+Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.

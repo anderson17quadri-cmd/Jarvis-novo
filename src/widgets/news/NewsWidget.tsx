@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ExternalLink, Star } from 'lucide-react';
 
 import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
-import { useDataService } from '@/hooks/use-data-service';
+import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
 import { newsService } from '@/services/news/news-service';
+import { useNewsStore } from '@/stores/use-news-store';
 import { NEWS_CATEGORY_LABELS, type NewsCategory } from '@/types/news';
 
 type Filter = NewsCategory | 'todas';
@@ -24,20 +25,33 @@ function relativeTime(timestamp: number): string {
 /**
  * Notícias (Parte 6.2 §Widgets previstos).
  *
- * Categorias, favoritos e leitura rápida. Abrir um artigo passa pelo
- * `PlatformAdapter.openExternal`, que só aceita `https:` — o widget nunca abre
- * um endereço diretamente.
+ * Categorias, favoritos e leitura rápida. Os dados vêm do `NewsService` via
+ * `useNewsStore` — o widget não importa o serviço para estado nem ações, só
+ * para `setPaused`.
  */
 export default function NewsWidget(): React.JSX.Element {
-  const { data, isLoading } = useDataService(newsService);
+  const snapshot = useNewsStore((s) => s.snapshot);
+  const isLoadingStore = useNewsStore((s) => s.isLoading);
+  const markRead = useNewsStore((s) => s.markRead);
+  const toggleFavorite = useNewsStore((s) => s.toggleFavorite);
   const [filter, setFilter] = useState<Filter>('todas');
+  const isVisible = useIsVisible();
 
-  if (isLoading || !data) return <WidgetSkeleton />;
+  useEffect(() => {
+    const unsub = useNewsStore.getState().hydrate();
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    newsService.setPaused(!isVisible);
+  }, [isVisible]);
+
+  if (isLoadingStore || !snapshot) return <WidgetSkeleton />;
 
   const articles =
     filter === 'todas'
-      ? data.articles
-      : data.articles.filter((article) => article.category === filter);
+      ? snapshot.articles
+      : snapshot.articles.filter((article) => article.category === filter);
 
   return (
     <div className="flex h-full flex-col">
@@ -76,7 +90,7 @@ export default function NewsWidget(): React.JSX.Element {
               <div className="flex items-start gap-2">
                 <button
                   type="button"
-                  onClick={() => void newsService.toggleFavorite(article.id)}
+                  onClick={() => void toggleFavorite(article.id)}
                   aria-label={
                     article.isFavorite
                       ? `Remover dos favoritos: ${article.title}`
@@ -103,7 +117,7 @@ export default function NewsWidget(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => {
-                    void newsService.markRead(article.id);
+                    void markRead(article.id);
                     void getPlatformAdapter().openExternal(article.url);
                   }}
                   aria-label={`Abrir: ${article.title}`}
@@ -117,7 +131,7 @@ export default function NewsWidget(): React.JSX.Element {
         </ul>
       )}
 
-      {data.isSimulated && (
+      {snapshot.isSimulated && (
         <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Notícias simuladas</p>
       )}
     </div>

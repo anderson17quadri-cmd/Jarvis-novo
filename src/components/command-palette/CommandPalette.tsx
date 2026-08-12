@@ -4,10 +4,9 @@ import { Search } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { useShallow } from 'zustand/react/shallow';
 
-import { useDataService } from '@/hooks/use-data-service';
-import { mailService } from '@/services/mail/mail-service';
-import { newsService } from '@/services/news/news-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
+import { useNewsStore } from '@/stores/use-news-store';
+import { useMailStore } from '@/stores/use-mail-store';
 import { useCustomThemeStore } from '@/stores/use-custom-theme-store';
 import { useWorkspaceStore } from '@/stores/use-workspace-store';
 import { buildCommands, filterCommands, type CommandActions } from './command-registry';
@@ -42,10 +41,19 @@ export function CommandPalette({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // O conteúdo pesquisável vem dos serviços, e muda a cada sondagem.
-  const { data: mailbox } = useDataService(mailService);
-  const { data: feed } = useDataService(newsService);
+  // O conteúdo pesquisável vem das stores, e muda a cada sondagem.
+  const mailbox = useMailStore((s) => s.snapshot);
+  const feed = useNewsStore((s) => s.snapshot);
   const notifications = useNotificationStore(useShallow((state) => state.notifications));
+
+  useEffect(() => {
+    const unsubMail = useMailStore.getState().hydrate();
+    const unsubNews = useNewsStore.getState().hydrate();
+    return () => {
+      unsubMail();
+      unsubNews();
+    };
+  }, []);
 
   const layouts = useWorkspaceStore((state) => state.layouts);
   const customThemes = useCustomThemeStore((state) => state.themes);
