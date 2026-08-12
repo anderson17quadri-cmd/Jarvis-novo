@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 
-import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
-import { storageService, STORAGE_KEYS } from '@/services/storage-service';
+import { pluginService } from '@/services/plugin-service';
 
 /**
  * Estado da loja de plugins.
@@ -16,6 +15,10 @@ import { storageService, STORAGE_KEYS } from '@/services/storage-service';
  * Guardar apenas o `id` e não o objeto do catálogo é intencional: assim, um
  * plugin que mude de versão ou de descrição entre versões do sistema é lido do
  * catálogo atual, e não de uma cópia velha em disco.
+ *
+ * A lógica de catálogo e persistência vive em `PluginService`
+ * (`services/plugin-service.ts`) — esta store é só a camada reativa:
+ * estado + eventos + auditoria.
  */
 
 export interface InstalledPlugin {
@@ -46,20 +49,8 @@ interface PluginState {
   hydrate: () => Promise<void>;
 }
 
-/** Os que vêm com o sistema: já instalados, ativos, e não se removem. */
-function builtInState(): Record<string, InstalledPlugin> {
-  const state: Record<string, InstalledPlugin> = {};
-
-  for (const entry of PLUGIN_CATALOG) {
-    if (!entry.isBuiltIn) continue;
-    state[entry.id] = { id: entry.id, installedAt: 0, isEnabled: true };
-  }
-
-  return state;
-}
-
 export const usePluginStore = create<PluginState>((set, get) => ({
-  installed: builtInState(),
+  installed: pluginService.getBuiltInState(),
   deniedPermissions: {},
 
   install: (id) =>
@@ -79,10 +70,9 @@ export const usePluginStore = create<PluginState>((set, get) => ({
 
   uninstall: (id) =>
     set((state) => {
-      // Os do sistema não se removem: a regra vive aqui e não no botão, para
-      // não depender de a interface se lembrar de a aplicar.
-      const entry = PLUGIN_CATALOG.find((candidate) => candidate.id === id);
-      if (entry?.isBuiltIn) return state;
+      // Os do sistema não se removem: a regra vive aqui (não no serviço) para
+      // ficar ao lado do resto das validações de estado visíveis à interface.
+      if (pluginService.isBuiltIn(id)) return state;
 
       const { [id]: removed, ...rest } = state.installed;
       if (!removed) return state;
@@ -122,32 +112,11 @@ export const usePluginStore = create<PluginState>((set, get) => ({
   },
 
   persist: async () => {
-    await storageService.set(STORAGE_KEYS.plugins, {
-      installed: Object.values(get().installed),
-      deniedPermissions: get().deniedPermissions,
-    });
+    await pluginService.save(get().installed, get().deniedPermissions);
   },
 
   hydrate: async () => {
-    const raw = await storageService.get<
-      InstalledPlugin[] | { installed: InstalledPlugin[]; deniedPermissions: Record<string, string[]> }
-    >(STORAGE_KEYS.plugins, []);
-
-    // O formato antigo era só a lista. Ler os dois evita que quem já tinha
-    // plugins instalados os perca ao atualizar.
-    const saved = Array.isArray(raw) ? raw : raw.installed;
-    const deniedPermissions = Array.isArray(raw) ? {} : raw.deniedPermissions;
-
-    // Um plugin guardado que já não exista no catálogo é descartado — acontece
-    // quando um plugin sai da loja, e sem isto ficaria instalado e invisível.
-    const known = new Set(PLUGIN_CATALOG.map((entry) => entry.id));
-    const installed = builtInState();
-
-    for (const entry of saved) {
-      if (!known.has(entry.id)) continue;
-      installed[entry.id] = entry;
-    }
-
+    const { installed, deniedPermissions } = await pluginService.load();
     set({ installed, deniedPermissions });
   },
 }));

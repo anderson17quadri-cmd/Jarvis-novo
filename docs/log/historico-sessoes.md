@@ -1334,3 +1334,59 @@ correto. SPEC.md atualizado para "16 das 26", com o detalhe das que são
 estado local legítimo e não precisam de serviço.
 
 Confirmado: `tsc` limpo, `eslint` 0 erros (só se alterou o SPEC.md).
+
+## 2026-08-12 — Fase 2: Plugin desacoplado (serviço + store), último da lista
+
+A Qwen ficou sem cota a meio de começar esta peça (a última da lista dela) —
+a entrada acima documenta-o. Esta peça passou para a DeepSeek.
+
+O `use-plugin-store.ts` ainda misturava lógica de negócio diretamente na
+store: lia o `PLUGIN_CATALOG` para construír o estado inicial (`builtInState`),
+chamava `storageService` diretamente em `persist()`/`hydrate()`, e filtrava
+entradas removidas do catálogo com um `Set` percorrido à mão. Não havia
+serviço nenhum — era o único dos 17 serviços da Fase 2 que faltava.
+
+**PluginService** (`src/services/plugin-service.ts`) — classe pura, sem React
+nem Zustand:
+- `getBuiltInState()` — lê o catálogo e devolve o estado dos plugins do sistema
+- `existsInCatalog(id)` / `isBuiltIn(id)` — validações contra o catálogo
+- `load()` — lê do armazenamento, filtra os que saíram do catálogo, junta com
+  os built-in, trata o formato antigo (só a lista) e o novo
+  (installed + deniedPermissions)
+- `save()` — persiste o estado completo
+
+A **usePluginStore** ficou só com a camada reativa: estado Zustand, eventos no
+barramento (`eventBus.emit`), registo de auditoria (`logService.audit`), e as
+funções selectoras (`selectIsInstalled`, `selectPermissionDenied`,
+`selectInstalledCount`) — o mesmo padrão do `ThemeService`/`useThemeStore` e de
+todos os outros.
+
+**14 testes novos** em `tests/services/plugin-service.test.ts` cobrem o
+serviço isolado (built-in, catálogo, load/save, formato antigo, permissões).
+Os 7 testes existentes da store continuam a passar sem uma linha alterada.
+
+**Fase 2 concluída.** Com esta peça, os 17 serviços desacoplados estão feitos e
+as 17 stores que precisam de serviço seguem o padrão. As outras 9 stores são
+estado local puro — a auditoria da sessão anterior já o confirmou. Não há mais
+trabalho real de migração pendente dentro do que está autorizado (nunca
+Executar Voz, Ler Memória ou Guardar Preferências sem perguntar; nunca Fase 3
+além da 3.1; nunca o Terminal; nunca carregamento real de plugins remotos nem
+execução de código de plugins).
+
+**Resumo do que ficou feito esta noite (DeepSeek + Qwen):**
+- Calendar, News, Email, Music, Search, Device e Plugin — 7 serviços
+  desacoplados, todos no mesmo padrão.
+- Migração do Vitest para v4.1.10 concluída (causa raiz encontrada:
+  `restoreMocks: true`), 0 vulnerabilidades no `npm audit`.
+- Auditoria às 26 stores (correção da contagem no SPEC.md).
+
+**O que falta a sério (fora do âmbito desta Fase 2):**
+- Fase 3.2–3.5 (controlo direto nativo)
+- Terminal (fora de âmbito por decisão)
+- Wake word e modo contínuo de escuta (decisão de privacidade por tomar)
+- Executar Voz / Ler Memória / Guardar Preferências na API do Core para
+  plugins (por autorizar)
+- Marketplace real (decisões de negócio por tomar, ver
+  `docs/spec/plugins-marketplace.md`)
+
+Confirmado: `tsc` limpo, `eslint` 0 erros, 1231/1231 testes (95 ficheiros).
