@@ -22,5 +22,6 @@ export class DesktopAdapter extends TauriAdapterBase {
     biometrics: false,
     // PTY a sério via `portable-pty` — só existe no desktop.
     terminal: true,
+    secretVault: true,
   };
 }

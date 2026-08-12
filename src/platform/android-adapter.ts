@@ -31,6 +31,7 @@ export class AndroidAdapter extends TauriAdapterBase {
     biometrics: false,
     // Sem shell de sistema exposto a aplicações isoladas.
     terminal: false,
+    secretVault: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

@@ -161,6 +161,25 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     }
   }
 
+  // ── Cofre de segredos ────────────────────────────────────────────────────
+
+  async secretSet(key: string, value: string): Promise<boolean> {
+    if (!this.capabilities.secretVault) return false;
+    const result = await this.tryInvoke<null>('secret_set', null, { key, value });
+    return result !== null;
+  }
+
+  async secretGet(key: string): Promise<string | null> {
+    if (!this.capabilities.secretVault) return null;
+    return this.tryInvoke<string | null>('secret_get', null, { key });
+  }
+
+  async secretDelete(key: string): Promise<boolean> {
+    if (!this.capabilities.secretVault) return false;
+    const result = await this.tryInvoke<null>('secret_delete', null, { key });
+    return result !== null;
+  }
+
   // ── Janela nativa ────────────────────────────────────────────────────────
 
   async minimizeWindow(): Promise<void> {

@@ -515,6 +515,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   voice: 'voz',
   biometrics: 'biometria',
   terminal: 'terminal',
+  secretVault: 'cofre de segredos',
 };
 
 /**

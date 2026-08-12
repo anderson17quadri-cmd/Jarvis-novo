@@ -34,6 +34,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'voice',
       'biometrics',
       'terminal',
+      'secretVault',
     ] as const;
 
     for (const key of required) {

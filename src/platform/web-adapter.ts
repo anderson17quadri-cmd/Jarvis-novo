@@ -34,6 +34,7 @@ export class WebAdapter implements PlatformAdapter {
     // não passaria por real — a janela fica escondida, como o resto do que o
     // browser não sabe fazer.
     terminal: false,
+    secretVault: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -102,6 +103,22 @@ export class WebAdapter implements PlatformAdapter {
 
   async sendNativeNotification(): Promise<boolean> {
     // Sem notificações nativas: quem chama cai no sistema de toasts interno.
+    return false;
+  }
+
+  // ── Cofre de segredos ────────────────────────────────────────────────────
+
+  async secretSet(): Promise<boolean> {
+    // No browser, nunca se guarda em texto simples. Recusa-se com elegância —
+    // quem chama já sabe que não há cofre, não precisa de erro nenhum.
+    return false;
+  }
+
+  async secretGet(): Promise<string | null> {
+    return null;
+  }
+
+  async secretDelete(): Promise<boolean> {
     return false;
   }
 

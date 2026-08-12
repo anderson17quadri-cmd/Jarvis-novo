@@ -31,12 +31,14 @@ pub fn run() {
         // O monitor de sistema é estado partilhado: o `sysinfo::System` precisa
         // de duas leituras para calcular a percentagem de CPU, por isso tem de
         // sobreviver entre chamadas em vez de ser criado a cada comando.
-        .manage(SystemMonitor::new())
-        .invoke_handler(tauri::generate_handler![
-            commands::system::get_system_snapshot,
-            commands::system::get_static_system_info,
-            commands::system::get_top_processes,
-        ]);
+        .manage(SystemMonitor::new());
+
+    #[cfg(not(desktop))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        commands::system::get_system_snapshot,
+        commands::system::get_static_system_info,
+        commands::system::get_top_processes,
+    ]);
 
     #[cfg(desktop)]
     let builder = builder
@@ -44,11 +46,11 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
-        // O Terminal só existe no desktop — sem isto, `generate_handler!`
-        // teria de referenciar comandos que não compilam no Android. Chamar
-        // `invoke_handler` outra vez substitui o anterior (não acumula), por
-        // isso esta lista repete os três comandos base e acrescenta os
-        // quatro do terminal.
+        // O Terminal e o cofre de segredos só existem no desktop — sem isto,
+        // `generate_handler!` teria de referenciar comandos que não compilam
+        // no Android. Só há UM `invoke_handler` por ramo: chamá-lo outra vez
+        // substitui o anterior em vez de acumular, por isso esta lista já
+        // inclui os três comandos base mais os do terminal e os do cofre.
         .invoke_handler(tauri::generate_handler![
             commands::system::get_system_snapshot,
             commands::system::get_static_system_info,
@@ -57,6 +59,9 @@ pub fn run() {
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,
             commands::terminal::terminal_kill,
+            commands::secrets::secret_set,
+            commands::secrets::secret_get,
+            commands::secrets::secret_delete,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

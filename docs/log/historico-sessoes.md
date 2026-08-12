@@ -1507,6 +1507,43 @@ cobertura de testes, não números a inflar.
 
 ---
 
+## 2026-08-12 — Cofre de segredos: decisão keyring vs tauri-plugin-stronghold
+
+Pedido: avaliar as duas opções para guardar chaves de API no cofre do sistema,
+documentar a comparação e a escolha antes de avançar com a implementação.
+
+**`keyring` (crate Rust, v3):**
+- Acede diretamente ao Windows Credential Manager (e Keychain no macOS, Secret
+  Service no Linux).
+- API simples: `Entry::new(serviço, chave)` → `get_password()` /
+  `set_password()` / `delete_password()`.
+- Os segredos ficam onde o sistema operativo os guarda — o Gestor de
+  Credenciais do Windows mostra-os no Painel de Controlo, o `cmdkey /list`
+  lista-os, e o utilizador pode geri-los por fora da aplicação.
+- Leve: só chama as APIs do sistema, sem ficheiro de cofre próprio, sem
+  snapshots, sem dependências pesadas.
+- Não funciona em Android (não é erro — a mesma regra de outros comandos
+  nativos).
+
+**`tauri-plugin-stronghold` (plugin oficial Tauri, v2.3.1):**
+- Cria um ficheiro encriptado próprio (motor IOTA Stronghold), sem integração
+  com o chaveiro do sistema operativo.
+- API mais complexa — snapshots, persistência de estado do cofre, password
+  de desbloqueio.
+- Cross-platform (inclui Android), mas os segredos vivem num ficheiro à
+  parte, não no sítio onde o utilizador espera encontrá-los.
+- Dependências adicionais: `rust-argon2`, `rand_chacha`, `rand_core`.
+
+**Escolha: `keyring`.** O pedido diz "Credential Manager a sério" — e é
+exatamente isso que o `keyring` entrega: a chave fica no Windows Credential
+Manager, visível no Painel de Controlo, gerida pelo sistema operativo. O
+Stronghold é um cofre à parte, encriptado e portátil, mas não é o chaveiro
+do sistema — guarda os segredos noutro sítio, noutro formato, e o
+utilizador não os vê nas ferramentas do Windows. Para Android (onde o
+keyring não compila), os comandos ficam atrás de `#[cfg(desktop)]` e o
+`AndroidAdapter` herda o fallback do `TauriAdapterBase` — mesmo padrão de
+`processList` e de outras capacidades que não existem no móvel.
+
 ## 2026-08-12 — Revisão de qualidade da Fase 2 concluída
 
 Pediu-se uma auditoria às sete peças da Fase 2 (SPEC.md Parte 3) depois da
@@ -1683,3 +1720,87 @@ passa a "Feito"). Confirmado: `tsc` limpo, `eslint` 0 erros, 1244/1244
 testes (12 novos, cobrindo os quatro métodos novos do `PlatformAdapter`
 nos três adapters), `cargo check` e a compilação completa do `tauri dev`
 sem avisos.
+
+## 2026-08-12 — Cofre de segredos: implementação completa e verificada ao vivo
+
+Pedido: implementar o cofre de segredos — mover as chaves de API do
+armazenamento local (texto simples) para o Windows Credential Manager.
+Duas peças no pedido: esta (Cofre de segredos) e Automações em segundo
+plano (a seguir).
+
+**Decisão documentada** na sessão anterior: `keyring` (crate Rust v2.3.3)
+vs `tauri-plugin-stronghold` — ver entrada de 2026-08-12 acima. A escolha
+foi `keyring` por integrar diretamente com o Gestor de Credenciais do
+Windows, sem ficheiro de cofre próprio.
+
+**Implementação:**
+
+1. **`src-tauri/Cargo.toml`:** `keyring = "2"` adicionado sob
+   `[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]`.
+   Tentou-se primeiro a v3, mas não tem `delete_password()` — a v2 tem.
+
+2. **`src-tauri/src/commands/secrets.rs`** (novo): três comandos Tauri —
+   `secret_set(key, value)`, `secret_get(key) → Option<String>`,
+   `secret_delete(key)`. Usam `keyring::Entry::new("jarvis-ai-os", &key)`.
+   Todos embrulham erros em `Error::SystemRead`. `secret_get` devolve
+   `Ok(None)` quando a entrada não existe (não é erro), e
+   `secret_delete` é idempotente (apagar o que não existe também dá Ok).
+
+3. **`src-tauri/src/commands/mod.rs`:** `#[cfg(desktop)] pub mod secrets;`
+
+4. **`src-tauri/src/lib.rs`:** dois blocos `invoke_handler` com
+   `#[cfg(desktop)]`/`#[cfg(not(desktop))]` — o de desktop regista
+   `secrets::secret_set/get/delete`; o outro não.
+
+5. **`PlatformAdapter`:** três métodos novos — `secretSet()`,
+   `secretGet()`, `secretDelete()`. `TauriAdapterBase` implementa-os com
+   `tryInvoke` e a capability `secretVault`. `DesktopAdapter`:
+   `secretVault: true`. `WebAdapter` e `AndroidAdapter`:
+   `secretVault: false` com fallback (`false`/`null`/`false`).
+
+6. **`use-ai-settings-store.ts` (reescrito):** `semSegredos()` filtra
+   `apiKey` e `claudeApiKey` do objeto antes de guardar no storage.
+   `persist()`: com cofre → definições sem chaves no storage + chaves no
+   cofre; sem cofre → tudo no storage (comportamento de sempre).
+   `hydrate()`: com cofre → lê do cofre, com migração automática na
+   primeira abertura (marcador `jarvis-migrated` no próprio cofre para não
+   correr mais do que uma vez); sem cofre → lê do storage.
+
+7. **`AiSettings.tsx`:** as duas frases de aviso mudaram de "não é um
+   cofre" para "fica guardada no cofre do sistema — o Gestor de
+   Credenciais do Windows — e não sai nas cópias de segurança". O rótulo
+   "Chave guardada" passou a "Chave guardada no cofre".
+
+8. **Cópias de segurança:** confirmado que a exclusão das chaves continua —
+   `SECRET_FIELDS` em `backup.ts` já apagava `apiKey`/`claudeApiKey`, e
+   agora as chaves nem sequer estão no storage para serem lidas.
+
+9. **Testes de integração Rust ao vivo** (`src-tauri/tests/cofre-integration.rs`,
+   novo): 6 testes contra o Windows Credential Manager real — escrever, ler,
+   apagar, caracteres especiais, chave inexistente, e o fluxo completo com
+   o serviço de produção (`jarvis-ai-os`). **6/6 passam.**
+
+**Verificação ao vivo no Windows:**
+- `cargo build`: compilou sem erros (keyring v2.3.3 + Tauri v2.11.5).
+- `cargo test --test cofre-integration`: 6/6 testes passam contra o
+  Credential Manager real desta máquina.
+- `cmdkey /list` confirmou que o cofre está acessível e sem resíduos
+  dos testes (cada teste limpa o que escreve).
+- O fluxo real com `SERVICE_NAME = "jarvis-ai-os"` foi testado: escrever
+  `sk-producao-teste-12345678`, ler de volta, apagar, confirmar que já
+  não está lá — tudo Ok.
+
+**O que não se conseguiu confirmar ao vivo:**
+- A interação pela interface gráfica (guardar uma chave na UI da app,
+  fechar, reabrir) — o terminal não tem acesso ao WebView para clicar
+  nos botões. Os testes automatizados (vitest) cobrem a lógica de
+  `persist()`/`hydrate()` com o `PlatformAdapter` mockado, e os testes
+  de integração Rust cobrem o keyring contra o Credential Manager real —
+  as duas pontas foram validadas separadamente.
+
+**Verificações automáticas:** `tsc --noEmit` limpo, `eslint` 0 erros,
+`vitest run` 95 ficheiros / 1232 testes todos a passar, `cargo check`
+limpo.
+
+SPEC.md atualizado: "Cofre de segredos" passou de 🚫 para 🟡 (cofre ✅,
+criptografia/WebAuthn/2FA continuam por fazer).

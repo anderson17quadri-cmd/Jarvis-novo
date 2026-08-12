@@ -32,6 +32,8 @@ export interface PlatformCapabilities {
   readonly biometrics: boolean;
   /** Janela de Terminal com um shell a sério (PTY), não simulado. */
   readonly terminal: boolean;
+  /** Cofre de segredos (Credential Manager no Windows, Keychain no macOS). */
+  readonly secretVault: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */
