@@ -29,6 +29,7 @@ export class AndroidAdapter extends TauriAdapterBase {
     nativeStorage: true,
     voice: true,
     biometrics: false,
+    secretVault: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

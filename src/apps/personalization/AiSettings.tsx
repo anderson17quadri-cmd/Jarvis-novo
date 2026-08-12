@@ -159,15 +159,15 @@ export function AiSettings(): React.JSX.Element {
             <span>
               O que escrever no assistente, o histórico da conversa aberta e um resumo do estado do
               sistema saem deste dispositivo para <b>{AI_PROVIDERS.deepseek.endpoint}</b>. A chave
-              fica guardada aqui, em armazenamento local — <b>não é um cofre</b>. Um cofre a sério
-              exige o chaveiro do sistema, que só existe na versão nativa.
+              fica guardada no cofre do sistema — o Gestor de Credenciais do Windows — e não sai
+              nas cópias de segurança.
             </span>
           </p>
 
           {hasKey ? (
             <div className="flex items-center gap-2 rounded-input border border-line bg-tint/[.02] px-3 py-2">
               <span className="min-w-0 flex-1">
-                <span className="block text-[11px] text-t3">Chave guardada</span>
+                <span className="block text-[11px] text-t3">Chave guardada no cofre</span>
                 <span className="mono block truncate text-[12px]">
                   {isVisible ? settings.apiKey : maskApiKey(settings.apiKey)}
                 </span>
@@ -333,15 +333,15 @@ export function AiSettings(): React.JSX.Element {
             <span>
               O que escrever no assistente, o histórico da conversa aberta e um resumo do estado do
               sistema saem deste dispositivo para <b>{AI_PROVIDERS.claude.endpoint}</b>. A chave
-              fica guardada aqui, em armazenamento local — <b>não é um cofre</b>. Um cofre a sério
-              exige o chaveiro do sistema, que só existe na versão nativa.
+              fica guardada no cofre do sistema — o Gestor de Credenciais do Windows — e não sai
+              nas cópias de segurança.
             </span>
           </p>
 
           {hasClaudeKey ? (
             <div className="flex items-center gap-2 rounded-input border border-line bg-tint/[.02] px-3 py-2">
               <span className="min-w-0 flex-1">
-                <span className="block text-[11px] text-t3">Chave guardada</span>
+                <span className="block text-[11px] text-t3">Chave guardada no cofre</span>
                 <span className="mono block truncate text-[12px]">
                   {isClaudeVisible ? settings.claudeApiKey : maskApiKey(settings.claudeApiKey)}
                 </span>

@@ -48,6 +48,14 @@ export interface PlatformAdapter {
    */
   openExternal(url: string): Promise<boolean>;
 
+  // ── Cofre de segredos ────────────────────────────────────────────────────
+  /** Guarda um segredo no chaveiro do sistema. `false` se não disponível. */
+  secretSet(key: string, value: string): Promise<boolean>;
+  /** Lê um segredo. `null` se não existir ou não disponível. */
+  secretGet(key: string): Promise<string | null>;
+  /** Apaga um segredo. `false` se não disponível. */
+  secretDelete(key: string): Promise<boolean>;
+
   // ── Janela nativa ────────────────────────────────────────────────────────
   /** Sem efeito onde não há gestão de janelas. */
   minimizeWindow(): Promise<void>;

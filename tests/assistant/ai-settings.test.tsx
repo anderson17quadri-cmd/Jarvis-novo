@@ -61,12 +61,13 @@ describe('o que se diz antes de ligar', () => {
     expect(note).toHaveTextContent('https://api.deepseek.com/chat/completions');
   });
 
-  it('não faz a chave passar por segura', async () => {
+  it('diz que a chave fica no cofre do sistema', async () => {
     const user = userEvent.setup();
     render(<AiSettings />);
     await user.click(screen.getByRole('radio', { name: /DeepSeek/ }));
 
-    expect(screen.getByRole('note')).toHaveTextContent(/não é um cofre/);
+    expect(screen.getByRole('note')).toHaveTextContent(/cofre do sistema/);
+    expect(screen.getByRole('note')).toHaveTextContent(/não sai nas cópias de segurança/);
   });
 
   it('no provedor local, diz que nada sai', () => {

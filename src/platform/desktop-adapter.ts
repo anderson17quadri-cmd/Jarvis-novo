@@ -20,5 +20,6 @@ export class DesktopAdapter extends TauriAdapterBase {
     voice: true,
     // Biometria real exigiria Windows Hello; por agora é simulada no login.
     biometrics: false,
+    secretVault: true,
   };
 }

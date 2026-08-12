@@ -27,10 +27,12 @@ export const BACKUP_VERSION = 1;
 /**
  * O que **nunca** entra numa cópia de segurança.
  *
- * A chave da API é um segredo. Já hoje vive num sítio que não é seguro, e a
- * janela di-lo por escrito; pô-la também num ficheiro que se descarrega, se
- * envia por email e se guarda numa drive era transformar um problema conhecido
- * num problema espalhado.
+ * As chaves da API vivem no cofre do sistema (Credential Manager no Windows,
+ * Keychain no macOS) — não no armazenamento local que a cópia lê. Este mapa é
+ * a rede de segurança: se a migração ainda não correu (ou se a plataforma não
+ * tem cofre, como o browser), as chaves são apagadas do JSON antes de ele ser
+ * escrito. Um ficheiro que se descarrega e se envia por email nunca deve conter
+ * segredos.
  *
  * O resto das definições de IA vai — provedor e modelo não são segredo. Quem
  * repõe volta a colar a chave, e a interface diz-lho.

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+import { getPlatformAdapter } from '@/platform';
 import { logService } from '@/services/log-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 import {
@@ -15,6 +16,16 @@ import {
  * **Só estado e persistência.** A conversão das preferências no provedor em
  * vigor está no hook `useAiSettings`, que é quem conhece os provedores e o
  * `aiService`. A store não importa nenhum deles — guarda e hidrata, só.
+ *
+ * **A chave da API vai para o cofre do sistema** (Credential Manager no
+ * Windows, Keychain no macOS), nunca para o armazenamento local. Se a
+ * plataforma não tiver cofre (browser, Android), mantém-se no storage — o
+ * mesmo comportamento de sempre, com o aviso na interface.
+ *
+ * **Migração automática:** quem já tinha a chave em texto simples no storage
+ * vê-la movida para o cofre na primeira abertura depois da atualização. O
+ * marcador `jarvis-migrated` no próprio cofre impede que a migração corra
+ * mais do que uma vez.
  *
  * **A chave nunca entra no registo.** O `logService` só regista *que* se mudou
  * de provedor, nunca com que chave: um registo de auditoria que guardasse
@@ -41,6 +52,17 @@ interface AiSettingsState {
   hydrate: () => Promise<void>;
 }
 
+/** Devolve uma cópia das definições sem as chaves secretas. */
+function semSegredos(settings: AiSettings): Omit<AiSettings, 'apiKey' | 'claudeApiKey'> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    if (key !== 'apiKey' && key !== 'claudeApiKey') {
+      result[key] = value;
+    }
+  }
+  return result as unknown as Omit<AiSettings, 'apiKey' | 'claudeApiKey'>;
+}
+
 export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
   settings: DEFAULT_AI_SETTINGS,
 
@@ -56,7 +78,6 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
     const settings = { ...get().settings, apiKey: apiKey.trim() };
     set({ settings });
 
-    // Sem a chave no detalhe. Regista-se o facto, não o segredo.
     logService.audit(
       apiKey.trim().length > 0 ? 'Guardar a chave da API' : 'Apagar a chave da API',
       'executado',
@@ -131,7 +152,27 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
   },
 
   persist: async () => {
-    await storageService.set(STORAGE_KEYS.aiSettings, get().settings);
+    const { settings } = get();
+    const adapter = getPlatformAdapter();
+
+    if (adapter.capabilities.secretVault) {
+      // Cofre disponível: definições sem segredos → storage, chaves → cofre.
+      await storageService.set(STORAGE_KEYS.aiSettings, semSegredos(settings));
+
+      if (settings.apiKey) {
+        await adapter.secretSet('deepseek-api-key', settings.apiKey);
+      } else {
+        await adapter.secretDelete('deepseek-api-key');
+      }
+      if (settings.claudeApiKey) {
+        await adapter.secretSet('claude-api-key', settings.claudeApiKey);
+      } else {
+        await adapter.secretDelete('claude-api-key');
+      }
+    } else {
+      // Sem cofre: comportamento de sempre — tudo no storage.
+      await storageService.set(STORAGE_KEYS.aiSettings, settings);
+    }
   },
 
   hydrate: async () => {
@@ -140,9 +181,61 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
       null,
     );
 
-    const settings: AiSettings = { ...DEFAULT_AI_SETTINGS, ...saved };
+    const adapter = getPlatformAdapter();
+    let apiKey = '';
+    let claudeApiKey = '';
+
+    if (adapter.capabilities.secretVault) {
+      // Migração única: chave que estava em texto simples no storage passa para
+      // o cofre. O marcador `jarvis-migrated` no próprio cofre evita correr
+      // sempre — e se o cofre não existir (primeira abertura absoluta), também
+      // não há nada para migrar.
+      const migrated = await adapter.secretGet('jarvis-migrated');
+
+      if (!migrated) {
+        const oldKey = typeof saved?.apiKey === 'string' ? saved.apiKey : '';
+        const oldClaudeKey = typeof saved?.claudeApiKey === 'string' ? saved.claudeApiKey : '';
+
+        if (oldKey) await adapter.secretSet('deepseek-api-key', oldKey);
+        if (oldClaudeKey) await adapter.secretSet('claude-api-key', oldClaudeKey);
+
+        await adapter.secretSet('jarvis-migrated', '1');
+
+        // Limpar as chaves do storage — já estão no cofre.
+        if (saved && (oldKey || oldClaudeKey)) {
+          const limpo: Record<string, unknown> = {};
+          for (const [chave, valor] of Object.entries(saved)) {
+            if (chave !== 'apiKey' && chave !== 'claudeApiKey') {
+              limpo[chave] = valor;
+            }
+          }
+          await storageService.set(STORAGE_KEYS.aiSettings, limpo);
+        }
+      }
+
+      apiKey = (await adapter.secretGet('deepseek-api-key')) ?? '';
+      claudeApiKey = (await adapter.secretGet('claude-api-key')) ?? '';
+    } else {
+      // Sem cofre: comportamento de sempre — as chaves vêm do storage.
+      apiKey = typeof saved?.apiKey === 'string' ? saved.apiKey : '';
+      claudeApiKey = typeof saved?.claudeApiKey === 'string' ? saved.claudeApiKey : '';
+    }
+
+    // Remove os campos de chave do que veio do storage: agora vêm do cofre.
+    const cleanSaved: Record<string, unknown> = {};
+    for (const [chave, valor] of Object.entries(saved ?? {})) {
+      if (chave !== 'apiKey' && chave !== 'claudeApiKey') {
+        cleanSaved[chave] = valor;
+      }
+    }
+
+    const settings: AiSettings = {
+      ...DEFAULT_AI_SETTINGS,
+      ...cleanSaved,
+      apiKey,
+      claudeApiKey,
+    };
+
     set({ settings });
-    // A aplicação ao aiService é feita pelo hook useAiSettings — a store só
-    // repõe o estado, e o efeito trata de converter isso no provedor em vigor.
   },
 }));

@@ -27,12 +27,24 @@ pub fn run() {
         // O monitor de sistema é estado partilhado: o `sysinfo::System` precisa
         // de duas leituras para calcular a percentagem de CPU, por isso tem de
         // sobreviver entre chamadas em vez de ser criado a cada comando.
-        .manage(SystemMonitor::new())
-        .invoke_handler(tauri::generate_handler![
-            commands::system::get_system_snapshot,
-            commands::system::get_static_system_info,
-            commands::system::get_top_processes,
-        ]);
+        .manage(SystemMonitor::new());
+
+    #[cfg(desktop)]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        commands::system::get_system_snapshot,
+        commands::system::get_static_system_info,
+        commands::system::get_top_processes,
+        commands::secrets::secret_set,
+        commands::secrets::secret_get,
+        commands::secrets::secret_delete,
+    ]);
+
+    #[cfg(not(desktop))]
+    let builder = builder.invoke_handler(tauri::generate_handler![
+        commands::system::get_system_snapshot,
+        commands::system::get_static_system_info,
+        commands::system::get_top_processes,
+    ]);
 
     #[cfg(desktop)]
     let builder = builder

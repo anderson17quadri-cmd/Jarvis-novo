@@ -514,6 +514,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   nativeStorage: 'armazenamento nativo',
   voice: 'voz',
   biometrics: 'biometria',
+  secretVault: 'cofre de segredos',
 };
 
 /**

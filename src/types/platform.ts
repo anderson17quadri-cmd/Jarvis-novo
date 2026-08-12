@@ -30,6 +30,8 @@ export interface PlatformCapabilities {
   readonly voice: boolean;
   /** Autenticação biométrica. */
   readonly biometrics: boolean;
+  /** Cofre de segredos (Credential Manager no Windows, Keychain no macOS). */
+  readonly secretVault: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */
