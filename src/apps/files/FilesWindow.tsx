@@ -16,6 +16,7 @@ import { seedFiles } from '@/data/files';
 import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { formatBytes, formatShortDate } from '@/lib/format';
+import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { resolvePath, type FileEntry, type FileKind } from '@/types/file-entry';
 
 const KIND_ICON: Record<FileKind, LucideIcon> = {
@@ -41,7 +42,11 @@ type SortBy = 'nome' | 'data' | 'tamanho';
  */
 export default function FilesWindow(): React.JSX.Element {
   const root = useMemo(() => seedFiles(), []);
-  const [path, setPath] = useState<readonly string[]>([]);
+  // Se `abrir_ficheiro` (assistente) deixou um caminho à espera, abre-se
+  // logo aí — só na primeira montagem, para não herdar uma pesquisa antiga.
+  const [path, setPath] = useState<readonly string[]>(
+    () => usePendingFileNavigationStore.getState().consume() ?? [],
+  );
   const [sortBy, setSortBy] = useState<SortBy>('nome');
   const capabilities = useCapabilities();
 

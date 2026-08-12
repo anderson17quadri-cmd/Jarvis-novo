@@ -24,7 +24,10 @@ import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { USER_FIRST_NAME } from '@/constants/user';
+import { seedFiles } from '@/data/files';
 import { themeName } from '@/lib/names';
+import { searchFiles as searchFileTree } from '@/types/file-entry';
+import { normalizeSearch } from '@/utils/text';
 import { aiService } from '@/services/ai-service';
 import { setContextSource } from '@/services/assistant/context';
 import { memoryService } from '@/services/assistant/memory-service';
@@ -35,6 +38,7 @@ import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
+import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
 import { setVoiceExecutor } from '@/services/voice/executor';
@@ -465,6 +469,19 @@ export function App(): React.JSX.Element {
       search: (query) => {
         setPaletteQuery(query);
         openPalette();
+      },
+      searchFiles: (query) =>
+        searchFileTree(seedFiles(), query, normalizeSearch).map((result) => ({
+          name: result.entry.name,
+          pathNames: result.pathNames,
+        })),
+      openFileLocation: (query) => {
+        const [first] = searchFileTree(seedFiles(), query, normalizeSearch);
+        if (!first) return false;
+
+        usePendingFileNavigationStore.getState().set(first.path);
+        launch('files');
+        return true;
       },
       music: (action) => {
         if (action === 'proxima') void musicService.next();

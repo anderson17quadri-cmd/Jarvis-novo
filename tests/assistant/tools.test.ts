@@ -46,6 +46,14 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
     },
     notify: (title) => void calls.push(`notificar:${title}`),
     search: (query) => void calls.push(`procurar:${query}`),
+    searchFiles: (query) => {
+      calls.push(`procurar-ficheiro:${query}`);
+      return query === 'inexistente' ? [] : [{ name: query, pathNames: ['Documentos'] }];
+    },
+    openFileLocation: (query) => {
+      calls.push(`abrir-ficheiro:${query}`);
+      return query !== 'inexistente';
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -205,6 +213,43 @@ describe('executar', () => {
   });
 });
 
+describe('procurar_ficheiro e abrir_ficheiro', () => {
+  it('lista os resultados com a pasta onde estão', () => {
+    const outcome = runTool({
+      id: '1',
+      name: 'procurar_ficheiro',
+      args: { nome: 'orçamento' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toContain('orçamento');
+    expect(outcome.message).toContain('Documentos');
+  });
+
+  it('sem resultados, diz-se em vez de inventar', () => {
+    const outcome = runTool({
+      id: '1',
+      name: 'procurar_ficheiro',
+      args: { nome: 'inexistente' },
+    });
+
+    expect(outcome.message).toContain('Não encontrei');
+  });
+
+  it('abrir_ficheiro pede ao executor para abrir a pasta do resultado', () => {
+    const outcome = runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'orçamento' } });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['abrir-ficheiro:orçamento']);
+  });
+
+  it('sem correspondência, abrir_ficheiro também se explica', () => {
+    const outcome = runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'inexistente' } });
+
+    expect(outcome.message).toContain('Não encontrei');
+  });
+});
+
 /**
  * Contexto ("amanhã") resolvido pelo modelo, não por regras escritas à mão
  * (Parte 7 §Contexto). O modelo já recebe a data de hoje por extenso no
@@ -341,6 +386,8 @@ describe('cobertura', () => {
       concluir_tarefa: { titulo: 'x' },
       notificar: { titulo: 'a', descricao: 'b' },
       pesquisar: { termo: 'x' },
+      procurar_ficheiro: { nome: 'orçamento' },
+      abrir_ficheiro: { nome: 'orçamento' },
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },

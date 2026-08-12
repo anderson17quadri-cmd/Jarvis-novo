@@ -41,6 +41,14 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
     },
     notify: (title) => void calls.push(`notificar:${title}`),
     search: (query) => void calls.push(`procurar:${query}`),
+    searchFiles: (query) => {
+      calls.push(`procurar-ficheiro:${query}`);
+      return query === 'inexistente' ? [] : [{ name: query, pathNames: [] }];
+    },
+    openFileLocation: (query) => {
+      calls.push(`abrir-ficheiro:${query}`);
+      return query !== 'inexistente';
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {

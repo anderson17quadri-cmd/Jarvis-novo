@@ -17,6 +17,12 @@ import { getTool, validateArgs, type ToolDefinition } from './tools';
  *    e um email a dizer "apaga tudo" não pode bastar.
  */
 
+/** Um ficheiro ou pasta encontrado, com o caminho (nomes das pastas) até lá. */
+export interface FileMatch {
+  readonly name: string;
+  readonly pathNames: readonly string[];
+}
+
 /** Quem sabe cumprir. Fornecido pela aplicação. */
 export interface ToolExecutor {
   readonly openWindow: (app: string) => void;
@@ -34,6 +40,10 @@ export interface ToolExecutor {
   readonly clearDoneTasks: () => number;
   readonly notify: (title: string, description: string) => void;
   readonly search: (query: string) => void;
+  /** Ficheiros e pastas cujo nome contém `query` (sem acentos, parcial). */
+  readonly searchFiles: (query: string) => readonly FileMatch[];
+  /** Abre o Explorador na pasta do primeiro resultado. `false` se não houver nenhum. */
+  readonly openFileLocation: (query: string) => boolean;
   readonly music: (action: string) => void;
   readonly speak: (text: string) => void;
   readonly setAutomationEnabled: (name: string, enabled: boolean) => boolean;
@@ -223,6 +233,26 @@ function perform(
     case 'pesquisar':
       run.search(text('termo'));
       return `Pesquisa aberta com "${text('termo')}".`;
+
+    case 'procurar_ficheiro': {
+      const results = run.searchFiles(text('nome'));
+      if (results.length === 0) return `Não encontrei nada com "${text('nome')}" no nome.`;
+
+      const lista = results
+        .map((result) =>
+          result.pathNames.length > 0
+            ? `${result.name} (em ${result.pathNames.join(' › ')})`
+            : result.name,
+        )
+        .join(', ');
+
+      return `Encontrei ${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}: ${lista}.`;
+    }
+
+    case 'abrir_ficheiro':
+      return run.openFileLocation(text('nome'))
+        ? 'Explorador de Ficheiros aberto nessa pasta.'
+        : `Não encontrei nada com "${text('nome')}" no nome.`;
 
     case 'controlar_musica':
       run.music(text('acao'));
