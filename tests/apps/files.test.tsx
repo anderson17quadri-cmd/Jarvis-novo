@@ -1,10 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import FilesWindow from '@/apps/files/FilesWindow';
 import { seedFiles } from '@/data/files';
-import { resolvePath } from '@/types/file-entry';
+import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
+import { resolvePath, searchFiles } from '@/types/file-entry';
+import { normalizeSearch } from '@/utils/text';
 
 describe('explorador de ficheiros', () => {
   it('abre na raiz', () => {
@@ -77,5 +79,54 @@ describe('resolvePath', () => {
   it('parar num ficheiro não tenta descer para dentro dele', () => {
     const level = resolvePath(root, ['copia-seguranca']);
     expect(level.map((entry) => entry.id)).toContain('documentos');
+  });
+});
+
+describe('searchFiles', () => {
+  const root = seedFiles();
+
+  it('encontra por nome parcial, sem acentos', () => {
+    const results = searchFiles(root, 'orcamento', normalizeSearch);
+    expect(results.map((result) => result.entry.id)).toContain('orcamento-hardware');
+  });
+
+  it('o caminho são as pastas antecessoras, nunca o próprio resultado', () => {
+    const [result] = searchFiles(root, 'orcamento-hardware-revisto', normalizeSearch);
+    expect(result?.path).toEqual(['documentos', 'propostas']);
+    expect(result?.pathNames).toEqual(['Documentos', 'Propostas']);
+  });
+
+  it('uma pasta encontrada aponta para a pasta que a contém, não para si própria', () => {
+    const [result] = searchFiles(root, 'propostas', normalizeSearch);
+    expect(result?.entry.id).toBe('propostas');
+    expect(result?.path).toEqual(['documentos']);
+  });
+
+  it('sem correspondência, devolve uma lista vazia', () => {
+    expect(searchFiles(root, 'inexistente', normalizeSearch)).toEqual([]);
+  });
+
+  it('consulta vazia não devolve tudo', () => {
+    expect(searchFiles(root, '', normalizeSearch)).toEqual([]);
+  });
+});
+
+describe('explorador — caminho pendente do assistente', () => {
+  beforeEach(() => {
+    usePendingFileNavigationStore.setState({ path: null });
+  });
+
+  it('abrir_ficheiro deixa a janela já na pasta certa', () => {
+    usePendingFileNavigationStore.getState().set(['documentos', 'propostas']);
+    render(<FilesWindow />);
+
+    expect(screen.getByText('proposta-barbearia-silva.pdf')).toBeInTheDocument();
+  });
+
+  it('o caminho pendente só serve para a primeira leitura', () => {
+    usePendingFileNavigationStore.getState().set(['documentos']);
+    render(<FilesWindow />);
+
+    expect(usePendingFileNavigationStore.getState().path).toBeNull();
   });
 });

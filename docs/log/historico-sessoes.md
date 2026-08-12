@@ -1132,3 +1132,33 @@ foi preciso — o `@playwright/test` já estava declarado no `package.json`
 mas o `node_modules` local estava desatualizado.
 
 Confirmado: 1200/1200 testes, `tsc` e `eslint` limpos.
+
+## 2026-08-12 — Assistente: procurar_ficheiro e abrir_ficheiro
+
+Uma sessão anterior (Kimi) tinha sido cancelada a meio de "esse ficheiro"
+— a capacidade de o assistente encontrar um ficheiro pelo nome e abrir o
+Explorador já na pasta certa. Ao retomar, o que estava commitado era só
+metade: `searchFiles()` (`file-entry.ts`), o catálogo das duas ferramentas
+(`tools.ts`) e a `use-pending-file-navigation-store` já existiam, bem
+escritos e com o desenho todo explicado em comentário — mas o
+`tool-runner.ts` não tinha execução para nenhuma das duas, e o `App.tsx`
+não as ligava a nada. Sintoma exato: o teste "cobertura" de
+`tools.test.ts` a falhar em `procurar_ficheiro` — "toda a ferramenta do
+catálogo tem execução".
+
+Avaliado como digno de terminar (não de reverter): o trabalho parcial era
+coerente, não confuso. Ligou-se o resto — `ToolExecutor.searchFiles` /
+`.openFileLocation` no `tool-runner.ts`, a implementação em `App.tsx`
+sobre a árvore simulada (`seedFiles()` + `normalizeSearch`), e o
+`FilesWindow` a consumir o caminho pendente na primeira montagem (e só
+nessa, como o comentário da store já previa). Testes novos para
+`searchFiles`, para as duas ferramentas em `tool-runner.ts`, e para o
+`FilesWindow` a abrir já na pasta certa.
+
+Ficaram de fora do commit, por não fazerem parte deste pedido: `use-mail-
+store`/`MailWidget` (Fase 2, parece já pronto) e `use-music-store`/`use-
+news-store` (existem mas não estão ligados a nenhum widget ainda) —
+alterações não commitadas encontradas na mesma árvore de trabalho, de
+outra tarefa.
+
+Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.

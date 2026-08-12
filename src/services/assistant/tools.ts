@@ -184,6 +184,25 @@ export const TOOLS: readonly ToolDefinition[] = [
     confirmation: () => 'Apagar todas as tarefas concluídas. Não há como as recuperar.',
   },
 
+  // ── Ficheiros ─────────────────────────────────────────────────────────────
+  {
+    name: 'procurar_ficheiro',
+    description:
+      'Procura ficheiros e pastas pelo nome (parcial, sem acentos) na árvore de ficheiros. ' +
+      'Devolve o que encontrar, com a pasta onde está cada um — não abre nada.',
+    risk: 'livre',
+    parameters: [text('nome', 'Nome ou parte do nome a procurar.')],
+  },
+  {
+    name: 'abrir_ficheiro',
+    description:
+      'Abre o Explorador de Ficheiros já na pasta de um ficheiro ou pasta encontrado pelo nome ' +
+      '(parcial, sem acentos). Usa isto para "esse ficheiro" depois de o nome já estar resolvido ' +
+      'a partir do que se disse antes na conversa.',
+    risk: 'livre',
+    parameters: [text('nome', 'Nome ou parte do nome do ficheiro ou pasta a abrir.')],
+  },
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   {
     name: 'notificar',
