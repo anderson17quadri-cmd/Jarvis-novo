@@ -1288,3 +1288,19 @@ Music apesar de o texto dizer que sim).
 
 Confirmado: `tsc` limpo, `eslint` 0 erros, 1217/1217 testes (duas
 corridas), `npm run build` de produção sem problemas.
+
+## 2026-08-12 05:02 — Qwen sem cota, não é bug
+
+A sessão Qwen ficou sem cota ao arrancar a peça do Plugin (a última da
+lista dela): `API Error: Request rejected (429) — Your token-plan 1-week
+quota has been exhausted. The quota will reset at 08-19 03:23:00 UTC.`
+Confirmado pelo texto do erro que é mesmo cota, não um bug de código — a
+sessão nem chegou a tocar em ficheiro nenhum, a janela nunca ficou com
+nada por commitar.
+
+Por decisão do utilizador: não se fica à espera da cota voltar, nem se
+relança às cegas. O Plugin (a única peça que sobra da lista da Qwen)
+passa para a fila normal da DeepSeek, a seguir ao que ela estiver a
+fazer agora. Se a cota da Qwen voltar sozinha antes das 08-19, não se
+relança por conta própria — fica para o utilizador decidir de manhã se
+vale a pena.
