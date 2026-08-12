@@ -1191,3 +1191,20 @@ Pedido: completar o desacoplamento dos serviços que faltavam na Fase 2
 **SPEC.md atualizado:** 13/14 serviços desacoplados (faltam Search, Device, Plugin), 13/18 stores separadas. `useDataService` continua a servir o `MusicWidget` (único consumidor restante).
 
 Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.
+
+## 2026-08-12 — Fase 2: Music desacoplado (store ligada ao widget)
+
+Pedido: ligar o `MusicWidget.tsx` à `useMusicStore` já existente (criada numa
+sessão anterior, pronta mas nunca ligada). Mesmo padrão dos widgets de Mail,
+News, Calendar: `useIsVisible` + `musicService.setPaused` no efeito de
+visibilidade, `hydrate()` no efeito de montagem, e todas as ações (togglePlay,
+next, previous, seek, toggleShuffle, toggleRepeat) pela store em vez de chamar
+o serviço diretamente.
+
+A store já estava completa — `snapshot`, `isLoading`, `hydrate`, e as sete
+ações — sem precisar de um toque. O `MusicWidget` era o último consumidor de
+`useDataService`; depois desta migração, o hook já não é importado por nenhum
+widget. SPEC.md atualizado: 14/18 stores separadas, `useDataService` sem
+consumidores.
+
+Confirmado: 1211/1211 testes, `tsc` e `eslint` limpos.

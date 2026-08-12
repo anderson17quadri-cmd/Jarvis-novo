@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Pause, Play, Repeat, Shuffle, SkipBack, SkipForward } from 'lucide-react';
 
 import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
-import { useDataService } from '@/hooks/use-data-service';
+import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { musicService } from '@/services/music/music-service';
+import { useMusicStore } from '@/stores/use-music-store';
 
 /** Segundos em `m:ss`. */
 function formatDuration(totalSeconds: number): string {
@@ -20,12 +22,29 @@ function formatDuration(totalSeconds: number): string {
  * não há imagens, e um retângulo a dizer "sem capa" seria pior.
  */
 export default function MusicWidget(): React.JSX.Element {
-  const { data, isLoading } = useDataService(musicService);
+  const snapshot = useMusicStore((s) => s.snapshot);
+  const isLoadingStore = useMusicStore((s) => s.isLoading);
+  const togglePlay = useMusicStore((s) => s.togglePlay);
+  const next = useMusicStore((s) => s.next);
+  const previous = useMusicStore((s) => s.previous);
+  const seek = useMusicStore((s) => s.seek);
+  const toggleShuffle = useMusicStore((s) => s.toggleShuffle);
+  const toggleRepeat = useMusicStore((s) => s.toggleRepeat);
+  const isVisible = useIsVisible();
 
-  if (isLoading || !data) return <WidgetSkeleton />;
-  if (!data.track) return <WidgetEmpty message="Nenhuma faixa em reprodução." />;
+  useEffect(() => {
+    const unsub = useMusicStore.getState().hydrate();
+    return unsub;
+  }, []);
 
-  const { track, status, positionSec } = data;
+  useEffect(() => {
+    musicService.setPaused(!isVisible);
+  }, [isVisible]);
+
+  if (isLoadingStore || !snapshot) return <WidgetSkeleton />;
+  if (!snapshot.track) return <WidgetEmpty message="Nenhuma faixa em reprodução." />;
+
+  const { track, status, positionSec } = snapshot;
   const isPlaying = status === 'playing';
 
   return (
@@ -56,7 +75,7 @@ export default function MusicWidget(): React.JSX.Element {
           min={0}
           max={track.durationSec}
           value={Math.floor(positionSec)}
-          onChange={(event) => void musicService.seek(Number(event.target.value))}
+          onChange={(event) => void seek(Number(event.target.value))}
           className="music-range w-full"
         />
 
@@ -69,19 +88,19 @@ export default function MusicWidget(): React.JSX.Element {
       <div className="mt-1.5 flex flex-shrink-0 items-center justify-center gap-1">
         <ControlButton
           label="Reprodução aleatória"
-          isActive={data.isShuffle}
-          onClick={() => void musicService.toggleShuffle()}
+          isActive={snapshot.isShuffle}
+          onClick={() => void toggleShuffle()}
         >
           <Shuffle />
         </ControlButton>
 
-        <ControlButton label="Faixa anterior" onClick={() => void musicService.previous()}>
+        <ControlButton label="Faixa anterior" onClick={() => void previous()}>
           <SkipBack />
         </ControlButton>
 
         <button
           type="button"
-          onClick={() => void musicService.togglePlay()}
+          onClick={() => void togglePlay()}
           aria-label={isPlaying ? 'Pausa' : 'Reproduzir'}
           className={cn(
             'mx-1 flex h-9 w-9 items-center justify-center rounded-full',
@@ -92,20 +111,20 @@ export default function MusicWidget(): React.JSX.Element {
           {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </button>
 
-        <ControlButton label="Faixa seguinte" onClick={() => void musicService.next()}>
+        <ControlButton label="Faixa seguinte" onClick={() => void next()}>
           <SkipForward />
         </ControlButton>
 
         <ControlButton
           label="Repetir"
-          isActive={data.isRepeat}
-          onClick={() => void musicService.toggleRepeat()}
+          isActive={snapshot.isRepeat}
+          onClick={() => void toggleRepeat()}
         >
           <Repeat />
         </ControlButton>
       </div>
 
-      {data.isSimulated && (
+      {snapshot.isSimulated && (
         <p className="mt-1 flex-shrink-0 text-center text-[9.5px] text-t3">
           Sem áudio — reprodução simulada
         </p>
