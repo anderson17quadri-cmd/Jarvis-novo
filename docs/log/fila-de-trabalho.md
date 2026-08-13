@@ -22,12 +22,9 @@
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
-itens acima estão fechados — repetível, por isso duas instâncias em
-curso agora:
+itens acima estão fechados — repetível; instâncias fechadas (2FA,
+Notificações nativas isoladas) já em "Feito" abaixo. Em curso agora:
 
-- **2FA a sério (palavra-passe/PIN + chave física)** — **DeepSeek**
-  (13/08/2026 19:17). Construído diretamente, nunca revisto por
-  ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
 - **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
   — **DeepSeek** (13/08/2026 19:31). Tentativa anterior à Kimi (19:17)
   falhou pela terceira vez no limite de taxa TPD da organização — não
@@ -158,6 +155,15 @@ simulado; erros de rede devolvem `null` sem rebentar a interface;
 cidade/país só saem para os domínios declarados; testes chamam o código
 real. Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
 sério: meteorologia (Open-Meteo) e notícias (NewsAPI)").
+
+- **Notificações nativas isoladas (Peça 14, Lote 4)** — revisto (Claude
+  local, 13/08/2026): portão por estado do sistema confirmado correto
+  (Normal/Performance sempre, Foco/Economia só urgentes, Apresentação
+  nunca), toast e nativa nunca divergem (mesma chamada, sem corrida),
+  `silent` corta sempre, suprimida fica sempre `isDismissed: true`,
+  pedido de permissão nunca crasha. Nada a corrigir — só documentação.
+  Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
+  sério: notificações nativas isoladas").
 
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar

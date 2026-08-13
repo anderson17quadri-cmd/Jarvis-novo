@@ -4042,3 +4042,57 @@ reais, não reimplementações à mão.
 
 `tsc --noEmit` limpo, `eslint` 0 erros (11 avisos pré-existentes, fora dos
 ficheiros tocados), `vitest run` 122 ficheiros / 1650 testes a passar.
+
+## 2026-08-13 — Revisão a sério: notificações nativas isoladas (Peça 14, item 15 da fila)
+
+Outra instância do item 15 (fila noturna) — a Peça 14 (notificações
+nativas isoladas, Lote 4) tinha 10 testes, mas escritos pela mesma sessão
+que a construiu; nunca tinha sido lida por ninguém de fora à procura de
+forma explícita de a partir.
+
+**O que li com atenção e confirmei sólido, sem nada a corrigir:**
+
+- **O portão por estado do sistema bate certo com a intenção
+  documentada.** `allowsToast()` (`types/system-state.ts`) — `'todos'`
+  deixa sempre passar, `'nenhum'` nunca, e o resto (`'urgentes'`) só
+  `warn`/`err` (`URGENT_KINDS`). Os cinco estados batem: Normal e
+  Performance `'todos'`, Foco e Economia `'urgentes'`, Apresentação
+  `'nenhum'` — exatamente o que as descrições de cada estado prometem.
+- **O toast interno e a nativa nunca podem divergir em conteúdo.**
+  Não é uma garantia solta — é estrutural: as duas vêm da mesma chamada
+  a `notify()`, com as mesmas variáveis locais `title`/`description`;
+  não há dois caminhos assíncronos separados que pudessem correr uma
+  corrida e mostrar coisas diferentes.
+- **`silent` corta sempre a nativa e o som, nunca o toast.** É a
+  primeira condição de `mayInterrupt` (`!silent && allowsToast(...)`) —
+  nenhum estado do sistema consegue reverter isto.
+- **Uma notificação suprimida fica marcada `isDismissed: true` em todo
+  o lado, não só nalguns ramos.** `dismiss(id)` é chamado pelo mesmo
+  código sempre que `!mayInterrupt`, seja qual for o motivo (estado,
+  `silent`) — um único caminho, não uma verificação por ramo que
+  pudesse esquecer um caso.
+- **O pedido de permissão nunca crasha a app.** `sendNativeNotification`
+  (`TauriAdapterBase`) embrulha `isPermissionGranted`/`requestPermission`/
+  `sendNotification` num único `try`/`catch` — um plugin que rebente
+  devolve `false` com elegância, quem chama cai sempre no toast interno.
+
+**Um ponto que investiguei e não considero bug, com a razão escrita:**
+`sendNativeNotification` volta a chamar `requestPermission()` em **cada**
+notificação nativa elegível, mesmo depois de uma recusa anterior — não
+guarda em memória que já foi recusada. Em teoria isto podia "martelar"
+o utilizador com o diálogo do sistema operativo a cada notificação
+urgente. Na prática, as APIs de permissão de notificações (a do browser,
+que a do Tauri embrulha) não voltam a mostrar UI depois de uma recusa
+explícita — devolvem `'denied'` de imediato. O custo real é só uma
+chamada assíncrona extra que resolve logo, não uma spam de diálogos.
+Deixo isto escrito para quem vier a seguir não ter de repetir a mesma
+investigação, não porque tenha a certeza absoluta do comportamento em
+todas as plataformas — não confirmado ao vivo contra um SO real com a
+notificação recusada de propósito.
+
+`npx vitest run tests/services/notification-service.test.ts` — 10/10 a
+passar, os testes exercitam mesmo os cinco cenários acima (não são
+testes falsos). `tsc --noEmit` limpo. Nada corrigido — item 15
+(instância "Notificações nativas isoladas") movido para "Feito" em
+`docs/log/fila-de-trabalho.md` sem commit de código, só de
+documentação.
