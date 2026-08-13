@@ -48,6 +48,8 @@ export interface PlatformCapabilities {
   readonly music: boolean;
   /** Vault Obsidian real (ler/escrever notas `.md` numa pasta escolhida). */
   readonly obsidian: boolean;
+  /** Navegador controlado pelo assistente — busca e extrai texto de uma página (Peça 19). */
+  readonly webBrowsing: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

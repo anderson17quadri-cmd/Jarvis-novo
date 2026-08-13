@@ -4,6 +4,7 @@ import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/syst
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
 import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
+import type { WebPageContent } from '@/types/web-page';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -209,4 +210,13 @@ export interface PlatformAdapter {
    * plataforma não suportar.
    */
   obsidianWriteNote(path: string, content: string): Promise<boolean>;
+
+  // ── Navegador controlado pelo assistente (Peça 19) ───────────────────────
+  /**
+   * Busca uma página `https` e devolve o título e o texto visível, já sem
+   * script/style/noscript. `null` se o pedido falhar (rede, timeout, URL não
+   * permitido, tipo de conteúdo não é HTML) ou a plataforma não suportar —
+   * nunca lança, para o chamador tratar como "não consegui" sem exceção.
+   */
+  fetchPageText(url: string): Promise<WebPageContent | null>;
 }

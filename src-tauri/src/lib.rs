@@ -104,6 +104,7 @@ pub fn run() {
             commands::obsidian::obsidian_list_notes,
             commands::obsidian::obsidian_read_note,
             commands::obsidian::obsidian_write_note,
+            commands::browser::fetch_page_text,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

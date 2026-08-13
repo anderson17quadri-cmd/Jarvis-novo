@@ -54,6 +54,19 @@ lettre = { version = "0.11", default-features = false, features = ["smtp-transpo
 native-tls = "0.2"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
 
+# Navegador controlado pelo assistente (Peça 19, lote 5): busca uma página
+# arbitrária que a pessoa/modelo pediu. Tem de ser aqui, não `fetch()` do
+# lado da interface — dois motivos, não só um: a CSP da app é uma lista
+# fechada de anfitriões conhecidos (DeepSeek, Ollama local, Open-Meteo...),
+# nunca "qualquer sítio"; e mesmo que fosse, a maioria dos sítios recusa
+# `fetch()` vindo de outra origem por CORS, que só existe do lado do
+# browser — um cliente HTTP nativo nunca esbarra nisso. `ureq` (síncrono,
+# sem puxar o ecossistema `tokio` inteiro só para isto) com o mesmo backend
+# `native-tls` já usado no email. `scraper` extrai o texto visível e
+# descarta script/style antes de a interface sequer ver o HTML.
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+scraper = "0.20"
+
 # O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
 # (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o
 # Windows Hello (Security_Credentials_UI, UserConsentVerifier) são só do

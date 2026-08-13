@@ -57,6 +57,12 @@ export interface ToolExecutor {
   readonly readNote: (query: string) => Promise<string | null>;
   /** Cria ou substitui a nota `title`. `false` se não houver vault escolhido ou a escrita falhar. */
   readonly writeNote: (title: string, content: string) => Promise<boolean>;
+  /**
+   * Busca uma página `https` e devolve o texto já formatado como conteúdo
+   * externo não confiável — ou uma mensagem de erro/recusa, se o interruptor
+   * estiver desligado ou o pedido falhar. Nunca lança.
+   */
+  readonly openWebPage: (url: string) => Promise<string>;
   /** Pesquisa na web. Só devolve resultados estruturados — nunca abre páginas nem executa nada. */
   readonly searchWeb: (query: string) => Promise<SearchOutcome>;
   readonly music: (action: string) => void;
@@ -321,6 +327,9 @@ async function perform(
 
       return `${cabecalho}\n${lista}`;
     }
+
+    case 'abrir_pagina':
+      return run.openWebPage(text('url'));
 
     case 'controlar_musica':
       run.music(text('acao'));

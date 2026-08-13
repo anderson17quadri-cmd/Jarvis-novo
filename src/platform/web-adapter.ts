@@ -5,6 +5,7 @@ import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/syst
 import type { MusicFileEntry } from '@/types/music';
 import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type { ImapMessageDto } from '@/types/mail';
+import type { WebPageContent } from '@/types/web-page';
 import { detectTouch } from './detect-platform';
 import { simulateSnapshot, simulateStaticInfo } from './simulated-metrics';
 import { isAllowedExternalUrl } from './url-policy';
@@ -46,6 +47,7 @@ export class WebAdapter implements PlatformAdapter {
     mail: false,
     music: false,
     obsidian: false,
+    webBrowsing: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -278,5 +280,11 @@ export class WebAdapter implements PlatformAdapter {
 
   async obsidianWriteNote(): Promise<boolean> {
     return false;
+  }
+
+  // ── Navegador controlado pelo assistente ────────────────────────────────
+
+  async fetchPageText(): Promise<WebPageContent | null> {
+    return null;
   }
 }

@@ -65,6 +65,10 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`pesquisar-web:${query}`);
       return { isSimulated: false, results: [] };
     },
+    openWebPage: async (url) => {
+      calls.push(`abrir-pagina:${url}`);
+      return `conteúdo de ${url}`;
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {

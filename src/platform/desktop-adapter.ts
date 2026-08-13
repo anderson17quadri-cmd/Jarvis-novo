@@ -38,5 +38,7 @@ export class DesktopAdapter extends TauriAdapterBase {
     // Música local (pasta + `<audio>` real) — ver commands/music.rs.
     music: true,
     obsidian: true,
+    // Busca e extração de texto de páginas https — ver commands/browser.rs.
+    webBrowsing: true,
   };
 }

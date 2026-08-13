@@ -46,6 +46,7 @@ import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
 import { obsidianService } from '@/services/knowledge/obsidian-service';
 import { webSearchService } from '@/services/web-search/web-search-service';
+import { openWebPage } from '@/services/knowledge/web-browser-service';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
@@ -563,6 +564,7 @@ export function App(): React.JSX.Element {
       readNote: (query) => obsidianService.readByTitle(query),
       writeNote: (title, content) => obsidianService.write(title, content),
       searchWeb: (query) => webSearchService.search(query),
+      openWebPage: (url) => openWebPage(url),
       music: (action) => {
         if (action === 'proxima') void musicService.next();
         else if (action === 'anterior') void musicService.previous();

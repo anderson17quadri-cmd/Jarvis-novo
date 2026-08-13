@@ -43,6 +43,8 @@ export class AndroidAdapter extends TauriAdapterBase {
     // A música local também é só do desktop (pasta + protocolo `asset`).
     music: false,
     obsidian: false,
+    // `commands::browser::fetch_page_text` também é só do ramo desktop.
+    webBrowsing: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

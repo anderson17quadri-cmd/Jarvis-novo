@@ -564,6 +564,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   mail: 'correio real',
   music: 'música local',
   obsidian: 'vault Obsidian',
+  webBrowsing: 'navegador controlado pelo assistente',
 };
 
 /**

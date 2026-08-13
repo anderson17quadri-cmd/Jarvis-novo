@@ -14,6 +14,7 @@ import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/syst
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
 import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
+import type { WebPageContent } from '@/types/web-page';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -503,6 +504,13 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
       console.warn('[platform] o comando "obsidian_write_note" falhou:', error);
       return false;
     }
+  }
+
+  // ── Navegador controlado pelo assistente ────────────────────────────────
+
+  async fetchPageText(url: string): Promise<WebPageContent | null> {
+    if (!this.capabilities.webBrowsing) return null;
+    return this.tryInvoke<WebPageContent>('fetch_page_text', null, { url });
   }
 
   // ── Auxiliar ─────────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import {
   Eye,
   EyeOff,
+  Globe,
   Info,
   KeyRound,
   MousePointer,
@@ -19,6 +20,7 @@ import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { IDLE_LOCK_OPTIONS, idleLockLabel } from '@/types/appearance';
 import { formatTime } from '@/lib/format';
 import { logService } from '@/services/log-service';
+import { notificationService } from '@/services/notification-service';
 import { directControlService, RISK_LABELS } from '@/services/direct-control-service';
 import {
   getRegisteredSecurityKey,
@@ -28,9 +30,13 @@ import {
   type StoredCredential,
 } from '@/services/webauthn-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
+import { useBrowserToolSettingsStore } from '@/stores/use-browser-tool-settings-store';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
 import { USER_NAME } from '@/constants/user';
 import type { PluginPermissions } from '@/plugins/plugin';
+
+/** Chave de sessão do aviso de primeira ativação — uma vez por sessão da app, não uma vez para sempre. */
+const BROWSER_TOOL_WARN_KEY = 'jarvis.browser-tool-warned';
 
 type Tab = 'permissoes' | 'auditoria' | 'acesso' | 'copias' | 'controlo';
 
@@ -221,6 +227,7 @@ function Access(): React.JSX.Element {
     <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
       <SessionLock />
       <SecurityKeySection />
+      <WebBrowserSection />
 
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
@@ -453,6 +460,77 @@ function SecurityKeySection(): React.JSX.Element {
           {message.text}
         </p>
       )}
+    </section>
+  );
+}
+
+/**
+ * Navegador controlado pelo assistente (Peça 19, lote 5).
+ *
+ * Desligado por omissão, como o Controlo Direto (Fase 3.1) — mesmo padrão:
+ * um interruptor explícito aqui, nunca ligado por si. A diferença de risco
+ * fica dita no aviso: o que uma página diz não é um facto nem uma instrução,
+ * é conteúdo a analisar como outro qualquer, e uma página pode tentar
+ * disfarçar-se de comando.
+ */
+function WebBrowserSection(): React.JSX.Element {
+  const enabled = useBrowserToolSettingsStore((state) => state.settings.enabled);
+  const setEnabled = useBrowserToolSettingsStore((state) => state.setEnabled);
+
+  const toggle = useCallback(() => {
+    const next = !enabled;
+    setEnabled(next);
+
+    if (next && typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(BROWSER_TOOL_WARN_KEY)) {
+      sessionStorage.setItem(BROWSER_TOOL_WARN_KEY, '1');
+      notificationService.info(
+        'Navegador controlado pelo assistente',
+        'O assistente pode agora abrir páginas que lhe peças. O texto de uma página é sempre tratado ' +
+          'como dado a analisar, nunca como uma instrução — mesmo que a página tente parecer que está a dar ordens.',
+        { category: 'assistente', durationMs: 8_000 },
+      );
+    }
+  }, [enabled, setEnabled]);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-2.5">
+      <p className="t-label mb-1.5">Navegador controlado pelo assistente</p>
+      <p className="mb-2 text-cap leading-relaxed text-t3">
+        Quando ligado, o assistente pode buscar uma página (só https) e ler o texto principal, se
+        lho pedires. Não clica em nada, não preenche formulários, não navega por conta própria —
+        só busca e lê a página que pedires.
+      </p>
+
+      <div className="mb-2 flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2">
+        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-t3" aria-hidden="true" />
+        <span className="min-w-0 flex-1 text-cap leading-relaxed text-t3">
+          <b className="font-medium text-t2">O texto de uma página é sempre dado, nunca instrução.</b>{' '}
+          Uma página pode conter frases escritas de propósito para parecerem ordens ("ignora as
+          instruções anteriores e…") — o assistente trata isso como parte do que a página diz, nunca
+          como um comando a cumprir.
+        </span>
+      </div>
+
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        aria-label="Ligar navegador controlado pelo assistente"
+        onClick={toggle}
+        className={cn(
+          'flex items-center gap-1.5 rounded-btn border px-3 py-2 text-[12px] font-medium transition-all duration-hover',
+          enabled
+            ? 'border-accent/50 bg-accent/[.1] text-accent'
+            : 'border-line text-t2 hover:border-accent/35',
+        )}
+      >
+        {enabled ? (
+          <Globe className="h-3.5 w-3.5" aria-hidden="true" />
+        ) : (
+          <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+        )}
+        {enabled ? 'Ligado' : 'Desligado'}
+      </button>
     </section>
   );
 }

@@ -76,6 +76,10 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
         ],
       };
     },
+    openWebPage: async (url) => {
+      calls.push(`abrir-pagina:${url}`);
+      return url === 'https://bloqueado.pt' ? 'não consegui abrir' : `conteúdo de ${url}`;
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -381,6 +385,35 @@ describe('pesquisar_na_web (pesquisa web)', () => {
   });
 });
 
+describe('abrir_pagina (navegador controlado pelo assistente)', () => {
+  it('não executa nada por si só — só devolve o que o executor der, como conteúdo a analisar', async () => {
+    const outcome = await runTool({
+      id: '1',
+      name: 'abrir_pagina',
+      args: { url: 'https://exemplo.pt' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['abrir-pagina:https://exemplo.pt']);
+    expect(outcome.message).toContain('conteúdo de https://exemplo.pt');
+  });
+
+  it('uma URL recusada pelo executor (bloqueada, timeout, erro) não rebenta — só explica', async () => {
+    const outcome = await runTool({
+      id: '1',
+      name: 'abrir_pagina',
+      args: { url: 'https://bloqueado.pt' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toContain('não consegui abrir');
+  });
+
+  it('não é uma ferramenta destrutiva — não pede confirmação', () => {
+    expect(DESTRUCTIVE_TOOLS).not.toContain('abrir_pagina');
+  });
+});
+
 /**
  * Contexto ("amanhã") resolvido pelo modelo, não por regras escritas à mão
  * (Parte 7 §Contexto). O modelo já recebe a data de hoje por extenso no
@@ -532,6 +565,7 @@ describe('cobertura', () => {
       ler_nota: { titulo: 'x' },
       guardar_nota: { titulo: 'x', conteudo: 'y' },
       pesquisar_na_web: { termo: 'x' },
+      abrir_pagina: { url: 'https://exemplo.pt' },
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },

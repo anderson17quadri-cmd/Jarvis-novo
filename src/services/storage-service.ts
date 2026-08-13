@@ -32,6 +32,7 @@ export const STORAGE_KEYS = {
   mailSettings: 'mail-settings',
   musicSettings: 'music-settings',
   obsidianSettings: 'obsidian-settings',
+  browserToolSettings: 'browser-tool-settings',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
