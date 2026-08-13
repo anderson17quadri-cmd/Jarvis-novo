@@ -4,6 +4,7 @@ import { notificationService } from './notification-service';
 import type { AiProvider, AiRequest } from '@/types/assistant';
 import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
 import { describeChoice } from './ai-providers/model-choice';
+import { OllamaProvider } from './ai-providers/ollama-provider';
 import { nextStep, type ChainMember } from './ai-providers/provider-chain';
 import { RuleProvider } from './ai-providers/rule-provider';
 import { runTool, type ToolCall } from './assistant/tool-runner';
@@ -205,9 +206,11 @@ export class AIService {
   async sendWithTools(prompt: string): Promise<readonly PendingConfirmation[]> {
     const provider = this.provider;
 
-    // Só a DeepSeek sabe pedir ferramentas. Com o provedor local, isto é um
-    // envio normal — e é o que deve ser, porque ele não decide nada.
-    if (!(provider instanceof DeepSeekProvider)) {
+    // A DeepSeek sabe sempre pedir ferramentas. A Ollama só quando o modelo
+    // escolhido for de uma família conhecida por suportar `tools` (ver
+    // `OllamaProvider.supportsToolCalling`) — um modelo sem essa capacidade
+    // recebe um pedido sem ferramentas, exatamente como o `RuleProvider`.
+    if (!isToolCapable(provider)) {
       await this.send(prompt);
       return [];
     }
@@ -240,8 +243,9 @@ export class AIService {
     const messages: unknown[] = [...buildMessages(request)];
     const pending: PendingConfirmation[] = [];
 
-    // A DeepSeek (única a chegar aqui, ver o `instanceof` acima) é sempre
-    // remota — a mesma verificação de `send()`, antes de qualquer pedido.
+    // A mesma verificação de `send()`, antes de qualquer pedido — só morde a
+    // DeepSeek, já que `networkBlocked()` olha para `provider.isRemote`, e a
+    // Ollama é sempre `false` (não sai da máquina).
     if (this.networkBlocked()) {
       const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
       await this.recover(new AiFailure('permissao'), { messageId, request, text: '', isAborted: false });
@@ -509,6 +513,21 @@ export class AIService {
 
     return this.send(prompt);
   }
+}
+
+/** Um provedor que sabe pedir e receber ferramentas — mesmo contrato `run`. */
+type ToolCapableProvider = DeepSeekProvider | OllamaProvider;
+
+/**
+ * A DeepSeek sabe sempre pedir ferramentas. A Ollama só quando o modelo
+ * escolhido for de uma família conhecida por suportar `tools` — ver
+ * `OllamaProvider.supportsToolCalling`. Qualquer outro provedor (o
+ * `RuleProvider`, por exemplo) nunca pede ferramentas.
+ */
+function isToolCapable(provider: AiProvider): provider is ToolCapableProvider {
+  if (provider instanceof DeepSeekProvider) return true;
+  if (provider instanceof OllamaProvider) return provider.supportsToolCalling();
+  return false;
 }
 
 export const aiService = new AIService();

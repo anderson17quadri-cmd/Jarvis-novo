@@ -2337,3 +2337,106 @@ no novo código (sobrou só um aviso pré-existente em `system/monitor.rs`). A
 verificação ao vivo contra um servidor real ficou por fazer — exige credenciais
 IMAP/SMTP que esta máquina não tem —; os testes cobrem a forma das chamadas, a
 divisão storage/cofre e a degradação no Web/Android.
+
+## 2026-08-13 — Kimi trava logo ao início nas Peças 10+11, limite de taxa da organização
+
+Equipa alargada esta tarde: DeepSeek continua na Peça 8 (rede real), a Kimi
+entrou de novo num worktree próprio (`agents/kimi`, criado hoje) para as
+Peças 10 e 11 (wake word e voz em tempo real com barge-in), e o Qwen foi
+testado outra vez para a Peça 12 antes de se lhe atribuir nada — continua
+sem cota (mesmo erro 429 de sempre, "token-plan 1-week quota... reset em
+08-19 03:23 UTC"), por isso a Peça 12 fica por atribuir.
+
+A Kimi travou muito cedo, sem chegar a produzir nada de significativo:
+`API Error: Request rejected (429) — organization TPD rate limit, current:
+1609315, limit: 1500000`. Isto é diferente do que aconteceu ao Qwen — não é
+"sem crédito nenhum", é um limite de tokens por dia da organização inteira
+(TPD), que pode libertar-se num período mais curto do que a cota semanal do
+Qwen. Mesmo assim, segue-se a mesma regra: não se insiste às cegas.
+
+O que ficou no worktree da Kimi, por commitar (revisto antes de decidir
+alguma coisa, dada a sensibilidade destas duas peças): um store novo,
+`src/stores/use-wake-word-store.ts` — só o esqueleto do interruptor
+(`enabled: false` por omissão, `palavra` configurável, persistência via
+`storageService`), sem deteção nenhuma, sem microfone, sem nada que grave
+ou transmita áudio. E uma linha nova em `storage-service.ts`
+(`STORAGE_KEYS.wakeWord`). Confirmado seguro por leitura direta do código —
+não é código a meio de fazer algo sensível, é só a base de um interruptor
+desligado. Deixado como está, sem commit (não é uma peça completa nem
+testada), para uma retoma futura continuar dali em vez de recomeçar do
+zero.
+
+Não se reatribuiu a Peça 10/11 à DeepSeek nem a ninguém — é a peça mais
+sensível do projeto, e trocar de sessão a meio muda quem tem o contexto da
+leitura da ética que se pediu para fazer primeiro. Fica em pausa até haver
+uma razão concreta para pensar que o limite aliviou, ou até o utilizador
+decidir doutra forma.
+
+## 2026-08-13 — Peça 12, Lote 3: Ollama com ferramentas
+
+Com a DeepSeek na Peça 8 e a Kimi parada num limite de taxa, e o Qwen sem
+cota (confirmado outra vez, mesmo erro de sempre), peguei nesta peça
+diretamente — está fora do domínio sensível de voz/áudio, tinha contexto
+suficiente já investigado, e não repete trabalho de ninguém.
+
+**O que mudou:** `sendWithTools` (`ai-service.ts`) tinha um bloqueio
+explícito — só um `provider instanceof DeepSeekProvider` chegava a pedir
+ferramentas; qualquer outro (incluindo a Ollama) virava um envio normal,
+sem ferramenta nenhuma disponível. Passa a existir `isToolCapable()`, que
+deixa a DeepSeek passar sempre e a Ollama passar quando
+`OllamaProvider.supportsToolCalling()` disser que sim.
+
+**A decisão de como detetar suporte:** não há forma de perguntar ao
+próprio Ollama "este modelo sabe pedir ferramentas?" sem fazer um pedido a
+sério — e sondar antes de cada pedido real custa tempo por nada. Optei por
+comparar o nome do modelo configurado contra uma lista de prefixos de
+famílias que a Ollama documenta como capazes (qwen, llama3.1+, mistral/
+mixtral, firefunction, command-r). Documentado no próprio código como um
+palpite informado, não uma garantia — a lista fica desatualizada à medida
+que a Ollama for suportando mais modelos, e um modelo customizado pode
+escapar aos dois lados do palpite.
+
+`OllamaProvider` ganhou um `run()` novo, gémeo do da DeepSeek em espírito:
+manda `tools: toolsAsJsonSchema()` no pedido e reaproveita o `collect()`
+já existente (exportado de `deepseek-provider.ts`) para separar texto de
+`tool_calls` na resposta — os dois falam o mesmo protocolo compatível com
+a OpenAI, por isso reaproveitar em vez de duplicar o parser fazia sentido.
+
+**Confirmado a sério, com o Ollama real a correr nesta máquina**
+(`qwen3:8b`, o único modelo instalado): comecei por ligar o servidor
+(`ollama serve` não estava a correr) e confirmei o modelo com `ollama
+list`. Um pedido cru por `Invoke-RestMethod` (sem streaming) devolveu
+`tool_calls` corretos para a ferramenta `notificar`, com os argumentos
+certos. Repeti em `stream:true` para ver o formato a sério: descobri que o
+qwen3 manda o seu "raciocínio" em `delta.reasoning` (não
+`delta.reasoning_content`, como a DeepSeek) — mas como o `collect()`
+reaproveitado só lê `delta.content` e `delta.tool_calls`, esse campo
+nunca chega a aparecer na resposta visível, sem precisar de nenhuma
+mudança de código. O `tool_calls` chegou inteiro num único evento, ao
+contrário da DeepSeek que às vezes parte os argumentos por vários — o
+`collect()` já lida com isso na mesma, porque acumula por índice
+independentemente de vir tudo de uma vez ou aos bocados.
+
+**O que não mudou:** o tecto de 60 segundos antes de desistir e cair para
+o próximo provedor da cadeia (confirmado a sério a 10/08/2026, para
+pedidos sem ferramentas) é herdado sem alteração nenhuma — `run()` usa o
+mesmo `TIMEOUT_MS`. Não repeti esse teste de arranque a frio a sério
+(descarregar o modelo da memória e cronometrar de novo) porque o mecanismo
+é código idêntico ao já confirmado, só a chamar `collect()` em vez de
+`readStream()` — o risco novo estava na deteção de capacidade e no parser
+de `tool_calls`, que foram os dois confirmados a sério. A cadeia de
+fallback (DeepSeek → Claude → Ollama) com ferramentas envolvidas degrada
+para texto simples ao trocar de provedor a meio (`recover()` usa sempre
+`stream()`, nunca `run()`, ao saltar para o próximo) — comportamento
+pré-existente, igual para a DeepSeek, não uma regressão desta peça.
+
+**Testes:** 30 novos — `tests/assistant/ollama-provider.test.ts`
+(`supportsToolCalling` com famílias conhecidas e desconhecidas,
+maiúsculas/minúsculas, `run()` a mandar o catálogo de ferramentas e a
+interpretar um pedido partido em vários pedaços) e
+`tests/assistant/send-with-tools-ollama.test.ts` (`AIService.sendWithTools`
+de ponta a ponta com um `OllamaProvider` a sério — não um mock — e
+`fetch` falso: com `qwen3:8b`, manda ferramentas e executa a que o modelo
+pediu; com `llama2`, nunca manda o campo `tools` e cai para um envio
+normal). Suite completa: 1443 testes (104 ficheiros), `tsc` limpo,
+`eslint` 0 erros.

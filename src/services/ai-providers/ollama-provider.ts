@@ -1,6 +1,7 @@
 import { AiFailure, failureFromStatus } from '@/types/ai-failure';
 import type { AiProvider, AiRequest } from '@/types/assistant';
-import { buildMessages, readStream } from './deepseek-provider';
+import { toolsAsJsonSchema } from '../assistant/tools';
+import { buildMessages, collect, readStream, type StreamResult } from './deepseek-provider';
 
 /**
  * Um modelo local via Ollama (Parte 12 §Orquestrador multi-provedor).
@@ -35,6 +36,29 @@ export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
 const TIMEOUT_MS = 60_000;
 
+/**
+ * Famílias de modelos que a Ollama documenta como capazes de pedir
+ * ferramentas (`tools` no `/v1/chat/completions`).
+ *
+ * Não há forma de perguntar isto ao próprio Ollama sem fazer um pedido a
+ * sério — e um pedido de sondagem antes de cada pedido real custa tempo por
+ * nada. Em vez disso, compara-se o nome do modelo com prefixos conhecidos.
+ * Esta lista fica desatualizada à medida que a Ollama for suportando mais
+ * modelos — é uma lista de hoje, não uma verdade permanente. Confirmado a
+ * sério (13/08/2026): `qwen3:8b` cumpre o formato de pedido de ferramentas
+ * da OpenAI e devolve `tool_calls` na resposta.
+ */
+const TOOL_CAPABLE_PREFIXES: readonly string[] = [
+  'qwen',
+  'llama3.1',
+  'llama3.2',
+  'llama3.3',
+  'mistral',
+  'mixtral',
+  'firefunction',
+  'command-r',
+];
+
 export class OllamaProvider implements AiProvider {
   readonly id = 'ollama';
   readonly name = 'Ollama';
@@ -54,6 +78,63 @@ export class OllamaProvider implements AiProvider {
 
   setModel(model: string): void {
     this.model = model;
+  }
+
+  /**
+   * `true` se o modelo configurado for de uma família conhecida por saber
+   * pedir ferramentas. Ver `TOOL_CAPABLE_PREFIXES` — é um palpite informado,
+   * não uma garantia: um modelo customizado ou uma versão futura pode
+   * suportar sem aparecer aqui, ou o inverso.
+   */
+  supportsToolCalling(): boolean {
+    const name = this.model.trim().toLowerCase();
+    return TOOL_CAPABLE_PREFIXES.some((prefix) => name.startsWith(prefix));
+  }
+
+  /**
+   * Uma passagem completa, com ferramentas — mesmo contrato de
+   * `DeepSeekProvider.run`, reaproveitando `collect` para não duplicar o
+   * parser do formato de streaming (os dois falam o mesmo protocolo
+   * compatível com a OpenAI).
+   */
+  async run(
+    request: AiRequest,
+    messages: readonly unknown[],
+    onText: (chunk: string) => void,
+  ): Promise<StreamResult> {
+    if (!this.isConfigured()) throw new AiFailure('configuracao');
+
+    const timeout = new AbortController();
+    const timer = setTimeout(() => timeout.abort(), TIMEOUT_MS);
+    const onAbort = (): void => timeout.abort();
+    request.signal?.addEventListener('abort', onAbort, { once: true });
+
+    try {
+      const response = await this.fetchImpl(`${this.baseUrl}/v1/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          stream: true,
+          messages,
+          tools: toolsAsJsonSchema(),
+        }),
+        signal: timeout.signal,
+      });
+
+      if (!response.ok) throw failureFromStatus(response.status);
+      if (!response.body) throw new AiFailure('vazio');
+
+      return await collect(response.body, timeout.signal, onText);
+    } catch (error) {
+      if (request.signal?.aborted) return { text: '', toolCalls: [] };
+
+      if (error instanceof AiFailure) throw error;
+      throw new AiFailure(timeout.signal.aborted ? 'demora' : 'rede');
+    } finally {
+      clearTimeout(timer);
+      request.signal?.removeEventListener('abort', onAbort);
+    }
   }
 
   async *stream(request: AiRequest): AsyncIterable<string> {
