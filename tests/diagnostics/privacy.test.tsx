@@ -1,11 +1,27 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type * as WebAuthnServiceModule from '@/services/webauthn-service';
+
+/**
+ * Só `getRegisteredSecurityKey` é substituída — o resto (registo, remoção,
+ * suporte) continua a correr a sério, como os testes de "chave física" já
+ * exercitam. Isto deixa simular "já há uma chave registada" sem ter de
+ * passar pela cerimónia WebAuthn inteira só para testar o interruptor de
+ * 2FA, que só aparece com uma credencial já guardada.
+ */
+vi.mock('@/services/webauthn-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof WebAuthnServiceModule>();
+  return { ...actual, getRegisteredSecurityKey: vi.fn(actual.getRegisteredSecurityKey) };
+});
 
 import PrivacyWindow from '@/apps/privacy/PrivacyWindow';
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { getPlatformAdapter } from '@/platform';
 import { logService } from '@/services/log-service';
+import { getRegisteredSecurityKey, type StoredCredential } from '@/services/webauthn-service';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
+import { DEFAULT_APPEARANCE } from '@/types/appearance';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
 
@@ -207,5 +223,70 @@ describe('chave física (WebAuthn)', () => {
     // este ambiente não tem cofre — a interface tem de dizer isso, não
     // fingir que registou.
     expect(await screen.findByText(/não tem um cofre de segredos disponível/i)).toBeInTheDocument();
+  });
+});
+
+describe('2FA (segundo fator) — interruptor na Privacidade', () => {
+  const FAKE_CREDENTIAL: StoredCredential = {
+    credentialId: 'YWJj',
+    publicKeySpki: 'eHl6',
+    algorithm: -7,
+    signCount: 0,
+    registeredAt: Date.now(),
+  };
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: function PublicKeyCredential() {},
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    useAppearanceStore.setState({ appearance: DEFAULT_APPEARANCE });
+  });
+
+  it('sem chave registada, não mostra o interruptor de 2FA', async () => {
+    vi.mocked(getRegisteredSecurityKey).mockResolvedValue(null);
+
+    const user = userEvent.setup();
+    render(<PrivacyWindow />);
+    await user.click(screen.getByRole('tab', { name: 'Acesso' }));
+
+    expect(await screen.findByRole('button', { name: 'Registar chave física' })).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Exigir segundo fator' })).toBeNull();
+  });
+
+  it('com chave registada, o interruptor aparece desligado por omissão e liga ao clicar', async () => {
+    vi.mocked(getRegisteredSecurityKey).mockResolvedValue(FAKE_CREDENTIAL);
+
+    const user = userEvent.setup();
+    render(<PrivacyWindow />);
+    await user.click(screen.getByRole('tab', { name: 'Acesso' }));
+
+    const toggle = await screen.findByRole('switch', { name: 'Exigir segundo fator' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+
+    await user.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(useAppearanceStore.getState().appearance.twoFactorEnabled).toBe(true);
+  });
+
+  it('remover a chave desliga o 2FA automaticamente, sem deixar o interruptor apontar para nada', async () => {
+    vi.mocked(getRegisteredSecurityKey).mockResolvedValue(FAKE_CREDENTIAL);
+    useAppearanceStore.getState().set('twoFactorEnabled', true);
+
+    const user = userEvent.setup();
+    render(<PrivacyWindow />);
+    await user.click(screen.getByRole('tab', { name: 'Acesso' }));
+
+    await screen.findByRole('switch', { name: 'Exigir segundo fator' });
+    await user.click(screen.getByRole('button', { name: 'Remover chave' }));
+
+    await waitFor(() => expect(useAppearanceStore.getState().appearance.twoFactorEnabled).toBe(false));
+    expect(await screen.findByRole('button', { name: 'Registar chave física' })).toBeInTheDocument();
   });
 });

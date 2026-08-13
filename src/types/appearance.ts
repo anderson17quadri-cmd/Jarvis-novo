@@ -167,6 +167,15 @@ export interface Appearance {
    * `0` desliga — e a interface diz o que isso significa.
    */
   readonly idleLockMinutes: number;
+  /**
+   * Exige um segundo fator (a chave física WebAuthn) depois da
+   * palavra-passe ou do PIN — em vez de os dois serem, cada um sozinho,
+   * suficientes para entrar (Parte 14 §Cofre de segredos, 2FA). Desligado
+   * por omissão, e só pode ligar-se com uma chave já registada — a
+   * interface impede a contradição de exigir um segundo fator que não
+   * existe.
+   */
+  readonly twoFactorEnabled: boolean;
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -186,6 +195,7 @@ export const DEFAULT_APPEARANCE: Appearance = {
   // Quinze minutos por omissão: curto o suficiente para servir de alguma
   // coisa, longo o suficiente para não interromper quem está a ler.
   idleLockMinutes: 15,
+  twoFactorEnabled: false,
 };
 
 /**
