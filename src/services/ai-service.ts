@@ -3,6 +3,7 @@ import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-stor
 import { notificationService } from './notification-service';
 import type { AiProvider, AiRequest } from '@/types/assistant';
 import { buildMessages, DeepSeekProvider } from './ai-providers/deepseek-provider';
+import { ClaudeProvider } from './ai-providers/claude-provider';
 import { describeChoice } from './ai-providers/model-choice';
 import { OllamaProvider } from './ai-providers/ollama-provider';
 import { nextStep, type ChainMember } from './ai-providers/provider-chain';
@@ -206,10 +207,11 @@ export class AIService {
   async sendWithTools(prompt: string): Promise<readonly PendingConfirmation[]> {
     const provider = this.provider;
 
-    // A DeepSeek sabe sempre pedir ferramentas. A Ollama só quando o modelo
-    // escolhido for de uma família conhecida por suportar `tools` (ver
-    // `OllamaProvider.supportsToolCalling`) — um modelo sem essa capacidade
-    // recebe um pedido sem ferramentas, exatamente como o `RuleProvider`.
+    // A DeepSeek e o Claude sabem sempre pedir ferramentas. A Ollama só
+    // quando o modelo escolhido for de uma família conhecida por suportar
+    // `tools` (ver `OllamaProvider.supportsToolCalling`) — um modelo sem essa
+    // capacidade recebe um pedido sem ferramentas, exatamente como o
+    // `RuleProvider`.
     if (!isToolCapable(provider)) {
       await this.send(prompt);
       return [];
@@ -516,16 +518,17 @@ export class AIService {
 }
 
 /** Um provedor que sabe pedir e receber ferramentas — mesmo contrato `run`. */
-type ToolCapableProvider = DeepSeekProvider | OllamaProvider;
+type ToolCapableProvider = DeepSeekProvider | ClaudeProvider | OllamaProvider;
 
 /**
- * A DeepSeek sabe sempre pedir ferramentas. A Ollama só quando o modelo
- * escolhido for de uma família conhecida por suportar `tools` — ver
+ * A DeepSeek e o Claude sabem sempre pedir ferramentas. A Ollama só quando o
+ * modelo escolhido for de uma família conhecida por suportar `tools` — ver
  * `OllamaProvider.supportsToolCalling`. Qualquer outro provedor (o
  * `RuleProvider`, por exemplo) nunca pede ferramentas.
  */
 function isToolCapable(provider: AiProvider): provider is ToolCapableProvider {
   if (provider instanceof DeepSeekProvider) return true;
+  if (provider instanceof ClaudeProvider) return true;
   if (provider instanceof OllamaProvider) return provider.supportsToolCalling();
   return false;
 }

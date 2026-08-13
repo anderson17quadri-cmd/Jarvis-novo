@@ -11,9 +11,9 @@
 > configurado, e o `AIService` tenta-a sozinho no `recover()`. Verificado num
 > Chromium real: guardar a chave da Claude e depois a da DeepSeek mostra a
 > nota "Se o DeepSeek falhar… tenta sozinho o próximo provedor" na própria
-> janela. Falta só o que o §4 já dizia que ia ficar de fora nesta leva —
-> ferramentas para o Claude e o Ollama, e uma interface para reordenar a
-> cadeia.
+> janela. **Ferramentas para o Ollama e para o Claude, feitas** — ver Peça 20
+> abaixo. Falta só o que o §4 já dizia que ia ficar de fora nesta leva — uma
+> interface para reordenar a cadeia.
 
 ---
 
@@ -46,12 +46,14 @@ inventar já a adivinhar).
 mensagem de erro que fala em saldo — por isso `claudeFailureFromResponse`
 abre o corpo da resposta antes de decidir, em vez de confiar só no código.
 
-**Não pede ferramentas ainda.** A DeepSeek pede-as através de `run()`, um
-método à parte de `stream()`, porque o formato de ferramentas da Anthropic é
-outra peça (blocos `tool_use`, argumentos por `input_json_delta`) — maior do
-que cabia nesta primeira versão. Sem isto, ligar o Claude à cadeia dá
-conversa, mas não `abrir_janela` nem `criar_tarefa`. Registado, não
-escondido.
+**Pede ferramentas, desde a Peça 20.** `run()`, o mesmo método à parte de
+`stream()` que a DeepSeek já tinha — o formato de ferramentas da Anthropic é
+mesmo diferente (blocos `tool_use` dentro da própria mensagem `assistant`,
+`tool_result` dentro da `user` seguinte, argumentos por `input_json_delta`
+espalhados por vários eventos), por isso `claude-provider.ts` ganhou
+`toAnthropicMessages()` — só ali é que a diferença de formato importa,
+traduzindo o genérico (estilo OpenAI) que `ai-service.ts` já usa para
+qualquer provedor. Ver §6 abaixo para o detalhe.
 
 ### Ollama (`services/ai-providers/ollama-provider.ts`)
 
@@ -97,9 +99,7 @@ falha."*
 1. **A ordem da cadeia.** Hoje é só uma lista que se passa à função — quem a
    escreve escolhe a ordem. Um ecrã de configurações para reordenar
    (arrastar, ou uma lista numerada) é trabalho de interface, não de lógica.
-2. **Ferramentas para o Claude e o Ollama.** Só a DeepSeek pede ferramentas
-   hoje. Estender isso é o maior bloco de trabalho que falta.
-3. **Se o Ollama entra à frente ou atrás do Claude por omissão.** Grátis e
+2. **Se o Ollama entra à frente ou atrás do Claude por omissão.** Grátis e
    local versus melhor e pago — não é uma decisão técnica, é tua.
 
 ## 4. O que ficou ligado
@@ -124,8 +124,51 @@ Os seis pontos que este documento listava como pendentes estão todos feitos:
 
 ## 5. O que fica mesmo de fora, por agora
 
-- **Ferramentas para o Claude e o Ollama.** Só a DeepSeek pede ferramentas —
-  a Claude e o Ollama respondem em conversa, e a interface di-lo.
 - **Reordenar a cadeia.** Hoje é sempre "o escolhido, depois DeepSeek, Claude,
   Ollama pela ordem fixa" — não há arrastar nem preferência guardada por
   posição.
+
+## 6. Peça 20 — ferramentas para o Claude (13/08/2026)
+
+Última peça pendente deste documento: `ClaudeProvider.run()`, o mesmo
+contrato que `DeepSeekProvider.run()` — texto e `ToolCall[]` numa só
+passagem, para `AIService.sendWithTools` tratar os três provedores capazes de
+ferramentas (DeepSeek, Claude, Ollama-com-modelo-capaz) da mesma forma, sem
+saber qual está por trás.
+
+**O que muda de propósito, por o formato da Anthropic não ter equivalente
+direto**:
+
+- Um pedido de ferramenta é um bloco `tool_use` **dentro** da mensagem
+  `assistant` (`content: [{type: 'text', ...}, {type: 'tool_use', id, name,
+  input}]`), nunca um campo `tool_calls` à parte como na OpenAI/DeepSeek.
+- A resposta de uma ferramenta é um bloco `tool_result` dentro da mensagem
+  `user` **seguinte** (`content: [{type: 'tool_result', tool_use_id,
+  content}]`), nunca uma mensagem com `role: 'tool'` própria. Como
+  `ai-service.ts` continua a empurrar uma mensagem `tool` por chamada
+  (formato genérico, o mesmo para qualquer provedor), `toAnthropicMessages()`
+  junta mensagens `tool` consecutivas num único bloco `user` com vários
+  `tool_result` — é o que a Anthropic exige quando um turno pede mais do que
+  uma ferramenta de uma vez.
+- Os argumentos de um `tool_use` chegam por eventos `input_json_delta`
+  espalhados (`partial_json`), só interpretáveis depois de completos —
+  `collectClaudeStream` acumula por índice de bloco, a mesma disciplina que
+  já existia no `collect()` da DeepSeek para o campo equivalente.
+
+**O que não mudou**: `toolsAsAnthropicSchema()` (`services/assistant/tools.ts`)
+gera o catálogo no formato `{name, description, input_schema}` a partir da
+mesma definição `TOOLS` que já alimentava `toolsAsJsonSchema()` — sem
+segunda cópia da lista de ferramentas a divergir.
+
+**Verificação**: 9 testes novos — 5 unitários em `collectClaudeStream`
+(texto e ferramenta juntos, argumentos partidos por vários eventos, dois
+`tool_use` em paralelo sem se misturarem, JSON que nunca fecha não rebenta,
+sem ferramenta nenhuma a lista vem vazia), 1 no esquema Anthropic
+(`toolsAsAnthropicSchema`), 3 num ciclo completo de `sendWithTools` com o
+Claude (`tests/assistant/send-with-tools-claude.test.ts`, o mesmo padrão do
+ficheiro já existente para a Ollama). Suite completa depois desta peça: 120
+ficheiros, 1621 testes. `tsc` limpo, `eslint` 0 erros. **Não confirmado ao
+vivo** — feito nesta sessão remota, sem chave da Anthropic disponível para
+testar contra o servidor real; a tradução de formato está confirmada a sério
+por teste (inclusive o caso de dois `tool_use` em paralelo, que só um teste
+apanha — não dá para ver isso "a olho" numa conversa normal).

@@ -12,6 +12,7 @@ import {
   DESTRUCTIVE_TOOLS,
   getTool,
   TOOLS,
+  toolsAsAnthropicSchema,
   toolsAsJsonSchema,
   validateArgs,
 } from '@/services/assistant/tools';
@@ -176,6 +177,21 @@ describe('o que se manda ao modelo', () => {
 
     const tarefa = schema.find((entry) => entry.function.name === 'criar_tarefa');
     expect(tarefa?.function.parameters.required).toEqual(['titulo']);
+  });
+
+  it('o esquema da Anthropic tem as mesmas ferramentas, num formato plano', async () => {
+    const schema = toolsAsAnthropicSchema() as {
+      name: string;
+      input_schema: { properties: Record<string, { enum?: string[] }>; required: string[] };
+    }[];
+
+    expect(schema).toHaveLength(TOOLS.length);
+
+    const abrir = schema.find((entry) => entry.name === 'abrir_janela');
+    expect(abrir?.input_schema.properties['app']?.enum).toContain('emails');
+
+    const tarefa = schema.find((entry) => entry.name === 'criar_tarefa');
+    expect(tarefa?.input_schema.required).toEqual(['titulo']);
   });
 });
 

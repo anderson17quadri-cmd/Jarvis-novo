@@ -3237,3 +3237,105 @@ Rust e `vitest` com o adaptador simulado). A pessoa deve confirmar ao
 vivo, antes de confiar na peça: ligar o interruptor em Privacidade,
 pedir ao assistente para abrir uma página real, e ver se o texto que
 volta é mesmo o texto da página.
+
+## 2026-08-13 — Peça 20: ferramentas para o Claude no orquestrador
+
+Depois de verificar (a pedido do utilizador — "verifique se tudo que
+me passou já foi feito") que as Peças 18 e 19 estavam mesmo feitas
+como relatado, e de o utilizador pedir para eu próprio continuar a
+construir em vez de só coordenar ("e voce nao vai mais cosntruir
+nada? ta preguicosso?", outra vez), fui ao `SPEC.md` e ao
+`docs/spec/orquestrador-multi-provedor.md` à procura da próxima peça
+real por fazer, não inventada. Encontrei duas coisas por corrigir
+antes de construir: a linha do explorador de ficheiros em §2 do
+SPEC.md dizia "🚫 bloqueado" quando a funcionalidade já estava feita
+desde 12/08 (linha 351 do mesmo ficheiro já o documentava) — corrigida
+para ✅, sem tocar em código nenhum, só na entrada desatualizada. E o
+próprio documento do orquestrador dizia "ferramentas para o Claude e o
+Ollama" como as duas em falta, mas a Ollama já as tinha (`run()`,
+`supportsToolCalling()`, testado em `send-with-tools-ollama.test.ts`)
+— só o Claude ficava mesmo de fora.
+
+**Peça 20**: `ClaudeProvider.run()`, o mesmo contrato `run(request,
+messages, onText): Promise<StreamResult>` que a DeepSeek e a Ollama já
+cumpriam, agora também no Claude. `isToolCapable()` (`ai-service.ts`)
+deixa-o passar sempre, ao lado da DeepSeek.
+
+O formato da Anthropic não tem equivalente direto ao que `ai-service.ts`
+já usava (estilo OpenAI: `tool_calls` num campo à parte da mensagem
+`assistant`, respostas em mensagens `role: 'tool'` próprias) — na
+Anthropic, um pedido de ferramenta é um bloco `tool_use` **dentro** da
+própria mensagem `assistant`, e a resposta é um bloco `tool_result`
+dentro da mensagem `user` **seguinte**, nunca uma mensagem à parte.
+Escrevi `toAnthropicMessages()` para traduzir de um formato para o
+outro — é o único sítio onde a diferença importa, porque
+`ai-service.ts` continua a construir e a empurrar mensagens no formato
+genérico de sempre, sem saber qual provedor está por trás. Uma
+particularidade que só um teste apanha: como a Anthropic exige que
+todas as respostas de ferramentas de um turno cheguem juntas, mensagens
+`tool` consecutivas (uma por chamada, como `ai-service.ts` já as
+empurra) juntam-se numa única mensagem `user` com vários blocos
+`tool_result`, em vez de virarem várias mensagens `user` separadas.
+
+Os argumentos de um `tool_use` chegam por eventos `input_json_delta`
+espalhados (`partial_json`) — só interpretáveis depois de completos.
+`collectClaudeStream()` acumula-os por índice de bloco antes de tentar
+o `JSON.parse`, a mesma disciplina que já existia no `collect()` da
+DeepSeek para o campo equivalente (`tool_calls[].function.arguments`).
+Um JSON que nunca fecha direito perde-se (o pedido não corre), em vez
+de rebentar o resto da resposta.
+
+`toolsAsAnthropicSchema()` (`services/assistant/tools.ts`) gera o
+catálogo no formato `{name, description, input_schema}` a partir da
+mesma definição `TOOLS` que já alimentava `toolsAsJsonSchema()` —
+extraí `parametersSchema()` como função partilhada pelas duas, para uma
+ferramenta nova continuar a aparecer nos dois formatos sem escrever a
+lista duas vezes.
+
+### Verificação
+
+`tsc` limpo. `eslint` apanhou um erro real na primeira versão —
+`Array.isArray()` sozinho não estreitava bem o tipo
+`string | readonly AnthropicContentBlock[]` (a spread ficava `any[]`);
+resolvido com um predicado de tipo explícito (`isBlockList`) em vez de
+depender do `Array.isArray` do TypeScript para este caso. Depois disso,
+0 erros. 9 testes novos: 5 unitários em `collectClaudeStream` (texto e
+ferramenta juntos, argumentos partidos por vários eventos, **dois
+`tool_use` em paralelo — índices diferentes — sem se misturarem**, JSON
+que nunca fecha a perder-se sem rebentar, sem ferramenta nenhuma a
+lista vem vazia), 1 no esquema Anthropic
+(`o esquema da Anthropic tem as mesmas ferramentas, num formato
+plano`), 3 num ciclo completo de `sendWithTools`
+(`tests/assistant/send-with-tools-claude.test.ts`, mesmo padrão do
+ficheiro já existente para a Ollama — incluindo o teste de que a
+segunda volta manda a resposta da ferramenta como `tool_result` na
+mensagem `user` certa, com o `tool_use_id` a bater certo). Suite
+completa: **120 ficheiros, 1621 testes** (era 119/1612 antes desta
+peça). `docs/spec/orquestrador-multi-provedor.md` e `SPEC.md`
+atualizados — a nota "ferramentas para o Claude e o Ollama" que ainda
+listava as duas como pendentes já estava parcialmente desatualizada
+(a Ollama tinha sido feita por outra sessão sem o documento ser
+corrigido); corrigida para refletir as duas feitas.
+
+**Não confirmado ao vivo**: sem chave da Anthropic disponível nesta
+sessão remota, nunca se mandou um pedido real a `api.anthropic.com`
+com ferramentas — só testes automatizados, com o `fetch` simulado a
+devolver eventos `content_block_start`/`content_block_delta` no
+formato documentado pela Anthropic. A tradução de mensagens e a
+acumulação de blocos estão confirmadas a sério pelos testes (inclusive
+o caso de dois `tool_use` em paralelo, que só um teste dedicado
+apanha — não dá para ver isso "a olho" numa conversa normal); o que
+falta é a pessoa configurar uma chave da Claude a sério, ligar a
+cadeia de provedores para o Claude entrar primeiro (ou ficar sozinho),
+e pedir ao assistente algo que precise de uma ferramenta.
+
+**Pedido em paralelo, ainda por fechar nesta sessão**: o utilizador
+pediu para os modelos locais com limite já configurado (Qwen, Kimi,
+DeepSeek) e o Claude local passarem a trabalhar sozinhos via terminal,
+numa fila de peças, em vez de eu só escrever prompts para outras
+sessões copiarem à mão — e que o prompt de arranque diga para iniciar
+o Jarvis primeiro, para a pessoa poder testar ao vivo enquanto o
+trabalho corre. Esta sessão remota não tem acesso ao terminal nem ao
+Ollama da máquina local (container isolado, só este repositório) —
+por isso o que dá para entregar daqui é o prompt/roteiro em si, para
+correr a partir de uma sessão local com esse acesso, não a execução.

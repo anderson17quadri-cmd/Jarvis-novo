@@ -336,6 +336,33 @@ export const DESTRUCTIVE_TOOLS: readonly string[] = TOOLS.filter(
 ).map((tool) => tool.name);
 
 /**
+ * O esquema de parâmetros de uma ferramenta, formato JSON Schema — a parte
+ * que é igual nas duas APIs. O que muda entre a OpenAI e a Anthropic é só
+ * onde este objeto se encaixa (`function.parameters` numa, `input_schema`
+ * na outra), nunca o seu conteúdo.
+ */
+function parametersSchema(tool: ToolDefinition): {
+  readonly type: 'object';
+  readonly properties: Record<string, unknown>;
+  readonly required: readonly string[];
+} {
+  return {
+    type: 'object',
+    properties: Object.fromEntries(
+      tool.parameters.map((parameter) => [
+        parameter.name,
+        {
+          type: parameter.type,
+          description: parameter.description,
+          ...(parameter.options ? { enum: parameter.options } : {}),
+        },
+      ]),
+    ),
+    required: tool.parameters.filter((parameter) => parameter.required).map((p) => p.name),
+  };
+}
+
+/**
  * O catálogo no formato que a API espera (o mesmo da OpenAI).
  *
  * Convertido a partir da definição em vez de escrito duas vezes: duas cópias
@@ -347,21 +374,22 @@ export function toolsAsJsonSchema(): readonly unknown[] {
     function: {
       name: tool.name,
       description: tool.description,
-      parameters: {
-        type: 'object',
-        properties: Object.fromEntries(
-          tool.parameters.map((parameter) => [
-            parameter.name,
-            {
-              type: parameter.type,
-              description: parameter.description,
-              ...(parameter.options ? { enum: parameter.options } : {}),
-            },
-          ]),
-        ),
-        required: tool.parameters.filter((parameter) => parameter.required).map((p) => p.name),
-      },
+      parameters: parametersSchema(tool),
     },
+  }));
+}
+
+/**
+ * O mesmo catálogo, no formato da Anthropic — plano em vez de aninhado em
+ * `function`, e `input_schema` em vez de `parameters`. É o único bocado que
+ * não dá para reaproveitar da DeepSeek quando se ligaram ferramentas ao
+ * Claude (`docs/spec/orquestrador-multi-provedor.md`).
+ */
+export function toolsAsAnthropicSchema(): readonly unknown[] {
+  return TOOLS.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    input_schema: parametersSchema(tool),
   }));
 }
 

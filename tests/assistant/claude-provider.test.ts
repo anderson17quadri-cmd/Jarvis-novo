@@ -4,6 +4,7 @@ import { AiFailure } from '@/types/ai-failure';
 import {
   ClaudeProvider,
   claudeFailureFromResponse,
+  collectClaudeStream,
   parseClaudeEventLine,
 } from '@/services/ai-providers/claude-provider';
 import type { AiRequest, AssistantContext, AssistantMemory } from '@/types/assistant';
@@ -120,6 +121,70 @@ describe('ClaudeProvider', () => {
     await expect(async () => {
       for await (const _chunk of provider.stream(request())) void _chunk;
     }).rejects.toMatchObject({ kind: 'chave' });
+  });
+});
+
+describe('collectClaudeStream (Peça 20)', () => {
+  function toolUseStart(index: number, id: string, name: string): string {
+    return `data: ${JSON.stringify({ type: 'content_block_start', index, content_block: { type: 'tool_use', id, name } })}\n\n`;
+  }
+
+  function toolUseDelta(index: number, partialJson: string): string {
+    return `data: ${JSON.stringify({ type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: partialJson } })}\n\n`;
+  }
+
+  it('junta o texto e ignora os blocos de ferramenta ao formar o texto', async () => {
+    const body = streamOf(textDelta('Vou avisar. '), toolUseStart(1, 'id1', 'notificar'), toolUseDelta(1, '{}'));
+    const chunks: string[] = [];
+
+    const result = await collectClaudeStream(body, undefined, (chunk) => chunks.push(chunk));
+
+    expect(result.text).toBe('Vou avisar. ');
+    expect(chunks).toEqual(['Vou avisar. ']);
+  });
+
+  it('junta os argumentos de um tool_use espalhados por vários eventos', async () => {
+    const body = streamOf(
+      toolUseStart(0, 'call_1', 'notificar'),
+      toolUseDelta(0, '{"titulo":"Oi",'),
+      toolUseDelta(0, '"descricao":"Teste"}'),
+    );
+
+    const result = await collectClaudeStream(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toEqual([{ id: 'call_1', name: 'notificar', args: { titulo: 'Oi', descricao: 'Teste' } }]);
+  });
+
+  it('vários tool_use em paralelo (índices diferentes) não se misturam', async () => {
+    const body = streamOf(
+      toolUseStart(0, 'call_1', 'notificar'),
+      toolUseStart(1, 'call_2', 'criar_tarefa'),
+      toolUseDelta(0, '{"titulo":"A"}'),
+      toolUseDelta(1, '{"titulo":"B"}'),
+    );
+
+    const result = await collectClaudeStream(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toHaveLength(2);
+    expect(result.toolCalls.find((call) => call.id === 'call_1')?.args).toEqual({ titulo: 'A' });
+    expect(result.toolCalls.find((call) => call.id === 'call_2')?.args).toEqual({ titulo: 'B' });
+  });
+
+  it('um tool_use com JSON que nunca fecha direito perde-se, em vez de rebentar', async () => {
+    const body = streamOf(toolUseStart(0, 'call_1', 'notificar'), toolUseDelta(0, '{"titulo": "sem fecho"'));
+
+    const result = await collectClaudeStream(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('sem nenhum bloco de ferramenta, a lista vem vazia', async () => {
+    const body = streamOf(textDelta('só conversa'));
+
+    const result = await collectClaudeStream(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toEqual([]);
+    expect(result.text).toBe('só conversa');
   });
 });
 
