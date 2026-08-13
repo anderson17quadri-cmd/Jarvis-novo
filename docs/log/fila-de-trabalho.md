@@ -37,11 +37,6 @@ e passar à frente.
 
 `src-tauri/src/terminal/` (PTY real, `portable-pty`). Nunca revisto.
 
-### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — **DeepSeek** (13/08/2026 17:42)
-
-`watch_folder`/`unwatch_folder`/`get_battery_status`,
-`checkNativeTriggers()`. Nunca revisto.
-
 ### 5. Peça 20 — ferramentas para o Claude no orquestrador — **Claude local** (13/08/2026 17:42)
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
@@ -142,4 +137,10 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
-_(vazio — a primeira peça fechada desta fila entra aqui)_
+### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — DeepSeek — commit `1d76067`
+
+`watch_folder`/`unwatch_folder`/`get_battery_status`,
+`checkNativeTriggers()`. Revisão a sério: confirmada e corrigida a fuga do
+`unwatch_folder` (a thread do observador nunca parava) e o cruzamento de
+limiar da bateria com mais do que uma regra. Detalhe em
+`docs/log/historico-sessoes.md` (13/08/2026).
