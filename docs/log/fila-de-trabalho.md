@@ -81,13 +81,6 @@ sem consentimento explícito. Confirma que o código cumpre isto sem
 exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
 exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
 
-### 13. Anexos de email a sério — `[livre]`
-
-Já teve uma revisão que apanhou uma fuga de blob URL (corrigida). Vale a
-pena confirmar que não há outra fuga parecida nos outros sítios que
-criam URLs de objeto (avatar, outras janelas), e que a correção
-original continua válida depois de tudo o que mudou desde então.
-
 ### 14. Suite E2E com Playwright — `[livre]`
 
 Confirma que a suite ainda corre e ainda apanha regressões a sério — não
@@ -141,3 +134,7 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
   novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
   sério (continuação): escrita de nota do Obsidian através de um link
   simbólico, corrigida".
+- **Anexos de email a sério** — revisto (Claude, sessão remota,
+  13/08/2026): sem fuga nova. Os cinco sítios do projeto com blob URLs
+  revistos um a um; todos corretamente pareados (criação/revogação),
+  incluindo o cleanup ao desmontar o composer. Nada a corrigir.

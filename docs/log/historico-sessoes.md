@@ -3464,3 +3464,32 @@ total agora (eram 8 depois do SSRF, 5 antes disso). `cargo check`,
 Fecha o item 7 ("Vault Obsidian") da fila de trabalho com outro achado
 real — dois de dois nas peças de rede/disco real revistas a sério até
 agora nesta auditoria.
+
+## 2026-08-13 — Auditoria a sério (continuação): anexos de email, sem fuga nova
+
+Terceiro item da auditoria pedida pelo utilizador. Revi todos os cinco
+sítios do projeto que usam `URL.createObjectURL`/`revokeObjectURL`
+(`grep` ao `src/` inteiro, não confiança em memória de onde estariam):
+`platform/attachments.ts`, `services/voice-service.ts`,
+`apps/emails/EmailsWindow.tsx`, `apps/assistant/export.ts`,
+`apps/privacy/BackupPanel.tsx`.
+
+**Resultado: nada de real a corrigir.** O composer de email já tem um
+efeito de desmontagem dedicado (`attachmentsRef` + `useEffect` de
+cleanup) que revoga todas as pré-visualizações por remover ao fechar ou
+cancelar o rascunho — cobre exatamente o caso que a fuga original
+(revista antes, "2026-08-11 — Revisão de qualidade: fuga de blob URL
+nos anexos de email") tinha deixado escapar, e continua a cobri-lo
+depois de tudo o que mudou desde então. `voice-service.ts`
+(`speakClonada`) revoga o áudio anterior antes de criar um novo, com
+uma segunda verificação para a corrida entre duas chamadas simultâneas,
+e `stop()` revoga ao interromper. `export.ts` e `BackupPanel.tsx`
+seguem o padrão comum e seguro (criar → `click()` → revogar já a
+seguir, no mesmo bloco síncrono). `AttachmentList.tsx` (anexos de uma
+mensagem já recebida, não um rascunho) não usa blob URL nenhuma — só
+mostra nome e tamanho.
+
+Fecha o item 13 ("Anexos de email a sério") da fila de trabalho — o
+primeiro desta auditoria sem achado novo, depois de dois seguidos com
+bugs reais (SSRF no navegador, escrita através de link simbólico no
+Obsidian).
