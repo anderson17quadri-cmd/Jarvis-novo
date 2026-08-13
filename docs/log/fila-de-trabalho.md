@@ -28,15 +28,17 @@ plugins, Sandbox de execução de plugins) já em "Feito" abaixo. Em curso
 agora:
 
 - **Memória do assistente (`memory-service.ts`) — extração e
-  esquecimento** — **Kimi** (13/08/2026, quinta tentativa depois de
-  quatro falhas de taxa, ~2h30 desde a última). Nunca revista por
-  ninguém de fora. Guarda o que a pessoa diz por palavras sobre si
-  própria (preferências, nome, localização) e alimenta-o de volta ao
-  prompt de sistema em conversas futuras — dados pessoais persistentes,
-  usados para influenciar o próprio modelo. A ferramenta
-  `esquecer_memoria` é destrutiva (risco `perde`, pede confirmação) —
-  confirma que apaga mesmo tudo, na store e no storage persistente, não
-  só o estado em memória.
+  esquecimento** — **DeepSeek** (13/08/2026). Quinta tentativa de
+  atribuir à Kimi falhou de novo (valor a subir ligeiramente,
+  `1528474` → `1528708`, em vez de descer — outro uso da organização
+  está a compensar o que decai; não vale a pena voltar a tentar esta
+  noite). Nunca revista por ninguém de fora. Guarda o que a pessoa diz
+  por palavras sobre si própria (preferências, nome, localização) e
+  alimenta-o de volta ao prompt de sistema em conversas futuras — dados
+  pessoais persistentes, usados para influenciar o próprio modelo. A
+  ferramenta `esquecer_memoria` é destrutiva (risco `perde`, pede
+  confirmação) — confirma que apaga mesmo tudo, na store e no storage
+  persistente, não só o estado em memória.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
