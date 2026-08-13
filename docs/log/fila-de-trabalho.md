@@ -24,19 +24,19 @@ do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
-plugins) já em "Feito" abaixo. Em curso agora:
+plugins, Sandbox de execução de plugins) já em "Feito" abaixo. Em curso
+agora:
 
-- **Sandbox de execução de plugins (fronteira de segurança, não só
-  fugas de memória)** — **DeepSeek** (13/08/2026 20:26). Quarta
-  tentativa de atribuir à Kimi (20:25) falhou de novo no limite de taxa
-  TPD, agora a decair ainda mais devagar (`1530401` → `1528474` em ~50
-  min) — não voltar a tentar antes de passar horas, não minutos. A
-  revisão de 11/08 desta peça só procurou fugas de memória e
-  temporizadores por limpar — nunca uma revisão adversarial da própria
-  fronteira de isolamento (`<iframe sandbox="allow-scripts">`,
-  `postMessage`, capacidades declaradas no manifesto). Ver
-  `docs/spec/plugins-sandbox.md` e a entrada "Plugins a sério: sandbox,
-  três capacidades, SDK" (11/08/2026).
+- **Memória do assistente (`memory-service.ts`) — extração e
+  esquecimento** — **Kimi** (13/08/2026, quinta tentativa depois de
+  quatro falhas de taxa, ~2h30 desde a última). Nunca revista por
+  ninguém de fora. Guarda o que a pessoa diz por palavras sobre si
+  própria (preferências, nome, localização) e alimenta-o de volta ao
+  prompt de sistema em conversas futuras — dados pessoais persistentes,
+  usados para influenciar o próprio modelo. A ferramenta
+  `esquecer_memoria` é destrutiva (risco `perde`, pede confirmação) —
+  confirma que apaga mesmo tudo, na store e no storage persistente, não
+  só o estado em memória.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
