@@ -13,6 +13,7 @@ import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
+import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -177,15 +178,24 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
 
   // ── Cofre de segredos ────────────────────────────────────────────────────
 
+  /**
+   * `secret_set`/`secret_delete` devolvem `Result<()>` do lado Rust — e `()`
+   * serializa para `null` em JSON, o mesmo valor que `tryInvoke` usava como
+   * `fallback` de erro. Comparar `result !== null` nunca distinguia sucesso
+   * de falha, porque os dois caíam no mesmo `null` — um bug real, apanhado
+   * ao construir a Peça 17 (Obsidian) e corrigido aqui também, já que o
+   * cofre de segredos e o WebAuthn (Peça 15) dependem deste valor de
+   * retorno para saber se algo ficou mesmo guardado. Chamar `invoke`
+   * diretamente e distinguir por não ter lançado, em vez de pelo valor
+   * devolvido, remove a ambiguidade nas duas.
+   */
   async secretSet(key: string, value: string): Promise<boolean> {
     if (!this.capabilities.secretVault) return false;
-    // `secret_set` devolve `Result<()>`, e o `Ok(())` chega à interface como
-    // `null` — o mesmo valor que `tryInvoke` usa como sinal de falha. Não dá
-    // para distinguir os dois pelo valor devolvido: a verdade é "não lançou".
     try {
       await invoke('secret_set', { key, value });
       return true;
-    } catch {
+    } catch (error) {
+      console.warn('[platform] o comando "secret_set" falhou:', error);
       return false;
     }
   }
@@ -197,12 +207,11 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
 
   async secretDelete(key: string): Promise<boolean> {
     if (!this.capabilities.secretVault) return false;
-    // Mesma razão do `secretSet`: `Ok(())` e a falha do `tryInvoke` são ambos
-    // `null`, por isso o booleano vem do `try`/`catch`, não do valor.
     try {
       await invoke('secret_delete', { key });
       return true;
-    } catch {
+    } catch (error) {
+      console.warn('[platform] o comando "secret_delete" falhou:', error);
       return false;
     }
   }
@@ -464,6 +473,35 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
       return convertFileSrc(path);
     } catch {
       return '';
+    }
+  }
+
+  // ── Vault Obsidian ───────────────────────────────────────────────────────
+
+  async obsidianSetRoot(path: string): Promise<RealObsidianRoot | null> {
+    if (!this.capabilities.obsidian) return null;
+    return this.tryInvoke<RealObsidianRoot>('obsidian_set_root', null, { path });
+  }
+
+  async obsidianListNotes(): Promise<readonly ObsidianNote[]> {
+    if (!this.capabilities.obsidian) return [];
+    const result = await this.tryInvoke<ObsidianNote[]>('obsidian_list_notes', null);
+    return result ?? [];
+  }
+
+  async obsidianReadNote(path: string): Promise<string | null> {
+    if (!this.capabilities.obsidian) return null;
+    return this.tryInvoke<string>('obsidian_read_note', null, { path });
+  }
+
+  async obsidianWriteNote(path: string, content: string): Promise<boolean> {
+    if (!this.capabilities.obsidian) return false;
+    try {
+      await invoke('obsidian_write_note', { path, content });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "obsidian_write_note" falhou:', error);
+      return false;
     }
   }
 

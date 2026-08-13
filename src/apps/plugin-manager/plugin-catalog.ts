@@ -563,6 +563,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   realFilesystem: 'sistema de ficheiros real',
   mail: 'correio real',
   music: 'música local',
+  obsidian: 'vault Obsidian',
 };
 
 /**

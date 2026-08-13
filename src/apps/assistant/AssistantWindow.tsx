@@ -188,7 +188,7 @@ export default function AssistantWindow(): React.JSX.Element {
                   key={entry.call.id}
                   question={entry.question}
                   onConfirm={() => {
-                    aiService.confirmTool(entry.call);
+                    void aiService.confirmTool(entry.call);
                     setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id));
                   }}
                   onCancel={() =>

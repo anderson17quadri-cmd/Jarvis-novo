@@ -22,6 +22,7 @@ import { useWeatherSettings } from '@/hooks/use-weather-settings';
 import { useNewsSettings } from '@/hooks/use-news-settings';
 import { useMailSettings } from '@/hooks/use-mail-settings';
 import { useMusicSettings } from '@/hooks/use-music-settings';
+import { useObsidianSettings } from '@/hooks/use-obsidian-settings';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { getPluginShortcuts, pushToPlugin } from '@/plugins/runtime/plugin-bridge';
 import { useVoice } from '@/hooks/use-voice';
@@ -42,6 +43,7 @@ import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
+import { obsidianService } from '@/services/knowledge/obsidian-service';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
@@ -140,6 +142,9 @@ export function App(): React.JSX.Element {
 
   // Aplica as preferências de música (local/simulado) ao serviço.
   useMusicSettings();
+
+  // Relê a lista de notas do vault Obsidian quando a pasta escolhida muda.
+  useObsidianSettings();
 
   useEffect(() => {
     // O registo escuta o Event Bus a partir daqui — é o inspetor de eventos
@@ -543,6 +548,15 @@ export function App(): React.JSX.Element {
         launch('files');
         return true;
       },
+      searchNotes: async (query) => {
+        await obsidianService.refreshNotes();
+        return obsidianService.searchByTitle(query).map((note) => ({
+          title: note.title,
+          path: note.path,
+        }));
+      },
+      readNote: (query) => obsidianService.readByTitle(query),
+      writeNote: (title, content) => obsidianService.write(title, content),
       music: (action) => {
         if (action === 'proxima') void musicService.next();
         else if (action === 'anterior') void musicService.previous();

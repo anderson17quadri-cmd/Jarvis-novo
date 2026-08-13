@@ -313,7 +313,7 @@ export class AIService {
       });
 
       for (const call of result.toolCalls) {
-        const outcome = runTool(call);
+        const outcome = await runTool(call);
 
         if (outcome.status === 'confirmar') {
           pending.push({ call, question: outcome.message });
@@ -496,8 +496,8 @@ export class AIService {
    *
    * Só a interface chama isto, e só depois de a pessoa ter dito que sim.
    */
-  confirmTool(call: ToolCall): void {
-    const outcome = runTool(call, true);
+  async confirmTool(call: ToolCall): Promise<void> {
+    const outcome = await runTool(call, true);
     useAssistantStore.getState().addMessage('assistant', outcome.message);
   }
 

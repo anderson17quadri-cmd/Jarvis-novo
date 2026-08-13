@@ -74,7 +74,7 @@ export function CommandConsole(): React.JSX.Element {
     );
   };
 
-  const run = (): void => {
+  const run = async (): Promise<void> => {
     const command = draft.trim();
     if (command.length === 0) return;
 
@@ -128,7 +128,7 @@ export function CommandConsole(): React.JSX.Element {
       return;
     }
 
-    const outcome = runTool(built.call);
+    const outcome = await runTool(built.call);
 
     if (outcome.status === 'confirmar') {
       push(command, [outcome.message], 'info', built.call);
@@ -211,8 +211,9 @@ export function CommandConsole(): React.JSX.Element {
                   <button
                     type="button"
                     onClick={() => {
-                      const result = runTool(entry.pending!, true);
-                      resolve(entry.id, [result.message], result.status === 'ok' ? 'ok' : 'erro');
+                      void runTool(entry.pending!, true).then((result) => {
+                        resolve(entry.id, [result.message], result.status === 'ok' ? 'ok' : 'erro');
+                      });
                     }}
                     className="rounded-btn border border-danger/50 bg-danger/[.12] px-2 py-1 text-[10.5px] text-danger transition-colors duration-hover hover:bg-danger/20"
                   >
@@ -235,7 +236,7 @@ export function CommandConsole(): React.JSX.Element {
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault();
-              run();
+              void run();
             } else if (event.key === 'ArrowUp') {
               event.preventDefault();
               navigateHistory(-1);

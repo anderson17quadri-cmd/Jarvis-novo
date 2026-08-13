@@ -3002,3 +3002,97 @@ está sólida.
 depois — `tests/platform/secret-vault.test.ts` (6) e
 `tests/stores/ai-settings-store.test.ts` (3). Suite completa: 113 ficheiros,
 1546 testes (era 1537; +9). `tsc` limpo, `eslint` 0 erros, `cargo check` limpo.
+
+## 2026-08-13 — Peça 17: vault Obsidian, memória persistente a sério
+
+O utilizador pediu acesso à internet e ao Obsidian "para ter um cérebro
+mesmo" — dois pedidos de risco diferente. A rede real (pesquisa web,
+navegador controlado pelo assistente) ficou como prompt para as sessões
+locais, com aviso explícito sobre conteúdo externo nunca poder ser lido
+como instrução. O Obsidian, sem essa exposição a terceiros, construí-o
+diretamente nesta sessão.
+
+**O que é**: `services/knowledge/obsidian-service.ts` +
+`src-tauri/src/commands/obsidian.rs`. Mesmo padrão do Explorador
+(Peça 7) e da Música (Peça 8) — pasta declarada pela pessoa, raiz
+própria no Rust, nunca sai dela. Duas diferenças de propósito:
+
+1. **Caminhos relativos, não absolutos.** `obsidian_list_notes` devolve
+   caminhos relativos à raiz (`Diário/2026-08-13.md`); `obsidian_read_note`
+   e `obsidian_write_note` recebem-nos de volta. `resolve_within_root`
+   rejeita qualquer componente que não seja `Normal` (`..`, uma raiz
+   absoluta) antes de tocar no disco — a fronteira não depende só de
+   `canonicalize` a posteriori, como nos outros dois.
+2. **Listagem recursiva.** Um vault organiza-se em subpastas; a música
+   é uma pasta só. `walk_notes` desce até 12 níveis, salta pastas
+   ocultas do próprio Obsidian (`.obsidian`).
+
+Três ferramentas novas no catálogo do assistente: `procurar_nota`,
+`ler_nota` (a resposta da ferramenta **é** o conteúdo da nota — não uma
+frase sobre ele) e `guardar_nota` (cria ou substitui, `risk: 'perde'`
+— substituir apaga o que lá estava, mesmo critério das outras
+destrutivas). `guardar_nota` só escreve no topo do vault — dar-lhe
+controlo sobre subpastas exigiria interpretar organização a partir da
+conversa, fora de âmbito por agora.
+
+### `runTool`/`perform` passaram a assíncronos
+
+As 25 ferramentas anteriores a este lote eram todas síncronas por
+dentro. `ler_nota`/`guardar_nota` precisam de esperar mesmo por uma
+leitura/escrita no disco antes de responder — o padrão que
+`controlar_musica` já usava ("disparar e não esperar") não serve aqui,
+porque o conteúdo lido é a própria resposta ao modelo. Convertida a
+função inteira, não só os três casos novos: `perform` passou a
+`async function`, `runTool` devolve `Promise<ToolOutcome>`. Alcance
+real, menor do que parecia à partida — só quatro pontos de chamada em
+produção (`ai-service.ts`, dois em `CommandConsole.tsx`, um em
+`AiWidget.tsx`), todos ajustados com `await` ou `void promise.then(...)`
+conforme já eram função assíncrona ou um `onClick` síncrono. Nos
+testes, 23 chamadas a `runTool` em `tools.test.ts` passaram a `await`,
+e os três executores falsos (`tools.test.ts`, `command-console.test.tsx`,
+`send-with-tools-ollama.test.ts`) ganharam `searchNotes`/`readNote`/
+`writeNote`.
+
+### Dois bugs reais, apanhados a construir
+
+**`secretSet`/`secretDelete` nunca distinguiam sucesso de falha.**
+`tauri-adapter-base.ts` comparava o valor devolvido por `tryInvoke`
+contra `null` para decidir se tinha corrido bem — mas os comandos Rust
+por trás (`secret_set`, `secret_delete`) devolvem `Result<()>`, e `()`
+serializa para `null` em JSON, exatamente o mesmo valor que `tryInvoke`
+usava como `fallback` de erro. Sucesso e falha convergiam no mesmo
+`null`; a comparação nunca conseguia distinguir os dois. Afeta o Cofre
+de segredos (Peça 2) e o WebAuthn (Peça 15), que dependem deste valor
+para saber se uma credencial ficou mesmo guardada — `registerSecurityKey`
+já verificava `if (!saved)`, mas `saved` podia estar sempre a mentir.
+Corrigido nas duas funções: chamar `invoke` diretamente e distinguir
+por não ter lançado, não pelo valor devolvido — a mesma correção já
+aplicada ao `obsidianWriteNote` novo, para não repetir o problema.
+**Descoberto de forma independente, ao mesmo tempo**: a entrada
+imediatamente acima ("Revisão a sério do Cofre de segredos e do Windows
+Hello") chegou à mesma correção pelo mesmo raciocínio, com testes que
+provam o comportamento errado antes e certo depois
+(`tests/platform/secret-vault.test.ts`) — a confirmação por teste que
+esta entrada não tinha. As duas versões da correção convergiram na
+mesma solução; resolvido o conflito de merge mantendo o `console.warn`
+já habitual no resto do ficheiro.
+
+### Verificação
+
+`tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes, sem relação).
+`cargo check` e `cargo clippy` limpos nesta máquina (Linux — primeira
+compilação, ~2m10s; o código novo não tem nada específico de Windows,
+mas não foi confirmado contra o alvo Windows a sério). Suite completa:
+**113 ficheiros, 1569 testes** (era 1541 antes desta peça — 28 novos:
+21 no serviço/store/UI do Obsidian, 7 no catálogo de ferramentas).
+
+Aproveitei para corrigir a contagem de "ferramentas do catálogo" no
+SPEC.md — dizia 23 em três sítios, já desatualizada antes desta peça
+(estava em 25 antes de eu acrescentar as três novas). Ficou em 28.
+
+**Não confirmado ao vivo**: sem hardware Windows nesta sessão — nunca
+correu contra um vault Obsidian real, nem contra Windows
+especificamente (só o alvo Linux desta máquina). Toda a lógica de
+fronteira (`resolve_within_root`, `canonicalize`) está confirmada a
+sério por teste automatizado, não por tentativa ao vivo de escapar à
+raiz.

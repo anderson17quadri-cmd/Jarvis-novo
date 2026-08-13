@@ -3,6 +3,7 @@ import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { MusicFileEntry } from '@/types/music';
+import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type { ImapMessageDto } from '@/types/mail';
 import { detectTouch } from './detect-platform';
 import { simulateSnapshot, simulateStaticInfo } from './simulated-metrics';
@@ -44,6 +45,7 @@ export class WebAdapter implements PlatformAdapter {
     realFilesystem: false,
     mail: false,
     music: false,
+    obsidian: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -258,5 +260,23 @@ export class WebAdapter implements PlatformAdapter {
 
   toLocalMediaUrl(): string {
     return '';
+  }
+
+  // ── Vault Obsidian ───────────────────────────────────────────────────────
+
+  async obsidianSetRoot(): Promise<RealObsidianRoot | null> {
+    return null;
+  }
+
+  async obsidianListNotes(): Promise<readonly ObsidianNote[]> {
+    return [];
+  }
+
+  async obsidianReadNote(): Promise<string | null> {
+    return null;
+  }
+
+  async obsidianWriteNote(): Promise<boolean> {
+    return false;
   }
 }

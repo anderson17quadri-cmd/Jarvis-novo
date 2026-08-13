@@ -203,6 +203,36 @@ export const TOOLS: readonly ToolDefinition[] = [
     parameters: [text('nome', 'Nome ou parte do nome do ficheiro ou pasta a abrir.')],
   },
 
+  // ── Vault Obsidian (memória persistente, Peça 17) ───────────────────────
+  {
+    name: 'procurar_nota',
+    description:
+      'Procura notas pelo título (parcial, sem acentos) no vault Obsidian escolhido. ' +
+      'Devolve o caminho de cada nota encontrada — não lê o conteúdo.',
+    risk: 'livre',
+    parameters: [text('titulo', 'Título ou parte do título da nota a procurar.')],
+  },
+  {
+    name: 'ler_nota',
+    description:
+      'Lê o conteúdo de uma nota do vault Obsidian pelo título (parcial, sem acentos). ' +
+      'Usa depois de procurar_nota confirmar que a nota existe, ou quando o título já é conhecido.',
+    risk: 'livre',
+    parameters: [text('titulo', 'Título ou parte do título da nota a ler.')],
+  },
+  {
+    name: 'guardar_nota',
+    description:
+      'Cria uma nota nova no vault Obsidian, ou substitui o conteúdo de uma já existente com ' +
+      'o mesmo título. Pede confirmação porque substituir apaga o que lá estava.',
+    risk: 'perde',
+    parameters: [
+      text('titulo', 'Título da nota — vira o nome do ficheiro.'),
+      text('conteudo', 'Conteúdo em Markdown a guardar na nota.'),
+    ],
+    confirmation: (args) => `Guardar a nota "${String(args['titulo'])}" — substitui o que lá estiver.`,
+  },
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   {
     name: 'notificar',

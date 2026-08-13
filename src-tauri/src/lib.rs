@@ -63,6 +63,7 @@ pub fn run() {
         .manage(commands::files::FileWatchers::new())
         .manage(commands::files::FilesRoot::new())
         .manage(commands::music::MusicRoot::new())
+        .manage(commands::obsidian::ObsidianRoot::new())
         // O Terminal, o cofre de segredos, o Windows Hello e os gatilhos
         // nativos só existem no desktop — sem isto, `generate_handler!`
         // teria de referenciar comandos que não compilam no Android. Só há
@@ -72,8 +73,9 @@ pub fn run() {
         // desktop — "indisponível" em vez de não compilar fora do Windows,
         // ver commands/windows_hello.rs), bateria (1), ficheiros (4: dois
         // gatilhos de automação + declarar raiz/ler pasta do Explorador
-        // real) e USB (0 — não há comandos invocáveis, o monitor arranca
-        // sozinho no setup).
+        // real), USB (0 — não há comandos invocáveis, o monitor arranca
+        // sozinho no setup) e Obsidian (4: declarar vault, listar, ler e
+        // escrever notas).
         .invoke_handler(tauri::generate_handler![
             commands::system::get_system_snapshot,
             commands::system::get_static_system_info,
@@ -98,6 +100,10 @@ pub fn run() {
             commands::mail::mail_send,
             commands::music::music_set_root,
             commands::music::music_read_dir,
+            commands::obsidian::obsidian_set_root,
+            commands::obsidian::obsidian_list_notes,
+            commands::obsidian::obsidian_read_note,
+            commands::obsidian::obsidian_write_note,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

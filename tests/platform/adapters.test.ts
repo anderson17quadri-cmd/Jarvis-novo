@@ -41,6 +41,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'realFilesystem',
       'mail',
       'music',
+      'obsidian',
     ] as const;
 
     for (const key of required) {
@@ -302,6 +303,29 @@ describe('música local — só o desktop diz que suporta; os outros degradam', 
       await expect(adapter.musicSetRoot('C:/pasta')).resolves.toBeNull();
       await expect(adapter.musicReadDir()).resolves.toEqual([]);
       expect(adapter.toLocalMediaUrl('C:/pasta/faixa.mp3')).toBe('');
+    }
+  });
+});
+
+describe('vault Obsidian — só o desktop diz que suporta; os outros degradam', () => {
+  it('Web e Android não têm vault Obsidian', () => {
+    expect(new WebAdapter().capabilities.obsidian).toBe(false);
+    expect(new AndroidAdapter().capabilities.obsidian).toBe(false);
+  });
+
+  it('Desktop diz que suporta', () => {
+    expect(new DesktopAdapter().capabilities.obsidian).toBe(true);
+  });
+
+  it('Web e Android nunca declaram vault nem leem/escrevem notas', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    const android: PlatformAdapter = new AndroidAdapter();
+
+    for (const adapter of [web, android]) {
+      await expect(adapter.obsidianSetRoot('C:/vault')).resolves.toBeNull();
+      await expect(adapter.obsidianListNotes()).resolves.toEqual([]);
+      await expect(adapter.obsidianReadNote('nota.md')).resolves.toBeNull();
+      await expect(adapter.obsidianWriteNote('nota.md', 'conteúdo')).resolves.toBe(false);
     }
   });
 });

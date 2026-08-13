@@ -23,6 +23,12 @@ export interface FileMatch {
   readonly pathNames: readonly string[];
 }
 
+/** Uma nota do vault Obsidian encontrada pelo título. */
+export interface NoteMatch {
+  readonly title: string;
+  readonly path: string;
+}
+
 /** Quem sabe cumprir. Fornecido pela aplicação. */
 export interface ToolExecutor {
   readonly openWindow: (app: string) => void;
@@ -44,6 +50,12 @@ export interface ToolExecutor {
   readonly searchFiles: (query: string) => readonly FileMatch[];
   /** Abre o Explorador na pasta do primeiro resultado. `false` se não houver nenhum. */
   readonly openFileLocation: (query: string) => boolean;
+  /** Notas do vault Obsidian cujo título contém `query` (sem acentos, parcial). */
+  readonly searchNotes: (query: string) => Promise<readonly NoteMatch[]>;
+  /** Conteúdo da primeira nota cujo título contém `query`. `null` se não houver nenhuma. */
+  readonly readNote: (query: string) => Promise<string | null>;
+  /** Cria ou substitui a nota `title`. `false` se não houver vault escolhido ou a escrita falhar. */
+  readonly writeNote: (title: string, content: string) => Promise<boolean>;
   readonly music: (action: string) => void;
   readonly speak: (text: string) => void;
   readonly setAutomationEnabled: (name: string, enabled: boolean) => boolean;
@@ -83,8 +95,16 @@ export function setToolExecutor(next: ToolExecutor): () => void {
  *
  * `confirmed` só chega a `true` depois de a pessoa ter dito que sim. O modelo
  * não o pode pedir: o argumento vem da interface, não do pedido.
+ *
+ * **Assíncrona desde a Peça 17 (Obsidian)** — `ler_nota`/`guardar_nota`
+ * precisam de esperar mesmo por uma leitura/escrita no disco antes de saber
+ * o que responder ao modelo; um "disparar e não esperar" (o padrão que
+ * `run.music()` já usava para ações sem resposta que importe) não serviria
+ * aqui, porque o conteúdo da nota **é** a resposta. As 23 ferramentas
+ * anteriores continuam síncronas por dentro — só passaram a correr dentro de
+ * uma função `async`, o que não muda o que fazem nem quando.
  */
-export function runTool(call: ToolCall, confirmed = false): ToolOutcome {
+export async function runTool(call: ToolCall, confirmed = false): Promise<ToolOutcome> {
   const tool = getTool(call.name);
 
   // Uma ferramenta que não existe não é um erro a esconder: é o modelo a
@@ -112,7 +132,7 @@ export function runTool(call: ToolCall, confirmed = false): ToolOutcome {
   }
 
   try {
-    const message = perform(tool, call.args, executor);
+    const message = await perform(tool, call.args, executor);
     logService.audit(`Assistente: ${describe(call)}`, 'executado', message);
     return { status: 'ok', message };
   } catch (error) {
@@ -149,11 +169,11 @@ function parseDueDate(value: string): number | null {
  * continua ou se explica. "Não encontrei nenhuma tarefa com esse nome" leva-o
  * a perguntar; um silêncio leva-o a inventar que correu bem.
  */
-function perform(
+async function perform(
   tool: ToolDefinition,
   args: Readonly<Record<string, unknown>>,
   run: ToolExecutor,
-): string {
+): Promise<string> {
   // Os tipos já foram validados; isto é só para o TypeScript. Um valor que não
   // seja texto nunca chega aqui.
   const text = (name: string): string => {
@@ -253,6 +273,28 @@ function perform(
       return run.openFileLocation(text('nome'))
         ? 'Explorador de Ficheiros aberto nessa pasta.'
         : `Não encontrei nada com "${text('nome')}" no nome.`;
+
+    case 'procurar_nota': {
+      const notes = await run.searchNotes(text('titulo'));
+      if (notes.length === 0) return `Não encontrei nenhuma nota com "${text('titulo')}" no título.`;
+
+      const lista = notes.map((note) => note.title).join(', ');
+      return `Encontrei ${notes.length} ${notes.length === 1 ? 'nota' : 'notas'}: ${lista}.`;
+    }
+
+    case 'ler_nota': {
+      const content = await run.readNote(text('titulo'));
+      return content === null
+        ? `Não encontrei nenhuma nota com "${text('titulo')}" no título.`
+        : content;
+    }
+
+    case 'guardar_nota': {
+      const saved = await run.writeNote(text('titulo'), text('conteudo'));
+      return saved
+        ? `Nota "${text('titulo')}" guardada.`
+        : 'Não consegui guardar a nota — confirma se há um vault Obsidian escolhido.';
+    }
 
     case 'controlar_musica':
       run.music(text('acao'));

@@ -46,6 +46,8 @@ export interface PlatformCapabilities {
   readonly mail: boolean;
   /** Reprodução local de áudio (pasta de música + `<audio>` real). */
   readonly music: boolean;
+  /** Vault Obsidian real (ler/escrever notas `.md` numa pasta escolhida). */
+  readonly obsidian: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

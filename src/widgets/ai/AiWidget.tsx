@@ -103,23 +103,23 @@ export default function AiWidget(): React.JSX.Element {
                 <button
                   type="button"
                   onClick={() => {
-                    const outcome = runTool(suggestion.call);
+                    void runTool(suggestion.call).then((outcome) => {
+                      /*
+                       * Só se dispensa se correu bem.
+                       *
+                       * Uma sugestão que se apaga sozinha depois de falhar é
+                       * pior do que uma que fica: a pessoa carrega, não acontece
+                       * nada, e o convite desaparece sem explicação. Já
+                       * aconteceu neste ficheiro, com um argumento com o nome
+                       * errado.
+                       */
+                      if (outcome.status !== 'ok') {
+                        notificationService.error('A sugestão não deu', outcome.message);
+                        return;
+                      }
 
-                    /*
-                     * Só se dispensa se correu bem.
-                     *
-                     * Uma sugestão que se apaga sozinha depois de falhar é
-                     * pior do que uma que fica: a pessoa carrega, não acontece
-                     * nada, e o convite desaparece sem explicação. Já
-                     * aconteceu neste ficheiro, com um argumento com o nome
-                     * errado.
-                     */
-                    if (outcome.status !== 'ok') {
-                      notificationService.error('A sugestão não deu', outcome.message);
-                      return;
-                    }
-
-                    dismiss(suggestion.id);
+                      dismiss(suggestion.id);
+                    });
                   }}
                   className="text-[10.5px] font-medium text-accent transition-opacity duration-hover hover:opacity-75"
                 >

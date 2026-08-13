@@ -54,6 +54,18 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`abrir-ficheiro:${query}`);
       return query !== 'inexistente';
     },
+    searchNotes: async (query) => {
+      calls.push(`procurar-nota:${query}`);
+      return query === 'inexistente' ? [] : [{ title: query, path: `${query}.md` }];
+    },
+    readNote: async (query) => {
+      calls.push(`ler-nota:${query}`);
+      return query === 'inexistente' ? null : `conteúdo de ${query}`;
+    },
+    writeNote: async (title, content) => {
+      calls.push(`guardar-nota:${title}:${content}`);
+      return title !== 'falha';
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -80,37 +92,38 @@ beforeEach(() => {
 });
 
 describe('catálogo', () => {
-  it('cada ferramenta tem nome único', () => {
+  it('cada ferramenta tem nome único', async () => {
     const names = new Set(TOOLS.map((tool) => tool.name));
     expect(names.size).toBe(TOOLS.length);
   });
 
-  it('cada uma diz o que faz, com detalhe que chegue para o modelo escolher', () => {
+  it('cada uma diz o que faz, com detalhe que chegue para o modelo escolher', async () => {
     for (const tool of TOOLS) {
       expect(tool.description.length, tool.name).toBeGreaterThan(20);
     }
   });
 
-  it('os nomes são em português, como o resto do sistema', () => {
+  it('os nomes são em português, como o resto do sistema', async () => {
     for (const tool of TOOLS) {
       expect(tool.name, tool.name).toMatch(/^[a-z_]+$/);
     }
   });
 
-  it('as opções vêm dos registos — uma janela nova aparece sem se editar o catálogo', () => {
+  it('as opções vêm dos registos — uma janela nova aparece sem se editar o catálogo', async () => {
     const abrir = getTool('abrir_janela');
     const options = abrir?.parameters[0]?.options ?? [];
 
     for (const app of ALL_APPS) expect(options, app.id).toContain(app.id);
   });
 
-  it('a lista das que perdem dados é esta, e mais nenhuma', () => {
+  it('a lista das que perdem dados é esta, e mais nenhuma', async () => {
     // Escrita por extenso de propósito: acrescentar uma destrutiva passa a ser
     // uma decisão que aparece no diff, não uma que passa despercebida.
     expect([...DESTRUCTIVE_TOOLS].sort()).toEqual([
       'apagar_conversas',
       'apagar_tarefas_concluidas',
       'esquecer_memoria',
+      'guardar_nota',
       'repor_widgets',
     ]);
 
@@ -121,7 +134,7 @@ describe('catálogo', () => {
     }
   });
 
-  it('as que não perdem nada não pedem confirmação — um assistente que pergunta sempre desliga-se', () => {
+  it('as que não perdem nada não pedem confirmação — um assistente que pergunta sempre desliga-se', async () => {
     for (const tool of TOOLS.filter((entry) => entry.risk === 'livre')) {
       expect(tool.confirmation, tool.name).toBeUndefined();
     }
@@ -129,11 +142,11 @@ describe('catálogo', () => {
 });
 
 describe('o que se manda ao modelo', () => {
-  it('todas as ferramentas vão no esquema', () => {
+  it('todas as ferramentas vão no esquema', async () => {
     expect(toolsAsJsonSchema()).toHaveLength(TOOLS.length);
   });
 
-  it('as opções viram um enum, para o modelo não inventar valores', () => {
+  it('as opções viram um enum, para o modelo não inventar valores', async () => {
     const schema = toolsAsJsonSchema() as {
       function: { name: string; parameters: { properties: Record<string, { enum?: string[] }> } };
     }[];
@@ -142,7 +155,7 @@ describe('o que se manda ao modelo', () => {
     expect(abrir?.function.parameters.properties['app']?.enum).toContain('emails');
   });
 
-  it('os campos opcionais não entram nos obrigatórios', () => {
+  it('os campos opcionais não entram nos obrigatórios', async () => {
     const schema = toolsAsJsonSchema() as {
       function: { name: string; parameters: { required: string[] } };
     }[];
@@ -153,69 +166,69 @@ describe('o que se manda ao modelo', () => {
 });
 
 describe('validação', () => {
-  it('um argumento em falta é apanhado antes de chegar ao executor', () => {
-    expect(runTool({ id: '1', name: 'abrir_janela', args: {} }).status).toBe('erro');
+  it('um argumento em falta é apanhado antes de chegar ao executor', async () => {
+    expect((await runTool({ id: '1', name: 'abrir_janela', args: {} })).status).toBe('erro');
     expect(executor.calls).toEqual([]);
   });
 
-  it('um valor fora das opções não passa', () => {
-    const outcome = runTool({ id: '1', name: 'mudar_estado_do_sistema', args: { estado: 'turbo' } });
+  it('um valor fora das opções não passa', async () => {
+    const outcome = await runTool({ id: '1', name: 'mudar_estado_do_sistema', args: { estado: 'turbo' } });
 
     expect(outcome.status).toBe('erro');
     expect(outcome.message).toContain('turbo');
     expect(executor.calls).toEqual([]);
   });
 
-  it('um número escrito como texto não passa por número', () => {
+  it('um número escrito como texto não passa por número', async () => {
     expect(
-      runTool({ id: '1', name: 'mudar_de_desktop', args: { desktop: 'dois' } }).status,
+      (await runTool({ id: '1', name: 'mudar_de_desktop', args: { desktop: 'dois' } })).status,
     ).toBe('erro');
   });
 
-  it('um campo opcional em falta não é erro', () => {
+  it('um campo opcional em falta não é erro', async () => {
     expect(validateArgs(getTool('criar_tarefa')!, { titulo: 'x' })).toBeNull();
   });
 });
 
 describe('executar', () => {
-  it('uma ferramenta simples chega ao executor', () => {
-    const outcome = runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } });
+  it('uma ferramenta simples chega ao executor', async () => {
+    const outcome = await runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } });
 
     expect(outcome.status).toBe('ok');
     expect(executor.calls).toEqual(['abrir:emails']);
   });
 
-  it('a resposta diz ao modelo quando não encontrou nada', () => {
-    const outcome = runTool({ id: '1', name: 'concluir_tarefa', args: { titulo: 'inexistente' } });
+  it('a resposta diz ao modelo quando não encontrou nada', async () => {
+    const outcome = await runTool({ id: '1', name: 'concluir_tarefa', args: { titulo: 'inexistente' } });
 
     // "Ok" com uma mensagem que explica: o modelo lê e pergunta, em vez de
     // dizer que fez.
     expect(outcome.message).toContain('Não encontrei');
   });
 
-  it('conta quantas apagou, em vez de dizer só "feito"', () => {
-    const outcome = runTool({ id: '1', name: 'apagar_tarefas_concluidas', args: {} }, true);
+  it('conta quantas apagou, em vez de dizer só "feito"', async () => {
+    const outcome = await runTool({ id: '1', name: 'apagar_tarefas_concluidas', args: {} }, true);
     expect(outcome.message).toContain('3');
   });
 
-  it('uma ferramenta inventada pelo modelo não passa, e fica registada', () => {
-    const outcome = runTool({ id: '1', name: 'apagar_disco', args: {} });
+  it('uma ferramenta inventada pelo modelo não passa, e fica registada', async () => {
+    const outcome = await runTool({ id: '1', name: 'apagar_disco', args: {} });
 
     expect(outcome.status).toBe('erro');
     expect(executor.calls).toEqual([]);
     expect(logService.list.some((entry) => entry.message.includes('apagar_disco'))).toBe(true);
   });
 
-  it('sem executor ligado, diz-se em vez de rebentar', () => {
+  it('sem executor ligado, diz-se em vez de rebentar', async () => {
     unregister();
 
-    expect(runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } }).status).toBe('erro');
+    expect((await runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } })).status).toBe('erro');
   });
 });
 
 describe('procurar_ficheiro e abrir_ficheiro', () => {
-  it('lista os resultados com a pasta onde estão', () => {
-    const outcome = runTool({
+  it('lista os resultados com a pasta onde estão', async () => {
+    const outcome = await runTool({
       id: '1',
       name: 'procurar_ficheiro',
       args: { nome: 'orçamento' },
@@ -226,8 +239,8 @@ describe('procurar_ficheiro e abrir_ficheiro', () => {
     expect(outcome.message).toContain('Documentos');
   });
 
-  it('sem resultados, diz-se em vez de inventar', () => {
-    const outcome = runTool({
+  it('sem resultados, diz-se em vez de inventar', async () => {
+    const outcome = await runTool({
       id: '1',
       name: 'procurar_ficheiro',
       args: { nome: 'inexistente' },
@@ -236,17 +249,80 @@ describe('procurar_ficheiro e abrir_ficheiro', () => {
     expect(outcome.message).toContain('Não encontrei');
   });
 
-  it('abrir_ficheiro pede ao executor para abrir a pasta do resultado', () => {
-    const outcome = runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'orçamento' } });
+  it('abrir_ficheiro pede ao executor para abrir a pasta do resultado', async () => {
+    const outcome = await runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'orçamento' } });
 
     expect(outcome.status).toBe('ok');
     expect(executor.calls).toEqual(['abrir-ficheiro:orçamento']);
   });
 
-  it('sem correspondência, abrir_ficheiro também se explica', () => {
-    const outcome = runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'inexistente' } });
+  it('sem correspondência, abrir_ficheiro também se explica', async () => {
+    const outcome = await runTool({ id: '1', name: 'abrir_ficheiro', args: { nome: 'inexistente' } });
 
     expect(outcome.message).toContain('Não encontrei');
+  });
+});
+
+describe('procurar_nota, ler_nota e guardar_nota (vault Obsidian)', () => {
+  it('procurar_nota lista os títulos encontrados', async () => {
+    const outcome = await runTool({ id: '1', name: 'procurar_nota', args: { titulo: 'reunião' } });
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toContain('reunião');
+    expect(executor.calls).toEqual(['procurar-nota:reunião']);
+  });
+
+  it('procurar_nota sem correspondência diz-se em vez de inventar', async () => {
+    const outcome = await runTool({ id: '1', name: 'procurar_nota', args: { titulo: 'inexistente' } });
+
+    expect(outcome.message).toContain('Não encontrei');
+  });
+
+  it('ler_nota devolve o conteúdo — a própria resposta do modelo é a nota', async () => {
+    const outcome = await runTool({ id: '1', name: 'ler_nota', args: { titulo: 'reunião' } });
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toBe('conteúdo de reunião');
+    expect(executor.calls).toEqual(['ler-nota:reunião']);
+  });
+
+  it('ler_nota sem correspondência diz-se em vez de inventar', async () => {
+    const outcome = await runTool({ id: '1', name: 'ler_nota', args: { titulo: 'inexistente' } });
+
+    expect(outcome.message).toContain('Não encontrei');
+  });
+
+  it('guardar_nota pede confirmação antes de escrever', async () => {
+    const outcome = await runTool({
+      id: '1',
+      name: 'guardar_nota',
+      args: { titulo: 'Ideia', conteudo: 'texto' },
+    });
+
+    expect(outcome.status).toBe('confirmar');
+    expect(outcome.message).toContain('Ideia');
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('guardar_nota confirmada chega ao executor com o título e o conteúdo', async () => {
+    const outcome = await runTool(
+      { id: '1', name: 'guardar_nota', args: { titulo: 'Ideia', conteudo: 'texto' } },
+      true,
+    );
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toContain('Ideia');
+    expect(executor.calls).toEqual(['guardar-nota:Ideia:texto']);
+  });
+
+  it('guardar_nota que falha (sem vault escolhido) explica em vez de fingir sucesso', async () => {
+    const outcome = await runTool(
+      { id: '1', name: 'guardar_nota', args: { titulo: 'falha', conteudo: 'texto' } },
+      true,
+    );
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toContain('Não consegui guardar');
   });
 });
 
@@ -258,8 +334,8 @@ describe('procurar_ficheiro e abrir_ficheiro', () => {
  * ser interpretado aqui dentro.
  */
 describe('criar_tarefa — prazo resolvido pelo modelo', () => {
-  it('AAAA-MM-DD válido vira meia-noite local desse dia', () => {
-    const outcome = runTool({
+  it('AAAA-MM-DD válido vira meia-noite local desse dia', async () => {
+    const outcome = await runTool({
       id: '1',
       name: 'criar_tarefa',
       args: { titulo: 'Enviar orçamento', prazo: '2026-08-12' },
@@ -271,8 +347,8 @@ describe('criar_tarefa — prazo resolvido pelo modelo', () => {
     expect(outcome.message).toContain('12/08/2026');
   });
 
-  it('sem prazo, a tarefa fica sem data — não é erro', () => {
-    const outcome = runTool({
+  it('sem prazo, a tarefa fica sem data — não é erro', async () => {
+    const outcome = await runTool({
       id: '1',
       name: 'criar_tarefa',
       args: { titulo: 'Ler o relatório' },
@@ -282,8 +358,8 @@ describe('criar_tarefa — prazo resolvido pelo modelo', () => {
     expect(executor.calls).toEqual(['tarefa:Ler o relatório:media:null']);
   });
 
-  it('um prazo mal formado é ignorado, não inventado', () => {
-    const outcome = runTool({
+  it('um prazo mal formado é ignorado, não inventado', async () => {
+    const outcome = await runTool({
       id: '1',
       name: 'criar_tarefa',
       args: { titulo: 'x', prazo: 'amanhã' },
@@ -295,47 +371,56 @@ describe('criar_tarefa — prazo resolvido pelo modelo', () => {
 });
 
 describe('confirmação', () => {
-  it.each(DESTRUCTIVE_TOOLS)('%s não corre sem alguém confirmar', (name) => {
-    const outcome = runTool({ id: '1', name, args: {} });
+  it.each(DESTRUCTIVE_TOOLS)('%s não corre sem alguém confirmar', async (name) => {
+    // Argumentos válidos, mínimos, para os obrigatórios — a confirmação é
+    // sobre "isto pode mesmo correr?", não sobre "os argumentos batem
+    // certo?". `guardar_nota` (a primeira destrutiva com parâmetros
+    // obrigatórios) precisa deles para passar a validação antes de chegar
+    // à pergunta de confirmação; as outras continuam sem argumentos.
+    const args = Object.fromEntries(
+      (getTool(name)?.parameters ?? []).filter((p) => p.required).map((p) => [p.name, 'x']),
+    );
+
+    const outcome = await runTool({ id: '1', name, args });
 
     expect(outcome.status).toBe('confirmar');
     expect(executor.calls).toEqual([]);
   });
 
-  it('depois de confirmada, corre', () => {
-    const outcome = runTool({ id: '1', name: 'apagar_conversas', args: {} }, true);
+  it('depois de confirmada, corre', async () => {
+    const outcome = await runTool({ id: '1', name: 'apagar_conversas', args: {} }, true);
 
     expect(outcome.status).toBe('ok');
     expect(executor.calls).toEqual(['apagar-conversas']);
   });
 
-  it('a confirmação vem da interface, nunca dos argumentos do modelo', () => {
+  it('a confirmação vem da interface, nunca dos argumentos do modelo', async () => {
     // Mesmo que o modelo mande `confirmed: true` nos argumentos, não conta.
-    const outcome = runTool({ id: '1', name: 'apagar_conversas', args: { confirmed: true } });
+    const outcome = await runTool({ id: '1', name: 'apagar_conversas', args: { confirmed: true } });
 
     expect(outcome.status).toBe('confirmar');
     expect(executor.calls).toEqual([]);
   });
 
-  it('as livres correm à primeira', () => {
-    expect(runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } }).status).toBe('ok');
+  it('as livres correm à primeira', async () => {
+    expect((await runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } })).status).toBe('ok');
   });
 });
 
 describe('auditoria', () => {
-  it('tudo o que corre fica registado, com os argumentos', () => {
-    runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } });
+  it('tudo o que corre fica registado, com os argumentos', async () => {
+    await runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } });
 
     const entry = logService.list.find((line) => line.source === 'auditoria');
     expect(entry?.message).toContain('mudar_tema');
     expect(entry?.message).toContain('oled');
   });
 
-  it('o que falha também fica', () => {
+  it('o que falha também fica', async () => {
     const throwing = { ...executor, setTheme: () => { throw new Error('não deu'); } };
     setToolExecutor(throwing);
 
-    const outcome = runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } });
+    const outcome = await runTool({ id: '1', name: 'mudar_tema', args: { tema: 'oled' } });
 
     expect(outcome.status).toBe('erro');
     expect(
@@ -343,13 +428,13 @@ describe('auditoria', () => {
     ).toBe(true);
   });
 
-  it('a descrição é legível por uma pessoa', () => {
+  it('a descrição é legível por uma pessoa', async () => {
     expect(describeCall({ id: '1', name: 'criar_tarefa', args: { titulo: 'comprar pão' } })).toBe(
       'criar_tarefa(titulo=comprar pão)',
     );
   });
 
-  it('uma ferramenta sem argumentos não deixa parênteses estranhos', () => {
+  it('uma ferramenta sem argumentos não deixa parênteses estranhos', async () => {
     expect(describeCall({ id: '1', name: 'fechar_todas_as_janelas', args: {} })).toBe(
       'fechar_todas_as_janelas()',
     );
@@ -357,20 +442,20 @@ describe('auditoria', () => {
 });
 
 describe('desligar o executor', () => {
-  it('desligar um antigo não apaga o que outro registou entretanto', () => {
+  it('desligar um antigo não apaga o que outro registou entretanto', async () => {
     const second = makeExecutor();
     setToolExecutor(second);
 
     // O primeiro desliga-se depois — não pode levar o segundo à frente.
     unregister();
 
-    runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } });
+    await runTool({ id: '1', name: 'abrir_janela', args: { app: 'emails' } });
     expect(second.calls).toEqual(['abrir:emails']);
   });
 });
 
 describe('cobertura', () => {
-  it('toda a ferramenta do catálogo tem execução — nenhuma é uma etiqueta', () => {
+  it('toda a ferramenta do catálogo tem execução — nenhuma é uma etiqueta', async () => {
     const args: Record<string, Record<string, unknown>> = {
       abrir_janela: { app: 'emails' },
       fechar_janela: { app: 'emails' },
@@ -388,6 +473,9 @@ describe('cobertura', () => {
       pesquisar: { termo: 'x' },
       procurar_ficheiro: { nome: 'orçamento' },
       abrir_ficheiro: { nome: 'orçamento' },
+      procurar_nota: { titulo: 'x' },
+      ler_nota: { titulo: 'x' },
+      guardar_nota: { titulo: 'x', conteudo: 'y' },
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },
@@ -395,24 +483,24 @@ describe('cobertura', () => {
     };
 
     for (const tool of TOOLS) {
-      const outcome = runTool({ id: '1', name: tool.name, args: args[tool.name] ?? {} }, true);
+      const outcome = await runTool({ id: '1', name: tool.name, args: args[tool.name] ?? {} }, true);
       expect(outcome.status, tool.name).toBe('ok');
     }
   });
 });
 
 describe('o aviso de que algo espera', () => {
-  it('a mensagem de confirmação diz o que se perde, não "tem a certeza?"', () => {
+  it('a mensagem de confirmação diz o que se perde, não "tem a certeza?"', async () => {
     for (const name of DESTRUCTIVE_TOOLS) {
       const question = getTool(name)?.confirmation?.({}) ?? '';
 
       // "Tem a certeza?" não informa ninguém. A pergunta tem de dizer o quê.
       expect(question.toLowerCase(), name).not.toContain('tem a certeza');
-      expect(question, name).toMatch(/apagar|repor|esquecer/i);
+      expect(question, name).toMatch(/apagar|repor|esquecer|substitui/i);
     }
   });
 
-  it('nenhuma ferramenta livre pode ser confundida com uma destrutiva', () => {
+  it('nenhuma ferramenta livre pode ser confundida com uma destrutiva', async () => {
     // Uma ferramenta chamada "apagar_" que não peça confirmação seria uma
     // armadilha: o nome promete uma coisa e o comportamento faz outra.
     for (const tool of TOOLS) {

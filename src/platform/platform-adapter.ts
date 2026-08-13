@@ -3,6 +3,7 @@ import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
+import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -184,4 +185,28 @@ export interface PlatformAdapter {
    * (`asset://localhost/…`). Vazio onde a plataforma não suporta.
    */
   toLocalMediaUrl(path: string): string;
+
+  // ── Vault Obsidian (Peça 17) ─────────────────────────────────────────────
+  /**
+   * Declara a pasta do vault. `null` se o caminho não for uma pasta legível
+   * ou a plataforma não suportar.
+   */
+  obsidianSetRoot(path: string): Promise<RealObsidianRoot | null>;
+  /**
+   * Lista todas as notas `.md` do vault, recursivamente. Lista vazia se
+   * ainda não houver vault, a leitura falhar, ou a plataforma não suportar.
+   */
+  obsidianListNotes(): Promise<readonly ObsidianNote[]>;
+  /**
+   * Lê o conteúdo de uma nota — `path` é o caminho relativo devolvido por
+   * `obsidianListNotes`. `null` se a nota não existir, estiver fora do
+   * vault, ou a plataforma não suportar.
+   */
+  obsidianReadNote(path: string): Promise<string | null>;
+  /**
+   * Cria ou substitui uma nota. `path` é relativo à raiz do vault; pastas
+   * intermédias são criadas se preciso. `false` se a escrita falhar ou a
+   * plataforma não suportar.
+   */
+  obsidianWriteNote(path: string, content: string): Promise<boolean>;
 }

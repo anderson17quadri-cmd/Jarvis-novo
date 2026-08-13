@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { CommandConsole } from '@/apps/developer-center/CommandConsole';
@@ -48,6 +48,18 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
     openFileLocation: (query) => {
       calls.push(`abrir-ficheiro:${query}`);
       return query !== 'inexistente';
+    },
+    searchNotes: async (query) => {
+      calls.push(`procurar-nota:${query}`);
+      return query === 'inexistente' ? [] : [{ title: query, path: `${query}.md` }];
+    },
+    readNote: async (query) => {
+      calls.push(`ler-nota:${query}`);
+      return query === 'inexistente' ? null : `conteúdo de ${query}`;
+    },
+    writeNote: async (title, content) => {
+      calls.push(`guardar-nota:${title}:${content}`);
+      return title !== 'falha';
     },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
@@ -115,28 +127,38 @@ describe('a consola', () => {
     expect(screen.getByText(/Não conheço a ferramenta "apagar_tudo"/)).toBeInTheDocument();
   });
 
-  it('uma destrutiva pede confirmação, e não corre sozinha', () => {
+  it('uma destrutiva pede confirmação, e não corre sozinha', async () => {
     render(<CommandConsole />);
     type('apagar_conversas');
 
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog', { name: 'Confirmar ação' })).toBeInTheDocument();
+    });
     expect(executor.calls).toEqual([]);
-    expect(screen.getByRole('alertdialog', { name: 'Confirmar ação' })).toBeInTheDocument();
   });
 
-  it('confirmar corre a ferramenta, e a caixa de confirmação desaparece', () => {
+  it('confirmar corre a ferramenta, e a caixa de confirmação desaparece', async () => {
     render(<CommandConsole />);
     type('apagar_conversas');
 
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog', { name: 'Confirmar ação' })).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Sim, fazer' }));
 
-    expect(executor.calls).toEqual(['apagar-conversas']);
+    await waitFor(() => {
+      expect(executor.calls).toEqual(['apagar-conversas']);
+    });
     expect(screen.queryByRole('alertdialog')).toBeNull();
   });
 
-  it('recusar não corre nada, e some da consola', () => {
+  it('recusar não corre nada, e some da consola', async () => {
     render(<CommandConsole />);
     type('apagar_conversas');
 
+    await waitFor(() => {
+      expect(screen.getByRole('alertdialog', { name: 'Confirmar ação' })).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Não' }));
 
     expect(executor.calls).toEqual([]);
@@ -161,10 +183,12 @@ describe('a consola', () => {
     expect(screen.getByText(/Parâmetros: titulo/)).toBeInTheDocument();
   });
 
-  it('"limpar" esvazia o histórico', () => {
+  it('"limpar" esvazia o histórico', async () => {
     render(<CommandConsole />);
     type('fechar_todas_as_janelas');
-    expect(screen.getByText('fechar_todas_as_janelas')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('fechar_todas_as_janelas')).toBeInTheDocument();
+    });
 
     type('limpar');
 
@@ -172,9 +196,12 @@ describe('a consola', () => {
     expect(screen.getByText(/Escreva um comando/)).toBeInTheDocument();
   });
 
-  it('seta para cima traz o último comando de volta à caixa', () => {
+  it('seta para cima traz o último comando de volta à caixa', async () => {
     render(<CommandConsole />);
     type('abrir_janela app=emails');
+    await waitFor(() => {
+      expect(executor.calls).toEqual(['abrir:emails']);
+    });
 
     fireEvent.keyDown(screen.getByLabelText('Comando'), { key: 'ArrowUp' });
 
