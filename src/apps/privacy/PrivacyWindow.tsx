@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Eye, EyeOff, Info, KeyRound, MousePointer, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
+import {
+  Eye,
+  EyeOff,
+  Info,
+  KeyRound,
+  MousePointer,
+  ShieldAlert,
+  ShieldCheck,
+  ShieldOff,
+  Trash2,
+} from 'lucide-react';
 
 import { PERMISSION_LABELS, PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { BackupPanel } from './BackupPanel';
@@ -310,6 +320,10 @@ function SecurityKeySection(): React.JSX.Element {
   const [isBusy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
+  const twoFactorEnabled = useAppearanceStore((state) => state.appearance.twoFactorEnabled);
+  const setAppearance = useAppearanceStore((state) => state.set);
+  const persistAppearance = useAppearanceStore((state) => state.persist);
+
   useEffect(() => {
     void getRegisteredSecurityKey().then(setCredential);
   }, []);
@@ -335,9 +349,20 @@ function SecurityKeySection(): React.JSX.Element {
       .then(() => {
         setCredential(null);
         setMessage({ text: 'Chave física removida.', isError: false });
+        // Sem chave, exigir um segundo fator deixa de fazer sentido — evita
+        // o interruptor ficar ligado a apontar para nada.
+        if (twoFactorEnabled) {
+          setAppearance('twoFactorEnabled', false);
+          void persistAppearance();
+        }
       })
       .finally(() => setBusy(false));
-  }, []);
+  }, [persistAppearance, setAppearance, twoFactorEnabled]);
+
+  const toggleTwoFactor = useCallback(() => {
+    setAppearance('twoFactorEnabled', !twoFactorEnabled);
+    void persistAppearance();
+  }, [persistAppearance, setAppearance, twoFactorEnabled]);
 
   return (
     <section className="rounded-input border border-line bg-tint/[.02] p-2.5">
@@ -353,6 +378,40 @@ function SecurityKeySection(): React.JSX.Element {
             Registada em {formatTime(new Date(credential.registeredAt))}. Usa-a no ecrã de login
             ao lado do Windows Hello e do PIN.
           </p>
+
+          <div className="mb-2 flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2">
+            <ShieldAlert className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-t3" aria-hidden="true" />
+            <span className="min-w-0 flex-1 text-cap leading-relaxed text-t3">
+              <b className="font-medium text-t2">Exigir esta chave como segundo fator.</b> Com isto
+              ligado, a palavra-passe e o PIN deixam de bastar sozinhos — pedem sempre a chave a
+              seguir. A biometria e a própria chave, usadas diretamente, continuam a bastar-se a
+              si mesmas.
+            </span>
+          </div>
+
+          <div className="mb-2 flex items-center gap-2">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={twoFactorEnabled}
+              aria-label="Exigir segundo fator"
+              onClick={toggleTwoFactor}
+              className={cn(
+                'flex items-center gap-1.5 rounded-btn border px-3 py-2 text-[12px] font-medium transition-all duration-hover',
+                twoFactorEnabled
+                  ? 'border-accent/50 bg-accent/[.1] text-accent'
+                  : 'border-line text-t2 hover:border-accent/35',
+              )}
+            >
+              {twoFactorEnabled ? (
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden="true" />
+              ) : (
+                <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+              )}
+              {twoFactorEnabled ? 'Segundo fator exigido' : 'Segundo fator desligado'}
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleRemove}

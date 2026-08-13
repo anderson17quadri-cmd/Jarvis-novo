@@ -32,6 +32,7 @@ import { createAutoLoginSession, hasValidAutoLoginSession } from '@/services/aut
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
 import { hasRegisteredSecurityKey, verifySecurityKey } from '@/services/webauthn-service';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { measurePasswordStrength } from './password-strength';
 import { PinKeypad } from './PinKeypad';
 import { USER_FIRST_NAME, USER_NAME } from '@/constants/user';
@@ -85,6 +86,8 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
   const [isScanningFace, setScanningFace] = useState(false);
   const [isShaking, setShaking] = useState(false);
   const [isLeaving, setLeaving] = useState(false);
+  /** `true` entre a palavra-passe/PIN aceites e a chave física confirmar o segundo fator. */
+  const [awaitingSecondFactor, setAwaitingSecondFactor] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const avatarRef = useRef<HTMLButtonElement>(null);
@@ -162,13 +165,64 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     inputRef.current?.focus();
   }, []);
 
+  /**
+   * O que acontece depois de a palavra-passe ou o PIN serem aceites — Parte
+   * 14 §2FA. Com o segundo fator desligado (ou sem chave registada, que
+   * invalida a exigência mesmo que o interruptor tenha ficado ligado por
+   * engano), entra logo. Ligado, com chave registada, pede a chave física
+   * antes de conceder — a palavra-passe e o PIN, sozinhos, deixam de
+   * chegar. Biometria e chave física continuam a bastar-se a si próprias:
+   * já são, cada uma, um fator forte, e pedir a chave física como segundo
+   * fator de si mesma não faria sentido.
+   */
+  const completeFirstFactor = useCallback((message: string): void => {
+    void (async () => {
+      const twoFactorEnabled = useAppearanceStore.getState().appearance.twoFactorEnabled;
+      const hasKey = twoFactorEnabled && (await hasRegisteredSecurityKey());
+
+      if (!hasKey) {
+        grant(message);
+        return;
+      }
+
+      setAwaitingSecondFactor(true);
+      setHint({
+        text: 'Primeiro fator confirmado. Confirma com a chave física para entrar.',
+        tone: 'neutral',
+      });
+    })();
+  }, [grant]);
+
+  const confirmSecondFactor = useCallback((): void => {
+    void (async () => {
+      soundService.play('scanner');
+      setHint({ text: 'A aguardar a chave física…', tone: 'neutral' });
+      const result = await verifySecurityKey();
+
+      if (result.ok) {
+        void createAutoLoginSession();
+        grant('Identidade confirmada — dois fatores verificados.');
+      } else {
+        setAwaitingSecondFactor(false);
+        deny(result.reason);
+      }
+    })();
+  }, [deny, grant]);
+
+  const cancelSecondFactor = useCallback((): void => {
+    setAwaitingSecondFactor(false);
+    setPassword('');
+    setHint({ text: ASSISTANT_LINES[0], tone: 'neutral' });
+    inputRef.current?.focus();
+  }, []);
+
   const submit = useCallback((): void => {
     if (password.trim().length > 0) {
-      grant('Identidade confirmada.');
+      completeFirstFactor('Identidade confirmada.');
     } else {
       deny();
     }
-  }, [deny, grant, password]);
+  }, [completeFirstFactor, deny, password]);
 
   /**
    * Tenta o Windows Hello a sério primeiro; só simula se esta máquina não
@@ -346,9 +400,11 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           <InfoChip icon={Shield} text="Sessão segura" />
         </div>
 
-        {method === 'pin' ? (
+        {awaitingSecondFactor ? (
+          <SecondFactorPanel onConfirm={confirmSecondFactor} onCancel={cancelSecondFactor} />
+        ) : method === 'pin' ? (
           <PinKeypad
-            onComplete={() => grant('Identidade confirmada.')}
+            onComplete={() => completeFirstFactor('Identidade confirmada.')}
             onCancel={() => setMethod('password')}
           />
         ) : (
@@ -461,12 +517,19 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           </form>
         )}
 
-        <div className="mt-s3 flex justify-center gap-2.5">
-          <MethodButton icon={ScanFace} label="Reconhecimento facial" onClick={runFaceScan} />
-          <MethodButton icon={Fingerprint} label="Impressão digital" onClick={runFingerprintScan} />
-          <MethodButton icon={Grid3x3} label="PIN" onClick={() => setMethod('pin')} />
-          <MethodButton icon={KeyRound} label="Chave física" onClick={runSecurityKey} />
-        </div>
+        {/*
+          Escondidos durante o segundo fator — de propósito. Um deles (a
+          própria chave física, ou a biometria) daria acesso sem passar pelo
+          passo que se acabou de exigir, o que anulava o 2FA na hora.
+        */}
+        {!awaitingSecondFactor && (
+          <div className="mt-s3 flex justify-center gap-2.5">
+            <MethodButton icon={ScanFace} label="Reconhecimento facial" onClick={runFaceScan} />
+            <MethodButton icon={Fingerprint} label="Impressão digital" onClick={runFingerprintScan} />
+            <MethodButton icon={Grid3x3} label="PIN" onClick={() => setMethod('pin')} />
+            <MethodButton icon={KeyRound} label="Chave física" onClick={runSecurityKey} />
+          </div>
+        )}
 
         <AssistantHint text={hint.text} tone={hint.tone} />
       </section>
@@ -574,6 +637,45 @@ function InfoChip({ icon: Icon, text, muted = false }: InfoChipProps): React.JSX
       <Icon className={cn('h-[13px] w-[13px]', muted ? 'text-t3' : 'text-accent opacity-75')} />
       {text}
     </span>
+  );
+}
+
+/** O passo 2 de 2 do login, quando o 2FA está ligado (Parte 14 §2FA). */
+function SecondFactorPanel({
+  onConfirm,
+  onCancel,
+}: {
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}): React.JSX.Element {
+  return (
+    <div className="mt-s3 text-center">
+      <p className="mb-s2 text-cap text-t3">
+        Primeiro fator confirmado. Falta a chave física para entrar.
+      </p>
+
+      <button
+        type="button"
+        onClick={onConfirm}
+        className={cn(
+          'flex h-[52px] w-full items-center justify-center gap-2.5 rounded-btn',
+          'border border-accent/50 bg-accent/[.1] text-[15px] font-semibold text-accent',
+          'transition-[transform,box-shadow] duration-hover ease-out',
+          'hover:scale-[1.02] hover:shadow-glow active:scale-[.98]',
+        )}
+      >
+        <KeyRound className="h-[17px] w-[17px]" aria-hidden="true" />
+        Usar chave física
+      </button>
+
+      <button
+        type="button"
+        onClick={onCancel}
+        className="mt-s3 w-full text-center text-[11.5px] text-t3 transition-colors hover:text-accent"
+      >
+        Cancelar e voltar
+      </button>
+    </div>
   );
 }
 

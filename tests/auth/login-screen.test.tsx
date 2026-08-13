@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as WebAuthnServiceModule from '@/services/webauthn-service';
 
 vi.mock('@/services/webauthn-service', async (importOriginal) => {
@@ -13,6 +13,8 @@ vi.mock('@/services/webauthn-service', async (importOriginal) => {
 });
 
 import { hasRegisteredSecurityKey, verifySecurityKey } from '@/services/webauthn-service';
+import { useAppearanceStore } from '@/stores/use-appearance-store';
+import { DEFAULT_APPEARANCE } from '@/types/appearance';
 import { LoginScreen } from '@/components/auth/LoginScreen';
 
 describe('LoginScreen', () => {
@@ -143,6 +145,139 @@ describe('LoginScreen', () => {
         ),
       ).toBeInTheDocument();
       expect(onAuthenticated).not.toHaveBeenCalled();
+    }, 15_000);
+  });
+
+  describe('2FA (segundo fator)', () => {
+    beforeEach(() => {
+      // `restoreMocks` global não limpa o histórico de chamadas destes
+      // `vi.fn()` entre as suites de "chave física" e esta — limpar aqui
+      // evita falsos positivos de "não devia ter sido chamado" a arrastar
+      // chamadas de testes anteriores no mesmo ficheiro.
+      vi.mocked(hasRegisteredSecurityKey).mockReset();
+      vi.mocked(verifySecurityKey).mockReset();
+    });
+
+    afterEach(() => {
+      useAppearanceStore.setState({ appearance: DEFAULT_APPEARANCE });
+    });
+
+    it('desligado (omissão), a palavra-passe entra sozinha mesmo com chave registada', async () => {
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
+      expect(verifySecurityKey).not.toHaveBeenCalled();
+    }, 15_000);
+
+    it('ligado com chave registada, a palavra-passe sozinha não basta — pede o segundo fator', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+
+      expect(
+        await screen.findByRole('button', { name: 'Usar chave física' }, { timeout: 5_000 }),
+      ).toBeInTheDocument();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+
+      // A fila de atalhos (biometria, PIN, chave física direta) some — nenhum
+      // deles pode contornar o segundo fator que se acabou de exigir.
+      expect(screen.queryByRole('button', { name: 'Chave física' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Reconhecimento facial' })).toBeNull();
+    }, 15_000);
+
+    it('confirmar o segundo fator com sucesso entra', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      vi.mocked(verifySecurityKey).mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+      await user.click(await screen.findByRole('button', { name: 'Usar chave física' }));
+
+      expect(
+        await screen.findByText('Identidade confirmada — dois fatores verificados.', {}, { timeout: 5_000 }),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
+    }, 15_000);
+
+    it('segundo fator recusado não entra, e volta à palavra-passe', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      vi.mocked(verifySecurityKey).mockResolvedValue({ ok: false, reason: 'Verificação cancelada.' });
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+      await user.click(await screen.findByRole('button', { name: 'Usar chave física' }));
+
+      expect(await screen.findByText('Verificação cancelada.', {}, { timeout: 5_000 })).toBeInTheDocument();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+      // Volta ao formulário — não fica preso no painel do segundo fator.
+      expect(screen.getByLabelText('Palavra-passe')).toBeInTheDocument();
+    }, 15_000);
+
+    it('cancelar o segundo fator volta à palavra-passe sem autenticar', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+      await screen.findByRole('button', { name: 'Usar chave física' });
+
+      await user.click(screen.getByRole('button', { name: 'Cancelar e voltar' }));
+
+      expect(screen.getByLabelText('Palavra-passe')).toHaveValue('');
+      expect(verifySecurityKey).not.toHaveBeenCalled();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+    });
+
+    it('ligado mas sem chave registada (estado inconsistente), entra só com o primeiro fator', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(false);
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
+      await user.click(screen.getByRole('button', { name: /entrar/i }));
+
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
+    }, 15_000);
+
+    it('o PIN também exige o segundo fator quando ligado', async () => {
+      useAppearanceStore.getState().set('twoFactorEnabled', true);
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      vi.mocked(verifySecurityKey).mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.click(screen.getByRole('button', { name: 'PIN' }));
+      for (const digit of ['1', '2', '3', '4']) {
+        await user.click(screen.getByRole('button', { name: `Dígito ${digit}` }));
+      }
+
+      await user.click(await screen.findByRole('button', { name: 'Usar chave física' }));
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
     }, 15_000);
   });
 });

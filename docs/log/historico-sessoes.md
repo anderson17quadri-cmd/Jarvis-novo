@@ -2828,3 +2828,50 @@ sem hardware Windows/YubiKey nesta sessão. A correção em si é lógica
 pura sobre bytes, sem dependência de hardware — testada a sério com
 chaves ECDSA reais geradas em cada teste, só a cerimónia do sistema
 operativo é que fica por confirmar.
+
+## 2026-08-13 — 2FA a sério: palavra-passe/PIN + chave física, não um OU
+
+Próximo passo natural sobre o WebAuthn, já identificado no SPEC.md. Antes
+de começar, puxei a correção do challenge (replay) que apareceu entretanto
+— revista e confirmada por fora (49 testes nos três ficheiros de WebAuthn/
+login/privacidade, todos a passar), sem conflito real com este trabalho.
+
+**O que muda**: hoje, palavra-passe, PIN, biometria e chave física eram
+quatro portas independentes — qualquer uma, sozinha, dava acesso. Com o
+interruptor "Exigir segundo fator" ligado (Privacidade → Acesso, só
+visível com uma chave já registada), a palavra-passe e o PIN deixam de
+bastar sozinhos: depois de aceites, o login mostra um passo 2 de 2 ("Usar
+chave física"), e só `grant()` depois de `verifySecurityKey()` confirmar
+a assinatura a sério. Biometria e a chave física usada diretamente
+continuam a bastar-se a si mesmas — já são, cada uma, um fator forte, e
+exigir a chave como segundo fator de si própria não faria sentido.
+
+**Um problema apanhado ao construir, antes de qualquer utilizador
+encontrar**: a fila de atalhos (Reconhecimento facial, Impressão digital,
+PIN, Chave física) ficava visível por baixo do formulário mesmo durante o
+segundo fator — clicar em qualquer um deles entrava sem passar pelo passo
+que se acabou de exigir, anulando o 2FA na hora. Escondida enquanto
+`awaitingSecondFactor` estiver ativo.
+
+**Estado inconsistente tratado**: `twoFactorEnabled` vive em `Appearance`
+(mesmo padrão do `idleLockMinutes` — segurança, não decoração, por isso
+fora de `AMBIENCE_KEYS`, não viaja com perfis). Remover a chave desliga o
+2FA sozinho, para o interruptor nunca ficar ligado a apontar para nada. E
+mesmo que o interruptor fique ligado por alguma via inesperada sem chave
+nenhuma registada, `completeFirstFactor` confere `hasRegisteredSecurityKey()`
+a sério antes de exigir o segundo passo — nunca trava alguém sem ter como
+completar o que está a pedir.
+
+**Testes**: 8 novos em `login-screen.test.tsx` (desligado entra sozinho;
+ligado exige o segundo fator e esconde os atalhos; confirmação com
+sucesso/recusa; cancelar volta ao formulário; estado inconsistente sem
+chave cai para o primeiro fator; o PIN passa pelo mesmo caminho) e 3 em
+`privacy.test.tsx` (sem chave não mostra o interruptor; com chave liga e
+persiste; remover a chave desliga o 2FA sozinho).
+
+**Confirmado**: `tsc` limpo, `eslint` 0 erros, suite completa — 111
+ficheiros, 1535 testes.
+
+**Não confirmado ao vivo**: mesma limitação desta sessão (sem hardware
+Windows) — o fluxo de dois passos nunca foi visto a correr contra uma
+chave física real, só contra os mocks descritos acima.
