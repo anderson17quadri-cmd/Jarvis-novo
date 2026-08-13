@@ -3339,3 +3339,45 @@ trabalho corre. Esta sessão remota não tem acesso ao terminal nem ao
 Ollama da máquina local (container isolado, só este repositório) —
 por isso o que dá para entregar daqui é o prompt/roteiro em si, para
 correr a partir de uma sessão local com esse acesso, não a execução.
+
+## 2026-08-13 — Revisão a sério dos gatilhos nativos de automação (ficheiros/bateria): dois bugs reais, corrigidos
+
+Item 4 da fila noturna — revisão independente de `watch_folder`/`unwatch_folder`/
+`get_battery_status` (`src-tauri/src/commands/files.rs`, `battery.rs`) e de
+`checkNativeTriggers()` (`src/services/automation-service.ts`). Nunca tinha sido
+lido por ninguém de fora.
+
+**Confirmei a fuga suspeita no `unwatch_folder`.** O comando tirava a pasta do
+mapa sem pôr a flag de paragem a `true`, e o comentário justificava-o com um
+`Drop` que não existe — `Arc<AtomicBool>` não se levanta ao cair, e a thread do
+observador segura o seu próprio `Arc`, por isso nunca via `true`. A thread do
+`notify` ficava a correr para sempre e **continuava a emitir**
+`automation://file-changed` depois de `unwatch_folder`. Corrigido com dois
+métodos no `FileWatchers` (`record`/`remove`): o `remove` põe a flag a `true`
+antes de a tirar, e o `record` torna a deduplicação atómica (antes, o
+check+insert em dois passos deixava duas chamadas concorrentes criarem dois
+watchers sobre a mesma pasta). Teste Rust novo (`remove_para_a_thread_do_observador`)
+prova que a thread simulada pára; `cargo test` 8/8.
+
+**Segundo bug real, no `checkNativeTriggers`.** `lastBatteryPercent` era
+partilhada por todas as regras e atualizada *dentro* do predicado — que corre
+uma vez por automação. A primeira regra de bateria avaliava com o valor
+anterior certo e escrevia o novo logo a seguir; a segunda já comparava contra
+esse valor recém-escrito, por isso **nunca cruzava o limiar**. Com duas regras
+("abaixo de 20%" e "abaixo de 10%"), só a primeira da lista disparava.
+Corrigido para capturar o anterior uma vez e atualizar uma vez, no fim; teste
+novo (`bateria: duas regras cruzam o próprio limiar na mesma leitura`).
+
+**Documentado, não corrigido** (falta de desenho, não bug dos ficheiros
+revistos): o `App.tsx` regista os observadores de ficheiros uma única vez no
+arranque e nunca chama `unwatchFolder` — uma automação de ficheiros ligada
+depois do arranque não é observada (gatilho perdido até reiniciar), e
+desligá-la não desliga o observador (os eventos continuam a ser emitidos, sem
+ação, porque `checkNativeTriggers` respeita `isEnabled`).
+
+**Verificação:** `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes noutros ficheiros), `cargo test` 8/8. `vitest run`: 1622 testes
+— 1615 passam e 7 falham, todos em `login-screen.test.tsx` e
+`design-system/surfaces.test.ts`, que passam isolados (24/24) — flakiness por
+timeout sob a carga do correr completo, pré-existente e sem relação com esta
+revisão.

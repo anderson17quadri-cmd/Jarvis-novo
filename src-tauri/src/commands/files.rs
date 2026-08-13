@@ -28,6 +28,29 @@ impl FileWatchers {
             inner: Mutex::new(HashMap::new()),
         }
     }
+
+    /// Regista uma pasta como observada. Devolve `false` se já estava — nesse
+    /// caso quem chama não deve criar um segundo observador.
+    fn record(&self, watch_id: &str, flag: Arc<AtomicBool>) -> bool {
+        let mut map = self.inner.lock().unwrap();
+        if map.contains_key(watch_id) {
+            return false;
+        }
+        map.insert(watch_id.to_string(), flag);
+        true
+    }
+
+    /// Remove uma pasta e sinaliza a thread do observador para parar.
+    ///
+    /// A flag tem de ser posta a `true` aqui de propósito: a thread segura o
+    /// seu próprio `Arc`, por isso tirá-lo do mapa não o destrói — e um
+    /// `AtomicBool` não tem um `Drop` que o levante sozinho.
+    fn remove(&self, watch_id: &str) {
+        let mut map = self.inner.lock().unwrap();
+        if let Some(flag) = map.remove(watch_id) {
+            flag.store(true, Ordering::Relaxed);
+        }
+    }
 }
 
 /// Carga enviada para a interface quando um ficheiro muda.
@@ -67,15 +90,12 @@ pub fn watch_folder(
 
     let watch_id = canonical.to_string_lossy().to_string();
 
-    {
-        let map = watchers.inner.lock().unwrap();
-        if map.contains_key(&watch_id) {
-            return Ok(watch_id);
-        }
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    if !watchers.record(&watch_id, stop_flag.clone()) {
+        return Ok(watch_id);
     }
 
-    let stop_flag = Arc::new(AtomicBool::new(false));
-    let flag = stop_flag.clone();
+    let flag = stop_flag;
     let app_handle = app.clone();
     let id = watch_id.clone();
 
@@ -139,11 +159,6 @@ pub fn watch_folder(
         }
     });
 
-    {
-        let mut map = watchers.inner.lock().unwrap();
-        map.insert(watch_id.clone(), stop_flag);
-    }
-
     Ok(watch_id)
 }
 
@@ -152,10 +167,7 @@ pub fn watch_folder(
 /// Idempotente: se a pasta já não estava a ser observada, devolve Ok.
 #[tauri::command]
 pub fn unwatch_folder(watchers: State<'_, FileWatchers>, watch_id: String) -> Result<()> {
-    let mut map = watchers.inner.lock().unwrap();
-    map.remove(&watch_id);
-    // O observador vai parar no próximo tique do loop porque a flag sai do
-    // escopo e o Drop levanta-a (ou é a última referência e o AtomicBool cai).
+    watchers.remove(&watch_id);
     Ok(())
 }
 
@@ -307,4 +319,59 @@ pub fn files_read_dir(
     }
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn remove_para_a_thread_do_observador() {
+        let watchers = FileWatchers::new();
+        let flag = Arc::new(AtomicBool::new(false));
+        assert!(watchers.record("pasta", flag.clone()));
+
+        // Simula o ciclo da thread do observador: só sai quando a flag é
+        // levantada. O limite de iterações evita que uma regressão (fuga)
+        // deixe o teste pendurado para sempre — se a flag nunca subir,
+        // `esgotou` fica a `true` e o teste falha em vez de bloquear.
+        let esgotou = Arc::new(AtomicBool::new(false));
+        let sinal = esgotou.clone();
+        let f = flag.clone();
+        let thread = thread::spawn(move || {
+            for _ in 0..1000 {
+                if f.load(Ordering::Relaxed) {
+                    return;
+                }
+                thread::sleep(Duration::from_millis(1));
+            }
+            sinal.store(true, Ordering::Relaxed);
+        });
+
+        watchers.remove("pasta");
+        thread.join().unwrap();
+
+        assert!(!esgotou.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn remove_de_uma_pasta_inexistente_e_idempotente() {
+        let watchers = FileWatchers::new();
+        watchers.remove("nunca-observada");
+    }
+
+    #[test]
+    fn record_nao_duplica_a_mesma_pasta() {
+        let watchers = FileWatchers::new();
+        let primeira = Arc::new(AtomicBool::new(false));
+        let segunda = Arc::new(AtomicBool::new(false));
+
+        assert!(watchers.record("pasta", primeira.clone()));
+        assert!(!watchers.record("pasta", segunda.clone()));
+
+        // A primeira flag continua no mapa — a segunda foi ignorada.
+        let map = watchers.inner.lock().unwrap();
+        let guardada = map.get("pasta").unwrap();
+        assert!(Arc::ptr_eq(guardada, &primeira));
+    }
 }
