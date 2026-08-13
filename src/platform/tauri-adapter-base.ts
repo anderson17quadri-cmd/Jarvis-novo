@@ -1,4 +1,4 @@
-import { invoke } from '@tauri-apps/api/core';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
@@ -12,6 +12,7 @@ import type { PlatformCapabilities, PlatformInfo, PlatformKind } from '@/types/p
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
+import type { MusicFileEntry } from '@/types/music';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -429,6 +430,28 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
       subject: params.subject,
       body: params.body,
     });
+  }
+
+  // ── Música local ─────────────────────────────────────────────────────────
+
+  async musicSetRoot(path: string): Promise<RealFilesRoot | null> {
+    if (!this.capabilities.music) return null;
+    return this.tryInvoke<RealFilesRoot>('music_set_root', null, { path });
+  }
+
+  async musicReadDir(): Promise<readonly MusicFileEntry[]> {
+    if (!this.capabilities.music) return [];
+    const result = await this.tryInvoke<MusicFileEntry[]>('music_read_dir', null);
+    return result ?? [];
+  }
+
+  toLocalMediaUrl(path: string): string {
+    if (!this.capabilities.music) return '';
+    try {
+      return convertFileSrc(path);
+    } catch {
+      return '';
+    }
   }
 
   // ── Auxiliar ─────────────────────────────────────────────────────────────

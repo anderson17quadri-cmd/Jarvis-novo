@@ -62,6 +62,7 @@ pub fn run() {
         .manage(TerminalRegistry::default())
         .manage(commands::files::FileWatchers::new())
         .manage(commands::files::FilesRoot::new())
+        .manage(commands::music::MusicRoot::new())
         // O Terminal, o cofre de segredos, o Windows Hello e os gatilhos
         // nativos só existem no desktop — sem isto, `generate_handler!`
         // teria de referenciar comandos que não compilam no Android. Só há
@@ -95,6 +96,8 @@ pub fn run() {
             commands::mail::mail_fetch,
             commands::mail::mail_set_flag,
             commands::mail::mail_send,
+            commands::music::music_set_root,
+            commands::music::music_read_dir,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

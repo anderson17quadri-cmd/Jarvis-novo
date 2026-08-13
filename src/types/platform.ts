@@ -44,6 +44,8 @@ export interface PlatformCapabilities {
   readonly realFilesystem: boolean;
   /** Correio real (IMAP para ler, SMTP para enviar) via comandos Rust. */
   readonly mail: boolean;
+  /** Reprodução local de áudio (pasta de música + `<audio>` real). */
+  readonly music: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

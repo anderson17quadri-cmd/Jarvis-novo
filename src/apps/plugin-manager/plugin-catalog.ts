@@ -562,6 +562,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   batteryMonitor: 'monitor de bateria',
   realFilesystem: 'sistema de ficheiros real',
   mail: 'correio real',
+  music: 'música local',
 };
 
 /**

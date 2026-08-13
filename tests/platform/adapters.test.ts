@@ -40,6 +40,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'batteryMonitor',
       'realFilesystem',
       'mail',
+      'music',
     ] as const;
 
     for (const key of required) {
@@ -279,6 +280,28 @@ describe('correio real — só o desktop diz que suporta; os outros degradam', (
           body: 'b',
         }),
       ).resolves.toBeUndefined();
+    }
+  });
+});
+
+describe('música local — só o desktop diz que suporta; os outros degradam', () => {
+  it('Web e Android não têm música local', () => {
+    expect(new WebAdapter().capabilities.music).toBe(false);
+    expect(new AndroidAdapter().capabilities.music).toBe(false);
+  });
+
+  it('Desktop diz que suporta', () => {
+    expect(new DesktopAdapter().capabilities.music).toBe(true);
+  });
+
+  it('Web e Android nunca declaram pasta nem devolvem URL de áudio', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    const android: PlatformAdapter = new AndroidAdapter();
+
+    for (const adapter of [web, android]) {
+      await expect(adapter.musicSetRoot('C:/pasta')).resolves.toBeNull();
+      await expect(adapter.musicReadDir()).resolves.toEqual([]);
+      expect(adapter.toLocalMediaUrl('C:/pasta/faixa.mp3')).toBe('');
     }
   });
 });

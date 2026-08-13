@@ -16,7 +16,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+# `protocol-asset` é exigida pelo `tauri-build` assim que `assetProtocol` é
+# ativado no `tauri.conf.json` — é o que deixa a música local servir ficheiros
+# de áudio ao `<audio>` pelo protocolo `asset://localhost`.
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-notification = "2"

@@ -2587,3 +2587,31 @@ sozinha (confiar em `SetForegroundWindow` sem confirmar o foco da janela
 antes de mandar cliques). Nenhuma ação foi tomada aqui em cima dessa
 mensagem — só uma recomendação dada ao utilizador (opção 1: corrigir a
 pontaria antes de continuar), para ele levar à sessão certa.
+
+## 2026-08-13 — Peça 8, Lote 2: música local (pasta + `<audio>` real)
+
+Quarta e última sub-tarefa de "provedores de rede reais" — e a única que,
+afinal, não tem rede nenhuma. A música toca ficheiros de áudio de uma
+pasta escolhida pelo utilizador, num elemento `<audio>` a sério, servida
+pelo protocolo `asset` do Tauri (`convertFileSrc` no front, `allow_directory`
+em runtime no Rust). Spotify ficou de fora por decisão já assente na
+especificação. Por omissão mantém-se o simulado; sem pasta, nada muda para
+quem não configurar.
+
+O molde é o da Peça 7 (sistema de ficheiros): `music_set_root` valida a
+pasta e alarga o âmbito do protocolo `asset` a essa pasta só; `music_read_dir`
+lista os ficheiros de áudio (mp3/wav/ogg/flac/m4a/aac/opus) sem sair dela.
+Estado separado do Explorador (`MusicRoot` vs `FilesRoot`), para a música não
+herdar a raiz do Explorador nem o inverso. **Não há segredo nenhum** — ao
+contrário da NewsAPI e do email, o caminho da pasta não é credencial, por
+isso vai para o storage normal e não para o cofre. Um detalhe de
+configuração que custou uma ida ao código do `tauri-build`: ativar
+`assetProtocol` no `tauri.conf.json` obriga a declarar a feature
+`protocol-asset` na dependência base do `tauri` no `Cargo.toml` (o build
+script compara as features contra o allowlist derivado da config), não só
+no alvo desktop. `tsc`, `eslint` e `vitest` limpos (1486 testes, mais 43);
+`cargo check` e `cargo clippy` limpos no novo código (sobrou só o aviso
+pré-existente em `system/monitor.rs`). A verificação ao vivo da reprodução
+ficou por fazer — ouvir som exige interação humana —; os testes cobrem a
+escolha da pasta, a listagem, a reprodução/pausa/avanço/volume e a
+degradação no Web/Android.

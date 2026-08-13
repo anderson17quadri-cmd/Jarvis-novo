@@ -2,6 +2,7 @@ import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
+import type { MusicFileEntry } from '@/types/music';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -165,4 +166,22 @@ export interface PlatformAdapter {
   mailSetFlag(params: MailSetFlagParams): Promise<void>;
   /** Envia uma mensagem por SMTP. Lança se o envio falhar. */
   mailSend(params: MailSendParams): Promise<void>;
+
+  // ── Música local ─────────────────────────────────────────────────────────
+  /**
+   * Declara a pasta de música local — nada fora dela fica acessível, e o
+   * protocolo `asset` do Tauri passa a servir os ficheiros de lá. `null` se o
+   * caminho não for uma pasta legível ou a plataforma não suportar.
+   */
+  musicSetRoot(path: string): Promise<RealFilesRoot | null>;
+  /**
+   * Lê os ficheiros de áudio na pasta declarada. Lista vazia se ainda não
+   * houver pasta, a leitura falhar, ou a plataforma não suportar.
+   */
+  musicReadDir(): Promise<readonly MusicFileEntry[]>;
+  /**
+   * Converte um caminho de ficheiro num URL que o `<audio>` consegue carregar
+   * (`asset://localhost/…`). Vazio onde a plataforma não suporta.
+   */
+  toLocalMediaUrl(path: string): string;
 }

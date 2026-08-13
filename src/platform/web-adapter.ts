@@ -2,6 +2,7 @@ import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
+import type { MusicFileEntry } from '@/types/music';
 import type { ImapMessageDto } from '@/types/mail';
 import { detectTouch } from './detect-platform';
 import { simulateSnapshot, simulateStaticInfo } from './simulated-metrics';
@@ -42,6 +43,7 @@ export class WebAdapter implements PlatformAdapter {
     batteryMonitor: false,
     realFilesystem: false,
     mail: false,
+    music: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -242,5 +244,19 @@ export class WebAdapter implements PlatformAdapter {
 
   async mailSend(): Promise<void> {
     /* sem SMTP para enviar */
+  }
+
+  // ── Música local ─────────────────────────────────────────────────────────
+
+  async musicSetRoot(): Promise<RealFilesRoot | null> {
+    return null;
+  }
+
+  async musicReadDir(): Promise<readonly MusicFileEntry[]> {
+    return [];
+  }
+
+  toLocalMediaUrl(): string {
+    return '';
   }
 }
