@@ -2964,3 +2964,41 @@ true })` sem manifesto (antes `ok: true`, agora `ok: false`), e
 `verifyManifestSignature` sobre um manifesto com `__proto__` acrescentado
 (antes `true`, agora `false`). Suite completa: 111 ficheiros, 1537
 testes (era 1535; +2 líquidos). `tsc` limpo, `eslint` 0 erros.
+
+## 2026-08-13 — Revisão a sério do Cofre de segredos e do Windows Hello (Lote 1): dois problemas reais no cofre, corrigidos
+
+Quinta revisão independente, a "sobrar tempo" da mesma tarefa. Escolhi as duas
+peças mais sensíveis do Lote 1 que ainda não tinham esta leitura linha a linha:
+o Cofre de segredos (Peça A) e o Windows Hello (Peça B). No cofre, o Rust já
+estava certo (sem `unwrap()`, apagar um segredo inexistente é idempotente,
+`SERVICE_NAME` fixo) — mas a interface tinha dois bugs reais.
+
+**Problema 1 — `secretSet`/`secretDelete` devolviam `false` sempre no desktop.**
+`tauri-adapter-base.ts` decidia o sucesso com `result !== null`, mas o
+`secret_set` do Rust devolve `Result<()>` e o `Ok(())` serializa para `null` na
+interface — o mesmo valor que `tryInvoke` usa como sinal de falha. Resultado:
+gravar ou apagar no cofre "falhava" sempre, e o registo da chave física
+(`webauthn-service.ts`) recusaria com "sem cofre" num desktop a sério.
+Corrigido: `try`/`catch` sobre `invoke` — a verdade é "não lançou".
+
+**Problema 2 — a migração da chave podia perder a chave.** O `hydrate()` da
+store de IA movia a chave de texto simples para o cofre e apagava o texto
+simples mesmo se a escrita no cofre falhasse em silêncio. Se o cofre falhasse,
+a única cópia da chave desaparecia. Corrigido: o storage só é limpo (e o
+marcador `jarvis-migrated` só é posto) depois de a cópia para o cofre confirmar
+que correu. Se falhar, a chave fica onde estava e volta a tentar no arranque
+seguinte — nunca se apaga a única cópia.
+
+**Windows Hello: nada de real a corrigir.** Token aleatório
+(`crypto.randomUUID()`), não fixo nem derivável; validade de 30 minutos
+conferida a sério em `hasValidAutoLoginSession`; a sessão automática só se cria
+depois de um `verified` real (nunca da palavra-passe/PIN simulado); o
+`VerificationOutcome` fecha por defeito (erro inesperado cai em `Denied`/
+`Unavailable`, nunca `Verified`); e o resultado vem só do Rust — o JS não
+consegue forçar "verified". É uma resposta válida e útil: confirma que a peça
+está sólida.
+
+**Testes**: 9 novos, cada um a provar o comportamento errado antes e a passar
+depois — `tests/platform/secret-vault.test.ts` (6) e
+`tests/stores/ai-settings-store.test.ts` (3). Suite completa: 113 ficheiros,
+1546 testes (era 1537; +9). `tsc` limpo, `eslint` 0 erros, `cargo check` limpo.

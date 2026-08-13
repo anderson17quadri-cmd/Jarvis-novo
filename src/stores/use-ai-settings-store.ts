@@ -196,20 +196,27 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
         const oldKey = typeof saved?.apiKey === 'string' ? saved.apiKey : '';
         const oldClaudeKey = typeof saved?.claudeApiKey === 'string' ? saved.claudeApiKey : '';
 
-        if (oldKey) await adapter.secretSet('deepseek-api-key', oldKey);
-        if (oldClaudeKey) await adapter.secretSet('claude-api-key', oldClaudeKey);
+        // Só se apaga o texto simples do storage se a cópia para o cofre tiver
+        // mesmo corrido. Se uma escrita falhar, a chave fica onde estava e a
+        // migração volta a tentar no arranque seguinte — nunca se apaga a única
+        // cópia que existe.
+        const copiadas =
+          (!oldKey || (await adapter.secretSet('deepseek-api-key', oldKey))) &&
+          (!oldClaudeKey || (await adapter.secretSet('claude-api-key', oldClaudeKey)));
 
-        await adapter.secretSet('jarvis-migrated', '1');
-
-        // Limpar as chaves do storage — já estão no cofre.
-        if (saved && (oldKey || oldClaudeKey)) {
-          const limpo: Record<string, unknown> = {};
-          for (const [chave, valor] of Object.entries(saved)) {
-            if (chave !== 'apiKey' && chave !== 'claudeApiKey') {
-              limpo[chave] = valor;
+        if (copiadas) {
+          // Limpar as chaves do storage — já estão no cofre.
+          if (saved && (oldKey || oldClaudeKey)) {
+            const limpo: Record<string, unknown> = {};
+            for (const [chave, valor] of Object.entries(saved)) {
+              if (chave !== 'apiKey' && chave !== 'claudeApiKey') {
+                limpo[chave] = valor;
+              }
             }
+            await storageService.set(STORAGE_KEYS.aiSettings, limpo);
           }
-          await storageService.set(STORAGE_KEYS.aiSettings, limpo);
+
+          await adapter.secretSet('jarvis-migrated', '1');
         }
       }
 

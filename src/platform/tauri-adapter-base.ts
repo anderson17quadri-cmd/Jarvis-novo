@@ -179,8 +179,15 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
 
   async secretSet(key: string, value: string): Promise<boolean> {
     if (!this.capabilities.secretVault) return false;
-    const result = await this.tryInvoke<null>('secret_set', null, { key, value });
-    return result !== null;
+    // `secret_set` devolve `Result<()>`, e o `Ok(())` chega à interface como
+    // `null` — o mesmo valor que `tryInvoke` usa como sinal de falha. Não dá
+    // para distinguir os dois pelo valor devolvido: a verdade é "não lançou".
+    try {
+      await invoke('secret_set', { key, value });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async secretGet(key: string): Promise<string | null> {
@@ -190,8 +197,14 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
 
   async secretDelete(key: string): Promise<boolean> {
     if (!this.capabilities.secretVault) return false;
-    const result = await this.tryInvoke<null>('secret_delete', null, { key });
-    return result !== null;
+    // Mesma razão do `secretSet`: `Ok(())` e a falha do `tryInvoke` são ambos
+    // `null`, por isso o booleano vem do `try`/`catch`, não do valor.
+    try {
+      await invoke('secret_delete', { key });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ── Gatilhos nativos de automação ──────────────────────────────────────────
