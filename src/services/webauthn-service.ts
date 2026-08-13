@@ -102,6 +102,19 @@ export async function registerSecurityKey(userName: string): Promise<WebAuthnRes
     if (!credential) return { ok: false, reason: 'Registo cancelado.' };
 
     const response = credential.response as AuthenticatorAttestationResponse;
+
+    const clientData = decodeClientDataJSON(response.clientDataJSON);
+    if (clientData.type !== 'webauthn.create') {
+      return { ok: false, reason: 'Tipo de cerimónia inesperado — não é um registo.' };
+    }
+    if (clientData.challenge !== base64UrlEncode(challenge.buffer)) {
+      // Isto nunca devia acontecer numa cerimónia normal — o desafio vem do
+      // mesmo pedido que se acabou de fazer. Se não bater certo, algo
+      // substituiu a resposta a meio, e aceitar na mesma seria confiar numa
+      // cerimónia que pode não ser a que se pediu.
+      return { ok: false, reason: 'A resposta não corresponde ao pedido de registo enviado.' };
+    }
+
     if (typeof response.getPublicKey !== 'function') {
       return {
         ok: false,
@@ -185,6 +198,23 @@ export async function verifySecurityKey(): Promise<WebAuthnResult> {
     if (!assertion) return { ok: false, reason: 'Verificação cancelada.' };
 
     const response = assertion.response as AuthenticatorAssertionResponse;
+
+    const clientData = decodeClientDataJSON(response.clientDataJSON);
+    if (clientData.type !== 'webauthn.get' || clientData.challenge !== base64UrlEncode(challenge.buffer)) {
+      // A verificação da assinatura, por si só, só prova que a resposta foi
+      // assinada pela chave privada certa — nunca prova que é a resposta ao
+      // desafio que se acabou de enviar. Sem confirmar isto, uma resposta
+      // antiga e válida (repetida, ou reaproveitada de outro pedido) passava
+      // pela verificação da assinatura sem que ninguém desse por isso — é o
+      // passo que impede repetição, não um detalhe cosmético.
+      logService.audit(
+        'Chave física recusada',
+        'recusado',
+        'challenge da resposta não corresponde ao pedido enviado — possível repetição',
+      );
+      return { ok: false, reason: 'A resposta não corresponde ao pedido enviado — possível repetição.' };
+    }
+
     const valid = await verifyAssertionSignature(response, stored.publicKeySpki, stored.algorithm);
 
     if (!valid) {
@@ -316,6 +346,32 @@ function describeError(error: unknown): string {
     if (typeof name === 'string' && name.length > 0) return name;
   }
   return 'Falha desconhecida na cerimónia WebAuthn.';
+}
+
+/**
+ * O `clientDataJSON` de qualquer resposta WebAuthn — real ou tentativa de
+ * ataque. Nunca lança: um JSON malformado ou campos em falta devolvem um
+ * objeto vazio, que falha a verificação de `type`/`challenge` a seguir em
+ * vez de rebentar aqui.
+ */
+function decodeClientDataJSON(buffer: ArrayBuffer): { readonly type?: string; readonly challenge?: string } {
+  try {
+    return JSON.parse(new TextDecoder().decode(buffer)) as { type?: string; challenge?: string };
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * O desafio que se manda ao autenticador (`challenge`, um `Uint8Array`) volta
+ * no `clientDataJSON.challenge` **em base64url** — sem `+`/`/`, sem
+ * preenchimento (`=`) — não em base64 normal. `arrayBufferToBase64` usa-se
+ * para guardar a chave/credencial no cofre (onde o formato não importa,
+ * contanto que seja consistente); isto é especificamente o que o browser usa
+ * para o desafio, e os dois não podem ser trocados.
+ */
+function base64UrlEncode(buffer: ArrayBuffer): string {
+  return arrayBufferToBase64(buffer).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {

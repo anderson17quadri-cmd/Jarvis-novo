@@ -52,14 +52,43 @@ function buildAuthenticatorData(signCount: number): ArrayBuffer {
   return out.buffer;
 }
 
-function buildClientDataJSON(): ArrayBuffer {
+/**
+ * O desafio (`challenge`) volta no `clientDataJSON` em base64url — cópia da
+ * mesma codificação do serviço (`base64UrlEncode`, não exportada), para o
+ * teste construir uma resposta que bate certo com o que o serviço vai
+ * conferir. Duplicado de propósito: um teste que importasse a função do
+ * próprio serviço não provava nada sobre ela.
+ */
+function base64UrlEncode(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * `clientDataJSON` real, com o desafio que o pedido concreto mandou — nunca
+ * um valor fixo. O código sob teste agora confere `clientData.challenge`
+ * contra o desafio que ele próprio gerou; um valor fixo faria os testes
+ * falharem sempre, ou (pior) passar por acidente sem testar nada a sério.
+ */
+function buildClientDataJSON(challenge: ArrayBuffer, type: 'webauthn.create' | 'webauthn.get'): ArrayBuffer {
   const json = JSON.stringify({
-    type: 'webauthn.get',
-    challenge: 'dGVzdGU',
+    type,
+    challenge: base64UrlEncode(challenge),
     origin: 'http://localhost',
     crossOrigin: false,
   });
   return new TextEncoder().encode(json).buffer;
+}
+
+/** Lê o `challenge` que o serviço passou a `navigator.credentials.create/get`. */
+function challengeFrom(options: { publicKey?: { challenge?: BufferSource } }): ArrayBuffer {
+  const challenge = options.publicKey?.challenge;
+  if (!challenge) throw new Error('teste mal construído: sem challenge nas opções');
+  if (challenge instanceof ArrayBuffer) return challenge;
+  const view = challenge as Uint8Array;
+  return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength) as ArrayBuffer;
 }
 
 /** Codifica dois inteiros DER a partir do formato raw que o SubtleCrypto devolve. */
@@ -168,11 +197,12 @@ describe('webauthn-service', () => {
       const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
 
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([1, 2, 3, 4]).buffer,
           response: {
             getPublicKey: () => publicKeySpki,
             getPublicKeyAlgorithm: () => -7,
+            clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create'),
           },
         })),
         vi.fn(),
@@ -192,11 +222,12 @@ describe('webauthn-service', () => {
       const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
 
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([1, 2, 3, 4]).buffer,
           response: {
             getPublicKey: () => publicKeySpki,
             getPublicKeyAlgorithm: () => -257, // RS256, não suportado
+            clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create'),
           },
         })),
         vi.fn(),
@@ -217,9 +248,9 @@ describe('webauthn-service', () => {
 
     it('autenticador sem getPublicKey (Level 2) recusa com motivo claro', async () => {
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([1, 2, 3, 4]).buffer,
-          response: {},
+          response: { clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create') },
         })),
         vi.fn(),
       );
@@ -234,9 +265,13 @@ describe('webauthn-service', () => {
       const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
 
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([1, 2, 3]).buffer,
-          response: { getPublicKey: () => publicKeySpki, getPublicKeyAlgorithm: () => -7 },
+          response: {
+            getPublicKey: () => publicKeySpki,
+            getPublicKeyAlgorithm: () => -7,
+            clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create'),
+          },
         })),
         vi.fn(),
       );
@@ -269,9 +304,13 @@ describe('webauthn-service', () => {
       const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
 
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([9, 9, 9]).buffer,
-          response: { getPublicKey: () => publicKeySpki, getPublicKeyAlgorithm: () => -7 },
+          response: {
+            getPublicKey: () => publicKeySpki,
+            getPublicKeyAlgorithm: () => -7,
+            clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create'),
+          },
         })),
         vi.fn(),
       );
@@ -295,14 +334,14 @@ describe('webauthn-service', () => {
       const keyPair = await registerRealKey();
 
       const authenticatorData = buildAuthenticatorData(1);
-      const clientDataJSON = buildClientDataJSON();
-      const signature = await signAssertion(keyPair.privateKey, authenticatorData, clientDataJSON);
 
       stubCredentials(
         vi.fn(),
-        vi.fn(async () => ({
-          response: { authenticatorData, clientDataJSON, signature },
-        })),
+        vi.fn(async (options) => {
+          const clientDataJSON = buildClientDataJSON(challengeFrom(options), 'webauthn.get');
+          const signature = await signAssertion(keyPair.privateKey, authenticatorData, clientDataJSON);
+          return { response: { authenticatorData, clientDataJSON, signature } };
+        }),
       );
 
       const result = await verifySecurityKey();
@@ -318,13 +357,15 @@ describe('webauthn-service', () => {
       const impostor = await generateKeyPair();
 
       const authenticatorData = buildAuthenticatorData(1);
-      const clientDataJSON = buildClientDataJSON();
-      // Assina com a chave errada — a verificação tem de falhar.
-      const signature = await signAssertion(impostor.privateKey, authenticatorData, clientDataJSON);
 
       stubCredentials(
         vi.fn(),
-        vi.fn(async () => ({ response: { authenticatorData, clientDataJSON, signature } })),
+        vi.fn(async (options) => {
+          const clientDataJSON = buildClientDataJSON(challengeFrom(options), 'webauthn.get');
+          // Assina com a chave errada — a verificação tem de falhar.
+          const signature = await signAssertion(impostor.privateKey, authenticatorData, clientDataJSON);
+          return { response: { authenticatorData, clientDataJSON, signature } };
+        }),
       );
 
       const result = await verifySecurityKey();
@@ -336,24 +377,54 @@ describe('webauthn-service', () => {
       const keyPair = await registerRealKey();
 
       const authenticatorData = buildAuthenticatorData(1);
-      const originalClientData = buildClientDataJSON();
-      const signature = await signAssertion(keyPair.privateKey, authenticatorData, originalClientData);
-
-      // O `clientDataJSON` que chega à verificação é diferente do assinado —
-      // simula uma cerimónia adulterada a meio.
-      const tamperedClientData = new TextEncoder().encode(
-        JSON.stringify({ type: 'webauthn.get', challenge: 'outro', origin: 'http://localhost', crossOrigin: false }),
-      ).buffer;
 
       stubCredentials(
         vi.fn(),
-        vi.fn(async () => ({
-          response: { authenticatorData, clientDataJSON: tamperedClientData, signature },
-        })),
+        vi.fn(async (options) => {
+          const challenge = challengeFrom(options);
+          const originalClientData = buildClientDataJSON(challenge, 'webauthn.get');
+          const signature = await signAssertion(keyPair.privateKey, authenticatorData, originalClientData);
+
+          // O `clientDataJSON` que chega à verificação é diferente do
+          // assinado — simula uma cerimónia adulterada a meio. O `challenge`
+          // mantém-se correto de propósito: isto testa que a assinatura em
+          // si é recusada quando os bytes assinados mudam, não que o
+          // `challenge` errado é apanhado primeiro (isso já tem teste próprio).
+          const tamperedClientData = new TextEncoder().encode(
+            JSON.stringify({
+              type: 'webauthn.get',
+              challenge: base64UrlEncode(challenge),
+              origin: 'http://sitio-diferente.invalido',
+              crossOrigin: false,
+            }),
+          ).buffer;
+
+          return { response: { authenticatorData, clientDataJSON: tamperedClientData, signature } };
+        }),
       );
 
       const result = await verifySecurityKey();
       expect(result.ok).toBe(false);
+    });
+
+    it('challenge da resposta não corresponde ao pedido (repetição) é recusado antes da assinatura', async () => {
+      const keyPair = await registerRealKey();
+
+      const authenticatorData = buildAuthenticatorData(1);
+      // Um challenge completamente diferente do que o serviço pediu —
+      // simula uma resposta antiga a ser reaproveitada.
+      const staleChallenge = crypto.getRandomValues(new Uint8Array(32)).buffer;
+      const clientDataJSON = buildClientDataJSON(staleChallenge, 'webauthn.get');
+      const signature = await signAssertion(keyPair.privateKey, authenticatorData, clientDataJSON);
+
+      stubCredentials(
+        vi.fn(),
+        vi.fn(async () => ({ response: { authenticatorData, clientDataJSON, signature } })),
+      );
+
+      const result = await verifySecurityKey();
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toMatch(/repetição/i);
     });
 
     it('verificação cancelada (assertion null) recusa sem lançar', async () => {
@@ -370,21 +441,25 @@ describe('webauthn-service', () => {
 
       // Primeira verificação com signCount 5.
       const authData1 = buildAuthenticatorData(5);
-      const clientData1 = buildClientDataJSON();
-      const sig1 = await signAssertion(keyPair.privateKey, authData1, clientData1);
       stubCredentials(
         vi.fn(),
-        vi.fn(async () => ({ response: { authenticatorData: authData1, clientDataJSON: clientData1, signature: sig1 } })),
+        vi.fn(async (options) => {
+          const clientData1 = buildClientDataJSON(challengeFrom(options), 'webauthn.get');
+          const sig1 = await signAssertion(keyPair.privateKey, authData1, clientData1);
+          return { response: { authenticatorData: authData1, clientDataJSON: clientData1, signature: sig1 } };
+        }),
       );
       await expect(verifySecurityKey()).resolves.toEqual({ ok: true });
 
       // Segunda verificação com signCount igual (não subiu) — continua a verificar.
       const authData2 = buildAuthenticatorData(5);
-      const clientData2 = buildClientDataJSON();
-      const sig2 = await signAssertion(keyPair.privateKey, authData2, clientData2);
       stubCredentials(
         vi.fn(),
-        vi.fn(async () => ({ response: { authenticatorData: authData2, clientDataJSON: clientData2, signature: sig2 } })),
+        vi.fn(async (options) => {
+          const clientData2 = buildClientDataJSON(challengeFrom(options), 'webauthn.get');
+          const sig2 = await signAssertion(keyPair.privateKey, authData2, clientData2);
+          return { response: { authenticatorData: authData2, clientDataJSON: clientData2, signature: sig2 } };
+        }),
       );
       const result = await verifySecurityKey();
       expect(result.ok).toBe(true);
@@ -405,9 +480,13 @@ describe('webauthn-service', () => {
       const keyPair = await generateKeyPair();
       const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
       stubCredentials(
-        vi.fn(async () => ({
+        vi.fn(async (options) => ({
           rawId: new Uint8Array([1]).buffer,
-          response: { getPublicKey: () => publicKeySpki, getPublicKeyAlgorithm: () => -7 },
+          response: {
+            getPublicKey: () => publicKeySpki,
+            getPublicKeyAlgorithm: () => -7,
+            clientDataJSON: buildClientDataJSON(challengeFrom(options), 'webauthn.create'),
+          },
         })),
         vi.fn(),
       );

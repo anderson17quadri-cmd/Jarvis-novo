@@ -2728,3 +2728,65 @@ alíneas reescritas para o estado real.
 Isto não muda código nenhum — só documentação. Fica como primeiro
 resultado da "revisão a sério da noite inteira" que o utilizador pediu
 antes de dormir; a revisão continua.
+
+## 2026-08-13 — Revisão a sério da Peça 15: falha real de segurança na chave física, apanhada e corrigida
+
+Segundo resultado da revisão pedida ("escolhe 2-3 peças recentes e revê-as
+como se fosse a primeira vez a ver o código"). Escolhi a Peça 15
+(WebAuthn) por ser a mais recente que eu próprio ainda não tinha revisto
+de forma independente — só tinha corrido os testes por fora, não lido o
+código linha a linha.
+
+**A falha**: em `webauthn-service.ts`, tanto `registerSecurityKey` como
+`verifySecurityKey` geram um `challenge` aleatório e mandam-no ao
+autenticador (`navigator.credentials.create`/`.get`), mas nunca conferem
+que a resposta que volta contém esse mesmo `challenge`. A verificação
+criptográfica da assinatura (ECDSA sobre `authenticatorData ||
+SHA-256(clientDataJSON)`) prova que a resposta foi assinada pela chave
+privada certa — mas isso sozinho **não prova que é a resposta ao pedido
+que se acabou de fazer**. Sem conferir o `challenge`, uma resposta antiga
+e válida (capturada e reaproveitada, por exemplo) passaria pela
+verificação da assinatura sem ninguém dar por isso — é exatamente o passo
+que a especificação WebAuthn existe para impedir (repetição), não um
+detalhe cosmético. A cerimónia de registo tinha o mesmo problema, com
+risco menor (ainda não há credencial guardada para se fazer passar por).
+
+**A correção**: as duas funções passam a decodificar `clientDataJSON`
+(function nova, `decodeClientDataJSON`, nunca lança — um JSON malformado
+falha a verificação a seguir, não rebenta aqui) e a conferir `type`
+(`webauthn.create` no registo, `webauthn.get` na verificação) e
+`challenge` antes de aceitar qualquer coisa. O `challenge` chega em
+`clientDataJSON` codificado em **base64url** (sem `+`/`/`, sem
+preenchimento) — diferente do base64 normal que `arrayBufferToBase64` já
+usava para guardar a credencial no cofre; função nova,
+`base64UrlEncode`, especificamente para este confronto, documentada a
+explicar a diferença para não se trocarem os dois por engano no futuro.
+
+**O que isto partiu, e como se corrigiu**: a suite de testes existente
+(19 testes) construía sempre o mesmo `clientDataJSON` fixo
+(`challenge: 'dGVzdGU'`), nunca derivado do `challenge` real que o código
+gerava a cada chamada — com a correção, isso falharia sempre. Reescrevi
+os mocks de `navigator.credentials.create`/`.get` para lerem o
+`challenge` das próprias opções que o serviço lhes passa (é assim que um
+mock de uma API a sério devia funcionar — a receber o que lhe mandam, não
+a ignorar) e construírem a resposta em cima dele. Um teste
+("clientDataJSON alterado depois de assinar") tinha de mudar o que
+adultera — antes mudava o `challenge` (o que agora seria apanhado pela
+verificação nova, não pela da assinatura, deixando de testar o que dizia
+testar); passou a adulterar o `origin` em vez disso, mantendo o
+`challenge` correto, para continuar a testar mesmo que os bytes assinados
+mudarem invalida a assinatura. Um teste novo cobre especificamente a
+repetição: um `challenge` diferente do pedido, com assinatura
+matematicamente válida, tem de ser recusado antes de a assinatura sequer
+ser conferida. Mesma correção replicada em `tests/diagnostics/
+privacy.test.tsx`, que também simula a cerimónia a sério.
+
+**Confirmado**: `tsc` limpo, `eslint` 0 erros, suite completa — 111
+ficheiros, 1524 testes (era 1523; +1 líquido, com vários testes existentes
+reescritos para continuarem a testar o que diziam testar).
+
+**Não confirmado ao vivo**: mesma limitação de sempre para esta peça —
+sem hardware Windows/YubiKey nesta sessão. A correção em si é lógica
+pura sobre bytes, sem dependência de hardware — testada a sério com
+chaves ECDSA reais geradas em cada teste, só a cerimónia do sistema
+operativo é que fica por confirmar.

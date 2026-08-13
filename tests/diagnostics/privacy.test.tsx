@@ -164,10 +164,31 @@ describe('chave física (WebAuthn)', () => {
 
     Object.defineProperty(navigator, 'credentials', {
       value: {
-        create: vi.fn(async () => ({
-          rawId: new Uint8Array([1, 2, 3]).buffer,
-          response: { getPublicKey: () => publicKeySpki, getPublicKeyAlgorithm: () => -7 },
-        })),
+        create: vi.fn(async (options: { publicKey?: { challenge?: BufferSource } }) => {
+          const challenge = options.publicKey?.challenge as ArrayBuffer;
+          const clientDataJSON = new TextEncoder().encode(
+            JSON.stringify({
+              type: 'webauthn.create',
+              // Mesma codificação base64url que o serviço usa e confere —
+              // ver `base64UrlEncode` em `webauthn-service.ts`.
+              challenge: btoa(String.fromCharCode(...new Uint8Array(challenge)))
+                .replace(/\+/g, '-')
+                .replace(/\//g, '_')
+                .replace(/=+$/, ''),
+              origin: 'http://localhost',
+              crossOrigin: false,
+            }),
+          ).buffer;
+
+          return {
+            rawId: new Uint8Array([1, 2, 3]).buffer,
+            response: {
+              getPublicKey: () => publicKeySpki,
+              getPublicKeyAlgorithm: () => -7,
+              clientDataJSON,
+            },
+          };
+        }),
         get: vi.fn(),
       },
       configurable: true,
