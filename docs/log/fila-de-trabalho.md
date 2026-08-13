@@ -51,14 +51,6 @@ e passar à frente.
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
 
-### 6. Explorador de ficheiros real (Peça 7) — `[livre, sensível]`
-
-`src-tauri/src/commands/files.rs`, `files_set_root`/`files_read_dir`. A
-fronteira é "nenhum caminho fora da raiz escolhida, mesmo com `..` ou
-links simbólicos" — confirmada só por teste automatizado, nunca por uma
-tentativa a sério de escapar. É exatamente o tipo de garantia que vale a
-pena um segundo par de olhos tentar mesmo furar, não só ler.
-
 ### 7. Vault Obsidian (Peça 17) — `[livre, sensível]`
 
 `src-tauri/src/commands/obsidian.rs`, `services/knowledge/obsidian-
@@ -67,15 +59,6 @@ qualquer componente que não seja `Normal` (`..`, raízes absolutas) antes
 de tocar no disco. Confirma se essa rejeição é mesmo completa — um
 caminho com barras invertidas no meio de um nome de nota, por exemplo,
 ou um link simbólico dentro do próprio vault, passam?
-
-### 8. Navegador controlado pelo assistente (Peça 19) — `[livre, sensível]`
-
-`src-tauri/src/commands/browser.rs`, `services/knowledge/web-browser-
-service.ts`. Já tem 5 testes Rust e testes de que o conteúdo nunca é
-tratado como instrução — mas nunca foi lido por ninguém de fora à procura
-de forma explícita de furar isso. Um `<script>` mal formado, um redireto
-`https`→`http` a meio do pedido, um endereço que resolve para
-`localhost`/rede interna — algum destes escapa ao que já está feito?
 
 ### 9. Fase 3.1: Controlo Direto (portão, overlay, auditoria, simulação) — `[livre, sensível]`
 
@@ -147,4 +130,15 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
-_(vazio — a primeira peça fechada desta fila entra aqui)_
+- **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
+  remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
+  (`starts_with`), o que resolve `..` e segue links simbólicos até ao
+  alvo real antes da comparação — cobre os dois casos que a fila
+  levantava. Nada de real a corrigir.
+- **Navegador controlado pelo assistente (Peça 19)** — revisto (Claude,
+  sessão remota, 13/08/2026): **SSRF real encontrado e corrigido** — só
+  se confería o esquema, nunca o anfitrião; `localhost`, IPs privados e
+  o endereço de metadados de nuvem passavam, e um redirecionamento podia
+  contornar qualquer verificação futura. Ver
+  `docs/log/historico-sessoes.md`, entrada "Auditoria a sério do
+  projeto: SSRF real no navegador controlado, corrigido".

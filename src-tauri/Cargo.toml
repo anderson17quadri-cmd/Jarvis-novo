@@ -66,6 +66,11 @@ chrono = { version = "0.4", default-features = false, features = ["std"] }
 # descarta script/style antes de a interface sequer ver o HTML.
 ureq = { version = "2", default-features = false, features = ["native-tls"] }
 scraper = "0.20"
+# Já vinha como dependência transitiva do ureq — só falta declará-la, para
+# poder analisar o anfitrião de um endereço antes de lhe pedir seja o que
+# for (proteção contra SSRF: nunca deixar o modelo mandar o Rust pedir a
+# `localhost`, a um IP privado, ou ao endereço de metadados de nuvem).
+url = "2"
 
 # O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
 # (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o

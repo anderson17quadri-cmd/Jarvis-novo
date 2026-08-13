@@ -3402,3 +3402,70 @@ desta peça). Sem código Rust tocado por esta peça, sem `cargo test`
 a correr.
 
 Nenhum bug corrigido — nada de errado encontrado na peça em si.
+
+## 2026-08-13 — Auditoria a sério do projeto: SSRF real no navegador controlado, corrigido
+
+O utilizador reportou, ao vivo, o assistente a responder "Ainda não
+tenho um modelo de linguagem ligado" e pediu uma auditoria completa ao
+projeto — "não aceito menos que cem por cento". Comecei pelos quatro
+verificadores objetivos: `tsc --noEmit` limpo, `eslint .` 0 erros
+(11 avisos pré-existentes), `npx vitest run` **120 ficheiros, 1621
+testes**, `cargo check`/`cargo test --lib` limpos. Nada partido ao nível
+do código — o projeto compila e os testes passam por inteiro.
+
+Sobre a frase em si: tracei-a até `rule-provider.ts` — é texto fixo, mostrado
+só quando nenhum provedor de IA está ativo (nem DeepSeek, nem Claude, nem
+Ollama). Reli `use-ai-settings-store.ts` (hidratação, persistência),
+`use-ai-settings.ts` (aplicação ao `aiService`) e `AiSettings.tsx` (a UI só
+mostra o campo da chave depois de o provedor já estar selecionado, o que
+afasta a hipótese de "chave guardada sem o provedor mudar") — tudo
+estruturalmente correto. Não encontrei um bug de código que explique o
+sintoma; o mais provável é uma questão de configuração ao vivo (qual
+provedor está mesmo selecionado, se a chave aparece como guardada, se
+aparece algum aviso antes da resposta) — pedido ao utilizador para
+confirmar isto em Personalização → Assistente, já que não há como
+reproduzir sem a app a correr.
+
+**Ao rever a peça mais sensível da lista (Navegador controlado, Peça 19)
+a sério — não só ler, tentar mesmo furar — encontrei uma vulnerabilidade
+real: SSRF.** `fetch_page_text` só confería o esquema (`https://`), nunca
+o anfitrião. Um pedido a `https://localhost:9000/painel-admin`, a
+`https://192.168.1.1/` (router), ou a `https://169.254.169.254/` (o
+endereço de metadados de nuvem, alvo clássico de SSRF) passava como
+qualquer outro — o texto de um serviço que nunca devia ser alcançável de
+fora voltava para a conversa como se fosse uma página pública. Um
+segundo problema, ligado ao primeiro: mesmo com uma lista de anfitriões
+bloqueados, um endereço público podia redirecionar (`3xx`) para dentro e
+contornar a verificação, que só olhava para o endereço pedido, nunca
+para onde o pedido realmente foi parar.
+
+**Corrigido**: `is_blocked_host()` (`src-tauri/src/commands/browser.rs`)
+usa o crate `url` (já vinha como dependência transitiva do `ureq`, só
+faltava declará-la) para analisar o anfitrião do endereço e recusar
+`localhost`/`*.localhost`, loopback, redes privadas (`10/8`,
+`172.16/12`, `192.168/16`), link-local (`169.254/16`, inclui o endereço
+de metadados de nuvem), `fc00::/7` e `fe80::/10` em IPv6, e endereços
+IPv4 mapeados em IPv6 (`::ffff:a.b.c.d`) — confere o IPv4 real por trás
+em vez de os deixar passar só por terem forma de IPv6. E, para o
+problema do redireccionamento, o agente do `ureq` passou a `redirects(0)`
+— um `3xx` é recusado explicitamente, nunca seguido às cegas: um
+endereço público e aceite não pode mais contornar a verificação de cima
+por saltar para dentro a meio do pedido.
+
+**Testes**: 3 novos — `recusa_a_propria_maquina_e_redes_privadas` (18
+casos, cada um provando a recusa sem tocar em rede nenhuma, porque a
+função corta antes de qualquer pedido sair), `nao_recusa_um_ip_publico_
+nem_um_dominio_normal` (garante que a defesa não fica paranoica a mais e
+bloqueia a internet toda), `um_endereco_ilegivel_e_recusado_por_omissao`.
+8 testes no total em `commands::browser` (eram 5). `cargo check`,
+`cargo clippy --lib -- -D warnings` e `cargo test --lib` limpos.
+
+Isto fecha o item 8 ("Navegador controlado") da fila de trabalho
+(`docs/log/fila-de-trabalho.md`) com um achado real, não "nada a
+corrigir" — exatamente o tipo de coisa que uma revisão a sério, e não só
+uma leitura, existe para apanhar.
+
+**Não confirmado ao vivo**: sem app a correr nesta sessão remota, a
+correção nunca foi exercitada contra uma rede a sério (só testes
+unitários, sem qualquer pedido de rede — a função recusa antes de sair).
+Continuação da auditoria do resto do projeto em curso.
