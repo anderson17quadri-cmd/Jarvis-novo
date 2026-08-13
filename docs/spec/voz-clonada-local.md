@@ -35,9 +35,21 @@
 > uma amostra gravada) ao lado das vozes do sistema, no mesmo seletor — só
 > aparecem se o serviço estiver a correr em `127.0.0.1:8090`. O CSP do Tauri
 > já inclui esse endereço em `connect-src`, e `media-src 'self' blob:` para
-> tocar o áudio devolvido. Falta a 4.2 (gravar a amostra a partir da própria
-> interface do JARVIS, em vez de um ficheiro colocado à mão) e a 4.4
-> (arranque automático do serviço pelo Tauri).
+> tocar o áudio devolvido.
+>
+> **Nota (13/08/2026): esta secção estava desatualizada.** As sub-fases 4.2
+> e 4.4 já estavam feitas (confirmadas 10/08/2026, ver `SPEC.md`) mas a nota
+> de estado aqui em cima nunca foi corrigida — descoberto numa revisão a
+> sério do consentimento explícito. 4.2: `use-voice-sample-recorder.ts` +
+> o botão "Gravar a minha voz" em `VoiceSettings.tsx` gravam pelo
+> microfone, dentro da própria interface, sem ficheiro nenhum colocado à
+> mão. 4.4: `src-tauri/src/voice_clone.rs` arranca o serviço sozinho, se
+> ainda não estiver a correr. Ver `docs/log/historico-sessoes.md`,
+> entrada "Revisão a sério: voz clonada, consentimento explícito" — essa
+> mesma revisão encontrou e corrigiu um problema real: o CORS do serviço
+> estava aberto a qualquer origem, o que deixava a barreira de
+> consentimento (viver só na convenção da interface) ser contornada por
+> qualquer página aberta noutro separador do browser.
 
 ---
 
@@ -104,9 +116,9 @@ correr no `localhost`, que o JARVIS contacta por HTTP.
 | Sub-fase | O quê |
 |---|---|
 | 4.1 | ✅ Serviço Python local, sozinho, testado por terminal (`curl` — o mesmo espírito do `scripts/testar-provedores.mjs`) |
-| 4.2 | Gravação da amostra de voz na interface do JARVIS (por agora, o ficheiro é colocado à mão em `voices/referencia.wav`) |
+| 4.2 | ✅ Gravação da amostra de voz na interface do JARVIS (confirmado 10/08/2026) |
 | 4.3 | ✅ `voice-service.ts` a falar com o serviço local, CSP atualizado |
-| 4.4 | Arranque automático do serviço pelo Tauri (por agora, corre à parte, como o Ollama) |
+| 4.4 | ✅ Arranque automático do serviço pelo Tauri (confirmado 10/08/2026) |
 
 ## 5. O que fica decidido já, e o que fica em aberto
 
