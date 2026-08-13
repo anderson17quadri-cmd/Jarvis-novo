@@ -47,15 +47,6 @@ e passar à frente.
 `watch_folder`/`unwatch_folder`/`get_battery_status`,
 `checkNativeTriggers()`. Nunca revisto.
 
-### 7. Vault Obsidian (Peça 17) — `[livre, sensível]`
-
-`src-tauri/src/commands/obsidian.rs`, `services/knowledge/obsidian-
-service.ts`. Usa caminhos relativos com `Path::components()` a rejeitar
-qualquer componente que não seja `Normal` (`..`, raízes absolutas) antes
-de tocar no disco. Confirma se essa rejeição é mesmo completa — um
-caminho com barras invertidas no meio de um nome de nota, por exemplo,
-ou um link simbólico dentro do próprio vault, passam?
-
 ### 9. Fase 3.1: Controlo Direto (portão, overlay, auditoria, simulação) — `[livre, sensível]`
 
 `docs/spec/fase-3-controlo-direto.md`. A peça que dá ao assistente
@@ -85,13 +76,6 @@ Ver `docs/spec/voz-clonada-local.md` e a regra em
 sem consentimento explícito. Confirma que o código cumpre isto sem
 exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
 exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
-
-### 13. Anexos de email a sério — `[livre]`
-
-Já teve uma revisão que apanhou uma fuga de blob URL (corrigida). Vale a
-pena confirmar que não há outra fuga parecida nos outros sítios que
-criam URLs de objeto (avatar, outras janelas), e que a correção
-original continua válida depois de tudo o que mudou desde então.
 
 ### 14. Suite E2E com Playwright — `[livre]`
 
@@ -148,3 +132,15 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
   documentada uma limitação pré-existente do desenho da cadeia (não
   desta peça) em `docs/log/historico-sessoes.md`, entrada "Revisão
   independente: Peça 20". Commit `0372812` (+ merge `429f4fd`).
+- **Vault Obsidian (Peça 17)** — revisto (Claude, sessão remota,
+  13/08/2026): **escrita através de link simbólico, real, corrigida** —
+  `obsidian_write_note` só canonicalizava a pasta-mãe, nunca o ficheiro
+  final; uma nota já existente como link simbólico era escrita através
+  dele. Nunca tinha havido teste Rust nenhum deste ficheiro — 6 testes
+  novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
+  sério (continuação): escrita de nota do Obsidian através de um link
+  simbólico, corrigida".
+- **Anexos de email a sério** — revisto (Claude, sessão remota,
+  13/08/2026): sem fuga nova. Os cinco sítios do projeto com blob URLs
+  revistos um a um; todos corretamente pareados (criação/revogação),
+  incluindo o cleanup ao desmontar o composer. Nada a corrigir.

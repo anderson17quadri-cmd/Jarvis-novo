@@ -213,13 +213,20 @@ pub fn obsidian_read_note(root: State<'_, ObsidianRoot>, path: String) -> Result
             .ok_or_else(|| Error::Files("nenhum vault Obsidian escolhido ainda.".to_string()))?
     };
 
-    let target = resolve_within_root(&declared_root, &path)?;
+    read_note_within(&declared_root, &path)
+}
+
+/// A lógica de `obsidian_read_note`, sem o `State` do Tauri — para poder
+/// ser testada com uma pasta temporária a sério, sem precisar de uma app
+/// Tauri a correr.
+fn read_note_within(declared_root: &Path, path: &str) -> Result<String> {
+    let target = resolve_within_root(declared_root, path)?;
 
     let canonical_target = target
         .canonicalize()
         .map_err(|e| Error::Files(format!("a nota '{path}' não existe ou não se pode ler: {e}")))?;
 
-    if !canonical_target.starts_with(&declared_root) {
+    if !canonical_target.starts_with(declared_root) {
         return Err(Error::Files("fora do vault escolhido — recusado.".to_string()));
     }
 
@@ -244,7 +251,13 @@ pub fn obsidian_write_note(
             .ok_or_else(|| Error::Files("nenhum vault Obsidian escolhido ainda.".to_string()))?
     };
 
-    let target = resolve_within_root(&declared_root, &path)?;
+    write_note_within(&declared_root, &path, &content)
+}
+
+/// A lógica de `obsidian_write_note`, sem o `State` do Tauri — mesmo motivo
+/// de `read_note_within`.
+fn write_note_within(declared_root: &Path, path: &str, content: &str) -> Result<()> {
+    let target = resolve_within_root(declared_root, path)?;
 
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent)
@@ -257,13 +270,143 @@ pub fn obsidian_write_note(
     // final (que pode ainda não existir na primeira escrita).
     let canonical_parent = target
         .parent()
-        .unwrap_or(&declared_root)
+        .unwrap_or(declared_root)
         .canonicalize()
         .map_err(|e| Error::Files(format!("não consegui confirmar a pasta da nota: {e}")))?;
 
-    if !canonical_parent.starts_with(&declared_root) {
+    if !canonical_parent.starts_with(declared_root) {
         return Err(Error::Files("fora do vault escolhido — recusado.".to_string()));
     }
 
+    // A pasta está confirmada dentro do vault — mas se `target` já existir
+    // e for **ele próprio** um link simbólico, escrever nele segue o link
+    // (é assim que `fs::write`/`CreateFile` funcionam) e pode acabar em
+    // qualquer sítio do disco que a pessoa tenha permissão de escrita,
+    // fora do vault, sem que a verificação acima (que só olha para a
+    // pasta-mãe, nunca para o ficheiro final) alguma vez dê por isso.
+    // `symlink_metadata` não segue o link — é o que permite detetá-lo antes
+    // de escrever, em vez de descobrir depois de já ter escrito no sítio
+    // errado.
+    if let Ok(metadata) = fs::symlink_metadata(&target) {
+        if metadata.file_type().is_symlink() {
+            return Err(Error::Files(
+                "essa nota é um link simbólico — recusado, por segurança.".to_string(),
+            ));
+        }
+    }
+
     fs::write(&target, content).map_err(|e| Error::Files(format!("não consegui guardar a nota: {e}")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Uma pasta temporária a sério, apagada sozinha ao sair de âmbito —
+    /// sem puxar o crate `tempfile` só para isto, que já não estava nas
+    /// dependências.
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(nome: &str) -> Self {
+            let path = std::env::temp_dir().join(format!(
+                "jarvis-obsidian-teste-{nome}-{}",
+                std::process::id()
+            ));
+            let _ = fs::remove_dir_all(&path);
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> PathBuf {
+            self.0.canonicalize().unwrap()
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    #[test]
+    fn escreve_e_relê_uma_nota_normal() {
+        let vault = TempDir::new("normal");
+        write_note_within(&vault.path(), "nota.md", "conteúdo real").unwrap();
+
+        assert_eq!(read_note_within(&vault.path(), "nota.md").unwrap(), "conteúdo real");
+    }
+
+    #[test]
+    fn cria_subpastas_intermedias_ao_escrever() {
+        let vault = TempDir::new("subpastas");
+        write_note_within(&vault.path(), "Notas do Chat/2026-08-13.md", "olá").unwrap();
+
+        assert_eq!(
+            read_note_within(&vault.path(), "Notas do Chat/2026-08-13.md").unwrap(),
+            "olá"
+        );
+    }
+
+    #[test]
+    fn caminho_com_ponto_ponto_e_recusado_antes_de_tocar_no_disco() {
+        let vault = TempDir::new("dotdot");
+
+        assert!(write_note_within(&vault.path(), "../fora.md", "x").is_err());
+        assert!(read_note_within(&vault.path(), "../fora.md").is_err());
+        // Confirma que não escreveu mesmo nada lá fora.
+        assert!(!vault.path().parent().unwrap().join("fora.md").exists());
+    }
+
+    #[test]
+    fn caminho_absoluto_e_recusado() {
+        let vault = TempDir::new("absoluto");
+        let alvo = if cfg!(windows) { "C:\\Windows\\evil.md" } else { "/etc/evil.md" };
+
+        assert!(write_note_within(&vault.path(), alvo, "x").is_err());
+    }
+
+    /// Achado numa revisão de segurança a sério (13/08/2026): a verificação
+    /// de fronteira de `obsidian_write_note` só canonicalizava a
+    /// pasta-mãe, nunca o ficheiro final — um link simbólico já existente
+    /// com o nome da nota (a apontar para fora do vault) escrevia através
+    /// dele sem ninguém dar por isso. Só corre em Unix: criar um link
+    /// simbólico no Windows por omissão pede um privilégio que a maioria
+    /// das contas não tem, e a lógica corrigida é a mesma nos dois SOs.
+    #[cfg(unix)]
+    #[test]
+    fn recusa_escrever_atraves_de_um_link_simbolico_ja_existente() {
+        use std::os::unix::fs::symlink;
+
+        let vault = TempDir::new("symlink-write");
+        let fora = TempDir::new("symlink-alvo");
+        let alvo_real = fora.path().join("segredo.txt");
+        fs::write(&alvo_real, "não mexer").unwrap();
+
+        symlink(&alvo_real, vault.path().join("nota.md")).unwrap();
+
+        let resultado = write_note_within(&vault.path(), "nota.md", "conteúdo do atacante");
+        assert!(resultado.is_err());
+
+        // O ficheiro fora do vault não foi tocado.
+        assert_eq!(fs::read_to_string(&alvo_real).unwrap(), "não mexer");
+    }
+
+    /// A mesma proteção do lado da leitura já existia (`canonicalize` do
+    /// próprio ficheiro, não só da pasta) — este teste prova que continua a
+    /// funcionar, não é uma correção nova.
+    #[cfg(unix)]
+    #[test]
+    fn recusa_ler_atraves_de_um_link_simbolico_para_fora() {
+        use std::os::unix::fs::symlink;
+
+        let vault = TempDir::new("symlink-read");
+        let fora = TempDir::new("symlink-alvo-leitura");
+        let alvo_real = fora.path().join("segredo.txt");
+        fs::write(&alvo_real, "conteúdo privado").unwrap();
+
+        symlink(&alvo_real, vault.path().join("nota.md")).unwrap();
+
+        assert!(read_note_within(&vault.path(), "nota.md").is_err());
+    }
 }
