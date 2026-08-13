@@ -17,7 +17,7 @@
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 14. Suite E2E com Playwright — `[livre]`
+### 14. Suite E2E com Playwright — **DeepSeek** (13/08/2026 19:04) `[livre]`
 
 Confirma que a suite ainda corre e ainda apanha regressões a sério — não
 só que existe. Corre-a, vê se cobre os fluxos que mudaram desde que foi
