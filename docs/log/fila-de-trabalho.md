@@ -22,7 +22,7 @@
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
 Nunca revisto.
 
-### 11. "Amanhã" resolvido pelo modelo (contexto de datas na conversa) — `[livre]`
+### 11. "Amanhã" resolvido pelo modelo (contexto de datas na conversa) — **DeepSeek** (13/08/2026 18:50) `[livre]`
 
 Entrada "2026-08-11 — Contexto na conversa: amanhã resolvido pelo
 modelo, não por regras". Vale a pena confirmar que isto não depende do
