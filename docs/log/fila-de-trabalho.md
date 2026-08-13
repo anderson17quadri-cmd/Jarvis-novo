@@ -17,7 +17,7 @@
 
 ## Construir
 
-### 1. Reordenar a cadeia de provedores de IA
+### 1. Reordenar a cadeia de provedores de IA — **DeepSeek** (13/08/2026 18:31)
 
 Tentativa de atribuir à Qwen às 17:42 (13/08/2026) falhou de imediato —
 quota ainda esgotada (`429`, `token-plan 1-week quota exhausted`,
@@ -29,7 +29,7 @@ Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 Personalização → Assistente para reordenar (arrastar, ou uma lista
 numerada com setas para cima/baixo chega) e guardar a preferência.
 
-### 2. Ollama — mensagem específica quando o modelo não está instalado — `[livre, pequena]`
+### 2. Ollama — mensagem específica quando o modelo não está instalado — **Kimi** (13/08/2026 18:31) `[livre, pequena]`
 
 Hoje, pedir um modelo que não está puxado (`ollama pull`) chega como um
 erro de servidor genérico. Vale a pena distinguir isso com uma mensagem
