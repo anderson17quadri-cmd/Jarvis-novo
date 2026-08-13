@@ -4351,3 +4351,113 @@ widgets descartam ids desconhecidos).
 
 `npx vitest run` — 1663/1663 a passar. `npx tsc --noEmit` limpo, `eslint`
 com 0 erros. Ver `SPEC.md` (Parte 14 §Backups e restauro).
+
+## 2026-08-13 — Resumo da orquestração noturna (fecho, ~23:25)
+
+O utilizador pediu, num único prompt, para eu (Claude local) orquestrar
+sozinho a fila de trabalho entre Qwen, Kimi, DeepSeek e mim próprio, a
+noite toda, sem mais nada da parte dele: `npm run tauri dev` num terminal
+à parte (para poder testar ao vivo a qualquer momento), fila em
+`docs/log/fila-de-trabalho.md` com reserva por `git push` (nome+hora
+antes de começar), gates completos antes de qualquer publicação, e nunca
+confiar só no relatório de outra sessão. Isto é o fecho dessa fila —
+depois desta entrada passo a monitorização mínima (dev server vivo,
+`git log`/`git status` limpos) em vez de continuar a atribuir peças, por
+a maior parte do projeto já ter tido uma leitura adversarial esta noite.
+
+**Estado final dos quatro "trabalhadores":**
+- **Qwen** — sem quota a noite inteira (`429`, quota semanal, reset
+  previsto `08-19 03:23 UTC`). Nunca chegou a fazer nada.
+- **Kimi** — bateu no limite de taxa TPD da organização cinco vezes
+  (18:31, 19:04, 19:17, 20:25, 22:52), a primeira já a meio de uma
+  tarefa (item 3, Terminal — correção substancial recuperada pelo
+  coordenador). A janela nunca decaiu de forma fiável: desceu devagar
+  entre a 2.ª e a 3.ª tentativa, e voltou a subir entre a 4.ª e a 5.ª —
+  outro uso da organização compensa o que liberta. Deixada de lado para
+  o resto da noite.
+- **DeepSeek** — a mais produtiva: fechou os itens numerados 1, 4, 11,
+  14, e sete instâncias do item 15 (2FA, meteorologia/notícias,
+  marketplace, sandbox de plugins, memória do assistente, restauro de
+  cópias — mais o Terminal, retomado do trabalho da Kimi). Sem falhas
+  a noite toda.
+- **Claude local (eu)** — orquestração contínua (fila, lançamentos,
+  monitorização, reinício do dev server quando parou) mais trabalho
+  direto em paralelo via forks isolados: itens 2, 10, 12, e a instância
+  de notificações do item 15 — além de duas correções de seguimento
+  encontradas ao verificar o trabalho da DeepSeek (o `\b` do JavaScript
+  em `memory-service.ts`, e um `eslint.config.js` esquecido por
+  commitar).
+
+**Todos os 14 itens numerados da fila fechados.** O item 15 (repetível)
+teve **sete instâncias fechadas**, todas verificadas independentemente
+pelo coordenador antes de aceitar (nunca só pelo relatório de quem fez o
+trabalho) — gates completos (`tsc`/`eslint`/`vitest`, e `cargo test`
+onde havia Rust envolvido) mais leitura real do diff, com spot-checks
+adicionais nos achados de segurança.
+
+**Bugs reais encontrados e corrigidos, só a partir do início da fila
+(a parte anterior já está nas entradas próprias, mais acima):**
+
+1. **Terminal** — UTF-8 cortado a meio de `read()`s (viravam `�`);
+   `write()` do registo a segurar o lock inteiro durante uma escrita
+   bloqueante (travava outras sessões, incluindo o `kill`); `kill()`
+   sem `wait()` (zombies).
+2. **Automações nativas** — `unwatch_folder` nunca sinalizava a thread
+   do observador para parar; duas regras de bateria a cruzar o mesmo
+   limiar na mesma leitura, a segunda nunca disparava.
+3. **Editor visual de automações** — editar (`remove`+`add`) dava `id`
+   novo e apagava `runCount`/`lastRunAt`/`createdAt`.
+4. **Contexto de datas** — datas impossíveis (`"2026-06-31"`) eram
+   rebatidas por `new Date` para outro dia, em silêncio.
+5. **2FA** — `completeFirstFactor` concedia acesso só com a
+   palavra-passe/PIN quando o segundo fator estava ligado mas a chave
+   tinha desaparecido (restauro de cópia, cofre limpo) — o teste antigo
+   chegava a **afirmar** esse comportamento como correto.
+6. **Cópias de segurança, criação** — a chave da NewsAPI/Brave
+   Search/palavra-passe do correio saíam em texto simples, em
+   plataformas sem cofre.
+7. **Voz clonada** — CORS aberto a qualquer origem no serviço Python;
+   qualquer página do browser podia substituir a voz de referência sem
+   consentimento.
+8. **Sandbox de plugins (o achado mais sério da noite)** — as
+   permissões do manifesto nunca eram verificadas em runtime, só a
+   lista de recusas da interface; um plugin externo assinado com
+   manifesto estreito podia pedir qualquer capacidade não recusada.
+   Mais um caminho absoluto que escapava da pasta declarada do plugin.
+9. **Memória do assistente** — guardava o contrário do que fora dito
+   (negação ignorada); arrastava o resto da frase para o valor,
+   incluindo um segredo dito a seguir. E, na própria correção: o `\b`
+   do JavaScript não conta acentos como carateres de palavra, cortando
+   "comércio" como se fosse "com" + fronteira.
+10. **Cópias de segurança, restauro** — uma secção com a forma errada
+    (adulterada ou corrompida) passava a validação, era escrita no
+    armazenamento e rebentava a store ao ler — já com o estado
+    corrompido, voltando a rebentar no arranque seguinte.
+
+Mais três achados de uma sessão remota paralela (interativa, do
+utilizador), fundidos ao longo da noite: SSRF real no navegador
+controlado pelo assistente (só se conferia o esquema, nunca o
+anfitrião); escrita através de link simbólico no vault Obsidian (só a
+pasta-mãe era canonicalizada); Controlo Direto sem porta de presença
+(mas sem ligação a nenhum fluxo alcançável pela pessoa — mais grave em
+honestidade do que em segurança).
+
+**Confirmado limpo, sem nada a corrigir** (revisões que não encontraram
+bugs, documentadas com o que foi especificamente verificado, não uma
+frase genérica): notificações nativas isoladas, esboço do marketplace
+de plugins, explorador de ficheiros real (Peça 7), anexos de email,
+Peça 20 (ferramentas do Claude no orquestrador), Ollama com ferramentas,
+assinatura de plugins (revista antes desta fila), cofre/Windows Hello
+(revista antes desta fila).
+
+**Trabalho ainda por fazer, sem urgência:** o item 15 continua
+repetível — sobra sempre mais por escolher em áreas menores (Command
+Palette, janelas individuais como Tarefas/Projetos/Calendário, o
+sandbox de plugins tem uma limitação documentada e aceite: adulteração
+*dentro* de uma secção já com a forma certa continua a ser
+responsabilidade de cada store). Nenhuma delas parece urgente o
+suficiente para justificar continuar a atribuir trabalho esta noite.
+
+**Todas as peças "Precisa de decisão da pessoa" ficaram por tocar**, como
+pedido: wake word configurável, e as capacidades de plugin Executar
+Voz/Ler Memória/Guardar Preferências.
