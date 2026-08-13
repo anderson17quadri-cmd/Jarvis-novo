@@ -63,7 +63,8 @@ export type BackupProblem =
   | 'nao-e-json'
   | 'nao-e-uma-copia'
   | 'versao-mais-recente'
-  | 'sem-dados';
+  | 'sem-dados'
+  | 'dados-invalidos';
 
 export const BACKUP_PROBLEMS: Record<BackupProblem, string> = {
   'nao-e-json': 'Este ficheiro não é JSON. Escolha o ficheiro que descarregou daqui.',
@@ -71,6 +72,8 @@ export const BACKUP_PROBLEMS: Record<BackupProblem, string> = {
   'versao-mais-recente':
     'Esta cópia foi feita por uma versão mais recente do JARVIS. Atualize antes de a repor.',
   'sem-dados': 'A cópia não tem nada lá dentro.',
+  'dados-invalidos':
+    'A cópia tem uma secção com um formato que não se reconhece. Pode estar corrompida ou ter sido alterada.',
 };
 
 export type BackupRead =
@@ -79,6 +82,60 @@ export type BackupRead =
 
 /** As chaves conhecidas, para descartar o que uma versão futura tenha inventado. */
 const KNOWN_KEYS: ReadonlySet<string> = new Set(Object.values(STORAGE_KEYS));
+
+/** A forma (no topo) que uma secção tem de ter para a store que a lê. */
+type SectionKind = 'array' | 'object' | 'string' | 'boolean';
+
+/**
+ * O que a aplicação escreve em cada chave. Usa-se para recusar uma cópia cuja
+ * secção tenha a forma errada (uma string onde se esperava uma lista) antes de
+ * ela ser escrita no armazenamento — a escrita, ao ser lida pela store, fá-la-ia
+ * rebentar já com o estado corrompido.
+ *
+ * As chaves que não estão aqui (`lastUser`, `reducedMotion`) não são lidas por
+ * nada no arranque: não há quem rebente com elas, e adivinhar uma forma para
+ * uma coisa que nunca acontece era validar a fingir.
+ */
+const SECTION_KINDS: Readonly<Partial<Record<StorageKey, SectionKind>>> = {
+  [STORAGE_KEYS.theme]: 'string',
+  [STORAGE_KEYS.booted]: 'boolean',
+  [STORAGE_KEYS.windowLayout]: 'array',
+  [STORAGE_KEYS.widgetLayout]: 'array',
+  [STORAGE_KEYS.notifications]: 'array',
+  [STORAGE_KEYS.plugins]: 'object',
+  [STORAGE_KEYS.tasks]: 'array',
+  [STORAGE_KEYS.systemState]: 'string',
+  [STORAGE_KEYS.sound]: 'object',
+  [STORAGE_KEYS.automations]: 'object',
+  [STORAGE_KEYS.appearance]: 'object',
+  [STORAGE_KEYS.conversations]: 'object',
+  [STORAGE_KEYS.assistantMemory]: 'object',
+  [STORAGE_KEYS.workspace]: 'object',
+  [STORAGE_KEYS.customThemes]: 'array',
+  [STORAGE_KEYS.aiSettings]: 'object',
+  [STORAGE_KEYS.voiceSettings]: 'object',
+  [STORAGE_KEYS.weatherSettings]: 'object',
+  [STORAGE_KEYS.newsSettings]: 'object',
+  [STORAGE_KEYS.newsMarks]: 'object',
+  [STORAGE_KEYS.webSearchSettings]: 'object',
+  [STORAGE_KEYS.mailSettings]: 'object',
+  [STORAGE_KEYS.musicSettings]: 'object',
+  [STORAGE_KEYS.obsidianSettings]: 'object',
+  [STORAGE_KEYS.browserToolSettings]: 'object',
+};
+
+function matchesKind(kind: SectionKind, value: unknown): boolean {
+  switch (kind) {
+    case 'array':
+      return Array.isArray(value);
+    case 'object':
+      return typeof value === 'object' && value !== null && !Array.isArray(value);
+    case 'string':
+      return typeof value === 'string';
+    case 'boolean':
+      return typeof value === 'boolean';
+  }
+}
 
 /**
  * Lê e valida um ficheiro.
@@ -117,7 +174,14 @@ export function readBackup(text: string): BackupRead {
   // no armazenamento enchia-o de lixo que ninguém volta a ler.
   const data: Partial<Record<StorageKey, unknown>> = {};
   for (const [key, value] of Object.entries(candidate.data)) {
-    if (KNOWN_KEYS.has(key)) data[key as StorageKey] = value;
+    if (!KNOWN_KEYS.has(key)) continue;
+
+    const kind = SECTION_KINDS[key as StorageKey];
+    if (kind !== undefined && !matchesKind(kind, value)) {
+      return { ok: false, problem: 'dados-invalidos' };
+    }
+
+    data[key as StorageKey] = value;
   }
 
   if (Object.keys(data).length === 0) {

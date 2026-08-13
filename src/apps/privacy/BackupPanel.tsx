@@ -111,6 +111,15 @@ export function BackupPanel(): React.JSX.Element {
         'Cópia reposta',
         `${sections} ${sections === 1 ? 'secção' : 'secções'} de volta. A chave da API não vem nas cópias — volte a colá-la na Personalização.`,
       );
+    } catch {
+      // Uma secção pode passar a validação do `readBackup` e falhar ao ser lida
+      // pela store (um ficheiro mexido à mão, ou o armazenamento cheio). Sem
+      // isto, a falha ficava como uma rejeição não apanhada e a interface
+      // presa no ecrã de confirmação.
+      notificationService.error(
+        'Não deu para repor',
+        'A cópia falhou ao ser aplicada. Verifique o ficheiro e tente outra vez.',
+      );
     } finally {
       setWorking(false);
     }

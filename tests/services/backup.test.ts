@@ -131,6 +131,20 @@ describe('ler um ficheiro', () => {
     expect(result.ok && result.backup.data[STORAGE_KEYS.theme]).toBe('aurora');
   });
 
+  it('aceita uma cópia com uma secção de cada forma', async () => {
+    await storageService.set(STORAGE_KEYS.theme, 'oled');
+    await storageService.set(STORAGE_KEYS.booted, true);
+    await storageService.set(STORAGE_KEYS.tasks, [{ id: 't1', title: 'testar' }]);
+    await storageService.set(STORAGE_KEYS.customThemes, [
+      { id: 'custom:x', name: 'Meu', accent: '#fff', background: '#000' },
+    ]);
+    await storageService.set(STORAGE_KEYS.workspace, { current: 1, desktops: [], layouts: [] });
+
+    const result = readBackup(serializeBackup(await createBackup()));
+
+    expect(result.ok).toBe(true);
+  });
+
   it.each([
     ['isto não é json {{{', 'nao-e-json'],
     ['null', 'nao-e-uma-copia'],
@@ -142,6 +156,21 @@ describe('ler um ficheiro', () => {
 
     expect(result.ok).toBe(false);
     expect(!result.ok && result.problem).toBe(problem);
+  });
+
+  it.each([
+    // Uma secção com a forma errada era aceite, escrita no armazenamento e,
+    // ao ser lida pela store (`.map`, `.find`…), rebentava já com o estado
+    // corrompido. Agora é recusada à entrada.
+    ['{"format":"jarvis-backup","version":1,"data":{"tasks":"lixo"}}'],
+    ['{"format":"jarvis-backup","version":1,"data":{"notifications":{"0":"x"}}}'],
+    ['{"format":"jarvis-backup","version":1,"data":{"theme":{"escuro":true}}}'],
+    ['{"format":"jarvis-backup","version":1,"data":{"booted":"sim"}}'],
+  ])('recusa uma secção com a forma errada: %s', (text) => {
+    const result = readBackup(text);
+
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.problem).toBe('dados-invalidos');
   });
 
   it('descarta chaves que esta versão não conhece', () => {
