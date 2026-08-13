@@ -1,12 +1,12 @@
 # Fila de trabalho — sessões locais (13/08/2026)
 
-> Como funciona: cada sessão (Claude local, DeepSeek, Qwen, Kimi — uma por
-> terminal) escolhe **um** item por baixo sem dono, escreve o seu nome e a
-> hora logo a seguir ao título (`git pull` → editar → `git commit` → `git
-> push` **antes** de começar a trabalhar nele — é a reserva), e só aí começa.
-> Se o `push` falhar porque outra sessão já reservou o mesmo item entretanto,
-> `git pull`, aceitar que perdeu a corrida, e escolher outro. Isto substitui
-> um coordenador central: o próprio `git` é quem arbitra.
+> Cada item abaixo já tem uma IA atribuída diretamente (ver
+> `docs/log/prompt-orquestracao-noturna.md` para os quatro prompts
+> completos, um por IA) — não é preciso reservar por `git push` como
+> antes, já está dividido para não haver choque. Se alguma IA acabar o seu
+> item antes das outras, escolhe **outro que ainda não tenha dono** aqui
+> em baixo, reserva-o da forma antiga (nome + hora, `commit`/`push` antes
+> de começar), e segue o mesmo roteiro.
 >
 > Cada item fechado ganha a sua entrada normal em
 > `docs/log/historico-sessoes.md` e a atualização correspondente no
@@ -16,7 +16,7 @@
 
 ## Por fazer
 
-### 1. Reordenar a cadeia de provedores de IA — `[livre]`
+### 1. Reordenar a cadeia de provedores de IA — **Qwen**
 
 Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 `docs/spec/orquestrador-multi-provedor.md` §3). Falta um ecrã em
@@ -25,7 +25,7 @@ numerada com setas para cima/baixo chega) e guardar a preferência. Ver
 esse documento inteiro antes de começar — já explica o desenho da cadeia,
 o que já está feito, e porquê.
 
-### 2. Ollama — mensagem específica quando o modelo não está instalado — `[livre]`
+### 2. Ollama — mensagem específica quando o modelo não está instalado — **bónus do Qwen, se sobrar tempo**
 
 Pedido pequeno, já registado em `ollama-provider.ts` e no fim de
 `docs/spec/orquestrador-multi-provedor.md` §1: hoje, pedir um modelo que
@@ -34,18 +34,26 @@ Vale a pena distinguir isso com uma mensagem própria ("modelo não
 encontrado — falta `ollama pull <nome>`")? Só se for mesmo pequeno — se
 abrir um buraco maior, documentar e passar à frente.
 
-### 3. Revisão a sério de uma peça sem revisão independente ainda — `[livre, repetível]`
+### 3. Revisão a sério do Terminal — **Kimi**
 
-A cultura deste projeto (ver `docs/estilo-de-codigo.md`) é não confiar só
-no relatório de quem construiu — reler o código a sério à procura de bugs
-reais, não só conferir que os testes passam. Só 5 das 73 entradas do
-histórico mencionam explicitamente uma "revisão independente" alheia.
-Escolhe uma peça do `docs/log/historico-sessoes.md` que ainda não tenha
-essa revisão, relê o código de propósito (não só os testes — os bugs reais
-que já se encontraram este projeto todo estavam todos a passar nos testes
-que já existiam antes de alguém olhar a sério), e documenta o que
-encontrou — mesmo que seja "nada de real a corrigir", como já aconteceu
-antes. Isto não esgota nunca: cada sessão pode pegar noutra peça.
+Nunca teve uma revisão independente (`grep` ao histórico confirma).
+
+### 4. Revisão a sério das Automações nativas (gatilhos de ficheiro/USB/bateria) — **DeepSeek**
+
+Nunca teve uma revisão independente.
+
+### 5. Revisão a sério da Peça 20 (ferramentas do Claude no orquestrador) — **Claude local**
+
+Peça acabada de sair (commit `f1eba3a`), ninguém de fora ainda a leu.
+
+### 6. Outra peça qualquer sem revisão independente — `[livre, repetível]`
+
+Para quando as cinco de cima estiverem fechadas. A cultura deste projeto
+(ver `docs/estilo-de-codigo.md`) é não confiar só no relatório de quem
+construiu — reler o código a sério à procura de bugs reais, não só
+conferir que os testes passam. Só 5 das 73 entradas do histórico
+mencionam explicitamente uma "revisão independente" alheia — sobra
+bastante por escolher.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
