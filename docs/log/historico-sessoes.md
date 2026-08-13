@@ -3406,3 +3406,61 @@ uma leitura, existe para apanhar.
 correção nunca foi exercitada contra uma rede a sério (só testes
 unitários, sem qualquer pedido de rede — a função recusa antes de sair).
 Continuação da auditoria do resto do projeto em curso.
+
+## 2026-08-13 — Auditoria a sério (continuação): escrita de nota do Obsidian através de um link simbólico, corrigida
+
+Segundo achado real da mesma auditoria (depois do SSRF no navegador
+controlado). Revi o vault Obsidian (Peça 17) a sério — nunca tinha tido
+sequer um teste Rust dedicado, só cobertura do lado do TypeScript com o
+adaptador simulado, que nunca exercita a lógica de fronteira a sério.
+
+**O bug**: `obsidian_write_note` verificava a fronteira canonicalizando
+a **pasta-mãe** do alvo (`target.parent()`), nunca o ficheiro final —
+por desenho, porque `canonicalize()` só funciona em caminhos que já
+existem, e a nota pode ainda não existir na primeira escrita. Mas se a
+nota **já existisse como um link simbólico** a apontar para fora do
+vault (plantado antecipadamente, por exemplo por outro processo com
+acesso ao disco, ou por um vault partilhado/sincronizado), a pasta-mãe
+continuava dentro do vault — passava a verificação — e `fs::write`
+segue links simbólicos por omissão, tal como `CreateFile` no Windows.
+O resultado: escrever numa nota chamada, por exemplo, `Notas do
+Chat/2026-08-13.md` podia na realidade sobrescrever um ficheiro
+qualquer fora do vault, sem a verificação de fronteira alguma vez dar
+por isso — porque nunca olhava para o próprio ficheiro, só para a pasta
+que o contém.
+
+**Corrigido**: antes de `fs::write`, confere-se com `symlink_metadata`
+(que, ao contrário de `canonicalize`/`metadata`, não segue o link) se o
+alvo já existe como link simbólico — se for, recusa-se, mesmo que a
+pasta-mãe esteja dentro do vault. `obsidian_read_note` já não tinha este
+problema: canonicaliza o próprio ficheiro (não só a pasta) antes de
+comparar, por isso um link para fora já era recusado — confirmado por
+teste novo, não só por leitura do código.
+
+**Refatoração necessária para testar a sério**: `obsidian_read_note` e
+`obsidian_write_note` recebiam `State<'_, ObsidianRoot>` do Tauri, o que
+tornava impossível testá-los sem uma app Tauri a correr. Extraí a lógica
+para `read_note_within`/`write_note_within`, funções livres que recebem
+a raiz já resolvida — o mesmo padrão já usado em `rule-provider.ts`
+(`answerFromContext`) e `browser.rs` (`extract_text`): a lógica que vale
+a pena testar não deve exigir o resto da aplicação a correr.
+
+**Testes**: 6 novos, com pastas temporárias a sério no disco (sem puxar
+o crate `tempfile`, que não estava nas dependências — uma pasta em
+`std::env::temp_dir()` com o PID no nome, apagada no `Drop`) — escrever e
+reler uma nota normal, criar subpastas intermédias, `..` recusado antes
+de tocar no disco (confirmado que nada foi escrito lá fora), caminho
+absoluto recusado, e os dois casos de link simbólico (escrita, o bug
+novo; leitura, a proteção que já existia). **Confirmei que o teste do
+bug apanha mesmo o problema**: removi a correção temporariamente, o
+teste falhou como esperado, restaurei, voltou a passar — não é um teste
+que passaria de qualquer forma. Os dois testes de link simbólico só
+correm em Unix (`#[cfg(unix)]`) — criar um link simbólico no Windows por
+omissão pede um privilégio que a maioria das contas não tem; a lógica
+corrigida é a mesma nos dois sistemas operativos. 14 testes Rust no
+total agora (eram 8 depois do SSRF, 5 antes disso). `cargo check`,
+`cargo clippy --lib -- -D warnings` e `cargo test --lib` limpos.
+
+Fecha o item 7 ("Vault Obsidian") da fila de trabalho com outro achado
+real — dois de dois nas peças de rede/disco real revistas a sério até
+agora nesta auditoria.

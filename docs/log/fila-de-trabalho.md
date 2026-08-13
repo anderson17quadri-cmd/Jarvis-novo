@@ -51,15 +51,6 @@ e passar à frente.
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
 
-### 7. Vault Obsidian (Peça 17) — `[livre, sensível]`
-
-`src-tauri/src/commands/obsidian.rs`, `services/knowledge/obsidian-
-service.ts`. Usa caminhos relativos com `Path::components()` a rejeitar
-qualquer componente que não seja `Normal` (`..`, raízes absolutas) antes
-de tocar no disco. Confirma se essa rejeição é mesmo completa — um
-caminho com barras invertidas no meio de um nome de nota, por exemplo,
-ou um link simbólico dentro do próprio vault, passam?
-
 ### 9. Fase 3.1: Controlo Direto (portão, overlay, auditoria, simulação) — `[livre, sensível]`
 
 `docs/spec/fase-3-controlo-direto.md`. A peça que dá ao assistente
@@ -142,3 +133,11 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
   contornar qualquer verificação futura. Ver
   `docs/log/historico-sessoes.md`, entrada "Auditoria a sério do
   projeto: SSRF real no navegador controlado, corrigido".
+- **Vault Obsidian (Peça 17)** — revisto (Claude, sessão remota,
+  13/08/2026): **escrita através de link simbólico, real, corrigida** —
+  `obsidian_write_note` só canonicalizava a pasta-mãe, nunca o ficheiro
+  final; uma nota já existente como link simbólico era escrita através
+  dele. Nunca tinha havido teste Rust nenhum deste ficheiro — 6 testes
+  novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
+  sério (continuação): escrita de nota do Obsidian através de um link
+  simbólico, corrigida".
