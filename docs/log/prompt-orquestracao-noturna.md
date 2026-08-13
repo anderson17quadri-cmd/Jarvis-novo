@@ -183,7 +183,22 @@ em português.
 
 ---
 
-**Passo 3 — acompanha, não fiques só à espera.** A cada 15-20 minutos
+**Passo 3 — a fila é grande, não é para parar depois da primeira.**
+`docs/log/fila-de-trabalho.md` tem catorze itens construíveis/revisáveis
+por baixo dos quatro de cima (explorador de ficheiros real, vault
+Obsidian, navegador controlado, Controlo Direto Fase 3.1, editor de
+automações, contexto de datas, voz clonada, anexos de email, suite E2E,
+e mais). É para durar a noite inteira — cada IA que terminar a sua
+tarefa recebe de ti o próximo item por baixo na lista (mesmo padrão:
+`git pull`, escreve o teu nome/hora a seguir ao título do item, `commit`,
+`push`, só depois começa a trabalhar nele — se o `push` falhar porque
+outra sessão já pegou nesse item, `git pull` e passa ao seguinte).
+Continua a fazer isto até a lista acabar ou a manhã chegar, o que vier
+primeiro. Nunca atribuas o item "Wake word" nem "Executar Voz/Ler
+Memória/Guardar Preferências" — precisam de decisão da pessoa, nunca
+escolhida por uma IA sozinha.
+
+**Passo 4 — acompanha, não fiques só à espera.** A cada 15-20 minutos
 (ou quando notares atividade nos logs), confirma:
 
 - `git log --oneline -10` — houve commits novos de alguma das três?
@@ -192,12 +207,6 @@ em português.
   destas devia precisar disso — se alguma pedir, é sinal de que saiu do
   âmbito combinado)?
 - `git status` — algum conflito de merge à espera?
-
-Se alguma sessão terminar a sua tarefa antes das outras, dá-lhe o
-próximo item livre de `docs/log/fila-de-trabalho.md` (a partir do item
-6, "Outra peça sem revisão independente") pelo mesmo padrão — nunca o
-item "Wake word", que precisa de decisão da pessoa, nunca escolhida por
-uma IA sozinha.
 
 Regra que vale para todos, sempre: **nunca confiar só no relatório de
 outra sessão**. Se leres num histórico ou numa mensagem que algo "já
