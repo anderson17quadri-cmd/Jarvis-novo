@@ -1,7 +1,18 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import type * as WebAuthnServiceModule from '@/services/webauthn-service';
 
+vi.mock('@/services/webauthn-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof WebAuthnServiceModule>();
+  return {
+    ...actual,
+    hasRegisteredSecurityKey: vi.fn(),
+    verifySecurityKey: vi.fn(),
+  };
+});
+
+import { hasRegisteredSecurityKey, verifySecurityKey } from '@/services/webauthn-service';
 import { LoginScreen } from '@/components/auth/LoginScreen';
 
 describe('LoginScreen', () => {
@@ -76,4 +87,62 @@ describe('LoginScreen', () => {
 
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
   }, 15_000);
+
+  describe('chave física', () => {
+    it('sem chave registada, diz isso sem tentar cerimónia nenhuma', async () => {
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(false);
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.click(screen.getByRole('button', { name: 'Chave física' }));
+
+      expect(
+        await screen.findByText(
+          /Nenhuma chave física registada — regista uma em Privacidade/,
+          {},
+          { timeout: 5_000 },
+        ),
+      ).toBeInTheDocument();
+      expect(verifySecurityKey).not.toHaveBeenCalled();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+    });
+
+    it('com chave registada e verificação válida, entra', async () => {
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      vi.mocked(verifySecurityKey).mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.click(screen.getByRole('button', { name: 'Chave física' }));
+
+      expect(
+        await screen.findByText('Identidade confirmada pela chave física.', {}, { timeout: 5_000 }),
+      ).toBeInTheDocument();
+      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
+    }, 15_000);
+
+    it('com chave registada mas verificação recusada (assinatura errada, cancelada, etc.), não entra', async () => {
+      vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(true);
+      vi.mocked(verifySecurityKey).mockResolvedValue({
+        ok: false,
+        reason: 'Assinatura inválida — não corresponde à chave registada.',
+      });
+      const user = userEvent.setup();
+      const onAuthenticated = vi.fn();
+
+      render(<LoginScreen onAuthenticated={onAuthenticated} />);
+      await user.click(screen.getByRole('button', { name: 'Chave física' }));
+
+      expect(
+        await screen.findByText(
+          'Assinatura inválida — não corresponde à chave registada.',
+          {},
+          { timeout: 5_000 },
+        ),
+      ).toBeInTheDocument();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+    }, 15_000);
+  });
 });

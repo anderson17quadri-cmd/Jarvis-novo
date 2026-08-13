@@ -31,6 +31,7 @@ import { getPlatformAdapter } from '@/platform';
 import { createAutoLoginSession, hasValidAutoLoginSession } from '@/services/auto-login-service';
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
+import { hasRegisteredSecurityKey, verifySecurityKey } from '@/services/webauthn-service';
 import { measurePasswordStrength } from './password-strength';
 import { PinKeypad } from './PinKeypad';
 import { USER_FIRST_NAME, USER_NAME } from '@/constants/user';
@@ -63,6 +64,11 @@ interface LoginScreenProps {
  * Availability`/`requestBiometricVerification`, via `runRealOrSimulated
  * Biometrics`) e só cai para a simulação original em máquinas sem sensor
  * nem PIN configurado — nunca quebra quem não tem o hardware.
+ *
+ * A **chave física** (WebAuthn) é um segundo fator à parte, não uma
+ * simulação: sem chave registada, diz isso sem rodeios; com chave, pede a
+ * cerimónia a sério e verifica a assinatura antes de entrar
+ * (`webauthn-service.ts`). Regista-se em Privacidade → Acesso, não aqui.
  */
 export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.Element {
   const now = useClock();
@@ -148,14 +154,11 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
     // terminar, é correto usar a versão mais recente.
   }, [grant]);
 
-  const deny = useCallback((): void => {
+  const deny = useCallback((message = 'Não foi possível verificar a identidade. Tente novamente.'): void => {
     soundService.play('error');
     setShaking(true);
     timersRef.current.push(setTimeout(() => setShaking(false), 440));
-    setHint({
-      text: 'Não foi possível verificar a identidade. Tente novamente.',
-      tone: 'error',
-    });
+    setHint({ text: message, tone: 'error' });
     inputRef.current?.focus();
   }, []);
 
@@ -239,6 +242,33 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
       }, 130);
     });
   }, [grant, reducedMotion, runRealOrSimulatedBiometrics]);
+
+  /**
+   * Chave física (WebAuthn) — segundo fator ao lado do Windows Hello e do PIN.
+   * Sem chave registada, diz isso sem rodeios em vez de fingir que procurou
+   * hardware nenhum. Com chave registada, pede a cerimónia a sério e só entra
+   * depois de a assinatura verificar (ver `webauthn-service.ts`).
+   */
+  const runSecurityKey = useCallback((): void => {
+    void (async () => {
+      const registered = await hasRegisteredSecurityKey();
+      if (!registered) {
+        deny('Nenhuma chave física registada — regista uma em Privacidade → Acesso.');
+        return;
+      }
+
+      soundService.play('scanner');
+      setHint({ text: 'A aguardar a chave física…', tone: 'neutral' });
+      const result = await verifySecurityKey();
+
+      if (result.ok) {
+        void createAutoLoginSession();
+        grant('Identidade confirmada pela chave física.');
+      } else {
+        deny(result.reason);
+      }
+    })();
+  }, [deny, grant]);
 
   /** CAPS LOCK só se sabe a partir de um evento de teclado, não do estado. */
   const trackCapsLock = useCallback((event: React.KeyboardEvent<HTMLInputElement>): void => {
@@ -435,13 +465,7 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
           <MethodButton icon={ScanFace} label="Reconhecimento facial" onClick={runFaceScan} />
           <MethodButton icon={Fingerprint} label="Impressão digital" onClick={runFingerprintScan} />
           <MethodButton icon={Grid3x3} label="PIN" onClick={() => setMethod('pin')} />
-          <MethodButton
-            icon={KeyRound}
-            label="Chave física"
-            onClick={() =>
-              setHint({ text: 'Nenhuma chave física detetada nesta porta.', tone: 'error' })
-            }
-          />
+          <MethodButton icon={KeyRound} label="Chave física" onClick={runSecurityKey} />
         </div>
 
         <AssistantHint text={hint.text} tone={hint.tone} />

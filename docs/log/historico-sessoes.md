@@ -2464,3 +2464,76 @@ já tinha sido feito antes, só o SPEC.md não sabia.
 
 Nenhuma linha de código mudou — só o SPEC.md. `tsc`, `eslint` e a suite
 não tocados por esta peça, sem necessidade de correr de novo.
+
+## 2026-08-13 — Chave física (WebAuthn), construída diretamente nesta sessão
+
+O utilizador perguntou se eu ia mesmo construir alguma coisa ou só ficar a
+escrever prompts para outras sessões — pergunta justa: até aqui, nesta
+sessão, só se tinha coordenado. Peguei na Peça 15 da fila (chave física,
+ao lado do Windows Hello) e implementei-a de ponta a ponta.
+
+**O que é, com honestidade**: uma cerimónia WebAuthn a sério
+(`navigator.credentials.create`/`.get`) com verificação criptográfica real
+da assinatura — ECDSA P-256 (ES256, COSE alg -7) sobre `authenticatorData
+|| SHA-256(clientDataJSON)`, tudo feito no cliente. Não há servidor a
+validar nada, porque este é um sistema de um só utilizador sem backend — a
+confiança na chave pública vem de "fui eu que a registei", não de uma
+autoridade externa. A matemática da verificação em si não tem atalho
+nenhum.
+
+**Um gotcha real, apanhado e corrigido antes de qualquer teste passar**:
+o `SubtleCrypto.sign`/`.verify` do WebCrypto usa ECDSA em formato raw
+`r || s` de tamanho fixo, mas um autenticador WebAuthn a sério manda a
+assinatura em DER (ASN.1). Os dois formatos não são o mesmo, e assumir que
+são é um erro comum em implementações caseiras. `derToRawEcdsaSignature`
+faz a conversão a sério — e os testes exercitam-na de propósito: em vez de
+passar a assinatura raw diretamente (o que testaria menos do que o
+código real), o teste converte-a para DER primeiro (`rawSignatureToDer`,
+só no ficheiro de teste), simulando o que um autenticador de verdade
+mandaria.
+
+**Segundo problema real, apanhado a meio**: `registerSecurityKey` não
+verificava o valor de retorno de `secretSet`. No `WebAdapter` (browser,
+sem cofre), `secretSet` devolve `false` sem guardar nada — e o código
+dizia "registada" na mesma. Corrigido antes de escrever os testes de UI:
+agora confere o retorno e recusa com um motivo claro ("Este dispositivo
+não tem um cofre de segredos disponível") em vez de mentir sobre o que
+ficou guardado.
+
+**Onde vive**: registo em Privacidade → Acesso (`SecurityKeySection`, ao
+lado do `SessionLock` já existente) — não no ecrã de login, porque
+registar uma credencial nova é uma ação deliberada, não algo para se pedir
+a quem ainda nem entrou. O botão "Chave física" do `LoginScreen`, que até
+agora só mostrava "Nenhuma chave física detetada nesta porta." (frase
+fixa, nunca verificava nada a sério), passa a chamar
+`hasRegisteredSecurityKey`/`verifySecurityKey` a sério. Reaproveitei o
+`deny()` já existente (shake + som), só lhe dei uma mensagem por
+parâmetro em vez de duplicar a lógica.
+
+**Só ES256 (-7)**. RS256 fica por fazer — a maioria dos autenticadores de
+plataforma e chaves FIDO2 modernas oferece ES256 por omissão, e cobrir os
+dois de uma vez alargava o âmbito sem necessidade imediata.
+`signCount` (deteção de clonagem) é guardado e comparado, mas só como
+melhor esforço: muitos autenticadores de plataforma devolvem sempre 0, o
+que a spec permite — uma contagem que não sobe fica registada na
+auditoria, não bloqueia sozinha.
+
+**Testes**: 27 novos — `tests/services/webauthn-service.test.ts` (19,
+incluindo geração de pares ECDSA reais em cada teste — zero chaves fixas,
+mesmo padrão da Peça 5 — assinatura de chave errada recusada, clientData
+adulterado recusado, cerimónia cancelada, algoritmo não suportado, sem
+suporte WebAuthn, sem cofre disponível), `tests/auth/login-screen.test.tsx`
+(3, com o serviço mockado — a criptografia já está coberta à parte) e
+`tests/diagnostics/privacy.test.tsx` (2, incluindo um com chave ECDSA real
+gerada e cerimónia real simulada, só a falhar no `secretSet` do
+`WebAdapter` de propósito, para confirmar que a interface não finge
+sucesso).
+
+**Confirmado**: `tsc` limpo, `eslint` 0 erros, suite completa — 108
+ficheiros, 1490 testes, todos a passar (era 104/1443 antes desta peça).
+
+**Não confirmado ao vivo**: esta sessão corre em Linux, na nuvem, sem
+hardware Windows. Nem uma chave física real (YubiKey ou equivalente) nem
+o Windows Hello via WebAuthn foram testados fora dos mocks descritos
+acima. A matemática está confirmada a sério; a cerimónia do próprio
+sistema operativo/hardware, não.

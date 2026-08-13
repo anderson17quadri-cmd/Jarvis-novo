@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState, useSyncExternalStore } from 'react';
-import { Eye, EyeOff, Info, MousePointer, ShieldCheck, ShieldOff } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { Eye, EyeOff, Info, KeyRound, MousePointer, ShieldCheck, ShieldOff, Trash2 } from 'lucide-react';
 
 import { PERMISSION_LABELS, PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { BackupPanel } from './BackupPanel';
@@ -10,8 +10,16 @@ import { IDLE_LOCK_OPTIONS, idleLockLabel } from '@/types/appearance';
 import { formatTime } from '@/lib/format';
 import { logService } from '@/services/log-service';
 import { directControlService, RISK_LABELS } from '@/services/direct-control-service';
+import {
+  getRegisteredSecurityKey,
+  isWebAuthnSupported,
+  registerSecurityKey,
+  removeSecurityKey,
+  type StoredCredential,
+} from '@/services/webauthn-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
+import { USER_NAME } from '@/constants/user';
 import type { PluginPermissions } from '@/plugins/plugin';
 
 type Tab = 'permissoes' | 'auditoria' | 'acesso' | 'copias' | 'controlo';
@@ -202,6 +210,7 @@ function Access(): React.JSX.Element {
   return (
     <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
       <SessionLock />
+      <SecurityKeySection />
 
       <p className="flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2.5 text-cap text-t3">
         <Info className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
@@ -285,6 +294,106 @@ function SessionLock(): React.JSX.Element {
           </button>
         ))}
       </div>
+    </section>
+  );
+}
+
+/**
+ * Chave física / autenticador — segundo fator ao lado do Windows Hello
+ * (Parte 14 §Cofre de segredos, WebAuthn). Vive aqui, não no ecrã de login:
+ * registar uma credencial nova é uma ação deliberada, não algo para se
+ * pedir a quem ainda nem entrou.
+ */
+function SecurityKeySection(): React.JSX.Element {
+  const supported = useMemo(() => isWebAuthnSupported(), []);
+  const [credential, setCredential] = useState<StoredCredential | null>(null);
+  const [isBusy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
+
+  useEffect(() => {
+    void getRegisteredSecurityKey().then(setCredential);
+  }, []);
+
+  const handleRegister = useCallback(() => {
+    setBusy(true);
+    setMessage(null);
+    void registerSecurityKey(USER_NAME)
+      .then(async (result) => {
+        if (result.ok) {
+          setCredential(await getRegisteredSecurityKey());
+          setMessage({ text: 'Chave física registada.', isError: false });
+        } else {
+          setMessage({ text: result.reason, isError: true });
+        }
+      })
+      .finally(() => setBusy(false));
+  }, []);
+
+  const handleRemove = useCallback(() => {
+    setBusy(true);
+    void removeSecurityKey()
+      .then(() => {
+        setCredential(null);
+        setMessage({ text: 'Chave física removida.', isError: false });
+      })
+      .finally(() => setBusy(false));
+  }, []);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-2.5">
+      <p className="t-label mb-1.5">Chave física (WebAuthn)</p>
+
+      {!supported ? (
+        <p className="text-cap leading-relaxed text-t3">
+          Este dispositivo não suporta chaves de segurança — a API WebAuthn não está disponível.
+        </p>
+      ) : credential ? (
+        <>
+          <p className="mb-2 text-cap leading-relaxed text-t3">
+            Registada em {formatTime(new Date(credential.registeredAt))}. Usa-a no ecrã de login
+            ao lado do Windows Hello e do PIN.
+          </p>
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={isBusy}
+            className={cn(
+              'flex items-center gap-1.5 rounded-btn border border-line px-3 py-2 text-[12px] font-medium text-t2',
+              'transition-all duration-hover ease-out hover:border-danger/40 hover:text-danger',
+              isBusy && 'opacity-60',
+            )}
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Remover chave
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="mb-2 text-cap leading-relaxed text-t3">
+            Nenhuma chave registada. Um autenticador de plataforma ou uma chave física (ex.:
+            YubiKey) pode servir de segundo fator ao lado da palavra-passe.
+          </p>
+          <button
+            type="button"
+            onClick={handleRegister}
+            disabled={isBusy}
+            className={cn(
+              'flex items-center gap-1.5 rounded-btn border border-accent/50 bg-accent/[.1] px-3 py-2',
+              'text-[12px] font-medium text-accent transition-all duration-hover ease-out hover:shadow-glow',
+              isBusy && 'opacity-60',
+            )}
+          >
+            <KeyRound className="h-3.5 w-3.5" aria-hidden="true" />
+            {isBusy ? 'A aguardar o autenticador…' : 'Registar chave física'}
+          </button>
+        </>
+      )}
+
+      {message && (
+        <p className={cn('mt-2 text-cap', message.isError ? 'text-danger' : 'text-ok')}>
+          {message.text}
+        </p>
+      )}
     </section>
   );
 }

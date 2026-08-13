@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import PrivacyWindow from '@/apps/privacy/PrivacyWindow';
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
@@ -126,5 +126,65 @@ describe('acesso', () => {
     await user.click(screen.getByRole('tab', { name: 'Acesso' }));
 
     expect(screen.getByText(item!.whenDenied)).toBeInTheDocument();
+  });
+});
+
+describe('chave física (WebAuthn)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('sem suporte WebAuthn no browser, diz isso sem rodeios', async () => {
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    const user = userEvent.setup();
+    render(<PrivacyWindow />);
+    await user.click(screen.getByRole('tab', { name: 'Acesso' }));
+
+    expect(screen.getByText(/não suporta chaves de segurança/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Registar chave física' })).toBeNull();
+  });
+
+  it('com suporte mas sem cofre nesta plataforma (o WebAdapter deste teste), o registo falha com o motivo certo', async () => {
+    Object.defineProperty(window, 'PublicKeyCredential', {
+      value: function PublicKeyCredential() {},
+      configurable: true,
+      writable: true,
+    });
+
+    const keyPair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, [
+      'sign',
+      'verify',
+    ]);
+    const publicKeySpki = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+
+    Object.defineProperty(navigator, 'credentials', {
+      value: {
+        create: vi.fn(async () => ({
+          rawId: new Uint8Array([1, 2, 3]).buffer,
+          response: { getPublicKey: () => publicKeySpki, getPublicKeyAlgorithm: () => -7 },
+        })),
+        get: vi.fn(),
+      },
+      configurable: true,
+      writable: true,
+    });
+
+    const user = userEvent.setup();
+    render(<PrivacyWindow />);
+    await user.click(screen.getByRole('tab', { name: 'Acesso' }));
+
+    const registerButton = screen.getByRole('button', { name: 'Registar chave física' });
+    await user.click(registerButton);
+
+    // A cerimónia WebAuthn corre a sério (a chave é gerada e assinada de
+    // verdade); é o `secretSet` do WebAdapter que recusa guardar, porque
+    // este ambiente não tem cofre — a interface tem de dizer isso, não
+    // fingir que registou.
+    expect(await screen.findByText(/não tem um cofre de segredos disponível/i)).toBeInTheDocument();
   });
 });
