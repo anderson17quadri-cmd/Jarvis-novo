@@ -4136,3 +4136,88 @@ cobertura real.
 sem erros. Nada corrigido — item 15 (instância "Marketplace de plugins
 (esboço)") movido para "Feito" em `docs/log/fila-de-trabalho.md` sem
 commit de código, só de documentação.
+
+## 2026-08-13 — Ponto de situação da orquestração noturna (checkpoint, ~19:52)
+
+O utilizador pediu, num único prompt, para eu (Claude local) orquestrar
+sozinho a fila de trabalho (`docs/log/fila-de-trabalho.md`) entre Qwen,
+Kimi, DeepSeek e mim próprio, a noite toda, sem mais nada da parte dele —
+git pull → editar a fila (reserva por nome+hora) → commit → push → lançar
+cada sessão com o texto do item, sempre com gates completos antes de
+qualquer push e nunca confiando só no relatório de outra sessão. Isto é
+um ponto de situação a meio da noite, não o fecho — o ciclo continua.
+
+**Estado dos quatro "trabalhadores":**
+- **Qwen** — sem quota desde o início da noite (`429`, quota semanal,
+  reset previsto `08-19 03:23 UTC`). Nunca chegou a fazer nada esta
+  sessão.
+- **Kimi** — bateu no limite de taxa TPD da organização três vezes
+  (18:31, 19:04, 19:17), sempre antes de conseguir sequer começar a
+  tarefa nova — exceto na primeira tentativa da noite (item 3, Terminal),
+  onde já tinha escrito uma correção substancial antes de bater no
+  limite a meio, retomada pelo coordenador. O valor do limite desce
+  devagar (`1538667` → `1530401` em 45 min) — é uma janela a decair, não
+  uma quota fixa; não voltar a tentar sem deixar passar bastante tempo.
+- **DeepSeek** — a mais produtiva esta noite: fechou os itens 1, 4, 11,
+  14, e quatro instâncias do item 15 (2FA, meteorologia/notícias,
+  marketplace — a das notificações foi o coordenador). Sem falhas.
+- **Claude local (eu)** — orquestração contínua (fila, lançamentos,
+  monitorização) mais trabalho direto em paralelo via forks isolados:
+  itens 2, 10, 12, e a instância de notificações do item 15.
+
+**Todos os 14 itens numerados da fila fechados.** O item 15 (repetível,
+"outra peça sem revisão independente") teve quatro instâncias fechadas
+até agora — decidi não o esgotar só por ser repetível, como a própria
+fila avisa; a maior parte das peças de peso do projeto já teve uma
+leitura adversarial esta noite.
+
+**Bugs reais encontrados e corrigidos nesta sessão (contando só desde
+que a fila começou, não a noite inteira antes dela — essa parte já está
+nas entradas próprias mais acima):**
+
+1. **Terminal** — carateres UTF-8 cortados a meio entre `read()`s do PTY
+   (viravam `�`); `write()` do registo a segurar o lock de todo o
+   registo durante uma escrita bloqueante (travava outras sessões,
+   incluindo o `kill`); `kill()` sem `wait()` (zombies no Unix).
+2. **Automações nativas** — `unwatch_folder` nunca sinalizava a thread
+   do observador para parar (fuga real); duas regras de bateria a
+   cruzar o mesmo limiar na mesma leitura, a segunda nunca disparava.
+3. **Editor visual de automações** — editar uma regra (`remove`+`add`)
+   dava-lhe um `id` novo e apagava `runCount`/`lastRunAt`/`createdAt`,
+   mesmo numa correção trivial ao nome.
+4. **Contexto de datas** — `"2026-06-31"` e datas assim eram rebatidas
+   por `new Date` para outro dia, em silêncio — um prazo inventado.
+5. **2FA (o mais sério)** — `completeFirstFactor` concedia acesso só com
+   a palavra-passe/PIN quando o segundo fator estava ligado mas a chave
+   física tinha desaparecido (restauro de cópia, cofre limpo) — o
+   "segundo fator exigido" deixava de proteger, em silêncio. O teste
+   antigo chegava a **afirmar** esse comportamento como correto.
+6. **Cópias de segurança** — a chave da NewsAPI (e Brave Search, e a
+   palavra-passe do correio) saíam em texto simples no ficheiro de
+   cópia, em plataformas sem cofre de segredos (browser, Android).
+7. **Voz clonada** — o serviço Python (`voice-clone-service/server.py`)
+   tinha CORS aberto a qualquer origem; qualquer página aberta noutro
+   separador do browser conseguia `POST /voz` e substituir a voz de
+   referência sem consentimento nenhum — a única barreira real vivia na
+   convenção da interface, nunca aplicada no serviço.
+
+Mais três achados de uma sessão remota paralela (interativa, do próprio
+utilizador), fundidos ao longo da noite: **SSRF real** no navegador
+controlado pelo assistente (Peça 19 — só se conferia o esquema, nunca o
+anfitrião; `localhost`/redes privadas/metadados de nuvem passavam);
+**escrita através de link simbólico** no vault Obsidian (só a pasta-mãe
+era canonicalizada, não o ficheiro final); e **Controlo Direto sem porta
+de presença** (`executeStep()` não confirmava sessão ativa antes de
+executar — mas, mais grave em honestidade do que em segurança, nada
+disto está ligado a nenhum fluxo alcançável pela pessoa).
+
+**Gates**: todos os fecho de item passaram por `tsc --noEmit`, `eslint .`
+(0 erros), `npx vitest run` (suite completa — 1650 testes neste
+checkpoint) corridos pelo coordenador, nunca só aceites pelo relatório
+da sessão que fez o trabalho — apanhou pelo menos uma discrepância real
+ao longo da noite (a mesma classe de "store nunca hidratada" repetida
+duas vezes, já documentada nas entradas próprias).
+
+O ciclo continua. Próximo passo: aguardar Kimi/Qwen recuperarem
+capacidade, ou encontrar mais uma peça de peso genuína para o item 15 —
+sem forçar trabalho de valor marginal só para preencher tempo.
