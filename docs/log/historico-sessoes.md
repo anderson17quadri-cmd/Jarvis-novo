@@ -3896,3 +3896,45 @@ produção (só o de desenvolvimento foi testado); nenhuma tentativa real
 de explorar a falha antes da correção (o pedido de pré-voo CORS falso
 prova o comportamento do `CORSMiddleware`, não foi feito um `fetch`
 a sério a partir de uma página aberta noutro separador).
+
+## 2026-08-13 — Revisão a sério: contexto de datas na conversa ("amanhã" resolvido pelo modelo)
+
+Item 11 da fila noturna — rever a sério, como se fosse a primeira vez,
+a entrada "2026-08-11 — Contexto na conversa: amanhã resolvido pelo
+modelo, não por regras". O pedido era confirmar se a coisa depende do
+fuso horário da máquina de forma frágil e se frases ambíguas ("depois
+de amanhã", "esta sexta") enganam o modelo em silêncio.
+
+O desenho confirma-se por leitura de código, e é sólido. O `system
+prompt` dá a data por extenso e inequívoca — dia da semana + dia + mês +
+ano em `pt-PT` ("Hoje é terça-feira, 11 de agosto de 2026"), via
+`Intl.DateTimeFormat` — e também as horas ("São 09:05."), o que âncora
+qualquer data relativa sem depender do relógio do próprio modelo. O
+`now` nasce de fresco em cada pedido (`setContextSource` devolve `new
+Date()`, e `readContext()` é chamado no momento do pedido em
+`ai-service.ts`), por isso não há data presa desde o arranque. O fuso é
+o da máquina de quem usa em todo o percurso: a data é formatada em hora
+local, `parseDueDate` lê `AAAA-MM-DDT00:00:00` como meia-noite local, e
+a tarefa é mostrada em `pt-PT` — sem mistura UTC/local em lado nenhum. E
+numa app de ambiente de trabalho a máquina é a do utilizador; o modelo
+recebe a data já resolvida em palavras, nunca um fuso para interpretar.
+
+Um bug real, e foi o único: `parseDueDate` (`tool-runner.ts`) só
+verificava a forma (`\d{4}-\d{2}-\d{2}`) e entregava o valor a `new
+Date`, que rebate datas impossíveis sem avisar — "2026-06-31" virava 1
+de julho em silêncio. Era exatamente o "prazo inventado" que a nota do
+histórico dizia nunca acontecer. Corrigido a confirmar que os
+componentes redondam ao que se escreveu (ano, mês, dia); 2 testes novos
+— a data impossível é ignorada, e o dia 29 de fevereiro de um ano
+bissexto continua aceite.
+
+**Não confirmado ao vivo**, e fica dito porquê: as frases ambíguas
+("esta sexta" quando hoje já é sexta, "a semana que vem") dependem da
+interpretação do próprio modelo, e não há forma de as testar contra um
+modelo real sem gastar chamadas — esta sessão não tem chave DeepSeek. O
+que se confirmou foi o desenho (a data é inequívoca e o prompt manda o
+modelo resolvê-la), não a qualidade da resolução frase a frase.
+
+`tsc --noEmit` limpo, `eslint` 0 erros, suite completa a passar (121
+ficheiros, 1643 testes). Item 11 movido para "Feito" em
+`docs/log/fila-de-trabalho.md`.

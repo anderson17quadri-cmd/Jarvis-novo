@@ -167,8 +167,24 @@ export function describe(call: ToolCall): string {
  */
 function parseDueDate(value: string): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const parsed = new Date(`${value}T00:00:00`);
-  return Number.isNaN(parsed.getTime()) ? null : parsed.getTime();
+
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  const parsed = new Date(year, month - 1, day);
+
+  // `new Date` rebate "2026-06-31" para 1 de julho sem avisar. Confirma-se
+  // que os componentes redondam ao que se escreveu: uma data que não existe
+  // no calendário fica sem prazo, em vez de um prazo inventado.
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return parsed.getTime();
 }
 
 /**

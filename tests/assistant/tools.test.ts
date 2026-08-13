@@ -472,6 +472,29 @@ describe('criar_tarefa — prazo resolvido pelo modelo', () => {
     expect(outcome.status).toBe('ok');
     expect(executor.calls).toEqual(['tarefa:x:media:null']);
   });
+
+  it('uma data que não existe no calendário é ignorada, não rebatida', async () => {
+    const outcome = await runTool({
+      id: '1',
+      name: 'criar_tarefa',
+      args: { titulo: 'x', prazo: '2026-06-31' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['tarefa:x:media:null']);
+  });
+
+  it('o dia 29 de fevereiro de um ano bissexto continua a ser aceite', async () => {
+    const outcome = await runTool({
+      id: '1',
+      name: 'criar_tarefa',
+      args: { titulo: 'x', prazo: '2024-02-29' },
+    });
+
+    expect(outcome.status).toBe('ok');
+    const esperado = new Date(2024, 1, 29).getTime();
+    expect(executor.calls).toEqual([`tarefa:x:media:${esperado}`]);
+  });
 });
 
 describe('confirmação', () => {

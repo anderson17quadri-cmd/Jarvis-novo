@@ -17,14 +17,6 @@
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 11. "Amanhã" resolvido pelo modelo (contexto de datas na conversa) — **DeepSeek** (13/08/2026 18:50) `[livre]`
-
-Entrada "2026-08-11 — Contexto na conversa: amanhã resolvido pelo
-modelo, não por regras". Vale a pena confirmar que isto não depende do
-fuso horário da máquina de forma frágil, e que uma frase ambígua
-("depois de amanhã", "esta sexta") não engana o modelo de forma
-silenciosa.
-
 ### 14. Suite E2E com Playwright — `[livre]`
 
 Confirma que a suite ainda corre e ainda apanha regressões a sério — não
@@ -119,6 +111,16 @@ sério: Terminal").
 `unwatch_folder` (a thread do observador nunca parava) e o cruzamento de
 limiar da bateria com mais do que uma regra. Detalhe em
 `docs/log/historico-sessoes.md` (13/08/2026).
+
+### 11. "Amanhã" resolvido pelo modelo (contexto de datas na conversa) — DeepSeek — commit `6115609`
+
+Revisão a sério. O desenho — o modelo resolve a data a partir de "Hoje é
+terça-feira, 11 de agosto de 2026" no prompt de sistema, sem regras à
+mão — confirmou-se sólido: data inequívoca, hora incluída, `now` fresco
+por pedido, fuso local coerente de ponta a ponta. Um bug real: datas que
+não existem no calendário ("2026-06-31") eram rebatidas por `new Date`
+para outro dia, em silêncio — um prazo inventado. Corrigido, 2 testes.
+Detalhe em `docs/log/historico-sessoes.md` (13/08/2026).
 
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
