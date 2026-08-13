@@ -2587,3 +2587,93 @@ sozinha (confiar em `SetForegroundWindow` sem confirmar o foco da janela
 antes de mandar cliques). Nenhuma ação foi tomada aqui em cima dessa
 mensagem — só uma recomendação dada ao utilizador (opção 1: corrigir a
 pontaria antes de continuar), para ele levar à sessão certa.
+
+## 2026-08-13 — Lote 4: revisão do email da DeepSeek, Peça 16 (limpeza de documentação) e Peça 14 (notificações nativas isoladas)
+
+Novo lote do utilizador: DeepSeek continua no email e depois música (Peça
+13, fecha a Peça 8); Kimi continua bloqueada pelo limite de taxa da
+organização, sem trabalho novo até haver sinal de que aliviou; três peças
+novas — 13 (música, DeepSeek), 14 (notificações nativas isoladas, para
+quem ficasse livre), 15 (chave física FIDO2/WebAuthn), e 16 (limpeza de
+documentação, para mim).
+
+**Revisão independente do email (Peça 8, sub-tarefa C):** pull do commit
+da DeepSeek, `tsc`/`cargo check`/`eslint`/`vitest` (1466 testes) corridos
+por fora — tudo limpo. Confirmei a palavra-passe IMAP/SMTP a passar pelo
+cofre (`secretSet('mail-password', ...)`, com `semSegredos()` a excluir o
+campo do storage normal, mesmo padrão da meteorologia/notícias). Li
+`src-tauri/src/commands/mail.rs` a sério: sem `unwrap()` nenhum, `imap`
+para ler (INBOX só, `BODY.PEEK[TEXT]` para nunca marcar como lida ao ler),
+`lettre` para enviar por SMTP com STARTTLS, limitações documentadas com
+honestidade (corpo truncado a 32 kB, sem descodificar anexos nem
+codificações de transferência, só porta 587). Testes (`imap-mail-provider
+.test.ts`) chamam mesmo a classe real, com o adapter mockado a interceptar
+`mailFetch`/`mailSetFlag`/`mailSend` — nada do padrão de testes falsos da
+Peça 9. Nada a corrigir desta vez.
+
+**Peça 16 — limpeza de documentação:** duas entradas do SPEC.md diziam
+"por fazer" o que já estava feito. A linha de "Contexto (amanhã, esse
+ficheiro)" dizia "esse ficheiro continua por fazer" e ainda "ferramentas
+só correm com a DeepSeek" — as duas erradas: `abrir_ficheiro` resolve a
+referência desde o commit `53864a9`, e a Peça 12 (Ollama com ferramentas,
+mais cedo hoje) já não faz disso verdade. A linha do Plugin Manager dizia
+"não carrega código: ver §2" — apontava para uma secção genérica sobre
+Tauri nativo que nunca falou de plugins, e a Peça 9 já trouxe execução
+real de plugins externos. As duas corrigidas para refletir o estado
+verdadeiro, sem mexer em código nenhum. **Redundância descoberta ao
+mesclar**: outra sessão (a que estava na Peça 15) apanhou exatamente as
+mesmas duas linhas, de forma completamente independente, e corrigiu-as
+primeiro — ver a entrada "Correção de documentação desatualizada" logo
+acima. As duas versões concordavam no essencial; ficou a mais completa
+das duas, com uma nota a dizer que foi apanhado duas vezes.
+
+**Peça 14 — notificações nativas, isoladas:** nunca tinham sido testadas
+à parte — só de caminho, a cada arranque. 10 testes novos
+(`tests/services/notification-service.test.ts`): o pedido de permissão a
+sério ao plugin (`TauriAdapterBase.sendNativeNotification`, via
+`DesktopAdapter`, com o plugin `@tauri-apps/plugin-notification`
+mockado) — concedida logo, pedida e depois concedida, recusada (nunca
+chama `sendNotification`), e o plugin a rebentar sem crashar; e o
+`NotificationService` a decidir quando chega a pedir a nativa consoante o
+estado do sistema (Normal deixa sempre, Foco só o urgente, Apresentação
+nunca) e `silent`, confirmando que o toast interno e a nativa nunca
+mostram informação diferente uma da outra (mesmo título/descrição nas
+duas chamadas) e que uma notificação suprimida fica na história
+(`isDismissed: true`), não desaparece.
+
+**O incidente da verificação ao vivo — registado com honestidade.**
+Tentei confirmar ao vivo com `npm run tauri dev`, reutilizando o padrão de
+automação por `SendKeys`/`mouse_event` desta sessão. Ao clicar e escrever
+na janela de login, o texto ("verificacao-toast") foi parar a outra
+janela — uma sessão interativa do Claude Code, do próprio utilizador,
+com a conta "Anderson · Pro", **já a trabalhar na Peça 15 (chave física
+FIDO2/WebAuthn)** neste mesmo repositório e branch. O assistente dessa
+sessão respondeu à mensagem estranha a pedir para o utilizador esclarecer.
+A app JARVIS já estava autenticada por sessão automática de um login
+anterior nesta mesma instância de `tauri dev`, por isso o script nem deu
+pelo erro na hora — só ao tirar a fotografia seguinte é que se percebeu
+que o texto tinha ido parar ao sítio errado.
+
+Corrigi o script (`jarvis-click.ps1`, no scratchpad da sessão) para
+confirmar a sério, com `GetForegroundWindow`, que a janela do JARVIS
+ficou mesmo em primeiro plano antes de qualquer clique ou tecla — e a
+voltar a confirmar depois do clique, antes de escrever. A correção expôs
+o problema real: o Windows recusa-se a dar o foco à força a uma janela
+que não é a que já o tem (proteção contra "roubo de foco" antiga do
+próprio sistema) enquanto a sessão do utilizador continuava ativa e a
+competir pelo foco. Não há forma segura de contornar isto sem arriscar
+mandar mais texto para o sítio errado.
+
+Perguntei ao utilizador como proceder. Escolheu não forçar: ficar-se
+pelos 10 testes automatizados como confirmação desta peça, sem tentar de
+novo a verificação ao vivo enquanto a outra sessão dele estivesse ativa.
+Documentado assim no SPEC.md — sem fingir uma confirmação ao vivo que não
+aconteceu.
+
+**Descoberta importante, fora do âmbito desta peça:** a Peça 15 (chave
+física/WebAuthn) já está a ser trabalhada — pelo próprio utilizador, numa
+sessão interativa separada, não por mim nem por nenhuma das sessões que
+lancei (DeepSeek, Kimi, Qwen). Não lhe toco nem a atribuo a mais ninguém.
+
+Suite completa depois destas peças: 1476 testes (108 ficheiros), `tsc`
+limpo, `eslint` 0 erros.
