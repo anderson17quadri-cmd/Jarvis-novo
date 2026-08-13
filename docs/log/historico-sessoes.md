@@ -3556,3 +3556,58 @@ Fecha o item 13 ("Anexos de email a sério") da fila de trabalho — o
 primeiro desta auditoria sem achado novo, depois de dois seguidos com
 bugs reais (SSRF no navegador, escrita através de link simbólico no
 Obsidian).
+
+## 2026-08-13 — Auditoria a sério (continuação): Controlo Direto sem porta de presença nem ligação a fluxo nenhum
+
+Quarto item da auditoria pedida pelo utilizador, e o mais significativo
+até agora — revi o Controlo Direto (Fase 3.1), a peça que o próprio
+documento de desenho descreve como "a categoria de risco mais alta do
+projeto". Nunca tinha tido revisão independente. Confirmei ao abrir o
+ficheiro: **nunca tinha tido sequer um teste** — zero, nem um.
+
+**Achado 1 — a porta de presença vivia fora da função que devia
+guardar.** `executeStep()` (`services/direct-control-service.ts`)
+executava um passo a sério sempre que `confirmed && !simulatedMode`
+fossem verdade — nunca conferia `sessionActive`. A spec
+(`docs/spec/fase-3-controlo-direto.md` §1.1) é categórica: "sem isto,
+nada corre" — mas essa garantia só existia enquanto quem chamasse
+`executeStep` se lembrasse de verificar a sessão primeiro. Corrigido
+para o próprio serviço se recusar a executar sem `enabled && 
+sessionActive`, independentemente de quem o chama — a mesma disciplina
+de "a fronteira vive onde a ação acontece, não em quem pede" já usada
+no Explorador, no Obsidian e agora no navegador controlado.
+
+**Achado 2 — mais grave em termos de honestidade do projeto do que de
+segurança em si: nada disto está ligado a nada.** `grep` ao `src/`
+inteiro confirma: `<ControlOverlay>` nunca é montado em lado nenhum da
+árvore de componentes (só se referencia a si próprio no seu ficheiro);
+`directControlService.startSession()`, `.verify()` e `.executeStep()`
+nunca são chamados fora do próprio serviço e do painel de definições. O
+reconhecimento de voz nunca foi ligado à verificação da palavra-passe.
+Hoje, na prática, ligar o interruptor "Controlo direto" na Privacidade
+não dá acesso a funcionalidade nenhuma — é um painel de configuração
+que não leva a lado nenhum. O `SPEC.md` dizia "3.1 implementada", o que
+é tecnicamente verdade peça a peça (o serviço existe, o overlay existe,
+a lógica de risco existe) mas dava a entender um fluxo utilizável que
+não existe. Não é um risco de segurança por si só — precisamente porque
+nada chama o caminho que executaria, nada corre — mas é uma lacuna real
+entre o que se dizia feito e o que está. Corrigido no `SPEC.md`, sem
+inventar a ligação agora (fica para quando a 3.2+ começar a sério, como
+o próprio documento já dizia).
+
+**Testes**: 13 novos (`tests/services/direct-control-service.test.ts`) —
+palavra-passe (hash certo/errado/sem chave), sessão (abre, fecha,
+expira sozinha ao fim da duração, desligar o interruptor fecha a
+sessão), e sete sobre `executeStep`: nunca executa em simulado, nunca
+sem confirmação, **nunca sem sessão ativa** (o caso central — sem a
+correção, isto executaria), nunca desligado, executa só com os quatro
+fatores certos, um passo que rebenta fica registado sem propagar o
+erro, e todo o passo fica no histórico mesmo recusado. **Confirmei que
+os dois testes da porta de presença apanham mesmo o bug**: revertida a
+correção temporariamente, os dois falharam como esperado, restaurada, os
+13 voltaram a passar. Suite completa: 121 ficheiros, 1634 testes (era
+120/1621). `tsc` limpo, `eslint` 0 erros.
+
+Fecha o item 9 ("Fase 3.1: Controlo Direto") da fila de trabalho. Três
+de quatro peças de risco revistas nesta auditoria tinham um achado real
+— só os anexos de email ficaram limpos.
