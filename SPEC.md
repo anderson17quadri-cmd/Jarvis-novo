@@ -601,6 +601,28 @@ na janela de Privacidade. A única sub-fase que não precisa do nativo (3.1 —
 overlay de confirmação e auditoria, com ações simuladas) pode começar antes
 disso.
 
+**Revisão de segurança a sério, 13/08/2026 — dois achados na peça de maior
+risco do projeto, que nunca tinha tido revisão independente nem um teste
+sequer.** (1) `executeStep()` nunca conferia se havia uma sessão de
+presença ativa antes de executar a sério — a spec exige isto ("sem isto,
+nada corre"), mas a verificação vivia só em quem chamasse a função, não
+na própria função; corrigido para o serviço se defender sozinho,
+independentemente de quem o chamar. (2) **O que está construído nunca
+chega a ligar-se a um fluxo alcançável pela pessoa**: `<ControlOverlay>`
+nunca é montado em lado nenhum da árvore de componentes, e nada no
+código de produção chama `startSession()`, `verify()` ou `executeStep()`
+— o reconhecimento de voz nunca foi ligado à verificação da
+palavra-passe. Na prática, hoje, a Fase 3.1 é um painel de configuração
+inerte (liga o interruptor, define a palavra-passe, vê um histórico
+sempre vazio) — não uma funcionalidade utilizável, apesar de "3.1
+implementada" sugerir o contrário. Não é um risco de segurança em si
+(nada corre porque nada chama o caminho que executaria), mas é uma
+lacuna real entre o que a spec e o SPEC.md davam a entender e o que
+existe. 13 testes novos (`tests/services/direct-control-service.test.ts`,
+zero antes) — confirmei que os dois testes da porta de presença falham
+sem a correção e passam com ela. Ligar isto a um fluxo real de propósito
+fica para quando a sub-fase 3.2+ começar a sério, não decidido aqui.
+
 ---
 
 ## Divergências assumidas

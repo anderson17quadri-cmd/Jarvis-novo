@@ -51,15 +51,6 @@ e passar à frente.
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
 
-### 9. Fase 3.1: Controlo Direto (portão, overlay, auditoria, simulação) — `[livre, sensível]`
-
-`docs/spec/fase-3-controlo-direto.md`. A peça que dá ao assistente
-controlo direto sobre o sistema — categoria de risco mais alta do
-projeto. Nunca teve revisão independente. Confirma que o portão (a
-confirmação antes de qualquer ação) não tem nenhum caminho que o
-contorne, que o overlay visual aparece sempre que uma ação corre de
-verdade, e que a auditoria regista tudo, mesmo o que falha.
-
 ### 10. Editor visual de automações — `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
@@ -138,3 +129,13 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
   13/08/2026): sem fuga nova. Os cinco sítios do projeto com blob URLs
   revistos um a um; todos corretamente pareados (criação/revogação),
   incluindo o cleanup ao desmontar o composer. Nada a corrigir.
+- **Fase 3.1: Controlo Direto** — revisto (Claude, sessão remota,
+  13/08/2026): **dois achados reais**. `executeStep()` nunca conferia
+  sessão de presença ativa antes de executar (a spec exige "sem isto,
+  nada corre") — corrigido para o próprio serviço se defender, não só
+  quem o chama. E mais grave em honestidade do que em segurança: nada
+  disto está ligado a um fluxo alcançável pela pessoa — o overlay nunca
+  é montado, a voz nunca liga a `verify()`. Zero testes antes; 13
+  novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
+  sério (continuação): Controlo Direto sem porta de presença nem
+  ligação a fluxo nenhum".
