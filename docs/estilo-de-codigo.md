@@ -71,6 +71,20 @@ vê no diff. Nunca usar `--no-verify` nem saltar hooks sem pedido explícito.
 Nunca commits vazios. Preferir commits novos a `--amend`, exceto quando
 pedido.
 
+## Orquestração multi-modelo (trabalho noturno)
+
+Quando se pede para pôr várias IAs locais a trabalhar (Claude local,
+DeepSeek, Qwen, Kimi…) enquanto a pessoa dorme: **um só prompt**, para o
+Claude Code local, que é quem abre os terminais das outras sozinho e as
+comanda — nunca vários prompts separados para a pessoa colar um a um em
+cada terminal à mão. Ver `docs/log/prompt-orquestracao-noturna.md` para
+o formato de referência (inicia o Jarvis primeiro, `npm run tauri dev`,
+num terminal à parte que fica aberto para se poder testar ao vivo a
+qualquer momento; depois abre um terminal por IA com a tarefa dela já
+embutida; depois acompanha os logs e o `git log`, sem ficar só à espera).
+`docs/log/fila-de-trabalho.md` guarda a divisão de tarefas entre elas,
+para não colidirem.
+
 ## Onde procurar mais contexto
 
 - `SPEC.md` — o que está feito, parcial, ou por fazer.
