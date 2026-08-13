@@ -25,7 +25,7 @@ sem consentimento explícito. Confirma que o código cumpre isto sem
 exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
 exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
 
-### 14. Suite E2E com Playwright — `[livre]`
+### 14. Suite E2E com Playwright — **DeepSeek** (13/08/2026 19:04) `[livre]`
 
 Confirma que a suite ainda corre e ainda apanha regressões a sério — não
 só que existe. Corre-a, vê se cobre os fluxos que mudaram desde que foi
