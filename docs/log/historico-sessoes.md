@@ -2440,3 +2440,27 @@ de ponta a ponta com um `OllamaProvider` a sério — não um mock — e
 pediu; com `llama2`, nunca manda o campo `tools` e cai para um envio
 normal). Suite completa: 1443 testes (104 ficheiros), `tsc` limpo,
 `eslint` 0 erros.
+
+## 2026-08-13 — Correção de documentação desatualizada (SPEC.md)
+
+Duas linhas do SPEC.md diziam "por fazer" algo que já estava feito havia
+dias — apanhado ao rever o SPEC.md por inteiro antes de continuar a Peça
+16 (limpeza de documentação, Lote 4).
+
+**Parte 6.2, "Plugin Manager"**: dizia "Não carrega código: ver §2" — mas
+o próprio §2 (linha 111) já diz "confirmado 12/08/2026" desde a Peça 9.
+A linha 336 nunca tinha sido atualizada depois de a Peça 9 fechar, e as
+duas contradiziam-se lado a lado no mesmo ficheiro. Corrigida para ✅,
+com a nota de que dizia o contrário antes.
+
+**Parte 10, "Contexto (\"amanhã\", \"esse ficheiro\")"**: dizia "esse
+ficheiro continua por fazer — não há ainda nenhuma ferramenta que atue
+sobre um ficheiro". Falso — `procurar_ficheiro`/`abrir_ficheiro` existem
+desde a sessão que retomou o trabalho da Kimi (entrada "Assistente:
+procurar_ficheiro e abrir_ficheiro" mais acima neste ficheiro), com
+testes e tudo ligado. A linha ficou por corrigir porque a Peça 6 do Lote
+2 (que ia tratar exatamente disto) nunca chegou a ser pega — o trabalho
+já tinha sido feito antes, só o SPEC.md não sabia.
+
+Nenhuma linha de código mudou — só o SPEC.md. `tsc`, `eslint` e a suite
+não tocados por esta peça, sem necessidade de correr de novo.
