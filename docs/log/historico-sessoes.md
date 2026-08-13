@@ -2828,3 +2828,51 @@ sem hardware Windows/YubiKey nesta sessão. A correção em si é lógica
 pura sobre bytes, sem dependência de hardware — testada a sério com
 chaves ECDSA reais geradas em cada teste, só a cerimónia do sistema
 operativo é que fica por confirmar.
+
+## 2026-08-13 — Revisão a sério da Peça 12 (Ollama com ferramentas): nada de funcional a corrigir
+
+Terceira revisão independente pedida ("revê como se fosse a primeira vez,
+sem confiar nos testes só porque passam"). Escolhi a Peça 12 (Ollama com
+ferramentas) porque foi feita a solo, sem ninguém a rever depois — era
+exatamente o tipo de peça que a tarefa queria apanhar.
+
+**As cinco perguntas, uma a uma:**
+1. **Os testes chamam funções reais ou reinventam a lógica?** Chamam as
+   reais. `ollama-provider.test.ts` exercita o `supportsToolCalling()`, o
+   `run()` e o `stream()` verdadeiros (só o `fetch` é falso);
+   `send-with-tools-ollama.test.ts` atravessa o `AIService.sendWithTools`
+   real com um `OllamaProvider` real, não um mock. Nenhum teste duplica o
+   parser do `collect()`.
+2. **O `startsWith()` nos prefixos dá falsos positivos?** Em teoria podia
+   (`qwen` apanha `qwen2`/`qwen2.5`/`qwen3`; `mistral` apanha
+   `mistral-embed`), mas na prática é seguro: acrescentar um separador
+   partiria a deteção da família `qwen` (não há separador depois do nome),
+   e o único caso marginal (`mistral-embed`) não é um modelo de conversa.
+   O palpite já está documentado no código como tal, portanto nenhuma
+   mudança.
+3. **O `recover()` usar sempre `stream()` (nunca `run()`) é pré-existente?**
+   Sim. Confirmei por `git show` no commit da Peça 12: só tocou no import
+   do `OllamaProvider`, no `isToolCapable()` e num comentário do
+   `networkBlocked()` — o `recover()` ficou intocado. A degradação para
+   texto simples ao trocar de provedor a meio de uma ronda de ferramentas
+   é comportamento antigo da DeepSeek, não uma regressão desta peça.
+4. **O `collect()` tem pressupostos da DeepSeek que não batem com a
+   Ollama?** Não. Só lê `delta.content` e `delta.tool_calls`, ignora
+   qualquer `delta.reasoning`/`delta.reasoning_content`, acumula
+   `tool_calls` por índice e só interpreta o JSON dos argumentos no fim —
+   tudo genérico ao protocolo compatível com a OpenAI, nada específico da
+   DeepSeek.
+5. **Há algum caminho onde um pedido de ferramenta fique pendurado para
+   sempre?** Não. O `run()` herda o `TIMEOUT_MS` de 60s com
+   `AbortController` (o relógio e o cancelamento de quem chama, os dois),
+   e o `collect()` sai no fim do `body`. Qualquer resposta inesperada vira
+   `AiFailure('demora'|'rede')` e cai no fallback.
+
+**A única coisa encontrada**: um comentário desatualizado no `catch` do
+`sendWithTools` ainda dizia "o provedor é a DeepSeek" quando agora também
+é a Ollama — a mesma classe de deriva que este projeto tem corrigido
+repetidamente. Corrigi o comentário (sem mudança de comportamento, por
+isso sem teste novo).
+
+**Confirmado**: `tsc` limpo, `eslint` 0 erros, suite completa — 111
+ficheiros, 1525 testes.

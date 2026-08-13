@@ -273,10 +273,10 @@ export class AIService {
         /*
          * As mesmas regras do envio simples.
          *
-         * `isLocal` é `false` de propósito: chegou-se aqui porque o provedor é
-         * a DeepSeek, e o local existe para onde cair — só não sabe pedir
-         * ferramentas, o que é exatamente a razão de o pedido passar a ser
-         * respondido sem elas.
+         * `isLocal` é `false` de propósito: chegou-se aqui porque o provedor
+         * sabe pedir ferramentas (a DeepSeek, ou a Ollama com um modelo capaz),
+         * e o local existe para onde cair — só não sabe pedir ferramentas, o
+         * que é exatamente a razão de o pedido passar a ser respondido sem elas.
          */
         await this.recover(error, { messageId, request, text, isAborted: signal.aborted });
         this.controller = null;
