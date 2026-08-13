@@ -133,6 +133,18 @@ Se `teste.wav` tocar com a tua voz, está a funcionar. Já está ligado ao
 Voz, a "A minha voz" e as vozes prontas aparecem sozinhas quando este
 serviço está a correr.
 
+## 7.1. Testes automáticos
+
+```powershell
+pip install -r requirements-dev.txt
+pytest tests/
+```
+
+Não precisam de GPU nem do modelo carregado — cobrem só a configuração do
+serviço (por agora, o CORS: `tests/test_cors.py`), nunca chamando
+`with TestClient(app) as client:` de propósito, para não disparar o
+arranque a sério (`carregar_modelo`).
+
 **Para experimentar várias vozes prontas de seguida**, sem repetir o
 comando à mão uma vez por voz:
 

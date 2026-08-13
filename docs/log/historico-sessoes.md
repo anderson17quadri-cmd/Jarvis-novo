@@ -3821,6 +3821,82 @@ não há forma de o editor produzir uma automação sem `trigger` ou sem
 peça). `SPEC.md` atualizado. Item 10 movido para "Feito" em
 `docs/log/fila-de-trabalho.md`.
 
+## 2026-08-13 — Revisão a sério: voz clonada, consentimento explícito (item 12)
+
+Item 12 da fila noturna — a regra ética mais sensível do projeto
+(`docs/estilo-de-codigo.md` §"Decisões éticas já assentes": nunca
+clonar sem consentimento explícito, nunca personagens nem atores sem
+autorização). O pedido concreto da fila era confirmar se importar um
+ficheiro de áudio de fora contorna o consentimento — a resposta é não,
+mas a leitura a sério encontrou um problema diferente, no único sítio
+que decide o que fica guardado como voz de referência.
+
+**Gap real, confirmado e corrigido**: `voice-clone-service/server.py`
+tinha o CORS completamente aberto (`allow_origins=["*"]`). "Só ouve em
+127.0.0.1" trava quem alcança o serviço por rede — não diz nada sobre
+quem, na própria máquina, o consegue chamar. Com CORS aberto, qualquer
+página aberta em qualquer separador do browser, sem ligação nenhuma ao
+JARVIS, conseguia fazer `fetch('http://127.0.0.1:8090/voz', {method:
+'POST', body: ...})` com um áudio à escolha dela enquanto o serviço
+estivesse a correr — e o `CORSMiddleware`, com `*`, deixava essa página
+tanto mandar o pedido como ler a resposta. `POST /voz` substitui sempre
+`referencia.wav` sem perguntar nada: a única barreira de consentimento
+deste projeto vivia inteiramente na convenção da interface do JARVIS
+(o botão "Gravar a minha voz", que só grava pelo microfone ao vivo) —
+nunca aplicada no próprio serviço, que é o único sítio que decide
+mesmo o que fica gravado como referência. Um site malicioso não
+precisava de enganar a pessoa a instalar nada; bastava estar aberto.
+
+**Corrigido**: `allow_origins=["*"]` trocado por
+`allow_origin_regex` restrito às origens reais do JARVIS. Primeira
+tentativa (`http://localhost:\d+`, qualquer porta) revelou-se
+demasiado larga ao escrever o teste — confiava em qualquer outro
+servidor de desenvolvimento que por acaso estivesse a correr na mesma
+máquina — corrigida para a porta exata (`devUrl` em
+`tauri.conf.json`, `1420`) mais os esquemas do WebView em produção
+(`https://tauri.localhost`, `tauri://localhost`), estes últimos **não
+confirmados contra uma build empacotada a sério** — só a porta de
+desenvolvimento, que é a que está a correr esta noite. 3 testes novos
+(`voice-clone-service/tests/test_cors.py`, `pytest` + `TestClient`,
+sem `with` de propósito para não disparar o arranque a sério do modelo
+— um pedido de pré-voo CORS nunca chega às rotas): origem do JARVIS em
+desenvolvimento aceite, página qualquer na internet recusada, outra
+porta em `localhost` também recusada (o caso que a primeira versão do
+regex deixava passar).
+
+**Resto do fluxo, confirmado limpo**: o único caminho do lado da
+interface que manda áudio para `/voz` é `recordVoiceSample`
+(`voice-service.ts`), sempre via `getUserMedia` — busca em todo o
+projeto por `<input type="file">` não encontrou nenhum seletor de
+ficheiro ligado a voz ou áudio (os que existem são para anexos de
+email, cópias de segurança, anexos de tarefas). Nenhuma ferramenta do
+catálogo do assistente (`services/assistant/tools.ts`) consegue gravar
+ou clonar — a única relacionada com voz é `ler_em_voz_alta`, que só
+fala um texto já dado, sem tocar em `voices/`. A nota desatualizada em
+`docs/spec/voz-clonada-local.md` (que dizia a sub-fase 4.2 — gravar
+pela interface — por fazer) já não reflete o código: essa sub-fase
+está feita há dias, confirmado pelo próprio `use-voice-sample-recorder.ts`.
+
+### Verificação
+
+Sem infraestrutura de testes Python no projeto antes desta peça —
+criada agora (`voice-clone-service/requirements-dev.txt`,
+`voice-clone-service/tests/`), deliberadamente separada do
+`requirements.txt` principal (não puxa `torch`/`coqui-tts` só para
+testar CORS). `pytest tests/test_cors.py`: **3 passam** (instalado e
+corrido a sério nesta sessão, não só escrito — `pip install fastapi
+httpx python-multipart pytest`, sem GPU). `tsc --noEmit` limpo,
+`eslint .` 0 erros, `vitest run` **122 ficheiros, 1646 testes** (sem
+mudança de contagem — esta peça não tocou em TypeScript). `SPEC.md`
+atualizado. Item 12 movido para "Feito" em
+`docs/log/fila-de-trabalho.md`.
+
+**Não confirmado ao vivo**: os esquemas de origem do WebView em
+produção (só o de desenvolvimento foi testado); nenhuma tentativa real
+de explorar a falha antes da correção (o pedido de pré-voo CORS falso
+prova o comportamento do `CORSMiddleware`, não foi feito um `fetch`
+a sério a partir de uma página aberta noutro separador).
+
 ## 2026-08-13 — Revisão a sério: contexto de datas na conversa ("amanhã" resolvido pelo modelo)
 
 Item 11 da fila noturna — rever a sério, como se fosse a primeira vez,

@@ -90,12 +90,26 @@ async def _erro_json_utf8(request: Request, exc: HTTPException) -> Response:
     """Os erros vêm da mesma fábrica que as respostas — o bug era o mesmo aí."""
     return _json_utf8({"detail": exc.detail}, status_code=exc.status_code)
 
-# CORS aberto de propósito: isto só ouve em 127.0.0.1, nunca sai da máquina, e
-# o JARVIS (Tauri/WebView) precisa de o poder chamar sem o browser bloquear o
-# pedido por vir de uma origem diferente.
+# "Só ouve em 127.0.0.1" trava quem pode alcançar isto por rede — não diz
+# nada sobre quem, na própria máquina, consegue chamar. `allow_origins=["*"]`
+# deixava QUALQUER página aberta em QUALQUER separador do browser (nada a ver
+# com o JARVIS) mandar um pedido para aqui e ler a resposta — o CORS existe
+# exatamente para impedir isso, e um `*` desliga-o por completo. Na prática:
+# uma página maliciosa, só por estar aberta enquanto este serviço corre,
+# conseguia POST /voz com um áudio à escolha dela e substituir a voz clonada
+# sem a pessoa dar por nada — o consentimento explícito que esta peça existe
+# para garantir vivia só na convenção da interface do JARVIS (gravar pelo
+# microfone), nunca aplicado aqui, o único sítio que decide o que fica
+# guardado em `referencia.wav`. Restrito às origens que o próprio JARVIS usa: a
+# porta exata de desenvolvimento (`devUrl` em tauri.conf.json — não "qualquer
+# porta em localhost", que deixaria confiar em qualquer outro servidor local
+# que por acaso esteja a correr na máquina), e os esquemas do WebView em
+# produção. Os esquemas de produção não foram confirmados contra uma build
+# empacotada a sério — só o de desenvolvimento, que é o que está a correr
+# esta noite.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"^(http://localhost:1420|https?://tauri\.localhost|tauri://localhost)$",
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
