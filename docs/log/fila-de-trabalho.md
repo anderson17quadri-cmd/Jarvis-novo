@@ -24,21 +24,7 @@ do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
-plugins, Sandbox de execução de plugins) já em "Feito" abaixo. Em curso
-agora:
-
-- **Memória do assistente (`memory-service.ts`) — extração e
-  esquecimento** — **DeepSeek** (13/08/2026). Quinta tentativa de
-  atribuir à Kimi falhou de novo (valor a subir ligeiramente,
-  `1528474` → `1528708`, em vez de descer — outro uso da organização
-  está a compensar o que decai; não vale a pena voltar a tentar esta
-  noite). Nunca revista por ninguém de fora. Guarda o que a pessoa diz
-  por palavras sobre si própria (preferências, nome, localização) e
-  alimenta-o de volta ao prompt de sistema em conversas futuras — dados
-  pessoais persistentes, usados para influenciar o próprio modelo. A
-  ferramenta `esquecer_memoria` é destrutiva (risco `perde`, pede
-  confirmação) — confirma que apaga mesmo tudo, na store e no storage
-  persistente, não só o estado em memória.
+plugins, Sandbox de execução de plugins) já em "Feito" abaixo.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -243,3 +229,17 @@ do sandbox de execução de plugins").
   interagir), anotado, não é bug. Detalhe em
   `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: esboço
   do Marketplace de plugins").
+
+### 15. Memória do assistente (extração e esquecimento) — DeepSeek — commit `5c79f9e`
+
+Revisão a sério do `memory-service.ts` — dados pessoais persistentes,
+nunca revisto por ninguém de fora. **Dois bugs reais, corrigidos:** (1)
+guardava o contrário do que foi dito — "não gosto de café" virava "preferes
+café", porque a extração não conhecia negação; (2) a captura `(.+)`
+arrastava o resto da frase para o valor — "moro no Porto desde 2019"
+guardava "Porto desde 2019", e um segredo dito a seguir ficava em texto
+simples. Confirmado limpo: `esquecer_memoria` apaga mesmo tudo (store e
+storage, sem nada a reaparecer ao reiniciar, com confirmação exigida),
+limites existem (≤4 preferências, ≤20 pedidos), testes chamam o serviço
+real. 3 testes novos. Detalhe em `docs/log/historico-sessoes.md`
+(13/08/2026, "Revisão a sério: memória do assistente").
