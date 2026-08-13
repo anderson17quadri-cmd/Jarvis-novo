@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { OllamaProvider } from '@/services/ai-providers/ollama-provider';
+import { toolsAsJsonSchema } from '@/services/assistant/tools';
 import type { AiRequest, AssistantContext, AssistantMemory } from '@/types/assistant';
 
 const EMPTY_MEMORY: AssistantMemory = { preferences: {}, recentPrompts: [] };
@@ -33,6 +34,28 @@ function streamOf(...chunks: readonly string[]): ReadableStream<Uint8Array> {
 
 function event(content: string): string {
   return `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n`;
+}
+
+/** Um pedaço de `tool_calls`, como o Ollama manda no formato da OpenAI. */
+function toolCallEvent(
+  index: number,
+  delta: { readonly id?: string; readonly name?: string; readonly args?: string },
+): string {
+  return `data: ${JSON.stringify({
+    choices: [
+      {
+        delta: {
+          tool_calls: [
+            {
+              index,
+              id: delta.id,
+              function: { name: delta.name, arguments: delta.args },
+            },
+          ],
+        },
+      },
+    ],
+  })}\n`;
 }
 
 function fakeFetch(response: {
@@ -100,5 +123,91 @@ describe('OllamaProvider', () => {
     await expect(async () => {
       for await (const _chunk of provider.stream(request())) void _chunk;
     }).rejects.toMatchObject({ kind: 'servidor' });
+  });
+});
+
+describe('supportsToolCalling — palpite pelo nome do modelo', () => {
+  it.each([
+    'qwen3:8b',
+    'qwen2.5:7b',
+    'llama3.1',
+    'llama3.1:70b',
+    'llama3.2:3b',
+    'llama3.3',
+    'mistral',
+    'mixtral:8x7b',
+    'firefunction-v2',
+    'command-r-plus',
+  ])('%s é de uma família conhecida por suportar ferramentas', (model) => {
+    expect(new OllamaProvider(model).supportsToolCalling()).toBe(true);
+  });
+
+  it.each(['llama2', 'llama2:13b', 'phi3', 'gemma2', 'codellama'])(
+    '%s não é uma família conhecida — palpite honesto, não finge suporte',
+    (model) => {
+      expect(new OllamaProvider(model).supportsToolCalling()).toBe(false);
+    },
+  );
+
+  it('sem modelo nenhum, não suporta nada', () => {
+    expect(new OllamaProvider('').supportsToolCalling()).toBe(false);
+  });
+
+  it('não depende de maiúsculas/minúsculas', () => {
+    expect(new OllamaProvider('QWEN3:8B').supportsToolCalling()).toBe(true);
+  });
+});
+
+describe('run — a passagem com ferramentas', () => {
+  it('manda o catálogo de ferramentas no pedido', async () => {
+    const body = streamOf(event('tudo bem'));
+    const fetchImpl = fakeFetch({ body });
+    const provider = new OllamaProvider('qwen3:8b', 'http://localhost:11434', fetchImpl);
+
+    await provider.run(request(), [], () => undefined);
+
+    const [, init] = (fetchImpl as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
+    const sent = JSON.parse(init.body as string) as { tools?: unknown };
+    expect(sent.tools).toEqual(toolsAsJsonSchema());
+  });
+
+  it('interpreta um pedido de ferramenta que chega partido em vários pedaços', async () => {
+    const body = streamOf(
+      event('Vou verificar. '),
+      toolCallEvent(0, { id: 'call_1', name: 'procurar_ficheiro', args: '{"nome":"orça' }),
+      toolCallEvent(0, { args: 'mento"}' }),
+    );
+    const fetchImpl = fakeFetch({ body });
+    const provider = new OllamaProvider('qwen3:8b', 'http://localhost:11434', fetchImpl);
+
+    const chunks: string[] = [];
+    const result = await provider.run(request(), [], (chunk) => chunks.push(chunk));
+
+    expect(chunks.join('')).toBe('Vou verificar. ');
+    expect(result.text).toBe('Vou verificar. ');
+    expect(result.toolCalls).toEqual([
+      { id: 'call_1', name: 'procurar_ficheiro', args: { nome: 'orçamento' } },
+    ]);
+  });
+
+  it('sem ferramenta nenhuma pedida, devolve uma lista vazia — não inventa uma', async () => {
+    const body = streamOf(event('Só texto, sem ferramentas.'));
+    const fetchImpl = fakeFetch({ body });
+    const provider = new OllamaProvider('qwen3:8b', 'http://localhost:11434', fetchImpl);
+
+    const result = await provider.run(request(), [], () => undefined);
+
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('sem o Ollama a correr, falha como falha de rede — mesmo com ferramentas em jogo', async () => {
+    const fetchImpl = vi.fn(async () => {
+      throw new TypeError('Failed to fetch');
+    });
+    const provider = new OllamaProvider('qwen3:8b', 'http://localhost:11434', fetchImpl);
+
+    await expect(provider.run(request(), [], () => undefined)).rejects.toMatchObject({
+      kind: 'rede',
+    });
   });
 });
