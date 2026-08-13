@@ -3381,3 +3381,212 @@ pré-existentes noutros ficheiros), `cargo test` 8/8. `vitest run`: 1622 testes
 `design-system/surfaces.test.ts`, que passam isolados (24/24) — flakiness por
 timeout sob a carga do correr completo, pré-existente e sem relação com esta
 revisão.
+
+## 2026-08-13 — Auditoria a sério do projeto: SSRF real no navegador controlado, corrigido
+
+O utilizador reportou, ao vivo, o assistente a responder "Ainda não
+tenho um modelo de linguagem ligado" e pediu uma auditoria completa ao
+projeto — "não aceito menos que cem por cento". Comecei pelos quatro
+verificadores objetivos: `tsc --noEmit` limpo, `eslint .` 0 erros
+(11 avisos pré-existentes), `npx vitest run` **120 ficheiros, 1621
+testes**, `cargo check`/`cargo test --lib` limpos. Nada partido ao nível
+do código — o projeto compila e os testes passam por inteiro.
+
+Sobre a frase em si: tracei-a até `rule-provider.ts` — é texto fixo, mostrado
+só quando nenhum provedor de IA está ativo (nem DeepSeek, nem Claude, nem
+Ollama). Reli `use-ai-settings-store.ts` (hidratação, persistência),
+`use-ai-settings.ts` (aplicação ao `aiService`) e `AiSettings.tsx` (a UI só
+mostra o campo da chave depois de o provedor já estar selecionado, o que
+afasta a hipótese de "chave guardada sem o provedor mudar") — tudo
+estruturalmente correto. Não encontrei um bug de código que explique o
+sintoma; o mais provável é uma questão de configuração ao vivo (qual
+provedor está mesmo selecionado, se a chave aparece como guardada, se
+aparece algum aviso antes da resposta) — pedido ao utilizador para
+confirmar isto em Personalização → Assistente, já que não há como
+reproduzir sem a app a correr.
+
+**Ao rever a peça mais sensível da lista (Navegador controlado, Peça 19)
+a sério — não só ler, tentar mesmo furar — encontrei uma vulnerabilidade
+real: SSRF.** `fetch_page_text` só confería o esquema (`https://`), nunca
+o anfitrião. Um pedido a `https://localhost:9000/painel-admin`, a
+`https://192.168.1.1/` (router), ou a `https://169.254.169.254/` (o
+endereço de metadados de nuvem, alvo clássico de SSRF) passava como
+qualquer outro — o texto de um serviço que nunca devia ser alcançável de
+fora voltava para a conversa como se fosse uma página pública. Um
+segundo problema, ligado ao primeiro: mesmo com uma lista de anfitriões
+bloqueados, um endereço público podia redirecionar (`3xx`) para dentro e
+contornar a verificação, que só olhava para o endereço pedido, nunca
+para onde o pedido realmente foi parar.
+
+**Corrigido**: `is_blocked_host()` (`src-tauri/src/commands/browser.rs`)
+usa o crate `url` (já vinha como dependência transitiva do `ureq`, só
+faltava declará-la) para analisar o anfitrião do endereço e recusar
+`localhost`/`*.localhost`, loopback, redes privadas (`10/8`,
+`172.16/12`, `192.168/16`), link-local (`169.254/16`, inclui o endereço
+de metadados de nuvem), `fc00::/7` e `fe80::/10` em IPv6, e endereços
+IPv4 mapeados em IPv6 (`::ffff:a.b.c.d`) — confere o IPv4 real por trás
+em vez de os deixar passar só por terem forma de IPv6. E, para o
+problema do redireccionamento, o agente do `ureq` passou a `redirects(0)`
+— um `3xx` é recusado explicitamente, nunca seguido às cegas: um
+endereço público e aceite não pode mais contornar a verificação de cima
+por saltar para dentro a meio do pedido.
+
+**Testes**: 3 novos — `recusa_a_propria_maquina_e_redes_privadas` (18
+casos, cada um provando a recusa sem tocar em rede nenhuma, porque a
+função corta antes de qualquer pedido sair), `nao_recusa_um_ip_publico_
+nem_um_dominio_normal` (garante que a defesa não fica paranoica a mais e
+bloqueia a internet toda), `um_endereco_ilegivel_e_recusado_por_omissao`.
+8 testes no total em `commands::browser` (eram 5). `cargo check`,
+`cargo clippy --lib -- -D warnings` e `cargo test --lib` limpos.
+
+Isto fecha o item 8 ("Navegador controlado") da fila de trabalho
+(`docs/log/fila-de-trabalho.md`) com um achado real, não "nada a
+corrigir" — exatamente o tipo de coisa que uma revisão a sério, e não só
+uma leitura, existe para apanhar.
+
+**Não confirmado ao vivo**: sem app a correr nesta sessão remota, a
+correção nunca foi exercitada contra uma rede a sério (só testes
+unitários, sem qualquer pedido de rede — a função recusa antes de sair).
+Continuação da auditoria do resto do projeto em curso.
+
+## 2026-08-13 — Auditoria a sério (continuação): escrita de nota do Obsidian através de um link simbólico, corrigida
+
+Segundo achado real da mesma auditoria (depois do SSRF no navegador
+controlado). Revi o vault Obsidian (Peça 17) a sério — nunca tinha tido
+sequer um teste Rust dedicado, só cobertura do lado do TypeScript com o
+adaptador simulado, que nunca exercita a lógica de fronteira a sério.
+
+**O bug**: `obsidian_write_note` verificava a fronteira canonicalizando
+a **pasta-mãe** do alvo (`target.parent()`), nunca o ficheiro final —
+por desenho, porque `canonicalize()` só funciona em caminhos que já
+existem, e a nota pode ainda não existir na primeira escrita. Mas se a
+nota **já existisse como um link simbólico** a apontar para fora do
+vault (plantado antecipadamente, por exemplo por outro processo com
+acesso ao disco, ou por um vault partilhado/sincronizado), a pasta-mãe
+continuava dentro do vault — passava a verificação — e `fs::write`
+segue links simbólicos por omissão, tal como `CreateFile` no Windows.
+O resultado: escrever numa nota chamada, por exemplo, `Notas do
+Chat/2026-08-13.md` podia na realidade sobrescrever um ficheiro
+qualquer fora do vault, sem a verificação de fronteira alguma vez dar
+por isso — porque nunca olhava para o próprio ficheiro, só para a pasta
+que o contém.
+
+**Corrigido**: antes de `fs::write`, confere-se com `symlink_metadata`
+(que, ao contrário de `canonicalize`/`metadata`, não segue o link) se o
+alvo já existe como link simbólico — se for, recusa-se, mesmo que a
+pasta-mãe esteja dentro do vault. `obsidian_read_note` já não tinha este
+problema: canonicaliza o próprio ficheiro (não só a pasta) antes de
+comparar, por isso um link para fora já era recusado — confirmado por
+teste novo, não só por leitura do código.
+
+**Refatoração necessária para testar a sério**: `obsidian_read_note` e
+`obsidian_write_note` recebiam `State<'_, ObsidianRoot>` do Tauri, o que
+tornava impossível testá-los sem uma app Tauri a correr. Extraí a lógica
+para `read_note_within`/`write_note_within`, funções livres que recebem
+a raiz já resolvida — o mesmo padrão já usado em `rule-provider.ts`
+(`answerFromContext`) e `browser.rs` (`extract_text`): a lógica que vale
+a pena testar não deve exigir o resto da aplicação a correr.
+
+**Testes**: 6 novos, com pastas temporárias a sério no disco (sem puxar
+o crate `tempfile`, que não estava nas dependências — uma pasta em
+`std::env::temp_dir()` com o PID no nome, apagada no `Drop`) — escrever e
+reler uma nota normal, criar subpastas intermédias, `..` recusado antes
+de tocar no disco (confirmado que nada foi escrito lá fora), caminho
+absoluto recusado, e os dois casos de link simbólico (escrita, o bug
+novo; leitura, a proteção que já existia). **Confirmei que o teste do
+bug apanha mesmo o problema**: removi a correção temporariamente, o
+teste falhou como esperado, restaurei, voltou a passar — não é um teste
+que passaria de qualquer forma. Os dois testes de link simbólico só
+correm em Unix (`#[cfg(unix)]`) — criar um link simbólico no Windows por
+omissão pede um privilégio que a maioria das contas não tem; a lógica
+corrigida é a mesma nos dois sistemas operativos. 14 testes Rust no
+total agora (eram 8 depois do SSRF, 5 antes disso). `cargo check`,
+`cargo clippy --lib -- -D warnings` e `cargo test --lib` limpos.
+
+Fecha o item 7 ("Vault Obsidian") da fila de trabalho com outro achado
+real — dois de dois nas peças de rede/disco real revistas a sério até
+agora nesta auditoria.
+
+## 2026-08-13 — Auditoria a sério (continuação): anexos de email, sem fuga nova
+
+Terceiro item da auditoria pedida pelo utilizador. Revi todos os cinco
+sítios do projeto que usam `URL.createObjectURL`/`revokeObjectURL`
+(`grep` ao `src/` inteiro, não confiança em memória de onde estariam):
+`platform/attachments.ts`, `services/voice-service.ts`,
+`apps/emails/EmailsWindow.tsx`, `apps/assistant/export.ts`,
+`apps/privacy/BackupPanel.tsx`.
+
+**Resultado: nada de real a corrigir.** O composer de email já tem um
+efeito de desmontagem dedicado (`attachmentsRef` + `useEffect` de
+cleanup) que revoga todas as pré-visualizações por remover ao fechar ou
+cancelar o rascunho — cobre exatamente o caso que a fuga original
+(revista antes, "2026-08-11 — Revisão de qualidade: fuga de blob URL
+nos anexos de email") tinha deixado escapar, e continua a cobri-lo
+depois de tudo o que mudou desde então. `voice-service.ts`
+(`speakClonada`) revoga o áudio anterior antes de criar um novo, com
+uma segunda verificação para a corrida entre duas chamadas simultâneas,
+e `stop()` revoga ao interromper. `export.ts` e `BackupPanel.tsx`
+seguem o padrão comum e seguro (criar → `click()` → revogar já a
+seguir, no mesmo bloco síncrono). `AttachmentList.tsx` (anexos de uma
+mensagem já recebida, não um rascunho) não usa blob URL nenhuma — só
+mostra nome e tamanho.
+
+Fecha o item 13 ("Anexos de email a sério") da fila de trabalho — o
+primeiro desta auditoria sem achado novo, depois de dois seguidos com
+bugs reais (SSRF no navegador, escrita através de link simbólico no
+Obsidian).
+
+## 2026-08-13 — Auditoria a sério (continuação): Controlo Direto sem porta de presença nem ligação a fluxo nenhum
+
+Quarto item da auditoria pedida pelo utilizador, e o mais significativo
+até agora — revi o Controlo Direto (Fase 3.1), a peça que o próprio
+documento de desenho descreve como "a categoria de risco mais alta do
+projeto". Nunca tinha tido revisão independente. Confirmei ao abrir o
+ficheiro: **nunca tinha tido sequer um teste** — zero, nem um.
+
+**Achado 1 — a porta de presença vivia fora da função que devia
+guardar.** `executeStep()` (`services/direct-control-service.ts`)
+executava um passo a sério sempre que `confirmed && !simulatedMode`
+fossem verdade — nunca conferia `sessionActive`. A spec
+(`docs/spec/fase-3-controlo-direto.md` §1.1) é categórica: "sem isto,
+nada corre" — mas essa garantia só existia enquanto quem chamasse
+`executeStep` se lembrasse de verificar a sessão primeiro. Corrigido
+para o próprio serviço se recusar a executar sem `enabled && 
+sessionActive`, independentemente de quem o chama — a mesma disciplina
+de "a fronteira vive onde a ação acontece, não em quem pede" já usada
+no Explorador, no Obsidian e agora no navegador controlado.
+
+**Achado 2 — mais grave em termos de honestidade do projeto do que de
+segurança em si: nada disto está ligado a nada.** `grep` ao `src/`
+inteiro confirma: `<ControlOverlay>` nunca é montado em lado nenhum da
+árvore de componentes (só se referencia a si próprio no seu ficheiro);
+`directControlService.startSession()`, `.verify()` e `.executeStep()`
+nunca são chamados fora do próprio serviço e do painel de definições. O
+reconhecimento de voz nunca foi ligado à verificação da palavra-passe.
+Hoje, na prática, ligar o interruptor "Controlo direto" na Privacidade
+não dá acesso a funcionalidade nenhuma — é um painel de configuração
+que não leva a lado nenhum. O `SPEC.md` dizia "3.1 implementada", o que
+é tecnicamente verdade peça a peça (o serviço existe, o overlay existe,
+a lógica de risco existe) mas dava a entender um fluxo utilizável que
+não existe. Não é um risco de segurança por si só — precisamente porque
+nada chama o caminho que executaria, nada corre — mas é uma lacuna real
+entre o que se dizia feito e o que está. Corrigido no `SPEC.md`, sem
+inventar a ligação agora (fica para quando a 3.2+ começar a sério, como
+o próprio documento já dizia).
+
+**Testes**: 13 novos (`tests/services/direct-control-service.test.ts`) —
+palavra-passe (hash certo/errado/sem chave), sessão (abre, fecha,
+expira sozinha ao fim da duração, desligar o interruptor fecha a
+sessão), e sete sobre `executeStep`: nunca executa em simulado, nunca
+sem confirmação, **nunca sem sessão ativa** (o caso central — sem a
+correção, isto executaria), nunca desligado, executa só com os quatro
+fatores certos, um passo que rebenta fica registado sem propagar o
+erro, e todo o passo fica no histórico mesmo recusado. **Confirmei que
+os dois testes da porta de presença apanham mesmo o bug**: revertida a
+correção temporariamente, os dois falharam como esperado, restaurada, os
+13 voltaram a passar. Suite completa: 121 ficheiros, 1634 testes (era
+120/1621). `tsc` limpo, `eslint` 0 erros.
+
+Fecha o item 9 ("Fase 3.1: Controlo Direto") da fila de trabalho. Três
+de quatro peças de risco revistas nesta auditoria tinham um achado real
+— só os anexos de email ficaram limpos.

@@ -2323,6 +2323,7 @@ dependencies = [
  "tauri-plugin-store",
  "thiserror 2.0.19",
  "ureq",
+ "url",
  "windows 0.62.2",
 ]
 

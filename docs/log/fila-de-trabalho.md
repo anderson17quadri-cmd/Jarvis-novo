@@ -17,7 +17,12 @@
 
 ## Construir
 
-### 1. Reordenar a cadeia de provedores de IA — **Qwen** (13/08/2026 17:42)
+### 1. Reordenar a cadeia de provedores de IA
+
+Tentativa de atribuir à Qwen às 17:42 (13/08/2026) falhou de imediato —
+quota ainda esgotada (`429`, `token-plan 1-week quota exhausted`,
+reset previsto `08-19 03:23 UTC`, mesmo erro já visto antes esta
+sessão). Item de volta à fila, sem dono, para a próxima sessão livre.
 
 Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 `docs/spec/orquestrador-multi-provedor.md` §3). Falta um ecrã em
@@ -41,41 +46,6 @@ e passar à frente.
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
 
-### 6. Explorador de ficheiros real (Peça 7) — `[livre, sensível]`
-
-`src-tauri/src/commands/files.rs`, `files_set_root`/`files_read_dir`. A
-fronteira é "nenhum caminho fora da raiz escolhida, mesmo com `..` ou
-links simbólicos" — confirmada só por teste automatizado, nunca por uma
-tentativa a sério de escapar. É exatamente o tipo de garantia que vale a
-pena um segundo par de olhos tentar mesmo furar, não só ler.
-
-### 7. Vault Obsidian (Peça 17) — `[livre, sensível]`
-
-`src-tauri/src/commands/obsidian.rs`, `services/knowledge/obsidian-
-service.ts`. Usa caminhos relativos com `Path::components()` a rejeitar
-qualquer componente que não seja `Normal` (`..`, raízes absolutas) antes
-de tocar no disco. Confirma se essa rejeição é mesmo completa — um
-caminho com barras invertidas no meio de um nome de nota, por exemplo,
-ou um link simbólico dentro do próprio vault, passam?
-
-### 8. Navegador controlado pelo assistente (Peça 19) — `[livre, sensível]`
-
-`src-tauri/src/commands/browser.rs`, `services/knowledge/web-browser-
-service.ts`. Já tem 5 testes Rust e testes de que o conteúdo nunca é
-tratado como instrução — mas nunca foi lido por ninguém de fora à procura
-de forma explícita de furar isso. Um `<script>` mal formado, um redireto
-`https`→`http` a meio do pedido, um endereço que resolve para
-`localhost`/rede interna — algum destes escapa ao que já está feito?
-
-### 9. Fase 3.1: Controlo Direto (portão, overlay, auditoria, simulação) — `[livre, sensível]`
-
-`docs/spec/fase-3-controlo-direto.md`. A peça que dá ao assistente
-controlo direto sobre o sistema — categoria de risco mais alta do
-projeto. Nunca teve revisão independente. Confirma que o portão (a
-confirmação antes de qualquer ação) não tem nenhum caminho que o
-contorne, que o overlay visual aparece sempre que uma ação corre de
-verdade, e que a auditoria regista tudo, mesmo o que falha.
-
 ### 10. Editor visual de automações — `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
@@ -96,13 +66,6 @@ Ver `docs/spec/voz-clonada-local.md` e a regra em
 sem consentimento explícito. Confirma que o código cumpre isto sem
 exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
 exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
-
-### 13. Anexos de email a sério — `[livre]`
-
-Já teve uma revisão que apanhou uma fuga de blob URL (corrigida). Vale a
-pena confirmar que não há outra fuga parecida nos outros sítios que
-criam URLs de objeto (avatar, outras janelas), e que a correção
-original continua válida depois de tudo o que mudou desde então.
 
 ### 14. Suite E2E com Playwright — `[livre]`
 
@@ -144,3 +107,38 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 `unwatch_folder` (a thread do observador nunca parava) e o cruzamento de
 limiar da bateria com mais do que uma regra. Detalhe em
 `docs/log/historico-sessoes.md` (13/08/2026).
+
+- **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
+  remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
+  (`starts_with`), o que resolve `..` e segue links simbólicos até ao
+  alvo real antes da comparação — cobre os dois casos que a fila
+  levantava. Nada de real a corrigir.
+- **Navegador controlado pelo assistente (Peça 19)** — revisto (Claude,
+  sessão remota, 13/08/2026): **SSRF real encontrado e corrigido** — só
+  se confería o esquema, nunca o anfitrião; `localhost`, IPs privados e
+  o endereço de metadados de nuvem passavam, e um redirecionamento podia
+  contornar qualquer verificação futura. Ver
+  `docs/log/historico-sessoes.md`, entrada "Auditoria a sério do
+  projeto: SSRF real no navegador controlado, corrigido".
+- **Vault Obsidian (Peça 17)** — revisto (Claude, sessão remota,
+  13/08/2026): **escrita através de link simbólico, real, corrigida** —
+  `obsidian_write_note` só canonicalizava a pasta-mãe, nunca o ficheiro
+  final; uma nota já existente como link simbólico era escrita através
+  dele. Nunca tinha havido teste Rust nenhum deste ficheiro — 6 testes
+  novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
+  sério (continuação): escrita de nota do Obsidian através de um link
+  simbólico, corrigida".
+- **Anexos de email a sério** — revisto (Claude, sessão remota,
+  13/08/2026): sem fuga nova. Os cinco sítios do projeto com blob URLs
+  revistos um a um; todos corretamente pareados (criação/revogação),
+  incluindo o cleanup ao desmontar o composer. Nada a corrigir.
+- **Fase 3.1: Controlo Direto** — revisto (Claude, sessão remota,
+  13/08/2026): **dois achados reais**. `executeStep()` nunca conferia
+  sessão de presença ativa antes de executar (a spec exige "sem isto,
+  nada corre") — corrigido para o próprio serviço se defender, não só
+  quem o chama. E mais grave em honestidade do que em segurança: nada
+  disto está ligado a um fluxo alcançável pela pessoa — o overlay nunca
+  é montado, a voz nunca liga a `verify()`. Zero testes antes; 13
+  novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
+  sério (continuação): Controlo Direto sem porta de presença nem
+  ligação a fluxo nenhum".
