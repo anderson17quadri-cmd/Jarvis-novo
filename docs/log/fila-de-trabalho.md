@@ -25,6 +25,11 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível, por isso duas instâncias em
 curso agora:
 
+- **Notificações nativas isoladas (Peça 14, Lote 4)** — **Claude local**
+  (13/08/2026 19:34). Testada só pela sessão que a construiu, nunca por
+  ninguém de fora. Ver entrada "Lote 4" (13/08/2026) — foco em
+  `NotificationService` e `TauriAdapterBase.sendNativeNotification`.
+
 - **2FA a sério (palavra-passe/PIN + chave física)** — **DeepSeek**
   (13/08/2026 19:17). Construído diretamente, nunca revisto por
   ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
