@@ -35,6 +35,24 @@ describe('ler preferências ditas por palavras', () => {
     const long = `moro em ${'x'.repeat(80)}`;
     expect(extractPreference(long)).toBeNull();
   });
+
+  it('não guarda o contrário do que foi dito', () => {
+    expect(extractPreference('não gosto de café')).toBeNull();
+    expect(extractPreference('eu não moro no Porto')).toBeNull();
+    expect(extractPreference('não trabalho como médico')).toBeNull();
+  });
+
+  it('não arrasta o resto da frase para o valor', () => {
+    expect(extractPreference('moro no Porto desde 2019')).toEqual({ key: 'cidade', value: 'Porto' });
+    expect(extractPreference('gosto de café e a minha palavra-passe é segredo')).toEqual({
+      key: 'preferência',
+      value: 'café',
+    });
+    expect(extractPreference('Prefiro o tema escuro, não o claro')).toEqual({
+      key: 'preferência',
+      value: 'o tema escuro',
+    });
+  });
 });
 
 describe('memória', () => {
@@ -82,6 +100,18 @@ describe('memória', () => {
 
     expect(memory.current.preferences).toEqual({});
     expect(memory.current.recentPrompts).toEqual([]);
+  });
+
+  it('esquecer tudo também apaga o que está gravado no disco', async () => {
+    memory.observe('trata-me por Anderson');
+    await memory.persist();
+    memory.clear();
+
+    const other = new MemoryService();
+    await other.hydrate();
+
+    expect(other.current.preferences).toEqual({});
+    expect(other.current.recentPrompts).toEqual([]);
   });
 
   it('avisa quem estiver a ouvir', () => {

@@ -113,15 +113,37 @@ export class MemoryService {
 export function extractPreference(text: string): { key: string; value: string } | null {
   for (const { key, pattern } of PREFERENCE_PATTERNS) {
     const match = pattern.exec(text);
-    const captured = match?.[1]?.trim().replace(/[.!?,;:]+$/, '');
+    if (match === null) continue;
+
+    // "Não gosto de café" não é gostar de café — a negação anula a leitura.
+    if (isNegated(text, match.index)) continue;
+
+    const captured = cutAtClauseBoundary(match[1] ?? '').trim().replace(/[.!?,;:]+$/, '');
 
     // Um valor vazio ou absurdamente longo é ruído, não uma preferência.
-    if (captured !== undefined && captured.length > 0 && captured.length <= 60) {
+    if (captured.length > 0 && captured.length <= 60) {
       return { key, value: captured };
     }
   }
 
   return null;
+}
+
+/** Uma negação ("não", "nem"…) imediatamente antes da frase correspondida? */
+function isNegated(text: string, matchIndex: number): boolean {
+  const before = text.slice(0, matchIndex).trimEnd();
+  return /\b(?:nao|não|nem|nunca|jamais)\s*$/.test(before);
+}
+
+/**
+ * O valor acaba na primeira fronteira de oração — pontuação ou uma
+ * conjunção. Sem isto, "moro no Porto desde 2019" guardava "Porto desde
+ * 2019", e um segredo dito a seguir era arrastado para a memória.
+ */
+function cutAtClauseBoundary(value: string): string {
+  const boundary = /\s+(?:e|mas|porque|desde|para|que|onde|quando|com|ou)\b|[,.!?;]/;
+  const match = boundary.exec(value);
+  return match === null ? value : value.slice(0, match.index);
 }
 
 export const memoryService = new MemoryService();

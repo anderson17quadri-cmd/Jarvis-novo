@@ -4267,3 +4267,38 @@ permissões e caminhos). `npx tsc --noEmit` limpo, `eslint .` com 0 erros
 (11 avisos pré-existentes, em ficheiros alheios). Ver
 `docs/spec/plugins-sandbox.md` (§"O protocolo" e §"Ficheiros") e `SPEC.md`
 Parte 11.
+
+## 2026-08-13 — Revisão a sério: memória do assistente (extração e esquecimento)
+
+Sexta instância do item 15 (fila noturna): a memória local do assistente
+(`src/services/assistant/memory-service.ts`) — dados pessoais persistentes,
+nunca revista por ninguém de fora. As cinco perguntas da fila respondidas
+uma a uma, com leitura do serviço, do executor de ferramentas
+(`tool-runner.ts`) e da injeção no prompt de sistema (`ai-service.ts`).
+
+**Dois bugs reais, ambos corrigidos com teste que os prova:**
+
+1. **Guardava o contrário do que foi dito.** As expressões de extração
+   (`prefiro`, `gosto de`, `moro em`, `trabalho como`…) não conheciam
+   negação: "não gosto de café" correspondia em `gosto de café` e ficava
+   guardado como "preferes café" — um facto inventado, o oposto do que a
+   pessoa disse. Corrigido: uma negação ("não", "nem", "nunca"…)
+   imediatamente antes da frase anula a leitura.
+2. **Arrastava o resto da frase para o valor.** A captura `(.+)` comia
+   tudo a seguir ao gatilho: "moro no Porto desde 2019" guardava "Porto
+   desde 2019", e "gosto de café e a minha palavra-passe é segredo"
+   guardava o segredo em texto simples. Corrigido: o valor acaba na
+   primeira fronteira de oração (pontuação ou conjunção).
+
+**Confirmado sólido, sem nada a corrigir:** `esquecer_memoria` apaga mesmo
+tudo — `clear()` esvazia a store **e** persiste esse vazio no storage, sem
+nada que reapareça ao reiniciar; a ferramenta continua a exigir confirmação
+(`risk: 'perde'`, barrada em `runTool` antes de correr). Limites existem e
+chegam: preferências no máximo 4 chaves (cada valor ≤ 60 carateres),
+últimos pedidos no máximo 20 (`MEMORY_PROMPT_LIMIT`). Os testes chamam o
+serviço real (`extractPreference` e `MemoryService` contra `localStorage`),
+não dados de exemplo — mas não cobriam negação, fronteira de oração nem a
+persistência do `clear()`; 3 testes novos.
+
+`npx vitest run` — 1657/1657 a passar. `npx tsc --noEmit` limpo, `eslint`
+com 0 erros. Ver `SPEC.md` (Parte 7.2 §Memória).
