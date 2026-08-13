@@ -47,10 +47,6 @@ e passar à frente.
 `watch_folder`/`unwatch_folder`/`get_battery_status`,
 `checkNativeTriggers()`. Nunca revisto.
 
-### 5. Peça 20 — ferramentas para o Claude no orquestrador — **Claude local** (13/08/2026 17:42)
-
-Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
-
 ### 7. Vault Obsidian (Peça 17) — `[livre, sensível]`
 
 `src-tauri/src/commands/obsidian.rs`, `services/knowledge/obsidian-
@@ -142,3 +138,13 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
   contornar qualquer verificação futura. Ver
   `docs/log/historico-sessoes.md`, entrada "Auditoria a sério do
   projeto: SSRF real no navegador controlado, corrigido".
+- **Peça 20 — ferramentas para o Claude no orquestrador** — revisto
+  (Claude local, 13/08/2026): tradução `toAnthropicMessages`/
+  `collectClaudeStream` confirmada correta a sério (blocos
+  `tool_use`/`tool_result`, argumentos por `input_json_delta`
+  acumulados por índice, dois `tool_use` em paralelo sem se
+  misturarem), contrato `run()` fiel ao da DeepSeek, chave só no
+  cabeçalho, testes reais de ponta a ponta. Nada de errado nesta peça;
+  documentada uma limitação pré-existente do desenho da cadeia (não
+  desta peça) em `docs/log/historico-sessoes.md`, entrada "Revisão
+  independente: Peça 20". Commit `0372812` (+ merge `429f4fd`).
