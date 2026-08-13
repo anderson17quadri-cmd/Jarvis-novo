@@ -2294,3 +2294,23 @@ mais 34 novos). A verificação ao vivo ficou por fazer — o Open-Meteo devolve
 dados sem chave, mas não se confirmou o pedido a partir da app empacotada
 nesta máquina; os testes automatizados cobrem o mapeamento e a forma dos
 pedidos.
+
+## 2026-08-13 — Peça 8, Lote 2: notícias reais (NewsAPI, chave no cofre)
+
+Segunda sub-tarefa de "provedores de rede reais". A NewsAPI precisa de chave,
+por isso seguiu-se o molde da DeepSeek em vez do da meteorologia: a chave vive
+no cofre do sistema (`news-api-key`), nunca no storage normal, e a interface
+mostra-a tapada, com mostrar/apagar. A presença da chave é a própria
+configuração — sem chave, mantém-se o simulado.
+
+Dois pontos que pediram decisão explícita, documentados no provedor e aqui. O
+primeiro: **categorias**. A NewsAPI só devolve a categoria quando se pede uma
+em concreto, e o topo geral não classifica; pedir cinco categorias por leitura
+rebentava o plano gratuito (100 pedidos/dia). Pediu-se o topo geral e
+adivinha-se a categoria por palavras no título/resumo/fonte (melhor esforço,
+"mundo" por omissão). O segundo: **marcas de leitura e favoritos** ficam
+locais, no storage, chaveadas pelo endereço do artigo — os serviços de
+notícias não sincronizam estas marcas, e fingir que sincronizam seria mentir.
+`tsc`, `eslint` e `vitest` limpos (1419 testes, mais 21). A verificação ao vivo
+depende de uma chave real da NewsAPI, que esta máquina não tem — ficou por
+confirmar em execução; os testes cobrem a forma do pedido e o mapeamento.

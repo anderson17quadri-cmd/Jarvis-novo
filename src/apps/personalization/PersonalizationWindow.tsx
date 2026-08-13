@@ -8,6 +8,7 @@ import { useThemeStore } from '@/stores/use-theme-store';
 import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { LayoutSettings } from './LayoutSettings';
+import { NewsSettings } from './NewsSettings';
 import { SoundSettings } from './SoundSettings';
 import { ThemeEditor } from './ThemeEditor';
 import { SystemStatePicker } from './SystemStatePicker';
@@ -85,6 +86,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Meteorologia</p>
         <WeatherSettings />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Notícias</p>
+        <NewsSettings />
       </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
