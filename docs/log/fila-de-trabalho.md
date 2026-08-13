@@ -17,7 +17,12 @@
 
 ## Construir
 
-### 1. Reordenar a cadeia de provedores de IA — **Qwen** (13/08/2026 17:42)
+### 1. Reordenar a cadeia de provedores de IA
+
+Tentativa de atribuir à Qwen às 17:42 (13/08/2026) falhou de imediato —
+quota ainda esgotada (`429`, `token-plan 1-week quota exhausted`,
+reset previsto `08-19 03:23 UTC`, mesmo erro já visto antes esta
+sessão). Item de volta à fila, sem dono, para a próxima sessão livre.
 
 Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 `docs/spec/orquestrador-multi-provedor.md` §3). Falta um ecrã em
