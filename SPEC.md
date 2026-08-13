@@ -139,11 +139,22 @@ Windows (`Get-WinEvent -LogName Application`) logo a seguir.
 
 ## 3. Regra em vigor a partir daqui
 
+> **Esta secção ficou por atualizar — corrigido 13/08/2026, na revisão do
+> Lote 4.** O portão que descreve ("bloqueado até a Fase 1 correr num PC a
+> sério") já foi passado há muitos lotes: há Terminal, Cofre de segredos,
+> Automações nativas, Windows Hello, Explorador com leitura real do disco,
+> instalação e execução real de plugins, quatro provedores de rede reais
+> (meteorologia, notícias, email, música) e chave física WebAuthn, todos
+> confirmados nesta máquina Windows. A lista de bloqueios abaixo é histórica
+> — cada item já tem o estado atual marcado ao lado, e a linha desse item
+> na tabela da funcionalidade correspondente é a fonte de verdade, não esta
+> secção. Mantida por registo, não como regra ativa.
+
 A **Fase 2 avançou sem essa confirmação, por decisão do utilizador**, e apenas
 na parte que não toca no nativo — o sistema de widgets, testável em browser via
 `WebAdapter`.
 
-**Fica bloqueado até a Fase 1 correr num PC a sério:**
+**Ficava bloqueado até a Fase 1 correr num PC a sério — já correu, ver a nota acima:**
 
 - Comandos Rust novos
 - Qualquer integração nativa adicional (bandeja, atalhos, ficheiros, energia)
@@ -159,14 +170,18 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
   som já é real a partir de ficheiros locais — uma pasta escolhida pelo
   utilizador, servida ao `<audio>` pelo protocolo `asset` do Tauri (sem Spotify,
   sem rede)
-- **Leitura do disco.** O explorador tem navegação, migalhas e ordenação
-  prontas e testadas, sobre uma árvore inventada. Ler o disco a sério exige o
-  plugin `fs` e diálogos nativos
-- **Execução de plugins.** A loja está feita — catálogo, categorias, pesquisa,
-  permissões à vista, instalar, ativar, remover, tudo persistido. Instalar
-  escreve num `Record` e nada mais: **nenhum código é descarregado nem
-  executado**. Carregar um plugin a sério exige sandbox, verificação de
-  assinatura e acesso ao sistema de ficheiros
+- **Leitura do disco — já é real, 12/08/2026 (Peça 7).** O explorador continua
+  com a árvore inventada por omissão, mas escolher uma pasta-raiz pelo diálogo
+  nativo liga a leitura a sério (`files_set_root`/`files_read_dir`, ver Parte
+  6.2). Não precisou do plugin `fs` do Tauri — comandos Rust próprios, mesmo
+  padrão do Terminal
+- **Execução de plugins — já é real, 12/08/2026 (Peça 9).** Os catorze plugins
+  de exemplo do catálogo correm código a sério num `<iframe>` restrito
+  (`docs/spec/plugins-sandbox.md`), e instalar um plugin de um ficheiro
+  `.jarvis-plugin` local exige assinatura Ed25519 válida antes de entrar no
+  sandbox (Parte 11). O que continua por fazer é só a ligação a uma fonte
+  remota real de terceiros (aba "Marketplace", dados inventados à mão) —
+  decisão maior, ver `docs/spec/plugins-marketplace.md`
 - Funcionalidades cuja verificação exija um dos dois alvos
 
 Se um item da Fase 2 precisar de nativo para funcionar, para-se e regista-se

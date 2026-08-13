@@ -2705,3 +2705,26 @@ pré-existente em `system/monitor.rs`). A verificação ao vivo da reprodução
 ficou por fazer — ouvir som exige interação humana —; os testes cobrem a
 escolha da pasta, a listagem, a reprodução/pausa/avanço/volume e a
 degradação no Web/Android.
+
+## 2026-08-13 — Peça 8 fecha-se por completo; "Regra em vigor" (SPEC.md §3) estava toda desatualizada
+
+Com a música mesclada, as quatro sub-tarefas da Peça 8 (meteorologia,
+notícias, email, música) estão feitas e revistas — Lote 2 fecha-se a
+sério desta vez, com as cinco peças reais do pedido original do
+utilizador confirmadas (5, 6, 7, 8, 9).
+
+Ao rever o SPEC.md para fechar a Peça 8, reparei que a secção inteira "3.
+Regra em vigor a partir daqui" nunca tinha sido atualizada desde antes de
+qualquer código nativo ser desbloqueado — descrevia Terminal, ficheiros,
+plugins e chamadas de rede como bloqueados "até a Fase 1 correr num PC a
+sério", quando esse portão foi passado há muitos lotes. Duas das cinco
+alíneas (leitura do disco, execução de plugins) ainda descreviam o estado
+de antes da Peça 7 e da Peça 9 como se fosse o estado atual — mesmo
+depois de as tabelas de funcionalidades correspondentes já dizerem ✅ há
+dias. Corrigido: nota no topo da secção a explicar que ficou por
+atualizar e que a tabela de cada funcionalidade é que manda, e as duas
+alíneas reescritas para o estado real.
+
+Isto não muda código nenhum — só documentação. Fica como primeiro
+resultado da "revisão a sério da noite inteira" que o utilizador pediu
+antes de dormir; a revisão continua.
