@@ -25,13 +25,6 @@ sem consentimento explícito. Confirma que o código cumpre isto sem
 exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
 exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
 
-### 14. Suite E2E com Playwright — **DeepSeek** (13/08/2026 19:04) `[livre]`
-
-Confirma que a suite ainda corre e ainda apanha regressões a sério — não
-só que existe. Corre-a, vê se cobre os fluxos que mudaram desde que foi
-escrita (login, várias janelas, o assistente com ferramentas), e
-acrescenta o que estiver a faltar de óbvio.
-
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
@@ -114,6 +107,14 @@ por pedido, fuso local coerente de ponta a ponta. Um bug real: datas que
 não existem no calendário ("2026-06-31") eram rebatidas por `new Date`
 para outro dia, em silêncio — um prazo inventado. Corrigido, 2 testes.
 Detalhe em `docs/log/historico-sessoes.md` (13/08/2026).
+
+### 14. Suite E2E com Playwright — DeepSeek — commit `c6c5b3b`
+
+Corrida a sério: 11/11 a passar (login, janelas, temas, plugins, voz, e
+um novo teste do assistente que faltava). As ferramentas do catálogo
+continuam só nos testes unitários — o E2E corre contra o browser, sem
+provedor real nem rede. Detalhe em `docs/log/historico-sessoes.md`
+(13/08/2026, "Revisão a sério: suite E2E com Playwright").
 
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
