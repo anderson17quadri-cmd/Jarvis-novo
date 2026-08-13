@@ -250,7 +250,7 @@ describe('LoginScreen', () => {
       expect(onAuthenticated).not.toHaveBeenCalled();
     });
 
-    it('ligado mas sem chave registada (estado inconsistente), entra só com o primeiro fator', async () => {
+    it('ligado mas sem chave registada (estado inconsistente), nega em vez de entrar só com o primeiro fator', async () => {
       useAppearanceStore.getState().set('twoFactorEnabled', true);
       vi.mocked(hasRegisteredSecurityKey).mockResolvedValue(false);
       const user = userEvent.setup();
@@ -260,7 +260,15 @@ describe('LoginScreen', () => {
       await user.type(screen.getByLabelText('Palavra-passe'), 'qualquer-uma');
       await user.click(screen.getByRole('button', { name: /entrar/i }));
 
-      await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
+      expect(
+        await screen.findByText(
+          'O segundo fator está ligado, mas não há chave física registada para o confirmar — a palavra-passe sozinha não chega.',
+          {},
+          { timeout: 5_000 },
+        ),
+      ).toBeInTheDocument();
+      expect(onAuthenticated).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: 'Usar chave física' })).toBeNull();
     }, 15_000);
 
     it('o PIN também exige o segundo fator quando ligado', async () => {

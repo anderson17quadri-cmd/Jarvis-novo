@@ -29,6 +29,7 @@ import { cn } from '@/lib/cn';
 import { formatLongDate, formatTime } from '@/lib/format';
 import { getPlatformAdapter } from '@/platform';
 import { createAutoLoginSession, hasValidAutoLoginSession } from '@/services/auto-login-service';
+import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
 import { soundService } from '@/services/sound-service';
 import { hasRegisteredSecurityKey, verifySecurityKey } from '@/services/webauthn-service';
@@ -167,31 +168,41 @@ export function LoginScreen({ onAuthenticated }: LoginScreenProps): React.JSX.El
 
   /**
    * O que acontece depois de a palavra-passe ou o PIN serem aceites — Parte
-   * 14 §2FA. Com o segundo fator desligado (ou sem chave registada, que
-   * invalida a exigência mesmo que o interruptor tenha ficado ligado por
-   * engano), entra logo. Ligado, com chave registada, pede a chave física
-   * antes de conceder — a palavra-passe e o PIN, sozinhos, deixam de
-   * chegar. Biometria e chave física continuam a bastar-se a si próprias:
+   * 14 §2FA. Com o segundo fator desligado, entra logo. Ligado, com chave
+   * registada, pede a chave física antes de conceder — a palavra-passe e o
+   * PIN, sozinhos, deixam de chegar. Ligado mas sem chave registada (um
+   * estado que a interface impede de criar, mas que um restauro de cópia ou
+   * um cofre limpo pode deixar para trás), nega em vez de entrar só com um
+   * fator: deixar passar aqui anulava o segundo fator que se exigiu, em
+   * silêncio. Biometria e chave física continuam a bastar-se a si próprias:
    * já são, cada uma, um fator forte, e pedir a chave física como segundo
    * fator de si mesma não faria sentido.
    */
   const completeFirstFactor = useCallback((message: string): void => {
     void (async () => {
       const twoFactorEnabled = useAppearanceStore.getState().appearance.twoFactorEnabled;
-      const hasKey = twoFactorEnabled && (await hasRegisteredSecurityKey());
-
-      if (!hasKey) {
+      if (!twoFactorEnabled) {
         grant(message);
         return;
       }
 
-      setAwaitingSecondFactor(true);
-      setHint({
-        text: 'Primeiro fator confirmado. Confirma com a chave física para entrar.',
-        tone: 'neutral',
-      });
+      const hasKey = await hasRegisteredSecurityKey();
+      if (hasKey) {
+        setAwaitingSecondFactor(true);
+        setHint({
+          text: 'Primeiro fator confirmado. Confirma com a chave física para entrar.',
+          tone: 'neutral',
+        });
+        return;
+      }
+
+      // 2FA ligado sem chave para o confirmar: negar, não ceder. Entrar aqui
+      // só com a palavra-passe faria o "segundo fator exigido" deixar de
+      // proteger sem ninguém dar por isso.
+      logService.audit('Login recusado: segundo fator ligado sem chave registada', 'recusado');
+      deny('O segundo fator está ligado, mas não há chave física registada para o confirmar — a palavra-passe sozinha não chega.');
     })();
-  }, [grant]);
+  }, [deny, grant]);
 
   const confirmSecondFactor = useCallback((): void => {
     void (async () => {

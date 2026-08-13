@@ -3962,3 +3962,45 @@ no `SPEC.md` que as duas suites são independentes e não se substituem.
 `vitest run` 122 ficheiros / 1648 testes a passar, `playwright test`
 11/11 a passar. Item 14 movido para "Feito" em
 `docs/log/fila-de-trabalho.md`.
+
+## 2026-08-13 — Revisão a sério: 2FA (palavra-passe/PIN + chave física)
+
+Item 15 da fila noturna — uma revisão independente da peça "2FA a sério"
+(construída na sessão anterior, nunca revista por ninguém de fora). Li o
+código como se fosse a primeira vez, à procura de formas reais de entrar
+só com um fator quando dois eram exigidos.
+
+**Bug real encontrado e corrigido — fail-open em `completeFirstFactor`.**
+Quando `twoFactorEnabled` estava ligado mas `hasRegisteredSecurityKey()`
+devolvia `false`, o login concedia acesso só com a palavra-passe/PIN, em
+silêncio — o "segundo fator exigido" deixava de proteger sem ninguém dar
+por isso. O contrato (SPEC.md) diz "nunca só porque o primeiro fator
+passou", e o código violava-o exatamente nesse estado. Não é um atalho
+teórico: a interface impede criar o estado (o interruptor só aparece com
+chave, e remover a chave desliga o 2FA sozinho), mas um restauro de uma
+cópia — que guarda `twoFactorEnabled` no armazenamento local mas **não** a
+credencial WebAuthn, que vive no cofre do sistema — ou um cofre limpo
+deixam-no para trás. Corrigido para **negar** nesse estado, com mensagem e
+entrada na auditoria: fail-closed, não fail-open. O teste que antes
+afirmava o comportamento errado ("entra só com o primeiro fator") passou a
+provar a negação, e falha contra o código antigo.
+
+**O que confirmei como sólido, sem mexer:** palavra-passe e PIN passam os
+dois pelo mesmo `completeFirstFactor` — com 2FA ligado e chave presente,
+nenhum entra sem o segundo passo; os atalhos (biometria, PIN, chave física
+direta) ficam escondidos durante o segundo fator; o bloqueio por
+inatividade chama `logout()`, que limpa a sessão automática, e por isso o
+desbloqueio volta a exigir o login completo — 2FA incluído, sem salto por
+sessão antiga; sem corrida, `confirmSecondFactor` só chama `grant()`
+depois de `verifySecurityKey()` devolver `ok`, nunca antes.
+
+**Documentado, não corrigido** (limitações pré-existentes, fora do âmbito
+desta peça): a biometria simulada (face/impressão digital em máquinas sem
+Windows Hello) concede acesso sem credencial nenhuma; e a sessão
+automática, que a confirmação da chave também passa a criar, abre uma
+janela de 30 minutos em que reabrir a app sem terminar sessão salta o
+login — ambas anteriores ao 2FA, e não o que esta revisão veio auditar.
+
+`tsc --noEmit` limpo, `eslint` 0 erros, suite completa a passar (122
+ficheiros, 1648 testes). Instância 2FA do item 15 acrescentada em
+`docs/log/fila-de-trabalho.md`.
