@@ -42,6 +42,8 @@ export default function EmailsWindow(): React.JSX.Element {
   const providerName = useMailStore((s) => s.providerName);
   const markRead = useMailStore((s) => s.markRead);
   const isVisible = useIsVisible();
+  /** `true` até chegar uma leitura real — é isso que desliga o envio. */
+  const isSimulated = snapshot?.isSimulated ?? true;
 
   useEffect(() => {
     const unsub = useMailStore.getState().hydrate();
@@ -203,7 +205,9 @@ export default function EmailsWindow(): React.JSX.Element {
       </ul>
 
       <p className="flex-shrink-0 text-cap text-t3">
-        Caixa simulada — {providerName}. Um provedor real entra sem esta janela mudar.
+        {isSimulated
+          ? `Caixa simulada — ${providerName}. Configure o correio real em Personalização → Correio.`
+          : `Correio real — ${providerName}. Só a caixa de entrada é lida.`}
       </p>
     </div>
   );
@@ -276,26 +280,30 @@ function Reading({
       )}
 
       <p className="flex-shrink-0 text-cap text-t3">
-        Responder exige um provedor de envio real — ainda não ligado.
+        Responder diretamente continua fora de âmbito — use «Nova mensagem» para escrever.
       </p>
     </article>
   );
 }
 
 /**
- * Rascunho novo — só o que a Parte 6.2 pede hoje: anexar um ficheiro, ver
- * nome e tamanho, e uma pré-visualização simples para imagens.
- *
- * Enviar continua fora de âmbito, tal como a leitura já dizia: exige um
- * provedor real. O diálogo nativo de ficheiro tenta primeiro
+ * Rascunho novo — anexar um ficheiro (nome, tamanho e pré-visualização) e
+ * enviar. Enviar só está ligado com um provedor real configurado
+ * (`isSimulated` falso); com o simulado o botão fica desligado, e o rodapé
+ * diz onde configurar. O diálogo nativo de ficheiro tenta primeiro
  * (`pickAttachmentsNative`); sem Tauri, cai para o `<input type="file">`
  * escondido, o mesmo padrão da cópia de segurança.
  */
 function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Element {
+  const send = useMailStore((s) => s.send);
+  const isSimulated = useMailStore((s) => s.snapshot?.isSimulated ?? true);
+
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [attachments, setAttachments] = useState<readonly DraftAttachment[]>([]);
+  const [isSending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // As pré-visualizações são blob URLs — sem isto, cancelar ou fechar o
@@ -337,6 +345,21 @@ function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Eleme
       if (removed?.previewUrl) URL.revokeObjectURL(removed.previewUrl);
       return prev.filter((item) => item.id !== id);
     });
+  };
+
+  const canSend = !isSimulated && !isSending && to.trim().length > 0;
+
+  const handleSend = async (): Promise<void> => {
+    setSending(true);
+    setSendError(null);
+    try {
+      await send({ to: to.trim(), subject, body });
+      onClose();
+    } catch (error) {
+      setSendError(error instanceof Error ? error.message : 'Não deu para enviar.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -444,18 +467,41 @@ function Compose({ onClose }: { readonly onClose: () => void }): React.JSX.Eleme
         <span className="flex-1" />
         <button
           type="button"
-          disabled
-          title="Enviar exige um provedor real — ainda não ligado."
-          className="flex min-h-[36px] items-center gap-1.5 rounded-btn border border-line bg-tint/[.03] px-3 py-2 text-[12px] font-medium text-t3 opacity-50"
+          disabled={!canSend}
+          title={
+            isSimulated
+              ? 'Enviar exige um provedor real — configure o correio em Personalização → Correio.'
+              : to.trim().length === 0
+                ? 'Indique o destinatário.'
+                : undefined
+          }
+          onClick={() => void handleSend()}
+          className={cn(
+            'flex min-h-[36px] items-center gap-1.5 rounded-btn border px-3 py-2 text-[12px] font-medium',
+            'transition-all duration-hover ease-out',
+            canSend
+              ? 'border-accent/50 bg-accent/[.1] text-accent hover:bg-accent/[.16] active:scale-[.98]'
+              : 'cursor-not-allowed border-line bg-tint/[.03] text-t3 opacity-50',
+          )}
         >
           <Send className="h-3.5 w-3.5" aria-hidden="true" />
-          Enviar
+          {isSending ? 'A enviar…' : 'Enviar'}
         </button>
       </div>
 
+      {sendError && (
+        <p
+          className="flex flex-shrink-0 items-start gap-1.5 text-[11px] text-warn"
+          role="alert"
+        >
+          {sendError}
+        </p>
+      )}
+
       <p className="flex-shrink-0 text-cap text-t3">
-        Enviar exige um provedor de envio real — ainda não ligado. O rascunho não é guardado ao
-        sair.
+        {isSimulated
+          ? 'Enviar exige um provedor de envio real — configure o correio em Personalização → Correio. O rascunho não é guardado ao sair.'
+          : 'O remetente é a conta configurada; os anexos do rascunho não seguem na mensagem.'}
       </p>
     </article>
   );

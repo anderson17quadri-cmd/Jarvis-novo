@@ -33,5 +33,7 @@ export class DesktopAdapter extends TauriAdapterBase {
     // `std::fs` a sério, atrás de uma pasta-raiz declarada — ver
     // commands/files.rs (files_set_root/files_read_dir).
     realFilesystem: true,
+    // Correio real (IMAP/SMTP) — ver commands/mail.rs.
+    mail: true,
   };
 }

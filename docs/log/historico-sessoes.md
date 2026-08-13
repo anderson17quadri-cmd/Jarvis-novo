@@ -2314,3 +2314,26 @@ notícias não sincronizam estas marcas, e fingir que sincronizam seria mentir.
 `tsc`, `eslint` e `vitest` limpos (1419 testes, mais 21). A verificação ao vivo
 depende de uma chave real da NewsAPI, que esta máquina não tem — ficou por
 confirmar em execução; os testes cobrem a forma do pedido e o mapeamento.
+
+## 2026-08-13 — Peça 8, Lote 2: email real (IMAP + SMTP no Rust)
+
+Terceira sub-tarefa de "provedores de rede reais", e a mais pesada das quatro.
+O email fala dois protocolos — IMAP para ler, SMTP para enviar — e nenhum
+existe no browser, por isso desta vez a implementação é nativa:
+`src-tauri/src/commands/mail.rs` com o crate `imap` (v2.4, TLS) para ler a
+INBOX e `lettre` (0.11, STARTTLS na porta 587) para enviar, ambos sobre
+`native-tls`/schannel no Windows. A palavra-passe da conta fica no cofre
+(`mail-password`, o mesmo molde da NewsAPI); servidor, portas e utilizador no
+storage normal — nunca em texto simples. Por omissão continua o simulado.
+
+Limitações documentadas no código e aqui, em vez de fingidas: só a INBOX (as
+pastas "enviados" e "arquivo" do widget continuam do simulado), prioridade
+sempre "info", corpo cru e truncado a 32 kB (sem descodificar
+base64/quoted-printable nem extrair anexos), um só destinatário por envio e o
+remetente é a própria conta. Ler usa `BODY.PEEK` para não marcar como lido; as
+marcas de leitura/favorito sincronizam por `mail_set_flag` (`seen`/`flagged`).
+`tsc`, `eslint` e `vitest` limpos (1442 testes, mais 23); `cargo clippy` limpo
+no novo código (sobrou só um aviso pré-existente em `system/monitor.rs`). A
+verificação ao vivo contra um servidor real ficou por fazer — exige credenciais
+IMAP/SMTP que esta máquina não tem —; os testes cobrem a forma das chamadas, a
+divisão storage/cofre e a degradação no Web/Android.

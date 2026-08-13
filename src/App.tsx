@@ -20,6 +20,7 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAiSettings } from '@/hooks/use-ai-settings';
 import { useWeatherSettings } from '@/hooks/use-weather-settings';
 import { useNewsSettings } from '@/hooks/use-news-settings';
+import { useMailSettings } from '@/hooks/use-mail-settings';
 import { useNotificationSources } from '@/hooks/use-notification-sources';
 import { getPluginShortcuts, pushToPlugin } from '@/plugins/runtime/plugin-bridge';
 import { useVoice } from '@/hooks/use-voice';
@@ -132,6 +133,9 @@ export function App(): React.JSX.Element {
 
   // Aplica as preferências de notícias (real/simulado) ao serviço.
   useNewsSettings();
+
+  // Aplica as preferências de correio (real/simulado) ao serviço.
+  useMailSettings();
 
   useEffect(() => {
     // O registo escuta o Event Bus a partir daqui — é o inspetor de eventos

@@ -6,6 +6,7 @@ import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useCustomThemeStore } from '@/stores/use-custom-theme-store';
+import { useMailSettingsStore } from '@/stores/use-mail-settings-store';
 import { useNewsSettingsStore } from '@/stores/use-news-settings-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
@@ -45,6 +46,7 @@ export async function hydrateAll(): Promise<void> {
   await useVoiceSettingsStore.getState().hydrate();
   await useWeatherSettingsStore.getState().hydrate();
   await useNewsSettingsStore.getState().hydrate();
+  await useMailSettingsStore.getState().hydrate();
   await soundService.hydrate();
   await automationService.hydrate(seedAutomations());
   await useAssistantStore.getState().hydrate();

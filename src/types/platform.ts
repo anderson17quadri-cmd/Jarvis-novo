@@ -42,6 +42,8 @@ export interface PlatformCapabilities {
   readonly batteryMonitor: boolean;
   /** Leitura real do disco (Explorador), com pasta-raiz escolhida pela pessoa. */
   readonly realFilesystem: boolean;
+  /** Correio real (IMAP para ler, SMTP para enviar) via comandos Rust. */
+  readonly mail: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

@@ -2,6 +2,7 @@ import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
+import type { ImapMessageDto } from '@/types/mail';
 import { detectTouch } from './detect-platform';
 import { simulateSnapshot, simulateStaticInfo } from './simulated-metrics';
 import { isAllowedExternalUrl } from './url-policy';
@@ -40,6 +41,7 @@ export class WebAdapter implements PlatformAdapter {
     usbMonitor: false,
     batteryMonitor: false,
     realFilesystem: false,
+    mail: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -225,5 +227,20 @@ export class WebAdapter implements PlatformAdapter {
 
   async filesReadDir(): Promise<readonly RealFileEntry[] | null> {
     return null;
+  }
+
+  // ── Correio real ─────────────────────────────────────────────────────────
+
+  async mailFetch(): Promise<readonly ImapMessageDto[]> {
+    // Sem IMAP no browser: caixa vazia, e a interface mantém o simulado.
+    return [];
+  }
+
+  async mailSetFlag(): Promise<void> {
+    /* sem servidor para sincronizar */
+  }
+
+  async mailSend(): Promise<void> {
+    /* sem SMTP para enviar */
   }
 }

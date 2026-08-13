@@ -39,6 +39,7 @@ describe('os três adapters cumprem o mesmo contrato', () => {
       'usbMonitor',
       'batteryMonitor',
       'realFilesystem',
+      'mail',
     ] as const;
 
     for (const key of required) {
@@ -228,6 +229,57 @@ describe('sistema de ficheiros real — nenhum adapter lança sem IPC real', () 
     await expect(android.pickFilesRoot()).resolves.toBeNull();
     await expect(android.filesSetRoot('C:/pasta')).resolves.toBeNull();
     await expect(android.filesReadDir(null)).resolves.toBeNull();
+  });
+});
+
+describe('correio real — só o desktop diz que suporta; os outros degradam', () => {
+  it('Web e Android não têm correio real', () => {
+    expect(new WebAdapter().capabilities.mail).toBe(false);
+    expect(new AndroidAdapter().capabilities.mail).toBe(false);
+  });
+
+  it('Desktop diz que suporta', () => {
+    expect(new DesktopAdapter().capabilities.mail).toBe(true);
+  });
+
+  it('Web e Android leem caixa vazia e não tentam mudar bandeira nem enviar', async () => {
+    const web: PlatformAdapter = new WebAdapter();
+    const android: PlatformAdapter = new AndroidAdapter();
+
+    for (const adapter of [web, android]) {
+      await expect(
+        adapter.mailFetch({
+          imapServer: 'imap.gmail.com',
+          imapPort: 993,
+          username: 'u',
+          password: 'p',
+          limit: 10,
+        }),
+      ).resolves.toEqual([]);
+      await expect(
+        adapter.mailSetFlag({
+          imapServer: 'imap.gmail.com',
+          imapPort: 993,
+          username: 'u',
+          password: 'p',
+          messageId: '1',
+          flag: 'seen',
+          value: true,
+        }),
+      ).resolves.toBeUndefined();
+      await expect(
+        adapter.mailSend({
+          smtpServer: 'smtp.gmail.com',
+          smtpPort: 587,
+          username: 'u',
+          password: 'p',
+          from: 'u',
+          to: 'destino@exemplo.pt',
+          subject: 's',
+          body: 'b',
+        }),
+      ).resolves.toBeUndefined();
+    }
   });
 });
 

@@ -2,6 +2,12 @@ import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
+import type {
+  ImapMessageDto,
+  MailFetchParams,
+  MailSendParams,
+  MailSetFlagParams,
+} from '@/types/mail';
 
 /**
  * O contrato que separa a interface do sistema operativo.
@@ -146,4 +152,17 @@ export interface PlatformAdapter {
    * leitura falhar.
    */
   filesReadDir(path: string | null): Promise<readonly RealFileEntry[] | null>;
+
+  // ── Correio real ─────────────────────────────────────────────────────────
+  /**
+   * Lê as mensagens mais recentes da INBOX por IMAP. Lista vazia onde não há
+   * correio real (`capabilities.mail` é `false`) — mas **lança** quando o
+   * desktop tem correio e a ligação falha, para a interface distinguir
+   * "sem mensagens" de "não conseguiu ligar".
+   */
+  mailFetch(params: MailFetchParams): Promise<readonly ImapMessageDto[]>;
+  /** Muda uma bandeira IMAP — `seen` (lida) ou `flagged` (favorita). */
+  mailSetFlag(params: MailSetFlagParams): Promise<void>;
+  /** Envia uma mensagem por SMTP. Lança se o envio falhar. */
+  mailSend(params: MailSendParams): Promise<void>;
 }

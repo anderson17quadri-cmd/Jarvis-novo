@@ -105,7 +105,7 @@ npm run tauri android dev      # dispositivo Android
 |---|---|:--:|
 | **Rede real** — meteorologia | `services/weather/providers/open-meteo-provider.ts` | ✅ **desbloqueado pelo utilizador 13/08/2026** — Open-Meteo (sem chave), ligado em Personalização → Meteorologia; por omissão mantém-se o simulado |
 | **Rede real** — notícias | `services/news/providers/news-api-provider.ts` | ✅ **desbloqueado pelo utilizador 13/08/2026** — NewsAPI (chave no cofre), ligado em Personalização → Notícias; por omissão mantém-se o simulado |
-| **Rede real** — email | `services/mail/providers/` | 🚫 bloqueado |
+| **Rede real** — email | `services/mail/providers/imap-mail-provider.ts`, `src-tauri/src/commands/mail.rs` | ✅ **desbloqueado pelo utilizador 13/08/2026** — IMAP (ler) + SMTP (enviar) reais no Rust (`imap`/`lettre`); palavra-passe no cofre (`mail-password`), ligado em Personalização → Correio; por omissão mantém-se o simulado |
 | ~~Provedor de IA~~ | `services/ai-providers/deepseek-provider.ts` | ✅ **desbloqueado pelo utilizador** — ver Parte 7.1 |
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | ✅ **confirmado 12/08/2026** — lote 2 completo: sandbox de execução, assinatura Ed25519, e instalação de ficheiro local |
@@ -148,12 +148,13 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
 - Comandos Rust novos
 - Qualquer integração nativa adicional (bandeja, atalhos, ficheiros, energia)
 - Builds Windows e Android
-- **Chamadas de rede reais.** Os serviços de meteorologia, notícias e email têm
-  provedor e interface prontos. A **meteorologia e as notícias já são reais**
-  (Open-Meteo sem chave; NewsAPI com chave no cofre — ligado pelo utilizador
-  na Personalização, ver §2); o email continua só com a implementação
-  simulada. Ligar um provedor HTTP é escrever uma classe e registá-la —
-  nenhum componente muda
+- **Chamadas de rede reais.** Os serviços de meteorologia, notícias, email e
+  música têm provedor e interface prontos. A **meteorologia, as notícias e o
+  email já são reais** (Open-Meteo sem chave; NewsAPI com chave no cofre; email
+  por IMAP+SMTP no Rust, palavra-passe no cofre — ligado pelo utilizador na
+  Personalização, ver §2); a música continua só com a implementação simulada.
+  Ligar um provedor é escrever uma classe e registá-la — nenhum componente
+  muda
 - **Reprodução de áudio.** O widget de música controla e mostra o estado; tocar
   som exigiria ficheiros locais ou integração com o Spotify
 - **Leitura do disco.** O explorador tem navegação, migalhas e ordenação

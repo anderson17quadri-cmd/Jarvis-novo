@@ -42,6 +42,14 @@ portable-pty = "0.9"
 keyring = "2"
 notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
 battery = "0.7"
+# Email real (Peça 8, lote 2): `imap` lê (síncrono, com TLS nativo do SO), e
+# `lettre` envia por SMTP. O `native-tls` é partilhado pelos dois — no Windows
+# usa o schannel do próprio sistema, sem openssl. O `chrono` é só para o campo
+# INTERNALDATE que o servidor IMAP devolve.
+imap = { version = "2", default-features = false, features = ["tls"] }
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "hostname", "native-tls"] }
+native-tls = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 
 # O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
 # (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o

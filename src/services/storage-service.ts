@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   weatherSettings: 'weather-settings',
   newsSettings: 'news-settings',
   newsMarks: 'news-marks',
+  mailSettings: 'mail-settings',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

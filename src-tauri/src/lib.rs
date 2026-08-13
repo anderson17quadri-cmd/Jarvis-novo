@@ -92,6 +92,9 @@ pub fn run() {
             commands::files::files_set_root,
             commands::files::files_read_dir,
             commands::plugins::read_plugin_file,
+            commands::mail::mail_fetch,
+            commands::mail::mail_set_flag,
+            commands::mail::mail_send,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

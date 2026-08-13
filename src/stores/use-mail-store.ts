@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 import { mailService } from '@/services/mail/mail-service';
-import type { MailboxSnapshot } from '@/types/mail';
+import type { MailboxSnapshot, OutgoingMessage } from '@/types/mail';
 
 interface MailState {
   /** Último snapshot da caixa de correio. `null` até à primeira leitura. */
@@ -23,6 +23,7 @@ interface MailState {
   // store, sem importar o serviço diretamente.
   readonly markRead: (messageId: string, isRead?: boolean) => Promise<void>;
   readonly toggleStar: (messageId: string) => Promise<void>;
+  readonly send: (message: OutgoingMessage) => Promise<void>;
 }
 
 export const useMailStore = create<MailState>((set, get) => ({
@@ -55,5 +56,9 @@ export const useMailStore = create<MailState>((set, get) => ({
     await mailService.toggleStar(messageId);
     const snapshot = mailService.current;
     if (snapshot) set({ snapshot });
+  },
+
+  send: async (message) => {
+    await mailService.send(message);
   },
 }));

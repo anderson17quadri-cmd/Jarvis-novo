@@ -1,10 +1,12 @@
-import type { MailboxSnapshot, MailMessage } from '@/types/mail';
+import type { MailboxSnapshot, MailMessage, OutgoingMessage } from '@/types/mail';
 
 /**
  * Contrato de um provedor de email.
  *
  * `markRead` e `toggleStar` estão no contrato porque um provedor real
- * (IMAP, Gmail API) sincroniza essas marcas com o servidor.
+ * (IMAP, Gmail API) sincroniza essas marcas com o servidor. `send` é o
+ * complemento do envio: só um provedor com SMTP real o cumpre — o simulado
+ * lança, e a interface desliga o botão nesse caso.
  */
 export interface MailProvider {
   readonly id: string;
@@ -13,6 +15,7 @@ export interface MailProvider {
   fetch(signal?: AbortSignal): Promise<MailboxSnapshot | null>;
   markRead(messageId: string, isRead: boolean): Promise<void>;
   toggleStar(messageId: string): Promise<void>;
+  send(message: OutgoingMessage): Promise<void>;
 }
 
 type Seed = Omit<MailMessage, 'receivedAt' | 'isRead' | 'isStarred'>;
@@ -208,5 +211,9 @@ export class MockMailProvider implements MailProvider {
   async toggleStar(messageId: string): Promise<void> {
     if (this.starred.has(messageId)) this.starred.delete(messageId);
     else this.starred.add(messageId);
+  }
+
+  async send(): Promise<void> {
+    throw new Error('o provedor simulado não envia — configure o correio real');
   }
 }

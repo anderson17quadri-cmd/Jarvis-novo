@@ -1,6 +1,6 @@
 import { PollingDataService } from '../data-service';
 import { MockMailProvider, type MailProvider } from './providers/mail-provider';
-import type { MailboxSnapshot } from '@/types/mail';
+import type { MailboxSnapshot, OutgoingMessage } from '@/types/mail';
 
 /** Verificação de correio, de dois em dois minutos. */
 const MAIL_INTERVAL_MS = 2 * 60_000;
@@ -40,6 +40,14 @@ export class MailService extends PollingDataService<MailboxSnapshot> {
   async toggleStar(messageId: string): Promise<void> {
     await this.provider.toggleStar(messageId);
     await this.refresh();
+  }
+
+  /**
+   * Envia uma mensagem. Lança se o provedor não enviar — o componente mostra o
+   * erro e deixa a mensagem no rascunho, em vez de fingir que saiu.
+   */
+  async send(message: OutgoingMessage): Promise<void> {
+    await this.provider.send(message);
   }
 
   protected async fetch(): Promise<MailboxSnapshot | null> {

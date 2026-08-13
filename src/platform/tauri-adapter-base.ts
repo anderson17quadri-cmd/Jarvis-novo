@@ -12,6 +12,12 @@ import type { PlatformCapabilities, PlatformInfo, PlatformKind } from '@/types/p
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
+import type {
+  ImapMessageDto,
+  MailFetchParams,
+  MailSendParams,
+  MailSetFlagParams,
+} from '@/types/mail';
 import { detectTouch } from './detect-platform';
 import { isAllowedExternalUrl } from './url-policy';
 
@@ -376,6 +382,53 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
   async filesReadDir(path: string | null): Promise<readonly RealFileEntry[] | null> {
     if (!this.capabilities.realFilesystem) return null;
     return this.tryInvoke<RealFileEntry[]>('files_read_dir', null, { path });
+  }
+
+  // ── Correio real ─────────────────────────────────────────────────────────
+
+  /**
+   * Os comandos de correio usam `invoke` a sério e **propagam** o erro, em vez
+   * de caírem num valor neutro via `tryInvoke`: aqui a interface precisa de
+   * distinguir "sem mensagens" de "não conseguiu ligar" (palavra-passe errada,
+   * servidor em baixo). Onde `capabilities.mail` é `false` (Android), os
+   * comandos nem existem do lado Rust — devolve-se vazio sem tentar o IPC.
+   */
+  async mailFetch(params: MailFetchParams): Promise<readonly ImapMessageDto[]> {
+    if (!this.capabilities.mail) return [];
+    return invoke<ImapMessageDto[]>('mail_fetch', {
+      imapServer: params.imapServer,
+      imapPort: params.imapPort,
+      username: params.username,
+      password: params.password,
+      limit: params.limit,
+    });
+  }
+
+  async mailSetFlag(params: MailSetFlagParams): Promise<void> {
+    if (!this.capabilities.mail) return;
+    await invoke('mail_set_flag', {
+      imapServer: params.imapServer,
+      imapPort: params.imapPort,
+      username: params.username,
+      password: params.password,
+      messageId: params.messageId,
+      flag: params.flag,
+      value: params.value,
+    });
+  }
+
+  async mailSend(params: MailSendParams): Promise<void> {
+    if (!this.capabilities.mail) return;
+    await invoke('mail_send', {
+      smtpServer: params.smtpServer,
+      smtpPort: params.smtpPort,
+      username: params.username,
+      password: params.password,
+      from: params.from,
+      to: params.to,
+      subject: params.subject,
+      body: params.body,
+    });
   }
 
   // ── Auxiliar ─────────────────────────────────────────────────────────────

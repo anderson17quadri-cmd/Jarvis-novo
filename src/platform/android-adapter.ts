@@ -38,6 +38,8 @@ export class AndroidAdapter extends TauriAdapterBase {
     // `commands::files::files_set_root`/`files_read_dir` só entram no
     // `invoke_handler` do ramo desktop — fora dele, o comando nem existe.
     realFilesystem: false,
+    // O correio real também é só do desktop (IMAP/SMTP via Rust).
+    mail: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */
