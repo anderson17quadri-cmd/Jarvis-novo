@@ -22,17 +22,9 @@
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
-itens acima estão fechados — repetível, por isso duas instâncias em
-curso agora:
+itens acima estão fechados — repetível; instâncias fechadas (2FA,
+Notificações nativas isoladas) já em "Feito" abaixo. Em curso agora:
 
-- **Notificações nativas isoladas (Peça 14, Lote 4)** — **Claude local**
-  (13/08/2026 19:34). Testada só pela sessão que a construiu, nunca por
-  ninguém de fora. Ver entrada "Lote 4" (13/08/2026) — foco em
-  `NotificationService` e `TauriAdapterBase.sendNativeNotification`.
-
-- **2FA a sério (palavra-passe/PIN + chave física)** — **DeepSeek**
-  (13/08/2026 19:17). Construído diretamente, nunca revisto por
-  ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
 - **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
   — **DeepSeek** (13/08/2026 19:31). Tentativa anterior à Kimi (19:17)
   falhou pela terceira vez no limite de taxa TPD da organização — não
@@ -147,6 +139,15 @@ cópia ou cofre limpo), em silêncio — o "segundo fator exigido" deixava de
 proteger. Corrigido para negar nesse estado, com mensagem e auditoria.
 Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério:
 2FA (palavra-passe/PIN + chave física)").
+
+- **Notificações nativas isoladas (Peça 14, Lote 4)** — revisto (Claude
+  local, 13/08/2026): portão por estado do sistema confirmado correto
+  (Normal/Performance sempre, Foco/Economia só urgentes, Apresentação
+  nunca), toast e nativa nunca divergem (mesma chamada, sem corrida),
+  `silent` corta sempre, suprimida fica sempre `isDismissed: true`,
+  pedido de permissão nunca crasha. Nada a corrigir — só documentação.
+  Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
+  sério: notificações nativas isoladas").
 
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
