@@ -141,8 +141,21 @@ class DirectControlService {
     return this.steps;
   }
 
-  /** Regista um passo, executa se não for simulado e tiver sido confirmado. */
+  /**
+   * Regista um passo, executa se: confirmado, não simulado, ligado, e com
+   * uma sessão de presença ativa.
+   *
+   * **A porta de presença fica aqui dentro, não em quem chama.** A spec
+   * (`docs/spec/fase-3-controlo-direto.md` §1.1) é categórica — "sem isto,
+   * nada corre" — mas isso só vale a sério se nenhuma chamada futura puder
+   * esquecer de verificar `sessionActive` antes de chamar isto. Uma
+   * confirmação no overlay nunca chega a bastar sozinha para uma ação real.
+   */
   executeStep(step: ControlStep, confirmed: boolean): void {
+    const gateOpen = this.enabled && this.sessionActive;
+    const wouldExecute = confirmed && !this.simulatedMode;
+    const blockedByGate = wouldExecute && !gateOpen;
+
     const record: StepRecord = {
       id: step.id,
       description: step.description,
@@ -156,10 +169,10 @@ class DirectControlService {
     logService.log(
       'info',
       'auditoria',
-      `Controlo direto: ${this.simulatedMode ? '[SIMULADO] ' : ''}${step.description} (${RISK_LABELS[step.risk]}) — ${confirmed ? 'confirmado' : 'recusado'}`,
+      `Controlo direto: ${this.simulatedMode ? '[SIMULADO] ' : ''}${blockedByGate ? '[SEM SESSÃO ATIVA — RECUSADO] ' : ''}${step.description} (${RISK_LABELS[step.risk]}) — ${confirmed ? 'confirmado' : 'recusado'}`,
     );
 
-    if (confirmed && !this.simulatedMode) {
+    if (wouldExecute && gateOpen) {
       try {
         step.execute();
       } catch (err) {
