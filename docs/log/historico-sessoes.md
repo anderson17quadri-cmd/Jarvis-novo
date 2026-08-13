@@ -3339,3 +3339,66 @@ trabalho corre. Esta sessão remota não tem acesso ao terminal nem ao
 Ollama da máquina local (container isolado, só este repositório) —
 por isso o que dá para entregar daqui é o prompt/roteiro em si, para
 correr a partir de uma sessão local com esse acesso, não a execução.
+
+## 2026-08-13 — Revisão independente: Peça 20 (ferramentas para o Claude no orquestrador)
+
+Item 5 da fila de orquestração noturna (`docs/log/fila-de-trabalho.md`),
+reservado para "Claude local". Revisão a sério do commit `f1eba3a`,
+nunca lido por ninguém de fora de quem o escreveu — lido como se fosse
+a primeira vez, sem confiar nos testes só por passarem.
+
+**O que se confirmou, a sério**: `claude-provider.ts` inteiro lido —
+`toAnthropicMessages()` traduz corretamente o formato genérico (estilo
+OpenAI) que `ai-service.ts` já usa para qualquer provedor: mensagens
+`tool` consecutivas juntam-se num único bloco `user` com vários
+`tool_result` (exigência real da Anthropic quando um turno pede mais
+do que uma ferramenta de uma vez — confirmado que o código respeita
+isto, não só que existe um comentário a dizer que respeita);
+mensagens `assistant` com `tool_calls` só incluem o bloco de texto se
+não estiver vazio (a Anthropic exige pelo menos um bloco de conteúdo,
+e os `tool_use` já garantem isso mesmo sem texto); `system` sai como
+campo à parte, nunca como mensagem. `collectClaudeStream` acumula
+`input_json_delta` por índice de bloco corretamente, testado a sério
+com dois `tool_use` em paralelo. `toolsAsAnthropicSchema()` reaproveita
+`parametersSchema()` da `toolsAsJsonSchema()` já existente — confirmado
+que não há segunda cópia da lista de ferramentas a poder divergir.
+`ClaudeProvider.run()` é uma tradução fiel do contrato de
+`DeepSeekProvider.run()` (mesmo padrão de timeout, cancelamento por
+`AbortSignal`, distinção `demora`/`rede`/erro tipado) — nenhuma
+divergência de comportamento entre os dois provedores encontrada.
+Chave só viaja no cabeçalho `x-api-key`, nunca em corpo nem log.
+Testes (`claude-provider.test.ts`, `send-with-tools-claude.test.ts`)
+são reais — chamam o `AIService` e o `ClaudeProvider` a sério, com um
+executor de ferramentas verdadeiro, não simulações vazias que passam
+sem exercitar nada (o padrão de teste falso já apanhado antes neste
+projeto, ex.: validadores nunca chamados pelos próprios testes).
+
+**Uma limitação real, mas não desta peça**: `AIService.recover()` — o
+caminho de reserva quando um provedor falha a meio de uma conversa com
+ferramentas — usa sempre `provider.stream()` (texto simples) no
+provedor seguinte da cadeia, nunca `provider.run()` com ferramentas.
+Se uma ferramenta já tiver sido executada numa volta anterior (efeito
+real já aconteceu — uma tarefa criada, por exemplo) e o provedor falhar
+antes de terminar a resposta, o provedor de reserva responde do zero
+ao pedido original, sem saber que a ferramenta já correu. Confirmado
+que isto já existia antes da Peça 20 (a Ollama já tinha este mesmo
+comportamento com a DeepSeek, antes de o Claude entrar) — não é um bug
+que esta peça tenha introduzido nem piorado tecnicamente, mas com três
+provedores capazes de ferramentas agora em vez de dois, é mais
+provável de se notar na prática. Fica documentado aqui como limitação
+conhecida do desenho da cadeia, não corrigido nesta revisão — corrigir
+isto a sério exigia levar o histórico de ferramentas já executadas
+para dentro de `recover()`, mudança maior do que cabe no âmbito deste
+item da fila.
+
+**Verificação**: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes, sem relação). `npx vitest run`: **120 ficheiros, 1621
+testes**, todos a passar numa corrida limpa (uma falha isolada em
+`tests/auth/login-screen.test.tsx` na primeira corrida da suite
+completa não se repetiu isolada nem numa segunda corrida completa —
+sinal de instabilidade sob carga do `testing-library`, não uma
+regressão real; não investigada mais fundo por estar fora do âmbito
+desta peça). Sem código Rust tocado por esta peça, sem `cargo test`
+a correr.
+
+Nenhum bug corrigido — nada de errado encontrado na peça em si.
