@@ -23,13 +23,17 @@ Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
-Notificações nativas isoladas) já em "Feito" abaixo. Em curso agora:
+Notificações nativas isoladas, Meteorologia/Notícias) já em "Feito"
+abaixo. Em curso agora:
 
-- **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
-  — **DeepSeek** (13/08/2026 19:31). Tentativa anterior à Kimi (19:17)
-  falhou pela terceira vez no limite de taxa TPD da organização — não
-  voltar a tentar tão cedo (a janela decai devagar, ~8000/45min).
-  Nunca revistos por ninguém de fora.
+- **Marketplace de plugins (esboço, `MarketplaceTab.tsx` +
+  `marketplace-sample-data.ts`)** — **DeepSeek** (13/08/2026 19:43).
+  Nunca revisto por ninguém de fora. É só o esboço com dados de exemplo
+  (a ligação real a um marketplace remoto está fora de âmbito, decisão
+  já tomada — não tentar ligar a nada real). Rever o que já existe:
+  renderização, consistência dos dados de exemplo, e o que os 5 testes
+  existentes (`tests/apps/marketplace-tab.test.tsx`) confirmam de
+  verdade.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
