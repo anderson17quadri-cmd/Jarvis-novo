@@ -143,6 +143,22 @@ proteger. Corrigido para negar nesse estado, com mensagem e auditoria.
 Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério:
 2FA (palavra-passe/PIN + chave física)").
 
+### 15. Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais — DeepSeek — commit `ff03f6d`
+
+Revisão a sério dos dois provedores de rede reais da Peça 8, lote 2
+(nunca revistos por ninguém de fora — a Kimi bateu três vezes no limite
+de taxa antes de começar). **Bug real**: a rede de segurança das cópias
+(`SECRET_FIELDS`) só conhecia `aiSettings` — no browser/Android (sem
+cofre), a chave da NewsAPI fica no storage normal e saía no ficheiro de
+cópia em texto simples. Corrigido acrescentando `newsSettings` (e
+`webSearchSettings`/`mailSettings`, o mesmo buraco); 2 testes novos que
+falham contra o código antigo. Resto confirmado limpo: chave só no cofre
+no desktop e tapada por omissão, nunca em log; sem chave mantém-se o
+simulado; erros de rede devolvem `null` sem rebentar a interface;
+cidade/país só saem para os domínios declarados; testes chamam o código
+real. Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
+sério: meteorologia (Open-Meteo) e notícias (NewsAPI)").
+
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
   (`starts_with`), o que resolve `..` e segue links simbólicos até ao
