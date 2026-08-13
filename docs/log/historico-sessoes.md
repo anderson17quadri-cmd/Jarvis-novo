@@ -2314,3 +2314,37 @@ notícias não sincronizam estas marcas, e fingir que sincronizam seria mentir.
 `tsc`, `eslint` e `vitest` limpos (1419 testes, mais 21). A verificação ao vivo
 depende de uma chave real da NewsAPI, que esta máquina não tem — ficou por
 confirmar em execução; os testes cobrem a forma do pedido e o mapeamento.
+
+## 2026-08-13 — Kimi trava logo ao início nas Peças 10+11, limite de taxa da organização
+
+Equipa alargada esta tarde: DeepSeek continua na Peça 8 (rede real), a Kimi
+entrou de novo num worktree próprio (`agents/kimi`, criado hoje) para as
+Peças 10 e 11 (wake word e voz em tempo real com barge-in), e o Qwen foi
+testado outra vez para a Peça 12 antes de se lhe atribuir nada — continua
+sem cota (mesmo erro 429 de sempre, "token-plan 1-week quota... reset em
+08-19 03:23 UTC"), por isso a Peça 12 fica por atribuir.
+
+A Kimi travou muito cedo, sem chegar a produzir nada de significativo:
+`API Error: Request rejected (429) — organization TPD rate limit, current:
+1609315, limit: 1500000`. Isto é diferente do que aconteceu ao Qwen — não é
+"sem crédito nenhum", é um limite de tokens por dia da organização inteira
+(TPD), que pode libertar-se num período mais curto do que a cota semanal do
+Qwen. Mesmo assim, segue-se a mesma regra: não se insiste às cegas.
+
+O que ficou no worktree da Kimi, por commitar (revisto antes de decidir
+alguma coisa, dada a sensibilidade destas duas peças): um store novo,
+`src/stores/use-wake-word-store.ts` — só o esqueleto do interruptor
+(`enabled: false` por omissão, `palavra` configurável, persistência via
+`storageService`), sem deteção nenhuma, sem microfone, sem nada que grave
+ou transmita áudio. E uma linha nova em `storage-service.ts`
+(`STORAGE_KEYS.wakeWord`). Confirmado seguro por leitura direta do código —
+não é código a meio de fazer algo sensível, é só a base de um interruptor
+desligado. Deixado como está, sem commit (não é uma peça completa nem
+testada), para uma retoma futura continuar dali em vez de recomeçar do
+zero.
+
+Não se reatribuiu a Peça 10/11 à DeepSeek nem a ninguém — é a peça mais
+sensível do projeto, e trocar de sessão a meio muda quem tem o contexto da
+leitura da ética que se pediu para fazer primeiro. Fica em pausa até haver
+uma razão concreta para pensar que o limite aliviou, ou até o utilizador
+decidir doutra forma.
