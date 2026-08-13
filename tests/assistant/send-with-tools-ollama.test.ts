@@ -51,6 +51,7 @@ function makeExecutor(): ToolExecutor & { readonly calls: string[] } {
     searchNotes: async () => [],
     readNote: async () => null,
     writeNote: async () => true,
+    searchWeb: async () => ({ isSimulated: false, results: [] }),
     music: () => undefined,
     speak: () => undefined,
     setAutomationEnabled: () => true,

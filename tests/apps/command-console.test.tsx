@@ -61,6 +61,10 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`guardar-nota:${title}:${content}`);
       return title !== 'falha';
     },
+    searchWeb: async (query) => {
+      calls.push(`pesquisar-web:${query}`);
+      return { isSimulated: false, results: [] };
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {

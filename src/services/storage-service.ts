@@ -28,6 +28,7 @@ export const STORAGE_KEYS = {
   weatherSettings: 'weather-settings',
   newsSettings: 'news-settings',
   newsMarks: 'news-marks',
+  webSearchSettings: 'web-search-settings',
   mailSettings: 'mail-settings',
   musicSettings: 'music-settings',
   obsidianSettings: 'obsidian-settings',

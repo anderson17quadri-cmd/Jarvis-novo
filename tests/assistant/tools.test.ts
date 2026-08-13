@@ -66,6 +66,16 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`guardar-nota:${title}:${content}`);
       return title !== 'falha';
     },
+    searchWeb: async (query) => {
+      calls.push(`pesquisar-web:${query}`);
+      return {
+        isSimulated: false,
+        results: [
+          { title: 'Título um', snippet: 'resumo um', url: 'https://exemplo.pt/um' },
+          { title: 'Título dois', snippet: 'resumo dois', url: 'https://exemplo.pt/dois' },
+        ],
+      };
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -326,6 +336,51 @@ describe('procurar_nota, ler_nota e guardar_nota (vault Obsidian)', () => {
   });
 });
 
+describe('pesquisar_na_web (pesquisa web)', () => {
+  it('não executa nada por si só — só devolve título, resumo e endereço para o modelo decidir', async () => {
+    const outcome = await runTool({ id: '1', name: 'pesquisar_na_web', args: { termo: 'clima' } });
+
+    expect(outcome.status).toBe('ok');
+    // O único efeito é a chamada à pesquisa — nada de abrir janelas, criar
+    // tarefas ou mudar de tema. A ferramenta traz resultados, não decide nada.
+    expect(executor.calls).toEqual(['pesquisar-web:clima']);
+    // E o que volta é texto estruturado, com os três campos e a marca de que
+    // são dados a analisar, não factos que o assistente sabe por si.
+    expect(outcome.message).toContain('Título um');
+    expect(outcome.message).toContain('https://exemplo.pt/um');
+    expect(outcome.message).toContain('resumo um');
+    expect(outcome.message).toContain('dados a analisar');
+  });
+
+  it('sem chave, diz que é simulada em vez de fingir uma pesquisa a sério', async () => {
+    const simulated = {
+      ...executor,
+      searchWeb: async () => ({
+        isSimulated: true,
+        results: [{ title: 'Exemplo', snippet: 'resumo', url: 'https://exemplo.pt/x' }],
+      }),
+    };
+    setToolExecutor(simulated);
+
+    const outcome = await runTool({ id: '1', name: 'pesquisar_na_web', args: { termo: 'clima' } });
+
+    expect(outcome.message).toContain('Pesquisa simulada');
+    expect(outcome.message).toContain('não resultados reais');
+  });
+
+  it('sem resultados, diz-se em vez de inventar', async () => {
+    const empty = {
+      ...executor,
+      searchWeb: async () => ({ isSimulated: false, results: [] }),
+    };
+    setToolExecutor(empty);
+
+    const outcome = await runTool({ id: '1', name: 'pesquisar_na_web', args: { termo: 'xyz' } });
+
+    expect(outcome.message).toContain('não devolveu resultados');
+  });
+});
+
 /**
  * Contexto ("amanhã") resolvido pelo modelo, não por regras escritas à mão
  * (Parte 7 §Contexto). O modelo já recebe a data de hoje por extenso no
@@ -476,6 +531,7 @@ describe('cobertura', () => {
       procurar_nota: { titulo: 'x' },
       ler_nota: { titulo: 'x' },
       guardar_nota: { titulo: 'x', conteudo: 'y' },
+      pesquisar_na_web: { termo: 'x' },
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },

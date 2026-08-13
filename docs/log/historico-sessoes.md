@@ -3096,3 +3096,45 @@ especificamente (só o alvo Linux desta máquina). Toda a lógica de
 fronteira (`resolve_within_root`, `canonicalize`) está confirmada a
 sério por teste automatizado, não por tentativa ao vivo de escapar à
 raiz.
+
+## 2026-08-13 — Peça 18: pesquisa web real (Brave Search)
+
+O utilizador pediu a Peça 18 do acesso à internet: uma ferramenta de
+pesquisa web para o assistente, com a decisão de provedor documentada
+como nas outras peças de rede real. **Escolheu-se o Brave Search em vez
+do Bing** pela mesma razão do Open-Meteo em vez do OpenWeatherMap:
+simplicidade de quem põe a funcionar. O Bing Web Search exige uma
+subscrição do Azure com várias camadas (recurso, chave, endpoint) antes
+do primeiro pedido; o Brave tem um plano gratuito (2000 pesquisas por
+mês) e devolve JSON limpo — `web.results` com `title`, `description` e
+`url`, exatamente os três campos que a ferramenta devolve. O custo é o
+mesmo dos dois: uma chave, no cofre.
+
+**O que é**: `services/web-search/providers/brave-search-provider.ts`
+(provedor real), `web-search-provider.ts` (`WebSearchProvider` +
+`MockWebSearchProvider`), `web-search-service.ts`, a store
+`use-web-search-settings-store.ts` (chave em
+`secretSet('web-search-api-key')`, nunca fixa no código, nunca em texto
+simples) e `SearchSettings.tsx` em Personalização → Pesquisa web. **Sem
+chave configurada, cai na simulação**, como todas as outras peças de
+rede real — nunca rebenta, nunca finge que pesquisou a sério. A chave
+viaja no cabeçalho `X-Subscription-Token`, nunca na query.
+
+**A ferramenta `pesquisar_na_web`** é a 29.ª do catálogo. Só devolve,
+por resultado, título, resumo e endereço — nunca o HTML da página de
+resultados, nunca o conteúdo completo de nenhum site. E **não executa
+nada por si**: devolve texto estruturado para o modelo ler e decidir o
+próximo passo; não abre páginas, não clica, não segue nenhuma `url`
+devolvida. O teste crítico confirma-o — ao chamar a ferramenta, o
+executor só é tocado uma vez, e a resposta é o texto com os campos e a
+nota de que são "dados a analisar, não factos teus".
+
+### Verificação
+
+`tsc` limpo, `eslint` 0 erros nos ficheiros tocados. Suite completa:
+**117 ficheiros, 1599 testes** — 20 novos nesta peça (8 no provedor
+real, testado com `fetch` simulado como a NewsAPI; 9 na configuração;
+3 na ferramenta). Corrigi de caminho uma contagem desatualizada: o
+comentário de `tool-runner.ts` dizia "23 ferramentas anteriores" (eram
+25 desde a Peça 17), e o SPEC voltou a ter a contagem certa em três
+sítios, agora em 29.

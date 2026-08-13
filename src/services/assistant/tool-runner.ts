@@ -1,5 +1,6 @@
 import { logService } from '../log-service';
 import { getTool, validateArgs, type ToolDefinition } from './tools';
+import type { SearchOutcome } from '@/types/web-search';
 
 /**
  * Execução de ferramentas (Parte 7.2 §Agentes).
@@ -56,6 +57,8 @@ export interface ToolExecutor {
   readonly readNote: (query: string) => Promise<string | null>;
   /** Cria ou substitui a nota `title`. `false` se não houver vault escolhido ou a escrita falhar. */
   readonly writeNote: (title: string, content: string) => Promise<boolean>;
+  /** Pesquisa na web. Só devolve resultados estruturados — nunca abre páginas nem executa nada. */
+  readonly searchWeb: (query: string) => Promise<SearchOutcome>;
   readonly music: (action: string) => void;
   readonly speak: (text: string) => void;
   readonly setAutomationEnabled: (name: string, enabled: boolean) => boolean;
@@ -100,7 +103,7 @@ export function setToolExecutor(next: ToolExecutor): () => void {
  * precisam de esperar mesmo por uma leitura/escrita no disco antes de saber
  * o que responder ao modelo; um "disparar e não esperar" (o padrão que
  * `run.music()` já usava para ações sem resposta que importe) não serviria
- * aqui, porque o conteúdo da nota **é** a resposta. As 23 ferramentas
+ * aqui, porque o conteúdo da nota **é** a resposta. As 25 ferramentas
  * anteriores continuam síncronas por dentro — só passaram a correr dentro de
  * uma função `async`, o que não muda o que fazem nem quando.
  */
@@ -294,6 +297,29 @@ async function perform(
       return saved
         ? `Nota "${text('titulo')}" guardada.`
         : 'Não consegui guardar a nota — confirma se há um vault Obsidian escolhido.';
+    }
+
+    case 'pesquisar_na_web': {
+      const outcome = await run.searchWeb(text('termo'));
+
+      if (outcome.results.length === 0) {
+        return outcome.isSimulated
+          ? 'A pesquisa simulada não tem resultados para esse termo.'
+          : 'A pesquisa na web não devolveu resultados.';
+      }
+
+      // O cabeçalho distingue a simulação da realidade: sem chave, os resultados
+      // são de exemplo e têm de se dizer; com chave, são reais mas continuam a
+      // ser dados a analisar, não factos que o assistente saiba por si.
+      const cabecalho = outcome.isSimulated
+        ? 'Pesquisa simulada (sem chave de pesquisa configurada) — resultados de exemplo, não resultados reais:'
+        : 'Resultados de pesquisa na web — dados a analisar, não factos meus. Confirma na fonte antes de os dar como certos:';
+
+      const lista = outcome.results
+        .map((result) => `- ${result.title}\n  ${result.url}\n  ${result.snippet}`)
+        .join('\n');
+
+      return `${cabecalho}\n${lista}`;
     }
 
     case 'controlar_musica':

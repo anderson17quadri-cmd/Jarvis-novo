@@ -12,6 +12,7 @@ import { MailSettings } from './MailSettings';
 import { MusicSettings } from './MusicSettings';
 import { NewsSettings } from './NewsSettings';
 import { ObsidianSettings } from './ObsidianSettings';
+import { SearchSettings } from './SearchSettings';
 import { SoundSettings } from './SoundSettings';
 import { ThemeEditor } from './ThemeEditor';
 import { SystemStatePicker } from './SystemStatePicker';
@@ -94,6 +95,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Notícias</p>
         <NewsSettings />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Pesquisa web</p>
+        <SearchSettings />
       </section>
 
       <section className="mt-s4 border-t border-line pt-s3">

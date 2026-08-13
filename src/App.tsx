@@ -20,6 +20,7 @@ import { useKeyboardShortcut } from '@/hooks/use-keyboard-shortcut';
 import { useAiSettings } from '@/hooks/use-ai-settings';
 import { useWeatherSettings } from '@/hooks/use-weather-settings';
 import { useNewsSettings } from '@/hooks/use-news-settings';
+import { useWebSearchSettings } from '@/hooks/use-web-search-settings';
 import { useMailSettings } from '@/hooks/use-mail-settings';
 import { useMusicSettings } from '@/hooks/use-music-settings';
 import { useObsidianSettings } from '@/hooks/use-obsidian-settings';
@@ -44,6 +45,7 @@ import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
 import { obsidianService } from '@/services/knowledge/obsidian-service';
+import { webSearchService } from '@/services/web-search/web-search-service';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
@@ -136,6 +138,9 @@ export function App(): React.JSX.Element {
 
   // Aplica as preferências de notícias (real/simulado) ao serviço.
   useNewsSettings();
+
+  // Aplica as preferências de pesquisa web (real/simulado) ao serviço.
+  useWebSearchSettings();
 
   // Aplica as preferências de correio (real/simulado) ao serviço.
   useMailSettings();
@@ -557,6 +562,7 @@ export function App(): React.JSX.Element {
       },
       readNote: (query) => obsidianService.readByTitle(query),
       writeNote: (title, content) => obsidianService.write(title, content),
+      searchWeb: (query) => webSearchService.search(query),
       music: (action) => {
         if (action === 'proxima') void musicService.next();
         else if (action === 'anterior') void musicService.previous();
