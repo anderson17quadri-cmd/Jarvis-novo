@@ -139,9 +139,14 @@ function isNegated(text: string, matchIndex: number): boolean {
  * O valor acaba na primeira fronteira de oração — pontuação ou uma
  * conjunção. Sem isto, "moro no Porto desde 2019" guardava "Porto desde
  * 2019", e um segredo dito a seguir era arrastado para a memória.
+ *
+ * O `\b` do JavaScript não conta acentos como carateres de palavra, por
+ * isso trataria "comércio" como a preposição "com" seguida de fronteira —
+ * "moro no comércio" cortava para "moro no". A `lookahead` explícita por
+ * uma letra (com ou sem acento) evita isto sem perder o corte real.
  */
 function cutAtClauseBoundary(value: string): string {
-  const boundary = /\s+(?:e|mas|porque|desde|para|que|onde|quando|com|ou)\b|[,.!?;]/;
+  const boundary = /\s+(?:e|mas|porque|desde|para|que|onde|quando|com|ou)(?![a-zA-ZÀ-ÿ])|[,.!?;]/;
   const match = boundary.exec(value);
   return match === null ? value : value.slice(0, match.index);
 }

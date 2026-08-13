@@ -53,6 +53,14 @@ describe('ler preferências ditas por palavras', () => {
       value: 'o tema escuro',
     });
   });
+
+  it('não corta palavras acentuadas que começam por uma conjunção do corte', () => {
+    // `\b` do JavaScript não conta acentos como caráter de palavra — sem a
+    // salvaguarda, "no comércio" seria lido como "no" + "com" + fronteira,
+    // e "trabalho no comércio" cortava o valor para nada útil.
+    expect(extractPreference('trabalho no comércio')).toEqual({ key: 'trabalho', value: 'comércio' });
+    expect(extractPreference('moro no Paraguai')).toEqual({ key: 'cidade', value: 'Paraguai' });
+  });
 });
 
 describe('memória', () => {

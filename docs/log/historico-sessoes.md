@@ -4302,3 +4302,17 @@ persistência do `clear()`; 3 testes novos.
 
 `npx vitest run` — 1657/1657 a passar. `npx tsc --noEmit` limpo, `eslint`
 com 0 erros. Ver `SPEC.md` (Parte 7.2 §Memória).
+
+**Correção de seguimento, pelo coordenador (mesmo dia):** ao verificar o
+diff a sério, `cutAtClauseBoundary` tinha o mesmo tipo de bug que estava a
+corrigir. O `\b` do JavaScript não conta acentos como carateres de
+palavra — "no comércio" era lido como a preposição "com" seguida de
+fronteira (a transição de "m" para "é" conta como `\b` por omissão), e o
+corte apagava a palavra inteira: "trabalho no comércio" ficava só
+"trabalho no ", um valor vazio. Confirmado com um teste isolado em
+`node -e` antes de mexer no código, para não corrigir uma suposição.
+Corrigido com uma `lookahead` explícita por uma letra (com ou sem acento)
+em vez do `\b`, preservando os dois cortes que a peça já corrigia (`no
+Porto desde 2019` → `Porto`; `café e a minha palavra-passe…` → `café`) e
+deixando de cortar `comércio`/`Paraguai`/etc. 1 teste novo. `tsc`/`eslint`
+limpos, `vitest run` — 1658/1658 a passar.
