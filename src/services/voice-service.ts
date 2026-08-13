@@ -214,6 +214,11 @@ function vigiarSilencio(
  * por isso o ponto **final** é que se tira, não os pontos a meio de uma
  * frase mais longa, que servem de pausa real entre orações.
  *
+ * **Ponto e vírgula (13/08/2026)**: reportado em uso real — nunca tinha sido
+ * tratado, ao contrário do ponto final e das reticências. Mesma correção:
+ * vira vírgula, não desaparece, porque a pausa entre as duas orações
+ * continua a fazer sentido.
+ *
  * Aplica-se antes de escolher a voz (clonada ou do sistema): o ponto final
  * é redundante para as duas — o fim da string já diz que a frase acabou —
  * e é a voz clonada que, por vezes, o lê à letra.
@@ -224,6 +229,11 @@ function limparParaSintese(texto: string): string {
       // Reticências (três pontos ou o carácter único "…") só servem de
       // pausa — viram vírgula, que já pausa a prosódia sem arriscar ser lida.
       .replace(/\.{3,}|…/g, ',')
+      // Ponto e vírgula tem o mesmo problema do ponto final — por vezes sai
+      // lido à letra ("ponto e vírgula") em vez de servir só de pausa entre
+      // orações. Vira vírgula, pela mesma razão das reticências: mantém a
+      // pausa na prosódia sem arriscar ser lido.
+      .replace(/;/g, ',')
       // O ponto final da frase inteira é o que, por vezes, sai como a
       // palavra "ponto" — sem ele, o fim da frase continua a ouvir-se pela
       // entoação, não por um caráter a mais.

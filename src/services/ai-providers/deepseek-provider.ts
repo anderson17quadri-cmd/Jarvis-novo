@@ -397,11 +397,14 @@ export function systemPrompt(
     'Respondes em português de Portugal, com frases curtas e diretas.',
     'Nunca usas emojis. Nunca inventas factos sobre o sistema que não constem do contexto abaixo.',
     'Se não souberes, dizes que não sabes.',
+    'O nome do tema visual e o estado do sistema, abaixo, são só a aparência e o ritmo da interface — nunca uma restrição sobre o que sabes fazer. Não têm "modo" nenhum que te impeça de responder a nada, incluindo escrever código quando for pedido.',
   ];
 
   if (context) {
     lines.push('', `Contexto de agora: ${describeContext(context)}`);
-    lines.push(`Tema em vigor: ${context.theme}. Estado do sistema: ${context.systemState}.`);
+    lines.push(
+      `Tema visual da interface (cor e estilo, não uma capacidade): ${context.theme}. Estado de energia do sistema: ${context.systemState}.`,
+    );
   }
 
   const preferences = Object.entries(memory.preferences);

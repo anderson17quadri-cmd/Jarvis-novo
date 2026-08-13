@@ -90,6 +90,28 @@ describe('limpeza do texto antes de sintetizar', () => {
     expect(env.utterances).toEqual(['Ligar o microfone']);
   });
 
+  it('ponto e vírgula vira vírgula — mesmo problema do ponto final, reportado em uso real', () => {
+    const env = withFakeSynthesis();
+    restore = env.restore;
+
+    new VoiceService().speak(
+      'Abri os emails; criei a tarefa para amanhã.',
+      undefined,
+      { kind: 'sistema', voiceURI: 'x' },
+    );
+
+    expect(env.utterances).toEqual(['Abri os emails, criei a tarefa para amanhã']);
+  });
+
+  it('vários pontos e vírgulas na mesma frase são todos tratados', () => {
+    const env = withFakeSynthesis();
+    restore = env.restore;
+
+    new VoiceService().speak('Um; dois; três.', undefined, { kind: 'sistema', voiceURI: 'x' });
+
+    expect(env.utterances).toEqual(['Um, dois, três']);
+  });
+
   it('pergunta e exclamação não se tocam — só o ponto final é que é lido à letra', () => {
     const env = withFakeSynthesis();
     restore = env.restore;

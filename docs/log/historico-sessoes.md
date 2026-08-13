@@ -2537,3 +2537,53 @@ hardware Windows. Nem uma chave física real (YubiKey ou equivalente) nem
 o Windows Hello via WebAuthn foram testados fora dos mocks descritos
 acima. A matemática está confirmada a sério; a cerimónia do próprio
 sistema operativo/hardware, não.
+
+## 2026-08-13 — Dois bugs reais reportados em uso: "modo JARVIS Classic" e ponto e vírgula lido à letra
+
+O utilizador reportou dois problemas a usar a app a sério: o assistente
+respondeu "Não posso gerar código. Estou no modo JARVIS Classic." a duas
+perguntas seguidas, e a síntese de voz continuava a ler "ponto e vírgula"
+em voz alta.
+
+**"Modo JARVIS Classic" — não é um modo, é o nome de um tema.** O prompt
+de sistema (`systemPrompt`, `deepseek-provider.ts`, partilhado por
+DeepSeek/Claude/Ollama via `buildMessages`) mandava `"Tema em vigor:
+${context.theme}."` — "JARVIS Classic" é só o tema visual base
+(`design-system/tokens.ts`). Um modelo local (parece o Ollama, dado o
+padrão de resposta) confundiu essa frase com uma restrição de capacidade
+e inventou que não sabia gerar código. Corrigido: a frase passa a
+explicar de frente que o tema e o estado do sistema são só aparência e
+ritmo, nunca uma restrição ("nunca uma restrição sobre o que sabes fazer
+... incluindo escrever código"). Teste novo em `deepseek.test.ts` prende
+a frase de aviso e a ausência do texto antigo ambíguo.
+
+**Ponto e vírgula nunca tinha sido tratado.** `limparParaSintese`
+(`voice-service.ts`) só limpava reticências e o ponto final da frase
+inteira (correção de 10/08/2026) — ponto e vírgula ficou de fora desde
+sempre, apesar de ter o mesmo problema (a síntese, por vezes, lê-o à
+letra). Mesma correção: vira vírgula, mantém a pausa, tira o risco de ser
+lido. 2 testes novos em `text-cleaning.test.ts`.
+
+**Confirmado**: `tsc` limpo, `eslint` 0 erros, suite completa — 108
+ficheiros, 1493 testes (era 1490 antes destas duas correções).
+
+**Não confirmado ao vivo**: a redação nova do prompt de sistema não foi
+testada contra um Ollama real nesta sessão (sem hardware) — só por
+teste automatizado, que confirma o texto enviado, não a reação do
+modelo. A correção da pontuação também não foi ouvida com áudio real
+nesta sessão, pela mesma razão — mas segue exatamente o padrão já
+confirmado ao vivo em 10/08/2026 para o ponto final.
+
+**Nota lateral, sobre a mesma sessão**: durante este trabalho, uma
+mensagem de outra sessão local (o lançador da DeepSeek, `claude-deepseek-
+lancador.ps1`, a trabalhar na Peça 14 com automação real de cliques)
+apareceu misturada na conversa com o utilizador — um menu interativo
+("How should I proceed with the notification live-verification...")
+claramente dirigido a essa outra sessão, não a esta. Sinalizado ao
+utilizador antes de qualquer ação, e confirmado por ele com uma captura
+de ecrã: era mesmo uma sessão irmã, a pedir instrução ao utilizador
+diretamente no seu próprio terminal, sobre um risco real que detetou
+sozinha (confiar em `SetForegroundWindow` sem confirmar o foco da janela
+antes de mandar cliques). Nenhuma ação foi tomada aqui em cima dessa
+mensagem — só uma recomendação dada ao utilizador (opção 1: corrigir a
+pontaria antes de continuar), para ele levar à sessão certa.

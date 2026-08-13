@@ -144,6 +144,18 @@ describe('o que se envia', () => {
     expect(systemPrompt(null, EMPTY_MEMORY)).not.toContain('Contexto de agora');
   });
 
+  it('diz de frente que o tema e o estado são só aparência, nunca uma restrição de capacidade', () => {
+    // Achado em uso real, 13/08/2026: um modelo local respondia "Estou no
+    // modo JARVIS Classic. Não posso gerar código." — confundindo o nome do
+    // tema visual com um "modo" que o limitava. A frase de sistema previne
+    // isto explicitamente, em vez de deixar o modelo adivinhar.
+    const prompt = systemPrompt(context(), EMPTY_MEMORY);
+
+    expect(prompt).toContain('nunca uma restrição sobre o que sabes fazer');
+    expect(prompt).toContain('Tema visual da interface (cor e estilo, não uma capacidade)');
+    expect(prompt).not.toContain('Tema em vigor');
+  });
+
   it('a memória vai, quando existe', () => {
     const prompt = systemPrompt(context(), {
       preferences: { nome: 'Quadri' },
