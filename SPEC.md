@@ -39,6 +39,17 @@ Verificado num contentor Linux, e a interface conduzida em Chromium com Playwrig
 
 O utilizador confirmou também no Termux, em browser, via `WebAdapter`.
 
+**Suite E2E (Playwright, `tests/e2e/`).** Corrida a sério em Chromium contra o
+`vite` (localhost:1420), 11 cenários a passar: login, abrir/fechar janelas pelo
+Dock e pela Paleta, temas, instalar/executar e recusar um plugin, microfone
+simulado, e o assistente a responder pelo provedor local. **Não cobre** o
+assistente a pedir ferramentas do catálogo (pesquisa web, navegador controlado,
+notas, ficheiros) — isso exige um provedor real (DeepSeek/Ollama com `tools`)
+mais rede/nativo, ausentes no harness de browser. Essas ferramentas continuam
+cobertas pelos testes unitários (`vitest`, em particular
+`tests/assistant/tools.test.ts`), não pelo E2E — as duas suites são
+independentes e não se substituem.
+
 ## 1.1 Confirmado no Windows nativo — 08/08/2026
 
 **Primeira execução a sério, fora do contentor Linux.** `npm run tauri dev`

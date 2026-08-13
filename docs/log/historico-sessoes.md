@@ -3862,3 +3862,27 @@ modelo resolvê-la), não a qualidade da resolução frase a frase.
 `tsc --noEmit` limpo, `eslint` 0 erros, suite completa a passar (121
 ficheiros, 1643 testes). Item 11 movido para "Feito" em
 `docs/log/fila-de-trabalho.md`.
+
+## 2026-08-13 — Revisão a sério: suite E2E com Playwright
+
+Item 14 da fila noturna — confirmar que a suite E2E ainda corre a sério
+e ainda apanha regressões, não só que existe. Corrida por inteiro com
+`npx playwright test`: passa de ponta a ponta, sem erros de configuração
+nem testes presos; os browsers já estavam instalados, sem precisar de
+`npx playwright install`.
+
+A suite cobre login, abrir/fechar janelas (Dock e Paleta), temas,
+instalar/executar e recusar um plugin, e microfone simulado — mas não
+tocava no assistente, o fluxo que mais mudou desde que foi escrita (o
+catálogo cresceu para 30 ferramentas: pesquisa web, navegador
+controlado, notas, ficheiros). Acrescentado um teste pequeno e óbvio:
+abrir a janela do assistente, enviar uma pergunta e receber a resposta
+do provedor local (`RuleProvider`). As ferramentas do catálogo continuam
+só nos testes unitários — exercitá-las no E2E exigia um provedor real
+com `tools` e rede/nativo, ausentes do harness de browser; documentado
+no `SPEC.md` que as duas suites são independentes e não se substituem.
+
+`tsc --noEmit` limpo, `eslint` 0 erros (11 avisos pré-existentes),
+`vitest run` 122 ficheiros / 1648 testes a passar, `playwright test`
+11/11 a passar. Item 14 movido para "Feito" em
+`docs/log/fila-de-trabalho.md`.
