@@ -62,6 +62,7 @@ function fakeFetch(response: {
   readonly ok?: boolean;
   readonly status?: number;
   readonly body?: ReadableStream<Uint8Array> | null;
+  readonly json?: () => Promise<unknown>;
 }): typeof fetch {
   return vi.fn(async () => ({ ok: true, status: 200, body: null, ...response }) as Response);
 }
@@ -116,9 +117,37 @@ describe('OllamaProvider', () => {
     }).rejects.toMatchObject({ kind: 'rede' });
   });
 
-  it('um modelo que não existe localmente (404) cai no genérico de servidor', async () => {
-    const fetchImpl = fakeFetch({ ok: false, status: 404 });
+  it('um modelo que não existe localmente (404 do Ollama) diz isso especificamente', async () => {
+    const fetchImpl = fakeFetch({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { type: 'not_found_error', message: "model 'modelo-inexistente' not found" } }),
+    });
     const provider = new OllamaProvider('modelo-inexistente', 'http://localhost:11434', fetchImpl);
+
+    await expect(async () => {
+      for await (const _chunk of provider.stream(request())) void _chunk;
+    }).rejects.toMatchObject({ kind: 'modelo' });
+  });
+
+  it('um 404 que não é do formato do Ollama continua a cair no genérico de servidor', async () => {
+    const fetchImpl = fakeFetch({ ok: false, status: 404, json: async () => ({}) });
+    const provider = new OllamaProvider('llama3.1', 'http://localhost:11434', fetchImpl);
+
+    await expect(async () => {
+      for await (const _chunk of provider.stream(request())) void _chunk;
+    }).rejects.toMatchObject({ kind: 'servidor' });
+  });
+
+  it('um 404 sem corpo em JSON válido não rebenta — cai no genérico', async () => {
+    const fetchImpl = fakeFetch({
+      ok: false,
+      status: 404,
+      json: async () => {
+        throw new SyntaxError('corpo vazio');
+      },
+    });
+    const provider = new OllamaProvider('llama3.1', 'http://localhost:11434', fetchImpl);
 
     await expect(async () => {
       for await (const _chunk of provider.stream(request())) void _chunk;

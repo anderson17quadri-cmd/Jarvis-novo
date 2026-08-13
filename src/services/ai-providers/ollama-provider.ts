@@ -17,11 +17,12 @@ import { buildMessages, collect, readStream, type StreamResult } from './deepsee
  * OpenAI** de propósito — por isso reaproveita-se `readStream` e
  * `buildMessages` da DeepSeek em vez de reescrever o mesmo parser.
  *
- * **Não sabe se o modelo que lhe pedires existe.** Isso depende do que foi
- * feito `ollama pull` na máquina — não é algo que o código possa validar sem
- * perguntar ao Ollama primeiro, e por isso um modelo em falta chega como um
- * 404 qualquer, tratado como problema genérico do servidor (`failureFromStatus`
- * já faz isso para códigos que não reconhece).
+ * **Não sabe de antemão se o modelo que lhe pedires existe.** Isso depende do
+ * que foi feito `ollama pull` na máquina — não é algo que o código possa
+ * validar sem perguntar ao Ollama primeiro. Mas reconhece a resposta quando
+ * ela chega: um modelo em falta vem com um 404 de forma reconhecível
+ * (`{"error":{"type":"not_found_error"}}`, ver `ollamaFailure`), distinto de
+ * qualquer outro problema do servidor.
  *
  * **Ligado à janela de configurações** (`AiSettings.tsx`, Personalização →
  * Assistente): campo para o modelo (com um botão "Detetar" que pergunta a
@@ -36,6 +37,24 @@ import { buildMessages, collect, readStream, type StreamResult } from './deepsee
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
 const TIMEOUT_MS = 60_000;
+
+/**
+ * Distingue "modelo não instalado" do genérico de servidor. Confirmado ao
+ * vivo (13/08/2026) contra um Ollama real: um 404 por modelo em falta vem
+ * com `{"error":{"type":"not_found_error",...}}` — outros 404 (endereço
+ * errado, por exemplo) não têm essa forma, e caem no genérico à mesma.
+ */
+async function ollamaFailure(response: Response): Promise<AiFailure> {
+  if (response.status === 404) {
+    try {
+      const body = (await response.json()) as { error?: { type?: string } };
+      if (body.error?.type === 'not_found_error') return new AiFailure('modelo');
+    } catch {
+      // Corpo sem JSON válido — cai no genérico abaixo.
+    }
+  }
+  return failureFromStatus(response.status);
+}
 
 /**
  * Famílias de modelos que a Ollama documenta como capazes de pedir
@@ -123,7 +142,7 @@ export class OllamaProvider implements AiProvider {
         signal: timeout.signal,
       });
 
-      if (!response.ok) throw failureFromStatus(response.status);
+      if (!response.ok) throw await ollamaFailure(response);
       if (!response.body) throw new AiFailure('vazio');
 
       return await collect(response.body, timeout.signal, onText);
@@ -158,7 +177,7 @@ export class OllamaProvider implements AiProvider {
         signal: timeout.signal,
       });
 
-      if (!response.ok) throw failureFromStatus(response.status);
+      if (!response.ok) throw await ollamaFailure(response);
       if (!response.body) throw new AiFailure('vazio');
 
       yield* readStream(response.body, timeout.signal);

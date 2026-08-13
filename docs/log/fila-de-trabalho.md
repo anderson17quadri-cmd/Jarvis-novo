@@ -29,16 +29,9 @@ Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 Personalização → Assistente para reordenar (arrastar, ou uma lista
 numerada com setas para cima/baixo chega) e guardar a preferência.
 
-### 2. Ollama — mensagem específica quando o modelo não está instalado — **Kimi** (13/08/2026 18:31) `[livre, pequena]`
-
-Hoje, pedir um modelo que não está puxado (`ollama pull`) chega como um
-erro de servidor genérico. Vale a pena distinguir isso com uma mensagem
-própria? Só se for mesmo pequena — se abrir um buraco maior, documentar
-e passar à frente.
-
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 10. Editor visual de automações — `[livre]`
+### 10. Editor visual de automações — **Claude local** (13/08/2026 18:42) `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
 Nunca revisto.
@@ -91,6 +84,13 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 2. Ollama — mensagem específica quando o modelo não está instalado — Claude local — commit `8ce8de6`
+
+Confirmado ao vivo contra um Ollama real: modelo em falta devolve 404
+com `{"error":{"type":"not_found_error"}}` — distinguido com um
+`AiFailureKind` novo (`'modelo'`) do genérico de servidor. 3 testes
+novos. Detalhe em `docs/log/historico-sessoes.md` (13/08/2026).
 
 ### 3. Terminal — Kimi + Claude local — commit `dc353bb`
 

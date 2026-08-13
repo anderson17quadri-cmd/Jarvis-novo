@@ -28,6 +28,12 @@ export type AiFailureKind =
   /** Falta a chave — não é uma falha da rede, é uma configuração por fazer. */
   | 'configuracao'
   /**
+   * O Ollama respondeu, mas o modelo pedido não está puxado localmente
+   * (`ollama pull`) — não é um problema do servidor nem da rede, é uma
+   * escolha de modelo que ainda não tem ficheiro no disco.
+   */
+  | 'modelo'
+  /**
    * A permissão de rede do plugin "Assistente JARVIS" foi recusada na
    * Privacidade (Parte 14 §Permissões por plugin) — nunca chega a sair
    * nenhum pedido, ao contrário de todas as outras (essas já tentaram).
@@ -44,6 +50,7 @@ export const AI_FAILURE_REASONS: Record<AiFailureKind, string> = {
   demora: 'demorou demasiado',
   vazio: 'respondeu sem conteúdo',
   configuracao: 'falta a chave',
+  modelo: 'o modelo escolhido não está instalado no Ollama',
   permissao: 'a permissão de rede do assistente está recusada',
 };
 
@@ -53,6 +60,7 @@ export const AI_FAILURE_FIXES: Partial<Record<AiFailureKind, string>> = {
   saldo: 'Carregue a conta da DeepSeek.',
   configuracao: 'Abra a Personalização e cole a chave em Assistente.',
   limite: 'Espere um pouco antes de tentar outra vez.',
+  modelo: 'Corra "ollama pull" com o nome do modelo no terminal, ou escolha um já instalado na Personalização.',
   permissao: 'Permita a rede ao "Assistente JARVIS" na Privacidade → Permissões.',
 };
 

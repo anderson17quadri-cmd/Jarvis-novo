@@ -3717,6 +3717,46 @@ Fecha o item 9 ("Fase 3.1: Controlo Direto") da fila de trabalho. Três
 de quatro peças de risco revistas nesta auditoria tinham um achado real
 — só os anexos de email ficaram limpos.
 
+## 2026-08-13 — Ollama: mensagem específica quando o modelo não está instalado (item 2 da fila noturna)
+
+Item 2 da fila noturna, pequeno de propósito: pedir ao Ollama local um
+modelo que não foi puxado (`ollama pull`) chegava à interface como o
+genérico "o serviço está com problemas do lado deles" — o mesmo texto
+de um 5xx a sério, o que não ajuda ninguém a perceber que falta só um
+comando.
+
+Confirmado ao vivo contra um Ollama real a correr nesta máquina (não
+presumido): um pedido a `/v1/chat/completions` com um modelo
+inexistente devolve HTTP 404 com o corpo
+`{"error":{"message":"model 'X' not found","type":"not_found_error",...}}`
+— a forma compatível com a OpenAI que o Ollama usa para este caso
+específico, diferente de qualquer outro 404.
+
+Acrescentado um `AiFailureKind` novo (`'modelo'`, em `ai-failure.ts`),
+com a mesma disciplina dos outros (uma frase em `AI_FAILURE_REASONS`,
+uma sugestão em `AI_FAILURE_FIXES` — "corra `ollama pull` com o nome
+do modelo, ou escolha um já instalado na Personalização"). Sem tocar
+em `planFallback`: os outros tipos de falha já passam por ali de forma
+genérica, um tipo a mais não pede lógica nova. `ollama-provider.ts`
+ganhou `ollamaFailure(response)` — só entra em ação num 404, lê o
+corpo, e só reconhece o caso se a forma bater (`type ===
+'not_found_error'`); qualquer 404 diferente (endereço errado, por
+exemplo) ou um corpo sem JSON válido continuam a cair no genérico de
+sempre, sem rebentar.
+
+Um teste antigo (`ollama-provider.test.ts`) travava exatamente o
+comportamento antigo — chamava-se "cai no genérico de servidor" e
+verificava isso. Corrigido para o novo comportamento, mais dois novos
+para os dois casos de recuo (404 sem a forma esperada, corpo sem JSON).
+
+**Verificação**: `tsc --noEmit` limpo, `eslint` 0 erros nos ficheiros
+tocados, `vitest run` **121 ficheiros, 1637 testes** (era 1634 antes
+desta peça). Confirmado ao vivo, não só nos testes: um pedido real ao
+Ollama local por um modelo inexistente devolveu o erro novo
+(`kind: 'modelo'`) através do código de produção, não de um mock.
+
+Item 2 movido para "Feito" em `docs/log/fila-de-trabalho.md`.
+
 ## 2026-08-13 — Reordenar a cadeia de provedores de IA
 
 Item 1 da fila: a ordem da cadeia de reserva (DeepSeek → Claude →
