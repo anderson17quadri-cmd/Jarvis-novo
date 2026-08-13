@@ -220,18 +220,20 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
     const actions = columns.entao.map((b) => b.config as AutomationAction);
     if (actions.length === 0) return;
 
-    if (existing) {
-      automationService.remove(existing.id);
-    }
-
-    automationService.add({
+    const payload = {
       name: name.trim(),
       description: description.trim(),
       trigger,
       conditions,
       actions,
       isEnabled: existing?.isEnabled ?? true,
-    });
+    };
+
+    if (existing) {
+      automationService.update(existing.id, payload);
+    } else {
+      automationService.add(payload);
+    }
 
     logService.log('info', 'automacao', `Automação "${name.trim()}" guardada via editor visual`);
     onSaved();

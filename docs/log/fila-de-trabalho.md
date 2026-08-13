@@ -17,12 +17,7 @@
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 10. Editor visual de automações — **Claude local** (13/08/2026 18:42) `[livre]`
-
-Entrada do histórico em "2026-08-11 — Editor visual de automações".
-Nunca revisto.
-
-### 12. Voz clonada local — consentimento explícito — `[livre, ético]`
+### 12. Voz clonada local — consentimento explícito — **Claude local** (13/08/2026 18:53) `[livre, ético]`
 
 Ver `docs/spec/voz-clonada-local.md` e a regra em
 `docs/estilo-de-codigo.md` §"Decisões éticas já assentes": nunca clonar
@@ -62,6 +57,16 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 10. Editor visual de automações — Claude local — commit `a5b64eb`
+
+`save()` editava uma automação existente com `remove()` + `add()` —
+`add()` gera sempre um `id` novo e reinicia `createdAt`/`lastRunAt`/
+`runCount`, por isso qualquer edição (mesmo corrigir só o nome)
+apagava o histórico da regra. Corrigido com
+`AutomationService.update()`, que substitui o conteúdo mantendo a
+identidade. 4 testes novos. Detalhe em `docs/log/historico-sessoes.md`
+(13/08/2026, "Revisão a sério: Editor visual de automações").
 
 ### 1. Reordenar a cadeia de provedores de IA — DeepSeek — commit `2ff489f`
 
