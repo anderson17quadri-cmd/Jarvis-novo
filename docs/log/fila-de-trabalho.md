@@ -85,7 +85,7 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
-### 2. Ollama — mensagem específica quando o modelo não está instalado — Claude local
+### 2. Ollama — mensagem específica quando o modelo não está instalado — Claude local — commit `8ce8de6`
 
 Confirmado ao vivo contra um Ollama real: modelo em falta devolve 404
 com `{"error":{"type":"not_found_error"}}` — distinguido com um
