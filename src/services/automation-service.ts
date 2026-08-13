@@ -187,6 +187,30 @@ export class AutomationService {
     return created;
   }
 
+  /**
+   * Substitui o nome, a descrição, o gatilho, as condições e as ações de uma
+   * automação já existente — mantém `id`, `createdAt`, `lastRunAt` e
+   * `runCount`.
+   *
+   * O editor visual chamava `remove` + `add` para editar, o que dava à
+   * automação editada um `id` novo e apagava o seu histórico (`runCount`
+   * voltava a 0, `lastRunAt` a `null`) mesmo numa correção trivial ao
+   * nome. `null` se a automação já não existir.
+   */
+  update(
+    id: string,
+    changes: Omit<Automation, 'id' | 'createdAt' | 'lastRunAt' | 'runCount'>,
+  ): Automation | null {
+    const existing = this.automations.find((automation) => automation.id === id);
+    if (!existing) return null;
+
+    const updated: Automation = { ...existing, ...changes };
+    this.automations = this.automations.map((automation) => (automation.id === id ? updated : automation));
+    this.emit();
+    void this.persist();
+    return updated;
+  }
+
   remove(id: string): void {
     this.automations = this.automations.filter((automation) => automation.id !== id);
     this.lastFired.delete(id);

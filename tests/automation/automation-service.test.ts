@@ -212,6 +212,70 @@ describe('condições', () => {
   });
 });
 
+describe('update', () => {
+  it('muda o conteúdo mas mantém id, createdAt, lastRunAt e runCount', () => {
+    const automation = service.add(makeAutomation({ name: 'Original' }));
+    service.run(automation.id);
+    const corrida = service.list[0];
+    expect(corrida?.runCount).toBe(1);
+    expect(corrida?.lastRunAt).not.toBeNull();
+
+    const updated = service.update(automation.id, {
+      name: 'Editada',
+      description: 'nova descrição',
+      trigger: { kind: 'manual' },
+      conditions: [],
+      actions: [{ kind: 'falar', text: 'oi' }],
+      isEnabled: true,
+    });
+
+    expect(updated?.id).toBe(automation.id);
+    expect(updated?.name).toBe('Editada');
+    expect(updated?.createdAt).toBe(automation.createdAt);
+    // O editor visual (remove + add) apagava isto numa correção trivial —
+    // uma regra que já tinha corrido voltava a mostrar "nunca correu".
+    expect(updated?.runCount).toBe(1);
+    expect(updated?.lastRunAt).toBe(corrida?.lastRunAt);
+  });
+
+  it('uma automação inexistente devolve null sem tocar na lista', () => {
+    service.add(makeAutomation());
+    const antes = service.list;
+
+    const result = service.update('inexistente', {
+      name: 'x',
+      description: '',
+      trigger: { kind: 'manual' },
+      conditions: [],
+      actions: [{ kind: 'falar', text: 'oi' }],
+      isEnabled: true,
+    });
+
+    expect(result).toBeNull();
+    expect(service.list).toBe(antes);
+  });
+
+  it('persiste a mudança', async () => {
+    const automation = service.add(makeAutomation({ name: 'Original' }));
+    service.update(automation.id, {
+      name: 'Editada',
+      description: '',
+      trigger: { kind: 'manual' },
+      conditions: [],
+      actions: [{ kind: 'falar', text: 'oi' }],
+      isEnabled: true,
+    });
+    await service.persist();
+
+    const outro = new AutomationService();
+    await outro.hydrate([]);
+
+    expect(outro.list).toHaveLength(1);
+    expect(outro.list[0]?.id).toBe(automation.id);
+    expect(outro.list[0]?.name).toBe('Editada');
+  });
+});
+
 describe('persistência', () => {
   it('as regras e o histórico sobrevivem a recarregar', async () => {
     const automation = service.add(makeAutomation({ name: 'Guardada' }));

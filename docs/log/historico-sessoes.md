@@ -3756,3 +3756,52 @@ Ollama local por um modelo inexistente devolveu o erro novo
 (`kind: 'modelo'`) através do código de produção, não de um mock.
 
 Item 2 movido para "Feito" em `docs/log/fila-de-trabalho.md`.
+
+## 2026-08-13 — Revisão a sério: Editor visual de automações (item 10 da fila noturna)
+
+Orquestração noturna multi-IA: item 10, revisão a sério do editor
+visual de automações (`apps/automations/AutomationEditor.tsx`,
+implementado 11/08/2026), nunca revisto por ninguém de fora.
+
+**Um bug real, confirmado e corrigido**: `save()` editava uma
+automação existente chamando `automationService.remove(existing.id)`
+seguido de `automationService.add({...})`. Como `add()` gera sempre um
+`id` novo e reinicia `createdAt` para agora, `lastRunAt` para `null` e
+`runCount` para `0`, **qualquer edição — mesmo corrigir um erro de
+escrita no nome — apagava o histórico da regra**. Uma automação que já
+tinha corrido 40 vezes, editada para mudar só a descrição, voltava a
+mostrar "nunca correu" no cartão da janela de Automações
+(`AutomationsWindow.tsx`, que lê `runCount`/`lastRunAt` diretamente do
+objeto). Sem crash, sem erro visível — só um dado errado a olhar para
+a pessoa.
+
+Corrigido com um método novo, `AutomationService.update(id, changes)`,
+que substitui nome/descrição/gatilho/condições/ações mantendo `id`,
+`createdAt`, `lastRunAt` e `runCount` do objeto existente; `null` se a
+automação já não existir (por exemplo, apagada por outra janela
+entretanto). `AutomationEditor.save()` passou a chamar `update()`
+quando `existing` está definido, e `add()` só para automações novas.
+
+4 testes novos: dois no serviço (`update` preserva identidade e
+histórico; `update` numa automação inexistente devolve `null` sem
+tocar na lista; persiste a sério) e dois num ficheiro novo dedicado ao
+editor (`tests/automation/automation-editor-edit.test.tsx`) que montam
+o componente a sério, com o `automationService` real (não mockado) e
+um executor funcional — um confirma que guardar sem trocar nada
+mantém `runCount`, o outro que editar o nome atualiza a mesma
+automação em vez de criar uma segunda.
+
+O resto do editor (serialização de blocos, drag-and-drop,
+`automationToBlocks`) foi lido com atenção mas não revelou mais
+problemas: `automationToBlocks` reconstrói os três tipos de bloco sem
+perda de dados, `handleDrop` valida o `dataTransfer` antes de o
+interpretar, e `canSave` bloqueia guardar sem gatilho ou sem ação —
+não há forma de o editor produzir uma automação sem `trigger` ou sem
+`actions`, os dois campos que o motor exige.
+
+### Verificação
+
+`tsc --noEmit` limpo, `eslint` 0 erros nos ficheiros tocados,
+`vitest run` **122 ficheiros, 1642 testes** (era 121/1637 antes desta
+peça). `SPEC.md` atualizado. Item 10 movido para "Feito" em
+`docs/log/fila-de-trabalho.md`.
