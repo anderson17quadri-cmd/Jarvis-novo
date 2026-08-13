@@ -337,3 +337,60 @@ describe('cadeia automática', () => {
     expect(screen.queryByText(/tenta sozinho o próximo provedor/)).toBeNull();
   });
 });
+
+describe('ordem da cadeia', () => {
+  it('reordenar pela interface troca os degraus e guarda', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+
+    await user.click(screen.getByRole('button', { name: 'Descer DeepSeek' }));
+
+    expect(useAiSettingsStore.getState().settings.providerOrder).toEqual([
+      'claude',
+      'deepseek',
+      'ollama',
+    ]);
+  });
+
+  it('a ordem guardada sobrevive a recarregar', async () => {
+    useAiSettingsStore.getState().setProviderOrder(['ollama', 'deepseek', 'claude']);
+    await useAiSettingsStore.getState().persist();
+
+    useAiSettingsStore.setState({ settings: DEFAULT_AI_SETTINGS });
+    await useAiSettingsStore.getState().hydrate();
+
+    expect(useAiSettingsStore.getState().settings.providerOrder).toEqual([
+      'ollama',
+      'deepseek',
+      'claude',
+    ]);
+  });
+
+  it('a cadeia respeita a ordem guardada, não a fixa', () => {
+    const setChain = vi.spyOn(aiService, 'setChain');
+
+    applyAiSettings({
+      ...DEFAULT_AI_SETTINGS,
+      provider: 'deepseek',
+      apiKey: KEY,
+      claudeApiKey: CLAUDE_KEY,
+      ollamaModel: 'llama3.1',
+      providerOrder: ['ollama', 'deepseek', 'claude'],
+    });
+
+    const nomes = setChain.mock.calls[0]![0].map((membro) => membro.name);
+    expect(nomes).toEqual(['DeepSeek', 'Ollama', 'Claude']);
+  });
+
+  it('sem preferência guardada, cai na ordem por omissão', async () => {
+    localStorage.setItem('jarvis.ai-settings', JSON.stringify({ provider: 'deepseek' }));
+
+    await useAiSettingsStore.getState().hydrate();
+
+    expect(useAiSettingsStore.getState().settings.providerOrder).toEqual([
+      'deepseek',
+      'claude',
+      'ollama',
+    ]);
+  });
+});

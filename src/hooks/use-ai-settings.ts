@@ -11,16 +11,6 @@ import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import type { AiProviderId, AiSettings } from '@/types/ai-provider-settings';
 import type { AiProvider } from '@/types/assistant';
 
-/**
- * Ordem de reserva da cadeia (Parte 12 §Orquestrador multi-provedor).
- *
- * O escolhido vai sempre primeiro; o resto desta lista segue-se, pela ordem
- * aqui — DeepSeek e Claude antes do Ollama porque, entre um provedor pago já
- * configurado e um modelo local mais fraco, é razoável tentar o melhor
- * primeiro.
- */
-const CHAIN_ORDER: readonly AiProviderId[] = ['deepseek', 'claude', 'ollama'];
-
 /** Constrói um provedor a partir do que estiver guardado, ou `null` sem configuração. */
 function buildProvider(id: AiProviderId, settings: AiSettings): AiProvider | null {
   switch (id) {
@@ -49,7 +39,7 @@ function buildProvider(id: AiProviderId, settings: AiSettings): AiProvider | nul
  * Escolher "Contexto local" de propósito é uma decisão de privacidade — fica
  * só no local, mesmo que haja chaves de outros provedores guardadas de antes.
  * Escolher qualquer outro provedor arranca a cadeia com ele à cabeça e os
- * restantes já configurados a seguir, pela `CHAIN_ORDER`.
+ * restantes já configurados a seguir, pela `providerOrder` guardada.
  *
  * Exportada para os testes poderem aplicá-la após mutações diretas da store.
  */
@@ -59,7 +49,10 @@ export function applyAiSettings(settings: AiSettings): void {
     return;
   }
 
-  const ordered = [settings.provider, ...CHAIN_ORDER.filter((id) => id !== settings.provider)];
+  const ordered = [
+    settings.provider,
+    ...settings.providerOrder.filter((id) => id !== settings.provider),
+  ];
   const chain: ChainMember[] = [];
 
   for (const id of ordered) {

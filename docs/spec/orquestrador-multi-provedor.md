@@ -12,8 +12,7 @@
 > Chromium real: guardar a chave da Claude e depois a da DeepSeek mostra a
 > nota "Se o DeepSeek falhar… tenta sozinho o próximo provedor" na própria
 > janela. **Ferramentas para o Ollama e para o Claude, feitas** — ver Peça 20
-> abaixo. Falta só o que o §4 já dizia que ia ficar de fora nesta leva — uma
-> interface para reordenar a cadeia.
+> abaixo. **Reordenar a cadeia, feito** — a ordem deixou de ser fixa; ver §5.
 
 ---
 
@@ -96,11 +95,14 @@ falha."*
 
 ## 3. O que isto ainda não decide
 
-1. **A ordem da cadeia.** Hoje é só uma lista que se passa à função — quem a
-   escreve escolhe a ordem. Um ecrã de configurações para reordenar
-   (arrastar, ou uma lista numerada) é trabalho de interface, não de lógica.
-2. **Se o Ollama entra à frente ou atrás do Claude por omissão.** Grátis e
-   local versus melhor e pago — não é uma decisão técnica, é tua.
+Nada — os dois pontos que faltavam ficaram resolvidos:
+
+1. **A ordem da cadeia.** Deixou de ser uma lista fixa em código: agora é
+   `AiSettings.providerOrder`, uma preferência guardada, editável em
+   Personalização → Assistente (lista numerada com setas para cima/baixo).
+2. **Se o Ollama entra à frente ou atrás do Claude por omissão.** Através por
+   omissão — local grátis, mas mais fraco, fica para último — e agora é uma
+   escolha da pessoa, não do código.
 
 ## 4. O que ficou ligado
 
@@ -109,9 +111,9 @@ Os seis pontos que este documento listava como pendentes estão todos feitos:
 1. ✅ `AiProviderId` e `AI_PROVIDERS` estendidos, com as entradas de
    configuração de cada um.
 2. ✅ `AiSettings` ganhou `claudeApiKey`, `claudeModel`, `ollamaModel`,
-   `ollamaBaseUrl`. A ordem da cadeia ficou fixa em código
-   (`CHAIN_ORDER` — DeepSeek, Claude, Ollama), não configurável ainda: ver §3,
-   que continua em aberto.
+   `ollamaBaseUrl` e `providerOrder` — a ordem da cadeia, que deixou de ser
+   fixa em código e passou a preferência guardada, editável na interface
+   (ver §5).
 3. ✅ `AiSettings.tsx` ganhou os painéis do Claude e do Ollama, com a mesma
    disciplina de aviso do que sai do dispositivo que a DeepSeek já tinha.
 4. ✅ `AIService.setChain()` e o `recover()` tentam a cadeia sozinhos antes
@@ -122,11 +124,24 @@ Os seis pontos que este documento listava como pendentes estão todos feitos:
    também o CSP deixa o pedido bloqueado, e a própria interface avisa disto.
 6. ✅ `claudeApiKey` excluída do backup, ao lado de `apiKey`.
 
-## 5. O que fica mesmo de fora, por agora
+## 5. Reordenar a cadeia (13/08/2026)
 
-- **Reordenar a cadeia.** Hoje é sempre "o escolhido, depois DeepSeek, Claude,
-  Ollama pela ordem fixa" — não há arrastar nem preferência guardada por
-  posição.
+O último pendente da lista: a ordem da cadeia deixou de ser fixa. `AiSettings`
+ganhou `providerOrder` (por omissão `['deepseek', 'claude', 'ollama']`), a
+Personalização → Assistente mostra a lista numerada com setas para cima/baixo,
+e `applyAiSettings` (`use-ai-settings.ts`) lê a ordem guardada em vez da
+antiga constante `CHAIN_ORDER`, que desapareceu. O `provider-chain.ts` nunca
+teve ordem fixa nenhuma (recebe a lista por argumento), por isso não mudou.
+
+- O escolhido vai sempre à frente; a ordem guardada decide o resto.
+- Sem preferência guardada, cai na ordem por omissão.
+- A preferência persiste e sobrevive a recarregar, no mesmo padrão das outras
+  stores de definições (a `use-ai-settings-store` já estava registada em
+  `hydrate-all.ts` — não houve store nova para esquecer).
+
+4 testes novos (`tests/assistant/ai-settings.test.tsx`): reordenar pela
+interface guarda, a ordem guardada sobrevive a recarregar, a cadeia respeita a
+ordem guardada (não a fixa), e sem preferência cai na omissão.
 
 ## 6. Peça 20 — ferramentas para o Claude (13/08/2026)
 

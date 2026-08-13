@@ -15,26 +15,7 @@
 > completa a passar, `git pull` antes de cada `push`, nunca `--force`,
 > nunca commitar segredos, tudo em português). Isto aqui é só a fila.
 
-## Construir
-
-### 1. Reordenar a cadeia de provedores de IA — **DeepSeek** (13/08/2026 18:31)
-
-Tentativa de atribuir à Qwen às 17:42 (13/08/2026) falhou de imediato —
-quota ainda esgotada (`429`, `token-plan 1-week quota exhausted`,
-reset previsto `08-19 03:23 UTC`, mesmo erro já visto antes esta
-sessão). Item de volta à fila, sem dono, para a próxima sessão livre.
-
-Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
-`docs/spec/orquestrador-multi-provedor.md` §3). Falta um ecrã em
-Personalização → Assistente para reordenar (arrastar, ou uma lista
-numerada com setas para cima/baixo chega) e guardar a preferência.
-
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
-
-### 10. Editor visual de automações — **Claude local** (13/08/2026 18:42) `[livre]`
-
-Entrada do histórico em "2026-08-11 — Editor visual de automações".
-Nunca revisto.
 
 ### 11. "Amanhã" resolvido pelo modelo (contexto de datas na conversa) — `[livre]`
 
@@ -84,6 +65,24 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 10. Editor visual de automações — Claude local — commit `a5b64eb`
+
+`save()` editava uma automação existente com `remove()` + `add()` —
+`add()` gera sempre um `id` novo e reinicia `createdAt`/`lastRunAt`/
+`runCount`, por isso qualquer edição (mesmo corrigir só o nome)
+apagava o histórico da regra. Corrigido com
+`AutomationService.update()`, que substitui o conteúdo mantendo a
+identidade. 4 testes novos. Detalhe em `docs/log/historico-sessoes.md`
+(13/08/2026, "Revisão a sério: Editor visual de automações").
+
+### 1. Reordenar a cadeia de provedores de IA — DeepSeek — commit `2ff489f`
+
+A ordem da cadeia de reserva deixou de ser fixa (`CHAIN_ORDER`): agora
+`AiSettings.providerOrder` guarda a preferência, editável em
+Personalização → Assistente (lista numerada com setas para cima/baixo),
+e `applyAiSettings` lê-a em vez da constante. 4 testes novos. Detalhe
+em `docs/log/historico-sessoes.md` (13/08/2026).
 
 ### 2. Ollama — mensagem específica quando o modelo não está instalado — Claude local — commit `8ce8de6`
 
