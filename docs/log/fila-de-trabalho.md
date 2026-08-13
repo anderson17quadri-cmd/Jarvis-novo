@@ -23,17 +23,8 @@ Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
-Notificações nativas isoladas, Meteorologia/Notícias) já em "Feito"
-abaixo. Em curso agora:
-
-- **Marketplace de plugins (esboço, `MarketplaceTab.tsx` +
-  `marketplace-sample-data.ts`)** — **DeepSeek** (13/08/2026 19:43).
-  Nunca revisto por ninguém de fora. É só o esboço com dados de exemplo
-  (a ligação real a um marketplace remoto está fora de âmbito, decisão
-  já tomada — não tentar ligar a nada real). Rever o que já existe:
-  renderização, consistência dos dados de exemplo, e o que os 5 testes
-  existentes (`tests/apps/marketplace-tab.test.tsx`) confirmam de
-  verdade.
+Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
+plugins) já em "Feito" abaixo.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -213,3 +204,12 @@ sério: meteorologia (Open-Meteo) e notícias (NewsAPI)").
   novos. Ver `docs/log/historico-sessoes.md`, entrada "Auditoria a
   sério (continuação): Controlo Direto sem porta de presença nem
   ligação a fluxo nenhum".
+- **Marketplace de plugins (esboço, Peça 11)** — revisto (DeepSeek,
+  13/08/2026): renderização completa (sem `undefined` no ecrã), dados de
+  exemplo consistentes (ids únicos, categorias todas válidas), "Instalar"
+  sempre desativado e com o porquê à vista, nenhuma interação que finja
+  fazer o que não faz. Nada a corrigir — só documentação. Um dos 5
+  testes ("não instala nada de verdade") é fraco (lê o estado sem
+  interagir), anotado, não é bug. Detalhe em
+  `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: esboço
+  do Marketplace de plugins").

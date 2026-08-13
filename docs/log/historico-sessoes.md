@@ -4096,3 +4096,43 @@ testes falsos). `tsc --noEmit` limpo. Nada corrigido — item 15
 (instância "Notificações nativas isoladas") movido para "Feito" em
 `docs/log/fila-de-trabalho.md` sem commit de código, só de
 documentação.
+
+## 2026-08-13 — Revisão a sério: esboço do Marketplace de plugins (item 15 da fila)
+
+Outra instância do item 15 (fila noturna): o esboço do Marketplace
+(`MarketplaceTab.tsx` + `marketplace-sample-data.ts`, sessão de 11/08)
+nunca tinha sido lido por ninguém de fora à procura de forma explícita
+de o partir.
+
+**O que li com atenção e confirmei sólido, sem nada a corrigir:**
+
+- **Renderização completa, sem `undefined` no ecrã.** As seis entradas
+  mostram todos os campos (`name`, `tagline`, `author`, `rating`,
+  `downloads`, `publishedAgo`, `pricing`); as cinco categorias usadas
+  (`produtividade`, `integracao`, `ia`, `desenvolvimento`, `media`) têm
+  todas etiqueta em `PLUGIN_CATEGORY_LABELS`, por isso nenhum cartão cai
+  numa chave em falta.
+- **Dados de exemplo consistentes entre si.** Seis `id` únicos,
+  `rating` todos entre 0 e 5, `downloads` positivos, `pricing` sempre
+  `'gratuito'` ou `'pago'`, `publishedAgo` sempre preenchido — nada
+  repetido nem fora do tipo.
+- **Nenhuma interação promete o que não cumpre.** "Instalar" está
+  `disabled` com o porquê no `title`, e o aviso no topo da aba diz de
+  frente que é um esboço com dados de exemplo e sem fonte real. Não há
+  botão de detalhe nem filtro que finja fazer algo.
+
+**Uma observação, não um bug:** os 5 testes (`tests/apps/marketplace-tab.test.tsx`)
+chamam mesmo o componente real (`PluginManagerWindow`), clicam na aba e
+verificam o DOM. Quatro confirmam comportamento a sério (as seis
+entradas aparecem, o aviso está lá, os seis botões estão desativados,
+não há pesquisa nem filtro). O quinto — "não instala nada de verdade,
+mesmo que se tente" — é fraco: lê `usePluginStore.installed` duas vezes
+seguidas sem nunca interagir com o botão, e é redundante com o teste que
+já prova os botões desativados. Teste fraco, não errado — não esconde
+bug nenhum; fica aqui escrito para quem vier a seguir não o tomar por
+cobertura real.
+
+`npx vitest run` — 1650/1650 a passar. `npx tsc --noEmit` limpo, `eslint`
+sem erros. Nada corrigido — item 15 (instância "Marketplace de plugins
+(esboço)") movido para "Feito" em `docs/log/fila-de-trabalho.md` sem
+commit de código, só de documentação.
