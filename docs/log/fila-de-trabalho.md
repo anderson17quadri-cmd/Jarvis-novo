@@ -29,13 +29,10 @@ curso agora:
   (13/08/2026 19:17). Construído diretamente, nunca revisto por
   ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
 - **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
-  — sem dono. Tentativa de atribuir à Kimi às 19:17 (13/08/2026) falhou
-  de novo (terceira vez esta noite) com o mesmo limite de taxa TPD da
-  organização — mas desta vez o valor desceu (`current: 1530401`,
-  contra `1538667` às 18:31), confirmando que é uma janela a decair
-  devagar, não uma quota fixa até uma data. Ao ritmo observado
-  (~8000/45min), não deve aliviar tão cedo — não voltar a tentar antes
-  de passar bastante mais tempo. Nunca revistos por ninguém de fora.
+  — **DeepSeek** (13/08/2026 19:31). Tentativa anterior à Kimi (19:17)
+  falhou pela terceira vez no limite de taxa TPD da organização — não
+  voltar a tentar tão cedo (a janela decai devagar, ~8000/45min).
+  Nunca revistos por ninguém de fora.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
