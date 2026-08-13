@@ -27,13 +27,19 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins) já em "Feito" abaixo. Em curso agora:
 
 - **Sandbox de execução de plugins (fronteira de segurança, não só
-  fugas de memória)** — **Kimi** (13/08/2026, nova tentativa depois de
-  três falhas de taxa). A revisão de 11/08 só procurou fugas de memória
-  e temporizadores por limpar nesta peça — nunca uma revisão
-  adversarial da própria fronteira de isolamento (`<iframe
-  sandbox="allow-scripts">`, `postMessage`, capacidades declaradas no
-  manifesto). Ver `docs/spec/plugins-sandbox.md` e a entrada "Plugins a
-  sério: sandbox, três capacidades, SDK" (11/08/2026).
+  fugas de memória)** — sem dono. Quarta tentativa de atribuir à Kimi
+  (20:25, 13/08/2026) falhou de novo no limite de taxa TPD — e desta
+  vez o valor decaiu ainda mais devagar que da última vez (`1530401` →
+  `1528474` em ~50 min, contra `~8000` no intervalo anterior). Não
+  voltar a tentar antes de passar bastante mais tempo (horas, não
+  minutos). A peça em si continua por rever, e é uma revisão de
+  segurança genuinamente valiosa quando alguém tiver capacidade: a
+  revisão de 11/08 só procurou fugas de memória e temporizadores por
+  limpar — nunca uma revisão adversarial da própria fronteira de
+  isolamento (`<iframe sandbox="allow-scripts">`, `postMessage`,
+  capacidades declaradas no manifesto). Ver
+  `docs/spec/plugins-sandbox.md` e a entrada "Plugins a sério: sandbox,
+  três capacidades, SDK" (11/08/2026).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
