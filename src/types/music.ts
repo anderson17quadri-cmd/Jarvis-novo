@@ -22,6 +22,17 @@ export interface Track {
   readonly artwork: readonly [string, string];
 }
 
+/**
+ * Um ficheiro de áudio real, devolvido pelo comando Rust `music_read_dir`.
+ *
+ * Ao contrário de `Track`, não tem metadados: o Rust só lista nomes e caminhos
+ * — a capa e a duração são construídas na interface a partir daí.
+ */
+export interface MusicFileEntry {
+  readonly name: string;
+  readonly path: string;
+}
+
 export type PlaybackStatus = 'stopped' | 'playing' | 'paused';
 
 export interface PlaybackState {

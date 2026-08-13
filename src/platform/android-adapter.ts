@@ -40,6 +40,8 @@ export class AndroidAdapter extends TauriAdapterBase {
     realFilesystem: false,
     // O correio real também é só do desktop (IMAP/SMTP via Rust).
     mail: false,
+    // A música local também é só do desktop (pasta + protocolo `asset`).
+    music: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

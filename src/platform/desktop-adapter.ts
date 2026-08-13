@@ -35,5 +35,7 @@ export class DesktopAdapter extends TauriAdapterBase {
     realFilesystem: true,
     // Correio real (IMAP/SMTP) — ver commands/mail.rs.
     mail: true,
+    // Música local (pasta + `<audio>` real) — ver commands/music.rs.
+    music: true,
   };
 }

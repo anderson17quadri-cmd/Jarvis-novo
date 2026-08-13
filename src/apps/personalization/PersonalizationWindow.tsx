@@ -9,6 +9,7 @@ import { AiSettings } from './AiSettings';
 import { AppearanceSettings } from './AppearanceSettings';
 import { LayoutSettings } from './LayoutSettings';
 import { MailSettings } from './MailSettings';
+import { MusicSettings } from './MusicSettings';
 import { NewsSettings } from './NewsSettings';
 import { SoundSettings } from './SoundSettings';
 import { ThemeEditor } from './ThemeEditor';
@@ -97,6 +98,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Correio</p>
         <MailSettings />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Música</p>
+        <MusicSettings />
       </section>
 
       <section className="mt-s4 border-t border-line pt-s3">
