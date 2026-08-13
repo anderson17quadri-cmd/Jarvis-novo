@@ -22,6 +22,8 @@ import {
   setPluginSettingValue,
   unregisterPluginSender,
 } from '@/plugins/runtime/plugin-bridge';
+import { clearExternalPlugins, saveExternalPlugin } from '@/plugins/external-storage';
+import type { PluginPermissions } from '@/plugins/plugin';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
@@ -36,6 +38,8 @@ import { useWindowStore } from '@/stores/use-window-store';
 vi.mock('@tauri-apps/api/path', () => ({
   appDataDir: async () => '/appdata',
   join: async (...parts: string[]) => parts.join('/'),
+  isAbsolute: async (path: string) =>
+    path.startsWith('/') || path.startsWith('\\') || /^[A-Za-z]:/.test(path),
 }));
 
 vi.mock('@tauri-apps/plugin-fs', () => ({
@@ -66,7 +70,48 @@ function notifyRequest(requestId = 'req-1') {
   };
 }
 
+/** `PluginPermissions` com tudo a `false`, para semear um plugin externo nos testes. */
+function perms(overrides: Partial<PluginPermissions>): PluginPermissions {
+  return {
+    filesystem: false,
+    network: false,
+    systemMetrics: false,
+    notifications: false,
+    shell: false,
+    windows: false,
+    commands: false,
+    events: false,
+    storage: false,
+    shortcuts: false,
+    widgets: false,
+    menus: false,
+    settings: false,
+    services: false,
+    panels: false,
+    ...overrides,
+  };
+}
+
+/** Semeia um plugin externo instalado, com as permissões dadas no manifesto. */
+function seedExternalPlugin(id: string, overrides: Partial<PluginPermissions>): void {
+  saveExternalPlugin({
+    manifest: {
+      id,
+      name: id,
+      version: '1.0.0',
+      description: 'Plugin externo de teste.',
+      author: 'Teste',
+      permissions: perms(overrides),
+      platforms: ['desktop'],
+    },
+    signature: 'x',
+    signerPublicKey: 'y',
+    code: '/* vazio */',
+  });
+}
+
 beforeEach(() => {
+  clearExternalPlugins();
   usePluginStore.setState({ deniedPermissions: {} });
   useNotificationStore.setState({ notifications: [] });
   logService.clear();
@@ -124,6 +169,51 @@ describe('handlePluginMessage — core.notify', () => {
   });
 });
 
+describe('handlePluginMessage — o manifesto é a fronteira', () => {
+  it('capacidade fora do manifesto é recusada, mesmo sem revogação na interface', async () => {
+    // 'ola-notificacao' declara só `notifications` — pedir storage não devia passar.
+    const ack = await handlePluginMessage(PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'decl-1',
+      payload: { chave: 'x', valor: 1 },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-nao-declarada');
+  });
+
+  it('um plugin externo responde pelo próprio manifesto, não pelo catálogo', async () => {
+    seedExternalPlugin('ola-ficheiro', { notifications: true });
+
+    // 'ola-ficheiro' do catálogo tem `filesystem: true` — o externo com o mesmo
+    // id declara só notificações, por isso pedir ficheiros é recusado.
+    const fs = await handlePluginMessage('ola-ficheiro', {
+      type: 'core.fs.write',
+      requestId: 'decl-2',
+      payload: { caminho: 'nota.txt', conteudo: 'x' },
+    });
+    expect(fs.ok).toBe(false);
+    expect(fs.reason).toBe('permissao-nao-declarada');
+
+    // A capacidade que o manifesto externo declara passa a sério.
+    const notif = await handlePluginMessage('ola-ficheiro', notifyRequest('decl-3'));
+    expect(notif.ok).toBe(true);
+  });
+
+  it('plugin externo não herda filesystemRoot do catálogo só por ter o mesmo id', async () => {
+    seedExternalPlugin('ola-ficheiro', { filesystem: true });
+
+    const ack = await handlePluginMessage('ola-ficheiro', {
+      type: 'core.fs.write',
+      requestId: 'decl-4',
+      payload: { caminho: 'nota.txt', conteudo: 'x' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('sem-raiz-declarada');
+  });
+});
+
 describe('handlePluginMessage — core.automation.run', () => {
   it('automação que não existe devolve ok:false', async () => {
     const ack = await handlePluginMessage(PLUGIN_ID, {
@@ -139,8 +229,8 @@ describe('handlePluginMessage — core.automation.run', () => {
 
 describe('handlePluginMessage — validação de domínios', () => {
   it('plugin sem domínios autorizados devolve ok:false', async () => {
-    // o 'ola-notificacao' não tem allowedDomains
-    const ack = await handlePluginMessage(PLUGIN_ID, {
+    // 'browser' declara `network` mas não tem allowedDomains
+    const ack = await handlePluginMessage('browser', {
       type: 'core.fetch',
       requestId: 'req-net-1',
       payload: { url: 'https://api.github.com/status' },
@@ -154,8 +244,8 @@ describe('handlePluginMessage — validação de domínios', () => {
 describe('handlePluginMessage — ficheiros (ola-ficheiro, filesystemRoot declarado)', () => {
   const FS_PLUGIN_ID = 'ola-ficheiro';
 
-  it('sem filesystemRoot declarado (ola-notificacao), recusa antes de tocar no disco', async () => {
-    const ack = await handlePluginMessage(PLUGIN_ID, {
+  it('sem filesystemRoot declarado (automations), recusa antes de tocar no disco', async () => {
+    const ack = await handlePluginMessage('automations', {
       type: 'core.fs.write',
       requestId: 'req-fs-1',
       payload: { caminho: 'nota.txt', conteudo: 'x' },
@@ -188,6 +278,17 @@ describe('handlePluginMessage — ficheiros (ola-ficheiro, filesystemRoot declar
       type: 'core.fs.read',
       requestId: 'req-fs-4',
       payload: { caminho: '../outra-pasta/segredo.txt' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toContain('fs-read');
+  });
+
+  it('um caminho absoluto é recusado — o join não pode substituir a pasta do plugin', async () => {
+    const ack = await handlePluginMessage(FS_PLUGIN_ID, {
+      type: 'core.fs.read',
+      requestId: 'req-fs-6',
+      payload: { caminho: '/etc/passwd' },
     });
 
     expect(ack.ok).toBe(false);
@@ -395,6 +496,7 @@ describe('handlePluginMessage — core.command.register', () => {
 
   it('dois plugins podem registar IDs iguais sem conflito', async () => {
     const payload = { id: 'cmd-partilhado', nome: 'Partilhado', descricao: 'Teste.' };
+    seedExternalPlugin('outro-plugin', { commands: true });
 
     await handlePluginMessage(CMD_PLUGIN_ID, {
       type: 'core.command.register',
@@ -595,6 +697,8 @@ describe('handlePluginMessage — core.storage', () => {
   });
 
   it('dois plugins com a mesma chave não se veem — o prefixo isola', async () => {
+    seedExternalPlugin('outro-plugin', { storage: true });
+
     await handlePluginMessage(STORAGE_PLUGIN_ID, {
       type: 'core.storage.set',
       requestId: 'st-8',
@@ -771,6 +875,8 @@ describe('handlePluginMessage — core.widget.create', () => {
   });
 
   it('dois plugins não se misturam', async () => {
+    seedExternalPlugin('outro-plugin', { widgets: true });
+
     await handlePluginMessage(WIDGET_PLUGIN_ID, {
       type: 'core.widget.create',
       requestId: 'w-5',

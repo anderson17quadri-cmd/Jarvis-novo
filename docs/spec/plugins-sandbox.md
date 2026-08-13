@@ -88,6 +88,16 @@ também — antes de tocar em qualquer serviço real. Recusada, devolve
 `ok: false` e não chama nada. Fica auditado nos dois casos
 (`logService.audit`), como o resto do sistema.
 
+**Dois degraus, não um (13/08/2026).** `handlePluginMessage` verifica
+primeiro que a capacidade está **declarada no manifesto** do próprio plugin
+(`permissions[capacidade] === true`), e só depois que não foi **recusada**
+em Privacidade (`selectPermissionDenied`). O primeiro degrau é o que torna
+a assinatura — que cobre só o manifesto, nunca o código — suficiente para
+limitar o que o código faz: um plugin externo assinado com um manifesto
+estreito não consegue pedir capacidades que não declarou. Para plugins
+instalados de ficheiro, a declaração lida é a do manifesto **assinado** do
+próprio pacote, nunca a de uma entrada do catálogo com o mesmo id.
+
 Separar `handlePluginMessage` do componente React (`PluginRuntime.tsx`) foi
 deliberado: a decisão de permissão não precisa de DOM nenhum para se testar
 — `tests/plugins/plugin-bridge.test.ts` chama-a diretamente, com
@@ -105,7 +115,12 @@ plugin nunca vê nem escolhe o caminho absoluto — só o que está *dentro* da
 sua própria pasta. Um caminho pedido com `..` é recusado antes de tocar no
 disco (`resolveWithinRoot`) — sem isto, `core.fs.read({ caminho:
 "../outra-pasta/segredo.txt" })` escaparia da pasta declarada apesar do
-manifesto dizer o contrário.
+manifesto dizer o contrário. Caminhos **absolutos** (ex.: `/etc/passwd`,
+`C:\...`) são recusados pelo mesmo motivo (13/08/2026): o `join` do Tauri
+substitui a base quando o caminho é absoluto, por isso o `..` sozinho não
+chegava — um caminho absoluto escapava da pasta declarada, e o escopo
+`$APPDATA/**` do Tauri ainda o deixava chegar aos dados da própria app e de
+outros plugins.
 
 ### Rede: domínio exato, decidido pelo Core, nunca pelo plugin
 

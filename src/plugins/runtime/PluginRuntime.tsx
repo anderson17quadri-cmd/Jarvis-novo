@@ -241,6 +241,7 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
   if (!ack.ok) {
     const razoes: Record<string, string> = {
       'permissao-negada': 'Permissão recusada.',
+      'permissao-nao-declarada': 'Esta capacidade não está declarada no manifesto do plugin.',
       'sem-raiz-declarada': 'O plugin não declarou uma pasta de ficheiros.',
       'sem-dominios-autorizados': 'O plugin não declarou domínios de rede.',
       'dominio-nao-autorizado': 'Domínio não autorizado.',

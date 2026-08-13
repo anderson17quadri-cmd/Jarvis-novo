@@ -1,5 +1,7 @@
 import { APP_REGISTRY } from '@/apps/registry';
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
+import { loadExternalPlugin } from '@/plugins/external-storage';
+import type { PluginPermissions } from '@/plugins/plugin';
 import { automationService } from '@/services/automation-service';
 import { ALL_EVENTS, eventBus, type SystemEventName } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
@@ -286,13 +288,48 @@ export function clearPluginPanels(pluginId: string): void {
 
 // ─── Ponte ──────────────────────────────────────────────────────────────────
 
+interface PluginDeclaration {
+  readonly permissions: PluginPermissions | undefined;
+  readonly filesystemRoot: string | undefined;
+  readonly allowedDomains: readonly string[] | undefined;
+}
+
+/**
+ * O que um plugin declara de si — permissões e âmbito de ficheiros/rede.
+ *
+ * Procura primeiro no armazenamento de plugins externos: um plugin instalado
+ * de ficheiro responde pelo seu próprio manifesto (o assinado), nunca por uma
+ * entrada do catálogo que calhe ter o mesmo id. Só depois cai para o catálogo.
+ */
+function resolveDeclaration(pluginId: string): PluginDeclaration {
+  const external = loadExternalPlugin(pluginId);
+  if (external) {
+    return {
+      permissions: external.manifest.permissions,
+      filesystemRoot: undefined,
+      allowedDomains: undefined,
+    };
+  }
+
+  const entry = PLUGIN_CATALOG.find((candidate) => candidate.id === pluginId);
+  return {
+    permissions: entry?.permissions,
+    filesystemRoot: entry?.filesystemRoot,
+    allowedDomains: entry?.allowedDomains,
+  };
+}
+
 /**
  * Decide o que fazer com um pedido de um plugin, e fá-lo.
  *
  * Separado do `<iframe>` de propósito: esta função não sabe nada de DOM, por
- * isso testa-se sem montar nada. A verificação de permissão é a mesma
- * usada em `App.tsx` (automações) e `ai-service.ts` (rede) — nunca decorativa,
- * sempre `selectPermissionDenied` sobre o estado real de `use-plugin-store.ts`.
+ * isso testa-se sem montar nada. A verificação de permissão tem dois degraus:
+ * a capacidade tem de estar **declarada no manifesto** do próprio plugin
+ * (permissão `true`), e não pode ter sido **recusada** em Privacidade —
+ * `selectPermissionDenied` sobre o estado real de `use-plugin-store.ts`.
+ * A declaração do manifesto é a fronteira que torna a assinatura (que cobre
+ * só o manifesto) suficiente para limitar o código: um plugin assinado com um
+ * manifesto estreito não pode pedir capacidades que não declarou.
  *
  * `sendToPlugin` é opcional: só as capacidades que empurram dados para o
  * plugin de forma assíncrona (eventos) precisam dele. As outras funcionam
@@ -307,14 +344,17 @@ export async function handlePluginMessage(
   sendToPlugin?: (message: Record<string, unknown>) => void,
 ): Promise<CoreAckMessage> {
   const permission = PERMISSION_BY_MESSAGE_TYPE[message.type];
-  const isDenied = selectPermissionDenied(usePluginStore.getState(), pluginId, permission);
+  const declaration = resolveDeclaration(pluginId);
 
-  if (isDenied) {
+  if (!declaration.permissions?.[permission]) {
+    logService.audit(`Plugin ${pluginId}: ${message.type}`, 'recusado');
+    return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'permissao-nao-declarada' };
+  }
+
+  if (selectPermissionDenied(usePluginStore.getState(), pluginId, permission)) {
     logService.audit(`Plugin ${pluginId}: ${message.type}`, 'recusado');
     return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'permissao-negada' };
   }
-
-  const entry = PLUGIN_CATALOG.find((candidate) => candidate.id === pluginId);
 
   switch (message.type) {
     case 'core.notify':
@@ -324,31 +364,31 @@ export async function handlePluginMessage(
       break;
 
     case 'core.fs.read': {
-      if (!entry?.filesystemRoot) {
+      if (!declaration.filesystemRoot) {
         return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'sem-raiz-declarada' };
       }
-      return await handleFsRead(entry.filesystemRoot, message.payload.caminho, message.requestId);
+      return await handleFsRead(declaration.filesystemRoot, message.payload.caminho, message.requestId);
     }
 
     case 'core.fs.write': {
-      if (!entry?.filesystemRoot) {
+      if (!declaration.filesystemRoot) {
         return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'sem-raiz-declarada' };
       }
-      return await handleFsWrite(entry.filesystemRoot, message.payload.caminho, message.payload.conteudo, message.requestId);
+      return await handleFsWrite(declaration.filesystemRoot, message.payload.caminho, message.payload.conteudo, message.requestId);
     }
 
     case 'core.fs.list': {
-      if (!entry?.filesystemRoot) {
+      if (!declaration.filesystemRoot) {
         return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'sem-raiz-declarada' };
       }
-      return await handleFsList(entry.filesystemRoot, message.payload.caminho, message.requestId);
+      return await handleFsList(declaration.filesystemRoot, message.payload.caminho, message.requestId);
     }
 
     case 'core.fetch': {
-      if (!entry?.allowedDomains || entry.allowedDomains.length === 0) {
+      if (!declaration.allowedDomains || declaration.allowedDomains.length === 0) {
         return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'sem-dominios-autorizados' };
       }
-      return await handlePluginFetch(entry.allowedDomains, message.payload, message.requestId);
+      return await handlePluginFetch(declaration.allowedDomains, message.payload, message.requestId);
     }
 
     case 'core.automation.run': {
@@ -558,15 +598,20 @@ async function resolvePluginRoot(root: string): Promise<string> {
 }
 
 /**
- * Junta a raiz do plugin ao caminho que ele pediu. Rejeita `..` — sem isto,
- * um plugin poderia pedir `../../outra-pasta/segredo.txt` e sair da sua
- * própria pasta apesar de `filesystemRoot` dizer o contrário.
+ * Junta a raiz do plugin ao caminho que ele pediu. Rejeita `..` e caminhos
+ * absolutos — sem isto, um plugin poderia pedir `../../outra-pasta/segredo.txt`
+ * ou `C:\...\segredo.txt` e sair da sua própria pasta apesar de
+ * `filesystemRoot` dizer o contrário (o `join` de baixo substitui a base
+ * quando o caminho é absoluto).
  */
 async function resolveWithinRoot(root: string, caminho: string): Promise<string> {
   if (caminho.split(/[/\\]+/).includes('..')) {
     throw new Error('caminho tenta sair da pasta do plugin');
   }
-  const { join } = await import('@tauri-apps/api/path');
+  const { isAbsolute, join } = await import('@tauri-apps/api/path');
+  if (await isAbsolute(caminho)) {
+    throw new Error('caminho tem de ser relativo à pasta do plugin');
+  }
   const base = await resolvePluginRoot(root);
   return join(base, caminho);
 }

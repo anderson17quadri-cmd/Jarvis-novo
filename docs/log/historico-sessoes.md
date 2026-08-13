@@ -4221,3 +4221,49 @@ duas vezes, já documentada nas entradas próprias).
 O ciclo continua. Próximo passo: aguardar Kimi/Qwen recuperarem
 capacidade, ou encontrar mais uma peça de peso genuína para o item 15 —
 sem forçar trabalho de valor marginal só para preencher tempo.
+
+## 2026-08-13 — Revisão a sério: fronteira do sandbox de execução de plugins (item 15 da fila)
+
+Quinta instância do item 15 (fila noturna): a fronteira de isolamento do
+sandbox de plugins — `<iframe sandbox="allow-scripts">`, o protocolo por
+`postMessage` e as capacidades declaradas no manifesto. A revisão de 11/08
+desta peça só procurou fugas de memória e temporizadores por limpar; nunca
+uma revisão adversarial da própria fronteira (fuga de permissões, fuga de
+caminhos, leitura entre plugins). As cinco perguntas da fila foram
+respondidas uma a uma.
+
+**Dois bugs reais, ambos corrigidos com teste que os prova:**
+
+1. **As permissões do manifesto nunca eram verificadas em runtime (grave).**
+   `handlePluginMessage` só conferia `selectPermissionDenied` (a lista de
+   recusas em Privacidade), nunca o `permissions` do manifesto do próprio
+   plugin. Como a assinatura Ed25519 cobre só o manifesto (nunca o código),
+   um plugin externo assinado com um manifesto estreito e benigno podia
+   pedir **qualquer** capacidade não recusada — notificações, ficheiros,
+   rede, janelas. Corrigido com dois degraus: primeiro a capacidade tem de
+   estar declarada (`permissions[capacidade] === true`), depois não pode
+   estar recusada. Um plugin externo passou a resolver a declaração a
+   partir do manifesto **assinado** do próprio pacote, nunca da entrada do
+   catálogo com o mesmo id (fechava também um bug de colisão de ids).
+2. **Um caminho absoluto escapava da pasta do plugin (médio).**
+   `resolveWithinRoot` só rejeitava `..`; um caminho absoluto passava, e o
+   `join` do Tauri (que mapeia para `Path::push` em Rust) substitui a base
+   quando o caminho é absoluto — `core.fs.read({ caminho: "/..." })` lia
+   fora da pasta declarada, dentro de `$APPDATA/**`, alcançando os dados
+   da própria app e de outros plugins. Corrigido com a rejeição de caminhos
+   absolutos (`isAbsolute`) antes de resolver.
+
+**Confirmado sólido, sem nada a corrigir:** a validação do remetente é
+`event.source === iframe.contentWindow` (a correta para origem opaca, onde
+`event.origin` é sempre `"null"`); o atributo é exatamente
+`sandbox="allow-scripts"` sem `allow-same-origin`; o armazenamento usa o
+prefixo `plugins:<id>:` e não deixa um plugin ler o de outro; os três
+exemplos da pergunta 5 pediam exatamente as capacidades que usam (as
+quatro entradas que chamavam `core.notify` sem o declarar foram corrigidas
+no catálogo).
+
+`npx vitest run` — 1654/1654 a passar (4 testes novos para a fronteira de
+permissões e caminhos). `npx tsc --noEmit` limpo, `eslint .` com 0 erros
+(11 avisos pré-existentes, em ficheiros alheios). Ver
+`docs/spec/plugins-sandbox.md` (§"O protocolo" e §"Ficheiros") e `SPEC.md`
+Parte 11.
