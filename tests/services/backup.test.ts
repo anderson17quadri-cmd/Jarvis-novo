@@ -62,6 +62,40 @@ describe('criar', () => {
     expect(serializeBackup(backup)).not.toContain('sk-um-segredo');
   });
 
+  it('não leva a chave da NewsAPI quando a plataforma não tem cofre', async () => {
+    // No browser e no Android não há cofre: a chave fica no storage normal
+    // (`useNewsSettingsStore`), e a cópia de segurança tem de a apagar à mesma.
+    await storageService.set(STORAGE_KEYS.newsSettings, {
+      apiKey: '0123456789abcdef0123456789abcdef',
+      country: 'pt',
+    });
+
+    const backup = await createBackup();
+
+    expect(backup.data[STORAGE_KEYS.newsSettings]).toEqual({ country: 'pt' });
+    expect(serializeBackup(backup)).not.toContain('0123456789abcdef');
+  });
+
+  it('o mesmo para a chave da Brave Search e a palavra-passe do correio', async () => {
+    await storageService.set(STORAGE_KEYS.webSearchSettings, {
+      apiKey: 'chave-brave-a-sério',
+    });
+    await storageService.set(STORAGE_KEYS.mailSettings, {
+      imapServer: 'imap.exemplo.pt',
+      imapPort: 993,
+      smtpServer: 'smtp.exemplo.pt',
+      smtpPort: 587,
+      username: 'eu@exemplo.pt',
+      password: 'palavra-passe-a-sério',
+    });
+
+    const texto = serializeBackup(await createBackup());
+
+    expect(texto).not.toContain('chave-brave-a-sério');
+    expect(texto).not.toContain('palavra-passe-a-sério');
+    expect((await createBackup()).data[STORAGE_KEYS.mailSettings]).not.toHaveProperty('password');
+  });
+
   it('o campo do segredo é apagado, e não posto a vazio', () => {
     const clean = withoutSecrets(STORAGE_KEYS.aiSettings, {
       provider: 'deepseek',

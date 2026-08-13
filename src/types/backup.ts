@@ -39,6 +39,9 @@ export const BACKUP_VERSION = 1;
  */
 export const SECRET_FIELDS: Readonly<Partial<Record<StorageKey, readonly string[]>>> = {
   [STORAGE_KEYS.aiSettings]: ['apiKey', 'claudeApiKey'],
+  [STORAGE_KEYS.newsSettings]: ['apiKey'],
+  [STORAGE_KEYS.webSearchSettings]: ['apiKey'],
+  [STORAGE_KEYS.mailSettings]: ['password'],
 };
 
 export interface JarvisBackup {

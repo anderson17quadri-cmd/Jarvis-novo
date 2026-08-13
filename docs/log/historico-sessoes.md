@@ -4004,3 +4004,41 @@ login — ambas anteriores ao 2FA, e não o que esta revisão veio auditar.
 `tsc --noEmit` limpo, `eslint` 0 erros, suite completa a passar (122
 ficheiros, 1648 testes). Instância 2FA do item 15 acrescentada em
 `docs/log/fila-de-trabalho.md`.
+
+## 2026-08-13 — Revisão a sério: meteorologia (Open-Meteo) e notícias (NewsAPI)
+
+Item 15 da fila noturna — revisão independente dos dois provedores de rede
+reais da Peça 8, lote 2 (construídos na sessão anterior, nunca revistos por
+ninguém de fora: a Kimi tentou três vezes e bateu sempre no limite de taxa
+antes de começar). Li o código como se fosse a primeira vez, à procura de fuga
+de chaves, fail-open da simulação e rebentamentos da interface.
+
+**Bug real encontrado e corrigido — a chave da NewsAPI saía na cópia de
+segurança em texto simples, nas plataformas sem cofre.** A rede de segurança
+`SECRET_FIELDS` (`src/types/backup.ts`), que apaga os segredos do JSON antes
+de o ficheiro ser escrito, só conhecia `aiSettings`. No browser e no Android
+não há cofre de segredos, e `useNewsSettingsStore.persist()` guarda a chave no
+storage normal — a cópia de segurança escrevia-a então em claro, contrariando
+o contrato do próprio ficheiro ("um ficheiro que se descarrega e se envia por
+email nunca deve conter segredos"). Corrigido acrescentando `newsSettings` ao
+mapa — e, por serem o mesmo buraco na mesma rede, `webSearchSettings` e
+`mailSettings`. 2 testes novos; falham contra o código antigo.
+
+**O que confirmei como sólido, sem mexer:** (1) no desktop a chave da NewsAPI
+vive no cofre do sistema e a interface mostra-a tapada por omissão (só a pedido
+se mostra/apaga), e nunca vai para log nenhum — os erros de rede levam só o
+código de estado, nunca o URL nem a chave; o Open-Meteo não tem chave de todo;
+(2) sem chave (notícias) ou sem cidade (meteorologia) mantém-se o simulado,
+sem rebentar nem fingir dados reais — `isSimulated` diz a verdade na interface;
+(3) um pedido que falha (sem rede, servidor em baixo, resposta malformada) é
+apanhado no `PollingDataService` e devolve `null` — o widget fica com o último
+valor ou o esqueleto, nunca rebenta a interface; (4) o nome da cidade
+(Open-Meteo) e o código de país (NewsAPI) só saem para os domínios declarados
+no CSP e no aviso da interface, e não vão para log nem auditoria em texto
+simples; (5) os testes chamam o código real — `news-api-provider.test.ts`
+exercita `NewsApiProvider.fetch()` com `fetch` simulado, e os testes de
+settings montam o componente e o `applyNewsSettings`/`applyWeatherSettings`
+reais, não reimplementações à mão.
+
+`tsc --noEmit` limpo, `eslint` 0 erros (11 avisos pré-existentes, fora dos
+ficheiros tocados), `vitest run` 122 ficheiros / 1650 testes a passar.
