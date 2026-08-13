@@ -24,7 +24,16 @@ do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
-plugins) já em "Feito" abaixo.
+plugins) já em "Feito" abaixo. Em curso agora:
+
+- **Sandbox de execução de plugins (fronteira de segurança, não só
+  fugas de memória)** — **Kimi** (13/08/2026, nova tentativa depois de
+  três falhas de taxa). A revisão de 11/08 só procurou fugas de memória
+  e temporizadores por limpar nesta peça — nunca uma revisão
+  adversarial da própria fronteira de isolamento (`<iframe
+  sandbox="allow-scripts">`, `postMessage`, capacidades declaradas no
+  manifesto). Ver `docs/spec/plugins-sandbox.md` e a entrada "Plugins a
+  sério: sandbox, três capacidades, SDK" (11/08/2026).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
