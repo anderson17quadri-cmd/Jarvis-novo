@@ -21,7 +21,16 @@
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
-mais por escolher em `docs/log/historico-sessoes.md`.
+mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
+itens acima estão fechados — repetível, por isso duas instâncias em
+curso agora:
+
+- **2FA a sério (palavra-passe/PIN + chave física)** — **DeepSeek**
+  (13/08/2026 19:17). Construído diretamente, nunca revisto por
+  ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
+- **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
+  — **Kimi** (13/08/2026 19:17, nova tentativa — a última falha de
+  taxa foi às 18:31). Nunca revistos por ninguém de fora.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
