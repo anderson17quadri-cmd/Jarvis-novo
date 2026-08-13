@@ -30,12 +30,20 @@ impl TerminalRegistry {
         Ok(id)
     }
 
+    /// O lock do registo fecha-se antes de escrever: uma escrita ao PTY pode
+    /// bloquear (buffer de entrada cheio, processo que não lê stdin), e
+    /// segurar o `Mutex` do registo durante isso travaria qualquer outra
+    /// sessão — incluindo o `kill` de outra janela de Terminal, que é
+    /// exatamente o que desbloquearia a situação.
     pub fn write(&self, session_id: &str, data: &str) -> Result<()> {
-        let mut sessions = self.lock()?;
-        let session = sessions
-            .get_mut(session_id)
-            .ok_or_else(|| Error::UnknownSession(session_id.to_owned()))?;
-        session.write(data)
+        let writer = {
+            let sessions = self.lock()?;
+            let session = sessions
+                .get(session_id)
+                .ok_or_else(|| Error::UnknownSession(session_id.to_owned()))?;
+            session.writer()
+        };
+        TerminalSession::write(&writer, data)
     }
 
     pub fn resize(&self, session_id: &str, cols: u16, rows: u16) -> Result<()> {

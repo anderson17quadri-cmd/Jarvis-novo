@@ -3317,6 +3317,69 @@ listava as duas como pendentes já estava parcialmente desatualizada
 (a Ollama tinha sido feita por outra sessão sem o documento ser
 corrigido); corrigida para refletir as duas feitas.
 
+## 2026-08-13 — Revisão a sério: Terminal (item 3 da fila noturna)
+
+Orquestração noturna multi-IA (fila em `docs/log/fila-de-trabalho.md`):
+Kimi ficou com o item 3, uma revisão a sério do Terminal
+(`src-tauri/src/terminal/`, PTY real via `portable-pty`), que nunca
+tinha sido revisto nem tinha um teste sequer. A Kimi bateu no limite
+de taxa da organização (TPD, o mesmo problema recorrente desta noite)
+a meio da tarefa, com uma correção substancial já escrita mas por
+compilar, testar ou publicar — o coordenador (Claude local) retomou o
+trabalho dela no mesmo worktree em vez de o deixar perder-se.
+
+**Três bugs reais, confirmados e corrigidos:**
+
+1. **Carateres UTF-8 multibyte cortados a meio entre dois `read()` do
+   PTY viravam `�`.** Um `read()` do PTY pode parar a meio de um
+   carácter de vários bytes (`á`, `€`, um emoji de 4 bytes) — o código
+   anterior descodificava cada bocado lido com `from_utf8_lossy`
+   isoladamente, e o byte cortado virava sempre o carácter de
+   substituição. Corrigido com um `DecodificadorUtf8` que acumula até
+   3 bytes pendentes de uma sequência incompleta e só os liberta
+   quando o resto chega.
+2. **`TerminalRegistry::write` segurava o lock do registo inteiro
+   durante uma escrita ao PTY que pode bloquear** (buffer de entrada
+   cheio, processo que não lê stdin, uma colagem grande) — travando
+   **qualquer outra sessão de Terminal aberta**, incluindo o `kill`
+   que desbloquearia a situação. Corrigido: `TerminalSession` passa a
+   expor uma pega partilhável (`Arc<Mutex<Box<dyn Write>>>`); o
+   registo clona-a e larga o seu próprio lock antes de escrever.
+3. **`kill()` não colhia o processo** — sem `wait()`, um filho morto
+   ficava zombie no Unix até a app fechar. Corrigido com
+   `try_wait`/`wait`.
+
+**Bug adicional, apanhado ao escrever os testes para o ponto 1**: o
+`flush()` do descodificador (chamado no fim do stream, para nunca
+perder o que sobrou) não limpava o que tinha acumulado — uma segunda
+chamada repetia o mesmo texto. Sem consequência prática (só é chamado
+uma vez, no fim da thread de leitura), mas corrigido por correção.
+
+Nunca havia um teste no módulo `terminal/`. 5 novos, todos no
+descodificador UTF-8 (o resto — PTY real, threads, o `Child` do
+`portable-pty` — não se presta a teste automatizado sem simular um
+processo real). A correção do lock do registo não tem teste dedicado:
+documentado aqui em vez de forçar um teste pouco natural — confirmada
+por leitura do código (o âmbito do lock ficou reduzido à cópia de um
+`Arc`, não à escrita em si), não por uma tentativa ao vivo de a
+travar.
+
+### Verificação
+
+`cargo check`/`cargo test` limpos (10 testes na lib, 6 na integração
+do cofre). `tsc --noEmit` limpo. `eslint .` 0 erros (11 avisos
+pré-existentes, sem relação — mais um encontrado e corrigido nesta
+sessão: `eslint .` corrido a partir do worktree principal apanhava
+também o worktree isolado de um fork em curso,
+`.claude/worktrees/agent-.../`, com 418 erros de parsing falsos —
+adicionado a `eslint.config.js` `ignores`). `vitest run`: 1620 passam,
+1 falha (`login-screen.test.tsx`) — confirmado isolado (`vitest run
+tests/auth/login-screen.test.tsx`, 15/15 a passar), mesma flakiness
+por timeout sob carga já reportada pela DeepSeek na revisão anterior,
+sem relação com esta peça.
+
+Item 3 movido para "Feito" em `docs/log/fila-de-trabalho.md`.
+
 **Não confirmado ao vivo**: sem chave da Anthropic disponível nesta
 sessão remota, nunca se mandou um pedido real a `api.anthropic.com`
 com ferramentas — só testes automatizados, com o `fetch` simulado a
