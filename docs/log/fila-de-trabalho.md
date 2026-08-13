@@ -31,7 +31,7 @@ numerada com setas para cima/baixo chega) e guardar a preferência.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 10. Editor visual de automações — `[livre]`
+### 10. Editor visual de automações — **Claude local** (13/08/2026 18:42) `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
 Nunca revisto.
