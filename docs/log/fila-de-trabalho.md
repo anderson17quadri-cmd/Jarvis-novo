@@ -25,14 +25,6 @@ fuso horário da máquina de forma frágil, e que uma frase ambígua
 ("depois de amanhã", "esta sexta") não engana o modelo de forma
 silenciosa.
 
-### 12. Voz clonada local — consentimento explícito — **Claude local** (13/08/2026 18:53) `[livre, ético]`
-
-Ver `docs/spec/voz-clonada-local.md` e a regra em
-`docs/estilo-de-codigo.md` §"Decisões éticas já assentes": nunca clonar
-sem consentimento explícito. Confirma que o código cumpre isto sem
-exceção — nenhum caminho (importar um ficheiro de áudio de fora, por
-exemplo) consegue treinar uma voz sem o consentimento passar primeiro.
-
 ### 14. Suite E2E com Playwright — `[livre]`
 
 Confirma que a suite ainda corre e ainda apanha regressões a sério — não
@@ -65,6 +57,21 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
+
+**Gap real, corrigido**: `voice-clone-service/server.py` tinha CORS
+aberto a qualquer origem (`allow_origins=["*"]`) — qualquer página
+aberta noutro separador do browser, sem ligação ao JARVIS, conseguia
+`POST /voz` e substituir a voz de referência sem a pessoa dar por
+nada. A única barreira de consentimento vivia na convenção da
+interface (gravar pelo microfone), nunca aplicada no próprio serviço.
+Restrito por `allow_origin_regex` às origens reais do JARVIS
+(desenvolvimento confirmado; produção não). Resto do fluxo confirmado
+limpo — só `getUserMedia` manda áudio, nenhuma ferramenta do
+assistente consegue clonar. 3 testes novos, infraestrutura de testes
+Python criada de raiz. Detalhe em `docs/log/historico-sessoes.md`
+(13/08/2026, "Revisão a sério: voz clonada, consentimento explícito").
 
 ### 10. Editor visual de automações — Claude local — commit `a5b64eb`
 
