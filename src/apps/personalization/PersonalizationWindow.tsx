@@ -12,6 +12,7 @@ import { SoundSettings } from './SoundSettings';
 import { ThemeEditor } from './ThemeEditor';
 import { SystemStatePicker } from './SystemStatePicker';
 import { VoiceSettings } from './VoiceSettings';
+import { WeatherSettings } from './WeatherSettings';
 
 /**
  * Personalização.
@@ -79,6 +80,11 @@ export default function PersonalizationWindow(): React.JSX.Element {
       <section className="mt-s4 border-t border-line pt-s3">
         <p className="t-label mb-2">Assistente</p>
         <AiSettings />
+      </section>
+
+      <section className="mt-s4 border-t border-line pt-s3">
+        <p className="t-label mb-2">Meteorologia</p>
+        <WeatherSettings />
       </section>
 
       <section className="mt-s4 border-t border-line pt-s3">

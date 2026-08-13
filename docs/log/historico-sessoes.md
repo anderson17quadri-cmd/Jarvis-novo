@@ -2270,3 +2270,27 @@ justificava confirmar com a aplicação a correr a sério.
 Commit e push feitos depois deste conserto — o commit da DeepSeek
 (`b8b8384`) já estava no branch partilhado; isto soma-se por cima, não o
 substitui.
+
+## 2026-08-13 — Peça 8, Lote 2: meteorologia real (Open-Meteo)
+
+Primeira das quatro sub-tarefas de "provedores de rede reais" (meteorologia,
+notícias, email, música). Escolheu-se o **Open-Meteo** em vez do OpenWeatherMap
+porque não precisa de chave — é gratuito, sem registo, e a previsão a 7 dias
+pedida pela Parte 6.2 não usa nada que uma chave acrescentasse; evita ainda
+mais um segredo no cofre e a explicação correspondente na interface. O custo é
+só a localização: a pessoa escreve o nome da cidade, que o geocoder do próprio
+Open-Meteo resolve.
+
+Implementado o `OpenMeteoProvider` (geocoding → coordenadas → forecast, com o
+mapeamento dos códigos WMO para as condições da interface), mais a cadeia
+completa de configuração no mesmo molde da IA: `weather-settings` (types),
+`useWeatherSettingsStore` (estado + persistência — sem cofre, porque a cidade
+não é segredo), `useWeatherSettings` (converte preferências no provedor em
+vigor) e o ecrã `WeatherSettings` em Personalização. Por omissão **continua o
+simulado**: só liga a rede quando a pessoa a liga, e sem cidade mantém o
+simulado em vez de rebentar. O CSP em `tauri.conf.json` passou a autorizar os
+dois domínios do Open-Meteo. `tsc`, `eslint` e `vitest` limpos (1398 testes,
+mais 34 novos). A verificação ao vivo ficou por fazer — o Open-Meteo devolve
+dados sem chave, mas não se confirmou o pedido a partir da app empacotada
+nesta máquina; os testes automatizados cobrem o mapeamento e a forma dos
+pedidos.

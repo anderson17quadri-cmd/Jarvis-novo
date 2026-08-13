@@ -103,7 +103,8 @@ npm run tauri android dev      # dispositivo Android
 
 | Funcionalidade | Onde vive | Estado |
 |---|---|:--:|
-| **Rede real** — meteorologia, notícias, email | `services/{weather,news,mail}/providers/` | 🚫 bloqueado |
+| **Rede real** — meteorologia | `services/weather/providers/open-meteo-provider.ts` | ✅ **desbloqueado pelo utilizador 13/08/2026** — Open-Meteo (sem chave), ligado em Personalização → Meteorologia; por omissão mantém-se o simulado |
+| **Rede real** — notícias, email | `services/{news,mail}/providers/` | 🚫 bloqueado |
 | ~~Provedor de IA~~ | `services/ai-providers/deepseek-provider.ts` | ✅ **desbloqueado pelo utilizador** — ver Parte 7.1 |
 | **Reprodução de áudio** — música | `services/music/providers/` | 🚫 bloqueado |
 | **Carregamento real de plugins** — sandbox, assinatura, ficheiros | `apps/plugin-manager/`, `plugins/plugin.ts` | ✅ **confirmado 12/08/2026** — lote 2 completo: sandbox de execução, assinatura Ed25519, e instalação de ficheiro local |
@@ -147,8 +148,10 @@ na parte que não toca no nativo — o sistema de widgets, testável em browser 
 - Qualquer integração nativa adicional (bandeja, atalhos, ficheiros, energia)
 - Builds Windows e Android
 - **Chamadas de rede reais.** Os serviços de meteorologia, notícias e email têm
-  provedor e interface prontos, mas só a implementação simulada. Ligar um
-  provedor HTTP é escrever uma classe e registá-la — nenhum componente muda
+  provedor e interface prontos. A **meteorologia já é real** (Open-Meteo,
+  ligado pelo utilizador na Personalização — ver §2); notícias e email
+  continuam só com a implementação simulada. Ligar um provedor HTTP é
+  escrever uma classe e registá-la — nenhum componente muda
 - **Reprodução de áudio.** O widget de música controla e mostra o estado; tocar
   som exigiria ficheiros locais ou integração com o Spotify
 - **Leitura do disco.** O explorador tem navegação, migalhas e ordenação

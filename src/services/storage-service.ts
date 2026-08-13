@@ -25,6 +25,7 @@ export const STORAGE_KEYS = {
   customThemes: 'custom-themes',
   aiSettings: 'ai-settings',
   voiceSettings: 'voice-settings',
+  weatherSettings: 'weather-settings',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
