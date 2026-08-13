@@ -13,6 +13,19 @@
 
 export type AiProviderId = 'regras' | 'deepseek' | 'claude' | 'ollama';
 
+/** Os provedores que entram na cadeia de reserva — o local (`regras`) é o abrigo final, não um degrau da cadeia. */
+export type ChainProviderId = Exclude<AiProviderId, 'regras'>;
+
+/**
+ * Ordem por omissão da cadeia de reserva (Parte 12 §Orquestrador multi-provedor).
+ *
+ * DeepSeek e Claude antes do Ollama porque, entre um provedor pago já
+ * configurado e um modelo local mais fraco, é razoável tentar o melhor
+ * primeiro. É uma preferência guardada — reordena-se em Personalização →
+ * Assistente.
+ */
+export const DEFAULT_CHAIN_ORDER: readonly ChainProviderId[] = ['deepseek', 'claude', 'ollama'];
+
 export interface AiProviderInfo {
   readonly id: AiProviderId;
   readonly name: string;
@@ -99,6 +112,8 @@ export interface AiSettings {
   readonly ollamaModel: string;
   /** Endereço do Ollama. Configurável porque a porta pode ter sido mudada. */
   readonly ollamaBaseUrl: string;
+  /** Ordem de reserva da cadeia — a preferência guardada, não uma constante fixa. */
+  readonly providerOrder: readonly ChainProviderId[];
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
@@ -112,6 +127,7 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   claudeModel: 'claude-sonnet-5',
   ollamaModel: '',
   ollamaBaseUrl: 'http://localhost:11434',
+  providerOrder: DEFAULT_CHAIN_ORDER,
 };
 
 /**

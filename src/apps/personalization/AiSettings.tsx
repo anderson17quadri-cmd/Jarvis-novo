@@ -1,5 +1,16 @@
 import { useState } from 'react';
-import { AlertTriangle, Check, ExternalLink, Eye, EyeOff, Search, Trash2, Wand2 } from 'lucide-react';
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Search,
+  Trash2,
+  Wand2,
+} from 'lucide-react';
 
 import { useAiSettings } from '@/hooks/use-ai-settings';
 import { cn } from '@/lib/cn';
@@ -42,6 +53,7 @@ export function AiSettings(): React.JSX.Element {
   const forgetClaudeKey = useAiSettingsStore((state) => state.forgetClaudeKey);
   const setOllamaModel = useAiSettingsStore((state) => state.setOllamaModel);
   const setOllamaBaseUrl = useAiSettingsStore((state) => state.setOllamaBaseUrl);
+  const setProviderOrder = useAiSettingsStore((state) => state.setProviderOrder);
 
   const [draft, setDraft] = useState('');
   const [isVisible, setVisible] = useState(false);
@@ -67,6 +79,18 @@ export function AiSettings(): React.JSX.Element {
     settings.provider !== 'claude' && hasClaudeKey,
     settings.provider !== 'ollama' && settings.ollamaModel.trim().length > 0,
   ].filter(Boolean).length;
+
+  /** Troca um degrau da cadeia com o vizinho na direção dada — a lista é uma permutação. */
+  const moveProvider = (index: number, delta: -1 | 1): void => {
+    const destino = index + delta;
+    if (destino < 0 || destino >= settings.providerOrder.length) return;
+
+    const ordem = [...settings.providerOrder];
+    const movido = ordem.splice(index, 1)[0];
+    if (!movido) return;
+    ordem.splice(destino, 0, movido);
+    setProviderOrder(ordem);
+  };
 
   /**
    * Pergunta ao próprio Ollama que modelos já tens instalados, em vez de
@@ -148,6 +172,50 @@ export function AiSettings(): React.JSX.Element {
           avisa sempre antes de continuar.
         </p>
       )}
+
+      <section>
+        <p className="t-label mb-1.5">Ordem da cadeia de reserva</p>
+        <p className="mb-2 text-cap leading-relaxed text-t3">
+          Se o provedor escolhido falhar, o assistente tenta os outros por esta ordem — o primeiro
+          da lista que tiver chave guardada responde. O escolhido vai sempre à frente.
+        </p>
+
+        <ol className="flex flex-col gap-1">
+          {settings.providerOrder.map((id, index) => {
+            const provider = AI_PROVIDERS[id];
+
+            return (
+              <li
+                key={id}
+                className="flex items-center gap-2 rounded-input border border-line bg-tint/[.02] px-3 py-2"
+              >
+                <span className="text-[11px] text-t3">{index + 1}.</span>
+                <span className="min-w-0 flex-1 text-[12.5px] font-medium">{provider.name}</span>
+
+                <button
+                  type="button"
+                  onClick={() => moveProvider(index, -1)}
+                  disabled={index === 0}
+                  aria-label={`Subir ${provider.name}`}
+                  className="flex-shrink-0 rounded p-1 text-t3 transition-colors duration-hover hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => moveProvider(index, 1)}
+                  disabled={index === settings.providerOrder.length - 1}
+                  aria-label={`Descer ${provider.name}`}
+                  className="flex-shrink-0 rounded p-1 text-t3 transition-colors duration-hover hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </section>
 
       {settings.provider === 'deepseek' && (
         <>

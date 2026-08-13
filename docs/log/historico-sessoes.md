@@ -3716,3 +3716,18 @@ correção temporariamente, os dois falharam como esperado, restaurada, os
 Fecha o item 9 ("Fase 3.1: Controlo Direto") da fila de trabalho. Três
 de quatro peças de risco revistas nesta auditoria tinham um achado real
 — só os anexos de email ficaram limpos.
+
+## 2026-08-13 — Reordenar a cadeia de provedores de IA
+
+Item 1 da fila: a ordem da cadeia de reserva (DeepSeek → Claude →
+Ollama) vivia numa constante fixa em código (`CHAIN_ORDER`, em
+`use-ai-settings.ts`) — não havia forma de a mudar. Agora `AiSettings`
+ganhou `providerOrder`, uma preferência guardada editável em
+Personalização → Assistente (lista numerada com setas para cima/baixo),
+e `applyAiSettings` lê essa ordem em vez da constante, que desapareceu.
+O escolhido continua a ir sempre à frente; sem preferência guardada,
+cai na ordem por omissão. A store já existia e já estava registada em
+`hydrate-all.ts`, por isso não houve store nova para esquecer. 4 testes
+novos: reordenar pela interface guarda, a ordem sobrevive a recarregar,
+a cadeia respeita a ordem guardada (não a fixa), e sem preferência cai
+na omissão. `tsc` limpo, `eslint` 0 erros, suite completa a passar.

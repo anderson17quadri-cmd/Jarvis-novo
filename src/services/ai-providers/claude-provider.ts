@@ -25,8 +25,9 @@ import type { ToolCall } from '../assistant/tool-runner';
  *
  * **Ligado à janela de configurações** (`AiSettings.tsx`, Personalização →
  * Assistente): campo para a chave, seletor de modelo, e entra na cadeia
- * de fallback automática (`use-ai-settings-store.ts`, `CHAIN_ORDER`), a
- * seguir à DeepSeek. Ver `docs/spec/orquestrador-multi-provedor.md`.
+ * de fallback automática (`use-ai-settings-store.ts`, `providerOrder`). A
+ * ordem já não é fixa — reordena-se em Personalização → Assistente. Ver
+ * `docs/spec/orquestrador-multi-provedor.md`.
  */
 
 /** Modelos oferecidos — rápido para o dia a dia, profundo para raciocínio. */

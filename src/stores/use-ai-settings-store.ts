@@ -7,6 +7,7 @@ import {
   DEFAULT_AI_SETTINGS,
   type AiProviderId,
   type AiSettings,
+  type ChainProviderId,
   type DeepSeekModelId,
 } from '@/types/ai-provider-settings';
 
@@ -43,6 +44,7 @@ interface AiSettingsState {
   setClaudeModel: (model: AiSettings['claudeModel']) => void;
   setOllamaModel: (model: string) => void;
   setOllamaBaseUrl: (baseUrl: string) => void;
+  setProviderOrder: (providerOrder: readonly ChainProviderId[]) => void;
   /** Esquece a chave e volta ao provedor local. */
   forgetKey: () => void;
   /** Esquece a chave da Claude e volta ao provedor local. */
@@ -140,6 +142,14 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
       ollamaBaseUrl: trimmed.length > 0 ? trimmed : DEFAULT_AI_SETTINGS.ollamaBaseUrl,
     };
     set({ settings });
+    void get().persist();
+  },
+
+  setProviderOrder: (providerOrder) => {
+    const settings = { ...get().settings, providerOrder };
+    set({ settings });
+
+    logService.audit('Reordenar a cadeia de reserva de provedores', 'executado');
     void get().persist();
   },
 
