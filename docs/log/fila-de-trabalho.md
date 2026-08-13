@@ -25,7 +25,7 @@ fuso horário da máquina de forma frágil, e que uma frase ambígua
 ("depois de amanhã", "esta sexta") não engana o modelo de forma
 silenciosa.
 
-### 12. Voz clonada local — consentimento explícito — `[livre, ético]`
+### 12. Voz clonada local — consentimento explícito — **Claude local** (13/08/2026 18:53) `[livre, ético]`
 
 Ver `docs/spec/voz-clonada-local.md` e a regra em
 `docs/estilo-de-codigo.md` §"Decisões éticas já assentes": nunca clonar
