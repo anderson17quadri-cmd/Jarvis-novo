@@ -132,6 +132,15 @@ continuam só nos testes unitários — o E2E corre contra o browser, sem
 provedor real nem rede. Detalhe em `docs/log/historico-sessoes.md`
 (13/08/2026, "Revisão a sério: suite E2E com Playwright").
 
+### 15. 2FA a sério (palavra-passe/PIN + chave física) — DeepSeek — commit `5c8f747`
+
+Bug real: `completeFirstFactor` concedia acesso só com a palavra-passe/PIN
+quando o 2FA estava ligado mas a chave tinha desaparecido (restauro de
+cópia ou cofre limpo), em silêncio — o "segundo fator exigido" deixava de
+proteger. Corrigido para negar nesse estado, com mensagem e auditoria.
+Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério:
+2FA (palavra-passe/PIN + chave física)").
+
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar
   (`starts_with`), o que resolve `..` e segue links simbólicos até ao
