@@ -42,11 +42,6 @@ e passar à frente.
 
 `src-tauri/src/terminal/` (PTY real, `portable-pty`). Nunca revisto.
 
-### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — **DeepSeek** (13/08/2026 17:42)
-
-`watch_folder`/`unwatch_folder`/`get_battery_status`,
-`checkNativeTriggers()`. Nunca revisto.
-
 ### 10. Editor visual de automações — `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
@@ -100,6 +95,14 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — DeepSeek — commit `1d76067`
+
+`watch_folder`/`unwatch_folder`/`get_battery_status`,
+`checkNativeTriggers()`. Revisão a sério: confirmada e corrigida a fuga do
+`unwatch_folder` (a thread do observador nunca parava) e o cruzamento de
+limiar da bateria com mais do que uma regra. Detalhe em
+`docs/log/historico-sessoes.md` (13/08/2026).
 
 - **Explorador de ficheiros real (Peça 7)** — revisto (Claude, sessão
   remota, 13/08/2026): `files_read_dir` canonicaliza antes de comparar

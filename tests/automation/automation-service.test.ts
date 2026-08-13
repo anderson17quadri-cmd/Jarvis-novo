@@ -348,6 +348,29 @@ describe('gatilhos nativos (checkNativeTriggers)', () => {
     expect(executor.calls).toEqual(['aviso:Olá']);
   });
 
+  it('bateria: duas regras cruzam o próprio limiar na mesma leitura', () => {
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'bateria', direction: 'abaixo', percent: 20 },
+        actions: [{ kind: 'notificar', title: 'abaixo de 20', description: '' }],
+      }),
+    );
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'bateria', direction: 'abaixo', percent: 10 },
+        actions: [{ kind: 'notificar', title: 'abaixo de 10', description: '' }],
+      }),
+    );
+
+    service.checkNativeTriggers('bateria', { batteryPercent: 25 });
+    service.checkNativeTriggers('bateria', { batteryPercent: 5 });
+
+    // De 25% para 5% as duas cruzam o limiar por baixo — a segunda não pode
+    // comparar contra o valor que a primeira já atualizou.
+    expect(executor.calls).toContain('aviso:abaixo de 20');
+    expect(executor.calls).toContain('aviso:abaixo de 10');
+  });
+
   it('gatilhos de tipos diferentes não se confundem uns aos outros', () => {
     service.add(makeAutomation({ trigger: { kind: 'usb', action: 'ligado' } }));
 

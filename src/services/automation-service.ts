@@ -133,6 +133,12 @@ export class AutomationService {
     usbAction?: string;
     batteryPercent?: number;
   }): void {
+    // Captura o "anterior" uma vez e atualiza uma vez, no fim — nunca dentro
+    // do predicado, que corre por automação: atualizar ali faria a segunda
+    // regra de bateria comparar contra o valor já atualizado e nunca disparar.
+    const batteryCurrent = kind === 'bateria' ? payload.batteryPercent : undefined;
+    const batteryPrevious = this.lastBatteryPercent;
+
     this.runByTrigger((automation) => {
       const trigger = automation.trigger;
 
@@ -148,26 +154,20 @@ export class AutomationService {
       }
 
       if (trigger.kind === 'bateria' && kind === 'bateria') {
-        const current = payload.batteryPercent;
-        const previous = this.lastBatteryPercent;
-        if (current === undefined) return false;
+        if (batteryCurrent === undefined || batteryPrevious === null) return false;
 
-        let crossed = false;
-        if (previous !== null) {
-          if (trigger.direction === 'abaixo') {
-            crossed = previous > trigger.percent && current <= trigger.percent;
-          } else {
-            crossed = previous < trigger.percent && current >= trigger.percent;
-          }
+        if (trigger.direction === 'abaixo') {
+          return batteryPrevious > trigger.percent && batteryCurrent <= trigger.percent;
         }
-        // Atualiza o estado mesmo que não tenha cruzado — o próximo evento
-        // pode cruzar o limiar.
-        this.lastBatteryPercent = current;
-        return crossed;
+        return batteryPrevious < trigger.percent && batteryCurrent >= trigger.percent;
       }
 
       return false;
     });
+
+    if (batteryCurrent !== undefined) {
+      this.lastBatteryPercent = batteryCurrent;
+    }
   }
 
   // ── Gestão ───────────────────────────────────────────────────────────────
