@@ -24,7 +24,15 @@ do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
-plugins, Sandbox de execução de plugins) já em "Feito" abaixo.
+plugins, Sandbox de execução de plugins, Memória do assistente) já em
+"Feito" abaixo. Em curso agora:
+
+- **Restauro de cópias de segurança (integridade, não só os segredos
+  já corrigidos)** — **DeepSeek** (13/08/2026 23:09). Nunca revisto
+  por ninguém de fora — a revisão de hoje sobre meteorologia/notícias
+  só olhou para a fuga de segredos na criação da cópia, não para o
+  caminho de restauro em si. Ver `src/apps/privacy/BackupPanel.tsx` e
+  `src/types/backup.ts` (`readBackup`, validação do ficheiro).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
