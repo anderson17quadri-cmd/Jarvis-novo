@@ -17,7 +17,7 @@
 
 ## Construir
 
-### 1. Reordenar a cadeia de provedores de IA — **Qwen**
+### 1. Reordenar a cadeia de provedores de IA — **Qwen** (13/08/2026 17:42)
 
 Hoje a ordem é fixa em código (`CHAIN_ORDER` — DeepSeek, Claude, Ollama,
 `docs/spec/orquestrador-multi-provedor.md` §3). Falta um ecrã em
@@ -33,16 +33,16 @@ e passar à frente.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 3. Terminal — **Kimi**
+### 3. Terminal — **Kimi** (13/08/2026 17:42)
 
 `src-tauri/src/terminal/` (PTY real, `portable-pty`). Nunca revisto.
 
-### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — **DeepSeek**
+### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — **DeepSeek** (13/08/2026 17:42)
 
 `watch_folder`/`unwatch_folder`/`get_battery_status`,
 `checkNativeTriggers()`. Nunca revisto.
 
-### 5. Peça 20 — ferramentas para o Claude no orquestrador — **Claude local**
+### 5. Peça 20 — ferramentas para o Claude no orquestrador — **Claude local** (13/08/2026 17:42)
 
 Acabada de sair (commit `f1eba3a`). Ninguém de fora ainda a leu.
 

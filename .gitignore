@@ -44,3 +44,4 @@ test-results/
 venv/
 __pycache__/
 *.pyc
+logs/
