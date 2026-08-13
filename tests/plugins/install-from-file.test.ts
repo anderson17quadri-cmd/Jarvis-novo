@@ -311,6 +311,23 @@ describe('verifyAndInstallPlugin — isExternal', () => {
     expect(result.status).toBe('sem-assinatura');
   });
 
+  it('plugin externo com assinatura mas sem manifesto para verificar: recusado', async () => {
+    const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
+
+    // Assinatura e chave presentes, mas nenhum manifesto para as verificar —
+    // instalar à mesma seria instalar um plugin externo sem nunca confirmar
+    // que a assinatura é dele.
+    const result = await verifyAndInstallPlugin({
+      id: 'externo-sem-manifesto',
+      signature: 'ZmFrZQ==',
+      signerPublicKey: 'ZmFrZQ==',
+      isExternal: true,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe('assinatura-invalida');
+  });
+
   it('plugin externo com assinatura inválida: recusado', async () => {
     const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
     const pair = await generateSigningKeyPair();

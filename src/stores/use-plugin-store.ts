@@ -187,17 +187,22 @@ export async function verifyAndInstallPlugin(params: {
         return catalogEntry ? toManifest(catalogEntry) : undefined;
       })();
 
-    if (manifest) {
-      const status = await verifySignedManifest({
-        manifest,
-        signature: params.signature,
-        signerPublicKey: params.signerPublicKey,
-      });
+    if (!manifest) {
+      // Assinatura presente mas sem manifesto para a verificar: não se pode
+      // provar que é válida, e instalar sem provar é instalar sem verificar.
+      logService.audit(`Assinatura de ${params.id}: sem manifesto para verificar`, 'recusado');
+      return { ok: false, status: 'assinatura-invalida' };
+    }
 
-      if (status !== 'assinado-valido') {
-        logService.audit(`Assinatura de ${params.id}: ${status}`, 'recusado');
-        return { ok: false, status };
-      }
+    const status = await verifySignedManifest({
+      manifest,
+      signature: params.signature,
+      signerPublicKey: params.signerPublicKey,
+    });
+
+    if (status !== 'assinado-valido') {
+      logService.audit(`Assinatura de ${params.id}: ${status}`, 'recusado');
+      return { ok: false, status };
     }
   } else if (params.isExternal) {
     // Plugin externo sem assinatura — recusado.

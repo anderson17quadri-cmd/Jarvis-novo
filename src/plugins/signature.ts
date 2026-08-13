@@ -233,7 +233,11 @@ async function importPrivateKey(base64: string): Promise<CryptoKey> {
  * engine ou da ordem de inserção.
  */
 function canonicalManifestBytes(manifest: PluginManifest): ArrayBuffer {
-  const sorted: Record<string, unknown> = {};
+  // `Object.create(null)`, não `{}`: um campo com o nome `__proto__` num objeto
+  // normal ia mexer no protótipo em vez de criar uma propriedade própria, e o
+  // `JSON.stringify` descartava-o em silêncio — a assinatura deixava de cobrir
+  // o manifesto inteiro.
+  const sorted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
   const keys = Object.keys(manifest).sort();
   const raw = manifest as unknown as Record<string, unknown>;
 
@@ -243,7 +247,7 @@ function canonicalManifestBytes(manifest: PluginManifest): ArrayBuffer {
     // `permissions` e `platforms` também precisam de ordenação canónica.
     if (key === 'permissions' && typeof value === 'object' && value !== null) {
       const permRecord = value as Record<string, unknown>;
-      const permSorted: Record<string, unknown> = {};
+      const permSorted: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
       for (const permKey of Object.keys(permRecord).sort()) {
         permSorted[permKey] = permRecord[permKey];
       }

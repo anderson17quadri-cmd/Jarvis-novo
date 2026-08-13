@@ -210,6 +210,22 @@ describe('assinatura inválida / corrompida', () => {
     expect(valid).toBe(false);
   });
 
+  it('campo __proto__ acrescentado ao manifesto: recusado (a assinatura cobre o manifesto inteiro)', async () => {
+    const pair = await generateSigningKeyPair();
+    const manifest = testManifest();
+    const signature = await signManifest(manifest, pair.privateKey);
+
+    // `__proto__` acrescentado a um manifesto assinado tem de invalidar a
+    // assinatura — é um campo a mais, e a assinatura cobre o manifesto inteiro.
+    // (Chave computada para criar uma propriedade própria `__proto__`, não para
+    // mexer no protótipo do objeto.)
+    const withProto = { ...manifest, ['__proto__']: { injected: true } } as unknown as PluginManifest;
+
+    const valid = await verifyManifestSignature(withProto, signature, pair.publicKey);
+
+    expect(valid).toBe(false);
+  });
+
   it('chave pública com formato inválido (base64 de lixo): recusada, não rebenta', async () => {
     const pair = await generateSigningKeyPair();
     const manifest = testManifest();

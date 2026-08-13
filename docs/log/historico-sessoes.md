@@ -2923,3 +2923,44 @@ ficheiros, 1535 testes.
 **Não confirmado ao vivo**: mesma limitação desta sessão (sem hardware
 Windows) — o fluxo de dois passos nunca foi visto a correr contra uma
 chave física real, só contra os mocks descritos acima.
+
+## 2026-08-13 — Revisão a sério da Assinatura de plugins (Peça 5): dois problemas reais, corrigidos
+
+Quarta revisão independente, a "sobrar tempo" da mesma tarefa. Escolhi a
+Assinatura de plugins (Peça 5) por ser TypeScript puro (Ed25519 via
+SubtleCrypto), sem dependência de hardware, e por ainda não ter sido
+revista por ninguém de forma independente — só a Peça 9 (instalar de
+ficheiro) tinha tido revisão, e apanhou bugs reais.
+
+**Problema 1 — o campo `__proto__` era descartado da assinatura.** Em
+`signature.ts`, `canonicalManifestBytes` construía o objeto canónico com
+`{}` e fazia `sorted[key] = value`. Com uma chave chamada `__proto__`,
+isso mexe no protótipo em vez de criar uma propriedade própria, e o
+`JSON.stringify` descarta-o em silêncio. Resultado: um manifesto com um
+campo `__proto__` acrescentado produzia os mesmos bytes canónicos que
+sem ele — a assinatura não cobria o manifesto inteiro, apesar de o
+código o afirmar. Corrigido com `Object.create(null)` (também no
+`permSorted` das permissões), que trata `__proto__` como uma chave
+normal. É o mesmo vício de "canonização por atribuição em objeto normal"
+que assombra qualquer esquema de assinatura JSON.
+
+**Problema 2 — `verifyAndInstallPlugin` instalava sem verificar (fail-open).**
+Em `use-plugin-store.ts`, quando `signature` e `signerPublicKey` vinham
+presentes mas o manifesto não se resolvia (nem passado por parâmetro nem
+encontrado no catálogo), o `if (manifest)` saltava a verificação e o
+código caía direto para `store.install(...)` — devolvendo `ok: true,
+status: 'assinado-valido'` sem nunca ter verificado nada. O caminho de
+produção atual (`install-from-file.ts`) passa sempre o manifesto, por
+isso não era disparado por ninguém hoje — mas a função é exportada e o
+seu contrato diz "assinatura obrigatória para plugins externos"; um
+chamador futuro que passasse assinatura sem manifesto instalaria um
+plugin externo sem confirmar a assinatura. Corrigido: recusa com
+`assinatura-invalida` quando não há manifesto para verificar.
+
+**Testes**: 2 novos, um por problema, cada um escrito primeiro a provar
+o comportamento errado e a passar depois da correção —
+`verifyAndInstallPlugin({ id, signature, signerPublicKey, isExternal:
+true })` sem manifesto (antes `ok: true`, agora `ok: false`), e
+`verifyManifestSignature` sobre um manifesto com `__proto__` acrescentado
+(antes `true`, agora `false`). Suite completa: 111 ficheiros, 1537
+testes (era 1535; +2 líquidos). `tsc` limpo, `eslint` 0 erros.
