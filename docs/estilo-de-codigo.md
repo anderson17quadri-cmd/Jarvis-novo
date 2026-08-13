@@ -74,16 +74,16 @@ pedido.
 ## Orquestração multi-modelo (trabalho noturno)
 
 Quando se pede para pôr várias IAs locais a trabalhar (Claude local,
-DeepSeek, Qwen, Kimi…) enquanto a pessoa dorme: **um só prompt**, para o
-Claude Code local, que é quem abre os terminais das outras sozinho e as
-comanda — nunca vários prompts separados para a pessoa colar um a um em
-cada terminal à mão. Ver `docs/log/prompt-orquestracao-noturna.md` para
-o formato de referência (inicia o Jarvis primeiro, `npm run tauri dev`,
-num terminal à parte que fica aberto para se poder testar ao vivo a
-qualquer momento; depois abre um terminal por IA com a tarefa dela já
-embutida; depois acompanha os logs e o `git log`, sem ficar só à espera).
-`docs/log/fila-de-trabalho.md` guarda a divisão de tarefas entre elas,
-para não colidirem.
+DeepSeek, Qwen, Kimi…) enquanto a pessoa dorme: **um só prompt**, colado
+diretamente na conversa (nunca guardado num ficheiro à parte — isso é
+ruído, o prompt é para o chat), para o Claude Code local, que é quem
+abre os terminais das outras sozinho e as comanda — nunca vários prompts
+separados para a pessoa colar um a um em cada terminal à mão. O prompt
+manda iniciar o Jarvis primeiro (`npm run tauri dev`, num terminal à
+parte que fica aberto para se poder testar ao vivo a qualquer momento),
+depois ler `docs/log/fila-de-trabalho.md` — essa sim fica no
+repositório, porque é o mecanismo que faz as sessões não colidirem entre
+si (cada uma reserva um item por `git push` antes de começar).
 
 ## Onde procurar mais contexto
 
