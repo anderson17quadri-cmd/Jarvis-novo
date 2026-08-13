@@ -29,8 +29,13 @@ curso agora:
   (13/08/2026 19:17). Construído diretamente, nunca revisto por
   ninguém de fora. Ver entrada "2FA a sério" (13/08/2026).
 - **Meteorologia (Open-Meteo) e notícias (NewsAPI), provedores reais**
-  — **Kimi** (13/08/2026 19:17, nova tentativa — a última falha de
-  taxa foi às 18:31). Nunca revistos por ninguém de fora.
+  — sem dono. Tentativa de atribuir à Kimi às 19:17 (13/08/2026) falhou
+  de novo (terceira vez esta noite) com o mesmo limite de taxa TPD da
+  organização — mas desta vez o valor desceu (`current: 1530401`,
+  contra `1538667` às 18:31), confirmando que é uma janela a decair
+  devagar, não uma quota fixa até uma data. Ao ritmo observado
+  (~8000/45min), não deve aliviar tão cedo — não voltar a tentar antes
+  de passar bastante mais tempo. Nunca revistos por ninguém de fora.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
