@@ -4316,3 +4316,38 @@ em vez do `\b`, preservando os dois cortes que a peça já corrigia (`no
 Porto desde 2019` → `Porto`; `café e a minha palavra-passe…` → `café`) e
 deixando de cortar `comércio`/`Paraguai`/etc. 1 teste novo. `tsc`/`eslint`
 limpos, `vitest run` — 1658/1658 a passar.
+
+## 2026-08-13 — Revisão a sério: restauro de cópias de segurança (integridade, não só os segredos)
+
+Mais uma instância do item 15 (fila noturna): o caminho de **restauro** das
+cópias de segurança — `BackupPanel.tsx` e `readBackup`/`restoreBackup` em
+`src/types/backup.ts` e `src/services/backup-service.ts`. A revisão da
+manhã sobre meteorologia/notícias só corrigira a fuga de segredos na
+**criação** da cópia (`SECRET_FIELDS` incompleto); o restauro em si nunca
+fora revisto por ninguém de fora. As cinco perguntas da fila, uma a uma.
+
+**Um bug real, corrigido com testes que o provam:** a validação do ficheiro
+só conferia a estrutura exterior — é JSON, `format` e `version` certos, as
+chaves são conhecidas — mas **nunca os valores**. Uma cópia adulterada com
+uma secção na forma errada (ex.: `tasks` como string, ou `notifications`
+como objeto onde se espera uma lista) passava, era escrita no armazenamento
+e rebentava a store ao lê-la depois — `useNotificationStore.hydrate` faz
+`saved.map`, `useWorkspaceStore` `saved.desktops.find` — já com o estado
+corrompido, e voltava a rebentar no arranque seguinte. Corrigido: `readBackup`
+confere agora a forma de cada secção conhecida contra um mapa
+`SECTION_KINDS` (o mesmo padrão do `SECRET_FIELDS`) e recusa com
+`dados-invalidos` antes de tocar em nada; `confirm` apanha a falha residual
+e mostra erro em vez de ficar preso no ecrã de confirmação. 5 testes novos
+(commit `d6bb7a8`).
+
+**Confirmado sólido:** JSON inválido, formato estranho, versão futura e
+cópia vazia são recusados com mensagem clara, sem rebentar; repor só escreve
+as chaves que a cópia traz (uma cópia antiga não apaga o que não conhece); o
+segredo continua de fora. O que **não** fica fechado é a adulteração
+*dentro* de uma secção já com a forma certa (ex.: `workspace.desktops` como
+string) — validar o esquema inteiro de cada store é trabalho delas, não da
+fronteira da cópia; algumas já o fazem (temas personalizados filtram,
+widgets descartam ids desconhecidos).
+
+`npx vitest run` — 1663/1663 a passar. `npx tsc --noEmit` limpo, `eslint`
+com 0 erros. Ver `SPEC.md` (Parte 14 §Backups e restauro).

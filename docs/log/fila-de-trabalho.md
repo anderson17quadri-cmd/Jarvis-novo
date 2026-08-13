@@ -25,14 +25,7 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo. Em curso agora:
-
-- **Restauro de cópias de segurança (integridade, não só os segredos
-  já corrigidos)** — **DeepSeek** (13/08/2026 23:09). Nunca revisto
-  por ninguém de fora — a revisão de hoje sobre meteorologia/notícias
-  só olhou para a fuga de segredos na criação da cópia, não para o
-  caminho de restauro em si. Ver `src/apps/privacy/BackupPanel.tsx` e
-  `src/types/backup.ts` (`readBackup`, validação do ficheiro).
+"Feito" abaixo.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -251,3 +244,18 @@ storage, sem nada a reaparecer ao reiniciar, com confirmação exigida),
 limites existem (≤4 preferências, ≤20 pedidos), testes chamam o serviço
 real. 3 testes novos. Detalhe em `docs/log/historico-sessoes.md`
 (13/08/2026, "Revisão a sério: memória do assistente").
+
+### 15. Restauro de cópias de segurança (integridade, não só os segredos) — DeepSeek — commit `d6bb7a8`
+
+Revisão a sério do caminho de restauro (`BackupPanel.tsx` +
+`readBackup`/`restoreBackup`), nunca revisto por ninguém de fora — a
+revisão de hoje sobre meteorologia/notícias só corrigira a fuga de
+segredos na criação da cópia. **Bug real, corrigido**: a validação só
+conferia a estrutura exterior, nunca os valores — uma cópia adulterada com
+uma secção na forma errada (ex.: `tasks` como string) era escrita no
+armazenamento e rebentava a store ao lê-la, já com o estado corrompido.
+Agora `readBackup` confere a forma de cada secção (`SECTION_KINDS`) e
+recusa com `dados-invalidos`; e `confirm` mostra erro em vez de ficar
+preso na confirmação. 5 testes novos. Detalhe em
+`docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: restauro de
+cópias de segurança").
