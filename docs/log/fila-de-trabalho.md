@@ -163,6 +163,22 @@ cidade/país só saem para os domínios declarados; testes chamam o código
 real. Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
 sério: meteorologia (Open-Meteo) e notícias (NewsAPI)").
 
+### 15. Sandbox de execução de plugins (fronteira de isolamento) — DeepSeek — commit `5899e18`
+
+Revisão adversarial da fronteira do sandbox de plugins (`<iframe
+sandbox="allow-scripts">`, `postMessage`, capacidades do manifesto) — a de
+11/08 só procurara fugas de memória. **Dois bugs reais, corrigidos:** (1)
+as permissões do manifesto nunca eram verificadas em runtime (só a lista de
+recusas), por isso um plugin externo assinado com manifesto estreito podia
+pedir qualquer capacidade; agora há dois degraus (declarada e não
+recusada). (2) `resolveWithinRoot` só rejeitava `..`, e um caminho absoluto
+escapava da pasta do plugin (o `join` do Tauri substitui a base),
+alcançando os dados de outros plugins dentro de `$APPDATA`. Confirmado
+limpo: remetente por `event.source`, `sandbox="allow-scripts"`, isolamento
+`plugins:<id>:` do armazenamento, exemplos pedem o que usam. Detalhe em
+`docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: fronteira
+do sandbox de execução de plugins").
+
 - **Notificações nativas isoladas (Peça 14, Lote 4)** — revisto (Claude
   local, 13/08/2026): portão por estado do sistema confirmado correto
   (Normal/Performance sempre, Foco/Economia só urgentes, Apresentação
