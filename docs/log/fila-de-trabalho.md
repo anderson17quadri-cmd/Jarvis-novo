@@ -38,10 +38,6 @@ e passar à frente.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 3. Terminal — **Kimi** (13/08/2026 17:42)
-
-`src-tauri/src/terminal/` (PTY real, `portable-pty`). Nunca revisto.
-
 ### 10. Editor visual de automações — `[livre]`
 
 Entrada do histórico em "2026-08-11 — Editor visual de automações".
@@ -95,6 +91,20 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 3. Terminal — Kimi + Claude local — commit `dc353bb`
+
+`src-tauri/src/terminal/` (PTY real, `portable-pty`). Nunca revisto,
+sem um teste sequer. A Kimi bateu no limite de taxa da organização a
+meio da revisão, com uma correção substancial já escrita mas por
+compilar/testar/publicar — retomada pelo coordenador no mesmo
+worktree. Três bugs reais: carateres UTF-8 multibyte cortados a meio
+entre dois `read()` do PTY (viravam `�`), `write()` do registo a
+segurar o lock de todo o registo durante uma escrita ao PTY que pode
+bloquear (travava qualquer outra sessão, incluindo o `kill`), e
+`kill()` a não colher o processo (zombies no Unix). 5 testes novos.
+Detalhe em `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a
+sério: Terminal").
 
 ### 4. Automações nativas (gatilhos de ficheiro/USB/bateria) — DeepSeek — commit `1d76067`
 
