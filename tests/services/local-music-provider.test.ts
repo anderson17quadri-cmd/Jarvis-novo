@@ -91,6 +91,24 @@ describe('LocalMusicProvider — ler', () => {
 
     expect(state.track).toBeNull();
   });
+
+  it('a duração corrigida aparece na mesma chamada em que o metadata chega, não só na seguinte', async () => {
+    mocks.musicReadDir.mockResolvedValue([
+      { name: 'faixa-um.mp3', path: 'C:/Musica/faixa-um.mp3' },
+    ]);
+
+    const provider = new LocalMusicProvider('C:/Musica', 'Musica');
+    const firstState = await provider.getState();
+    expect(firstState.track?.durationSec).toBe(0);
+
+    // Simula o `loadedmetadata` do browser a chegar entre duas sondagens —
+    // o elemento de áudio real dispararia isto sozinho; aqui só se muda o
+    // valor que o `<audio>` falso devolve.
+    (provider as unknown as { audio: { duration: number } }).audio.duration = 180;
+
+    const secondState = await provider.getState();
+    expect(secondState.track?.durationSec).toBe(180);
+  });
 });
 
 describe('LocalMusicProvider — reprodução', () => {

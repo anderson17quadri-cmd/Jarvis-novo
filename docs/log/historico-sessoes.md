@@ -2706,6 +2706,44 @@ ficou por fazer — ouvir som exige interação humana —; os testes cobrem a
 escolha da pasta, a listagem, a reprodução/pausa/avanço/volume e a
 degradação no Web/Android.
 
+## 2026-08-13 — Revisão da Peça 13 (Música): duração devolvida atrasada um ciclo
+
+Prometido no lote anterior: revisar por fora em vez de só confiar nos
+testes a passar. Peguei na peça mais recente que ainda ninguém tinha
+revisto — a Música, mesclada minutos antes desta entrada.
+
+`tsc`, `eslint` e a suite inteira confirmados limpos primeiro (110
+ficheiros, 1513 testes). Depois, leitura do código a sério —
+`local-music-provider.ts`, não só `music.rs` (que ficou por confirmar
+com `cargo check` aqui: a primeira compilação nesta máquina não terminou
+dentro de um tempo razoável, sem cache nenhum — as sessões locais no
+Windows real já confirmam isso à parte).
+
+**Bug real, pequeno**: `getState()` chamava `refreshDuration(track)`, que
+substitui a entrada em `this.tracks[this.index]` por uma cópia com a
+duração corrigida assim que o `<audio>` sabe a duração real — mas a
+função devolvia a variável `track` de cima, a referência **antiga**, sem
+a duração nova. O array ficava certo; a resposta não. Efeito prático:
+depois de o metadata carregar, a duração aparecia como 0 numa sondagem a
+mais antes de se corrigir sozinha na seguinte — invisível a olho nu com
+sondagem a cada segundo, mas era uma inconsistência real entre o que a
+função calcula e o que devolve, exatamente o tipo de coisa que os testes
+existentes não apanhavam por nunca simularem o metadata a chegar a meio.
+
+Corrigido: `getState()` volta a ler `this.tracks[this.index]` depois de
+`refreshDuration`, em vez de reusar a referência de antes. Um teste novo
+prende isto a sério — muda a duração do `<audio>` falso a meio (simula o
+`loadedmetadata`) e confirma que a **mesma** chamada a `getState()` já
+devolve o valor certo, não só a chamada seguinte.
+
+**Testes**: 1 novo em `tests/services/local-music-provider.test.ts`
+(10 no total no ficheiro). Suite completa: 110 ficheiros, 1514 testes,
+`tsc` limpo, `eslint` 0 erros.
+
+Sem mais achados nesta revisão — o resto do provedor (avançar/recuar,
+shuffle, repeat, degradação sem pasta) leu-se coerente com o que os
+testes já cobrem.
+
 ## 2026-08-13 — Peça 8 fecha-se por completo; "Regra em vigor" (SPEC.md §3) estava toda desatualizada
 
 Com a música mesclada, as quatro sub-tarefas da Peça 8 (meteorologia,

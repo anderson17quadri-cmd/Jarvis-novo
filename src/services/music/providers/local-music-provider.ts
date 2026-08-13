@@ -66,11 +66,17 @@ export class LocalMusicProvider implements MusicProvider {
       return this.emptyState();
     }
 
-    const track = this.tracks[this.index] ?? null;
-    if (!track) return this.emptyState();
+    const initialTrack = this.tracks[this.index] ?? null;
+    if (!initialTrack) return this.emptyState();
 
-    this.syncAudio(track);
-    this.refreshDuration(track);
+    this.syncAudio(initialTrack);
+    this.refreshDuration(initialTrack);
+    // `refreshDuration` pode ter substituído a entrada em `this.tracks` por
+    // uma cópia com a duração atualizada — reler em vez de reusar a
+    // referência de cima, senão esta chamada devolvia a duração antiga (0)
+    // no mesmo ciclo em que ela ficou disponível, corrigindo-se só na
+    // próxima sondagem.
+    const track = this.tracks[this.index] ?? initialTrack;
 
     const audio = this.audio;
     const positionSec = audio ? Math.floor(audio.currentTime) : 0;
