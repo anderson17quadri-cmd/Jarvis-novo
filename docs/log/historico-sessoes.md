@@ -5018,3 +5018,40 @@ produção (`setChain` usa o equivalente `chain[0]`); e depois de uma exaustão
 completa da cadeia o provedor ativo não volta ao primeiro (comportamento em
 `ai-service.ts`, já revisto como item 15 — pode ser intencional). `tsc --noEmit`
 limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1710/1710.
+
+## 2026-08-14 — Revisão a sério: a verificação de assinatura de plugins (`src/plugins/signature.ts`)
+
+Revisão adversarial do mecanismo que decide se um plugin é aceite —
+`signature.ts` (Ed25519 via SubtleCrypto) e o caminho de instalação que a usa
+(`verifyAndInstallPlugin` em `use-plugin-store.ts`, chamado por
+`install-from-file.ts` e `PluginCard.tsx`). Construído na Peça 5 e só
+"confirmado ao vivo", nunca revisto por ninguém de fora.
+
+**A criptografia e o fluxo de verificação estão corretos e falham para o lado
+seguro.** Confirmado, ponto a ponto: a canonicalização ordena as chaves do
+manifesto e de `permissions`/`platforms`, e usa `Object.create(null)` para um
+campo `__proto__` não desaparecer do `JSON.stringify` (há teste que prova que
+acrescentar `__proto__` invalida a assinatura); base64 de lixo, assinatura de
+tamanho errado, chave de outro par e manifesto alterado são todos recusados
+(não rebentam); `verifySignedManifest` confere a lista de revogação antes da
+matemática; um externo sem assinatura é recusado e um sem manifesto para
+verificar também; a verificação do catálogo usa o mesmo `toManifest` que extrai
+só o subconjunto assinado (sem os campos `signature`/`signerPublicKey`).
+
+**Um achado real, que fica à espera de decisão da pessoa — não foi
+construído.** A assinatura cobre só o `manifest`, nunca o `code` (o JavaScript
+que corre). Quem tiver um `.jarvis-plugin` assinado por um autor legítimo pode
+trocar o `code` por outro qualquer e a verificação continua a passar — e a
+interface diz "Assinatura verificada" como se o plugin inteiro estivesse
+autenticado. A justificação documentada em `plugin.ts` — o `code` "não é
+serializado na forma canónica (pode conter caracteres que o `JSON.stringify`
+escape de forma diferente entre engines)" — está **tecnicamente errada**:
+`JSON.stringify` de uma string é determinístico entre engines, e o próprio
+código já assina outros campos de texto (`name`, `description`, `author`) sem
+problema. A rede de segurança é o sandbox + as permissões assinadas: um `code`
+trocado corre no `<iframe sandbox="allow-scripts">` e só pode usar o que o
+manifesto assinado declara. Como alargar a assinatura ao `code` é uma mudança
+quebradora no formato `.jarvis-plugin`, registei a decisão em
+`docs/log/perguntas-para-o-utilizador.md` (pergunta 1) em vez de a tomar
+sozinho. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
+`vitest run` 1710/1710.
