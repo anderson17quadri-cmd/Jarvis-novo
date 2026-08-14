@@ -40,12 +40,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — Voz clonada, síntese e gravação no lado cliente
-(`speakClonada`/`recordVoiceSample` em `voice-service.ts`) — DeepSeek
-(14/08/2026 04:29)**. Só o consentimento/CORS tinha sido revisto (item
-12); a síntese por `fetch /falar`, o contador de gerações e o ciclo de
-vida das blob URLs nunca foram revistos por ninguém de fora.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -65,6 +59,19 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Voz clonada, síntese e reprodução no lado cliente — revisão adversarial — DeepSeek — commit `b46a6e7`
+
+Revisão a sério de `speakClonada` (`voice-service.ts`), nunca revisto por
+ninguém de fora (só o consentimento/CORS, item 12). **Dois buracos reais
+no caminho de falha, corrigidos:** (1) se `audio.play()` recusasse
+(autoplay, áudio ilegível), a blob URL acabada de criar ficava órfã até a
+página fechar — o `catch` só fazia `onSpeechEnd`; (2) se o `fetch /falar`
+falhasse com uma fala anterior a tocar, essa fala continuava a soar já sem
+o microfone guardado. O `catch` agora para o áudio anterior e revoga a sua
+URL. 2 testes novos (`tests/voice/voice-clone-synthesis.test.ts`).
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério:
+voz clonada, síntese e reprodução no lado cliente").
 
 ### 15. Modo conversa (re-engate automático do microfone) — revisão adversarial — DeepSeek — commit `bcab755`
 
