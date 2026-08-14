@@ -127,7 +127,13 @@ export function App(): React.JSX.Element {
   const { goToDesktop, applyLayout } = useWorkspace();
   const idleLockMinutes = useAppearanceStore((state) => state.appearance.idleLockMinutes);
   const openWindowCount = useWindowStore((state) => state.windows.length);
-  const { toggleListening, speak, speakQueued, isConversationMode, toggleConversationMode } = useVoice();
+  const { toggleListening, speak, speakQueued, limparFilaDeFala, isConversationMode, toggleConversationMode } =
+    useVoice();
+
+  // Numera os pedidos do comando "pergunta…" — um pedido novo invalida o
+  // anterior, para o fim de um streaming já cancelado não falar frases que
+  // ficaram para trás (item 16, revisão adversarial).
+  const askGeracaoRef = useRef(0);
 
   // O email passa a produzir notificações assim que o desktop está de pé.
   useNotificationSources(isDesktop);
@@ -428,20 +434,24 @@ export function App(): React.JSX.Element {
 
         // Fala frase a frase à medida que o texto chega, em vez de esperar
         // pelo fim do streaming inteiro (item 16, reportado ao vivo).
+        limparFilaDeFala();
+        const geracao = ++askGeracaoRef.current;
         let buffer = '';
         void aiService
           .send(text, (chunk) => {
+            if (geracao !== askGeracaoRef.current) return;
             buffer += chunk;
-            const { sentences, remainder } = extractSentences(buffer);
+            const { sentences, remainder } = extractSentences(buffer, false);
             buffer = remainder;
             for (const sentence of sentences) speakQueued(sentence);
           })
           .then(() => {
+            if (geracao !== askGeracaoRef.current) return;
             if (buffer.trim().length > 0) speakQueued(buffer);
           });
       },
     });
-  }, [isDesktop, launch, openPalette, restartBootSequence, setTheme, speakQueued]);
+  }, [isDesktop, launch, openPalette, restartBootSequence, setTheme, speakQueued, limparFilaDeFala]);
 
 
   /**

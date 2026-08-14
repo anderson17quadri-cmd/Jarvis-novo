@@ -73,4 +73,42 @@ describe('speakQueued', () => {
 
     expect(speakSpy).toHaveBeenCalledTimes(2);
   });
+
+  it('limparFilaDeFala esvazia a fila — o onEnd da frase cortada não avança para a seguinte', () => {
+    const speakSpy = vi.spyOn(voiceService, 'speak').mockReturnValue(true);
+    const { result } = renderHook(() => useVoice());
+
+    act(() => {
+      result.current.speakQueued('Primeira frase.');
+      result.current.speakQueued('Segunda frase.');
+    });
+    expect(speakSpy).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.limparFilaDeFala();
+      speakSpy.mock.calls[0]?.[1]?.onEnd?.();
+    });
+
+    // A segunda frase ficou de fora — não se fala uma resposta que já não
+    // pertence a lado nenhum.
+    expect(speakSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('depois de limpar a fila, uma frase nova volta a falar logo', () => {
+    const speakSpy = vi.spyOn(voiceService, 'speak').mockReturnValue(true);
+    const { result } = renderHook(() => useVoice());
+
+    act(() => {
+      result.current.speakQueued('Primeira frase.');
+    });
+    act(() => {
+      result.current.limparFilaDeFala();
+    });
+    act(() => {
+      result.current.speakQueued('Frase nova.');
+    });
+
+    expect(speakSpy).toHaveBeenCalledTimes(2);
+    expect(speakSpy).toHaveBeenNthCalledWith(2, 'Frase nova.', expect.anything());
+  });
 });

@@ -56,6 +56,9 @@ export function useVoice(): {
    *  frase de cada vez, sem cortar a anterior a meio. Para respostas em
    *  streaming, onde o texto chega aos bocados. */
   readonly speakQueued: (text: string) => void;
+  /** Esvazia a fila por frases — para quando a fala deve parar já (janela
+   *  fechada, segundo plano, resposta nova), não deixar o resto falar. */
+  readonly limparFilaDeFala: () => void;
   readonly isConversationMode: boolean;
   readonly toggleConversationMode: () => void;
 } {
@@ -200,6 +203,21 @@ export function useVoice(): {
     tentarReengatarRef.current = tentarReengatar;
   }, [tentarReengatar]);
 
+  // ── Fila de fala por frases (estado partilhado com `speak`) ────────────
+
+  const speechQueueRef = useRef<string[]>([]);
+  const isSpeakingQueueRef = useRef(false);
+
+  /**
+   * Esvazia a fila de fala por frases. Sem isto, `stopSpeaking()` só cala a
+   * frase a tocar — a frase seguinte (que já estava na fila) falava na
+   * mesma, já sem a pessoa a ver o assistente nem o contexto que a gerou.
+   */
+  const limparFilaDeFala = useCallback((): void => {
+    speechQueueRef.current = [];
+    isSpeakingQueueRef.current = false;
+  }, []);
+
   // ── Falar ──────────────────────────────────────────────────────────────
 
   const speak = useCallback(
@@ -209,6 +227,11 @@ export function useVoice(): {
       // a IA fala, e ouvia-se a si mesma pelas colunas.
       limparReengate();
       voiceService.stopListening();
+
+      // Uma fala avulsa interrompe a fila por frases: sem isto, o `onEnd`
+      // da frase cortada avançava a fila e a frase seguinte falava por
+      // cima desta, perdendo a fala avulsa.
+      limparFilaDeFala();
 
       voiceService.speak(text, {
         onStart: () => setMode('speaking'),
@@ -221,25 +244,20 @@ export function useVoice(): {
         },
       });
     },
-    [setMode, limparReengate, tentarReengatar],
+    [setMode, limparReengate, tentarReengatar, limparFilaDeFala],
   );
 
   // ── Falar por frases, à medida que chegam (resposta em streaming) ──────
-
-  /**
-   * `voiceService.speak()` cancela qualquer fala anterior antes de começar
-   * (falas sobrepostas ficam impercetíveis) — chamá-lo uma vez por frase,
-   * sem mais nada, cortaria a frase anterior a meio em vez de as enfileirar.
-   * Esta fila só chama `voiceService.speak()` outra vez depois do `onEnd`
-   * da frase anterior, nunca em paralelo.
-   */
-  const speechQueueRef = useRef<string[]>([]);
-  const isSpeakingQueueRef = useRef(false);
 
   /** Mesmo truque do `tentarReengatarRef` acima — evita a recursão direta
    *  do `useCallback` a chamar-se a si próprio antes de estar declarado. */
   const playNextQueuedRef = useRef<() => void>(() => undefined);
 
+  /**
+   * Só fala a frase seguinte depois do `onEnd` da anterior, nunca em
+   * paralelo — `voiceService.speak()` cancela qualquer fala em curso, por
+   * isso chamá-lo uma vez por frase, sem fila, cortaria a anterior a meio.
+   */
   const playNextQueued = useCallback((): void => {
     const next = speechQueueRef.current.shift();
     if (next === undefined) {
@@ -329,8 +347,9 @@ export function useVoice(): {
       voiceService.stopSpeaking();
       voiceService.stopListening();
       limparReengate();
+      limparFilaDeFala();
     }
-  }, [isVisible, limparReengate]);
+  }, [isVisible, limparReengate, limparFilaDeFala]);
 
   useEffect(() => {
     return () => limparReengate();
@@ -341,6 +360,7 @@ export function useVoice(): {
     toggleListening,
     speak,
     speakQueued,
+    limparFilaDeFala,
     isConversationMode: voiceService.isConversationMode,
     toggleConversationMode,
   };

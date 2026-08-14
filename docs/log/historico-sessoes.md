@@ -4611,3 +4611,40 @@ teste E2E cobre o mesmo caminho de ponta a ponta.
 lance um fork isolado (`Agent` com `isolation: worktree`) enquanto o
 dev server principal está aberto tem de saber que isto já foi uma
 causa real de "a app parou de responder" — não é hipotético.
+
+## 2026-08-14 — Revisão a sério: fala por frase (item 16, lado TypeScript)
+
+Revisão adversarial da peça construída esta noite (segmentador de frases,
+`speakQueued`, ligação no `ask`), nunca revista por ninguém de fora. Dois
+bugs reais, corrigidos:
+
+1. **Partir frases a meio do stream.** `extractSentences` tratava o fim do
+   buffer como fim de frase (o `$` do lookahead) — a meio do stream, um
+   "3." tanto é o fim de "vale 3." como metade de "3.14", e sem o bocado
+   seguinte não havia como distinguir. Um número decimal, uma versão
+   ("v2.0") ou um domínio ("exemplo.com") cortados entre dois bocados
+   saíam partidos ao meio. Corrigido com um flag `final`: só o último
+   bocado fecha a frase no fim do buffer; a meio, a pontuação do fim fica
+   por fechar até ao bocado seguinte (o `then` do `ask` faz o fecho final).
+   Confirmado também o que NÃO parte (dentro de um bocado, "3.14"/"14.30"/
+   "..." já se aguentavam pelo lookahead `(?=\s|$)`).
+
+2. **A fila por frases nunca era esvaziada.** `stopSpeaking()` (ao ir para
+   segundo plano) ou uma `speak()` avulsa (saudação, automação) calavam só
+   a frase a tocar — o `onEnd` dela avançava a fila e a frase seguinte
+   falava na mesma, já sem a pessoa a ver o assistente nem o contexto que
+   a gerou; no caso da `speak()` avulsa, a fila ainda a atropelava e a
+   perdia. Novo `limparFilaDeFala`, chamado pelo `speak()`, ao ir para
+   segundo plano e no arranque de um `ask` novo. O `ask` também numera os
+   pedidos (geração), para o fim de um streaming cancelado por outro
+   pedido não falar as frases que ficaram para trás.
+
+5 testes novos (3 do segmentador, 2 da fila). `tsc --noEmit` limpo,
+`eslint .` 0 erros (11 avisos pré-existentes noutros ficheiros),
+`vitest run` 1680/1680. O que ficou de fora, de propósito: a lista de
+abreviaturas é deliberadamente curta — "pág.", "fig.", "n." e outras raras
+em fala conversacional continuam a partir a frase a meio; alargá-la é um
+jogo sem fim, e a lista cobre as que saem numa resposta falada normal. O
+`ask` não é cancelado ao fechar a janela do assistente (é disparado por
+voz/comando, à parte da janela) — fica como limitação conhecida, não é
+desta peça.

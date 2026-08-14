@@ -53,4 +53,28 @@ describe('extractSentences', () => {
   it('só espaço em branco fica todo no resto', () => {
     expect(extractSentences('   ')).toEqual({ sentences: [], remainder: '   ' });
   });
+
+  it('a meio do stream, pontuação mesmo no fim do bocado fica por fechar — não parte "3.14" a meio', () => {
+    const primeiro = extractSentences('O valor é 3.', false);
+    expect(primeiro.sentences).toEqual([]);
+    expect(primeiro.remainder).toBe('O valor é 3.');
+
+    const segundo = extractSentences(`${primeiro.remainder}14 metros.`, false);
+    expect(segundo.sentences).toEqual([]);
+    expect(segundo.remainder).toBe('O valor é 3.14 metros.');
+
+    const fim = extractSentences(segundo.remainder, true);
+    expect(fim.sentences).toEqual(['O valor é 3.14 metros.']);
+    expect(fim.remainder).toBe('');
+  });
+
+  it('a meio do stream, uma frase fechada a meio do bocado sai logo, e a última fica por fechar', () => {
+    const { sentences, remainder } = extractSentences('Olá. Tudo bem.', false);
+    expect(sentences).toEqual(['Olá.']);
+    expect(remainder.trim()).toBe('Tudo bem.');
+  });
+
+  it('com final (texto completo), o fim do buffer continua a fechar a frase', () => {
+    expect(extractSentences('O valor é 3.', true).sentences).toEqual(['O valor é 3.']);
+  });
 });

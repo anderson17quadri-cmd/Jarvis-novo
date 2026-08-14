@@ -24,8 +24,17 @@ function terminaEmAbreviatura(textoAntesDaPontuacao: string): boolean {
  * Devolve as frases já fechadas em `buffer`, mais o que sobra por fechar —
  * o resto junta-se ao próximo bocado que chegar antes de se voltar a
  * chamar isto.
+ *
+ * `final` só é `true` quando o `buffer` é o último bocado (o stream acabou).
+ * A meio, a pontuação mesmo no fim do buffer fica por fechar: "3." tanto
+ * pode ser fim de frase como metade de "3.14", e sem o bocado seguinte não
+ * há como distinguir. Só com `final: true` é que o fim do buffer conta como
+ * fim de frase.
  */
-export function extractSentences(buffer: string): { readonly sentences: readonly string[]; readonly remainder: string } {
+export function extractSentences(
+  buffer: string,
+  final = true,
+): { readonly sentences: readonly string[]; readonly remainder: string } {
   const sentences: string[] = [];
   let start = 0;
   let searchFrom = 0;
@@ -36,6 +45,8 @@ export function extractSentences(buffer: string): { readonly sentences: readonly
     if (match === null) break;
 
     const fimDaPontuacao = match.index + match[0].length;
+
+    if (!final && fimDaPontuacao === buffer.length) break;
 
     if (terminaEmAbreviatura(buffer.slice(start, match.index))) {
       searchFrom = fimDaPontuacao;
