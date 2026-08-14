@@ -346,7 +346,10 @@ export async function handlePluginMessage(
   const permission = PERMISSION_BY_MESSAGE_TYPE[message.type];
   const declaration = resolveDeclaration(pluginId);
 
-  if (!declaration.permissions?.[permission]) {
+  // Comparação estrita, não verdade: um manifesto assinado com `"false"` em
+  // vez de `false` (ou `1`, ou `{}`) é verdade em JavaScript e passaria por
+  // aqui como "declarada" — o contrato diz permissão `true`, e só isso conta.
+  if (declaration.permissions?.[permission] !== true) {
     logService.audit(`Plugin ${pluginId}: ${message.type}`, 'recusado');
     return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'permissao-nao-declarada' };
   }

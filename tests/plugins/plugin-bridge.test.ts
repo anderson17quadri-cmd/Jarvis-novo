@@ -212,6 +212,17 @@ describe('handlePluginMessage — o manifesto é a fronteira', () => {
     expect(ack.ok).toBe(false);
     expect(ack.reason).toBe('sem-raiz-declarada');
   });
+
+  it('uma permissão não booleana (string "false") não conta como declarada', async () => {
+    // `"false"` em string é verdade em JavaScript — sem a comparação estrita,
+    // passaria pela fronteira como se o manifesto declarasse `true`.
+    seedExternalPlugin('permissao-string', { notifications: 'false' as unknown as boolean });
+
+    const ack = await handlePluginMessage('permissao-string', notifyRequest('truthy-1'));
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-nao-declarada');
+  });
 });
 
 describe('handlePluginMessage — core.automation.run', () => {

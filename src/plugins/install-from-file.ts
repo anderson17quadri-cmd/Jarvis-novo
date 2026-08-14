@@ -194,6 +194,15 @@ export function validateManifest(manifest: PluginManifest): string | undefined {
     return 'O manifesto não tem permissões (permissions) declaradas.';
   }
 
+  // Cada permissão tem de ser mesmo `true`/`false` — um valor verdade de outra
+  // casta (a string `"false"`, por exemplo) é tratado como concedido a jusante,
+  // por isso recusa-se aqui, à instalação, em vez de se deixar correr.
+  for (const [permissao, valor] of Object.entries(manifest.permissions)) {
+    if (typeof valor !== 'boolean') {
+      return `A permissão "${permissao}" tem de ser true ou false.`;
+    }
+  }
+
   return undefined;
 }
 
