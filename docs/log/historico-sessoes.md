@@ -4648,3 +4648,42 @@ jogo sem fim, e a lista cobre as que saem numa resposta falada normal. O
 `ask` não é cancelado ao fechar a janela do assistente (é disparado por
 voz/comando, à parte da janela) — fica como limitação conhecida, não é
 desta peça.
+
+## 2026-08-14 — Revisão a sério: modo conversa (re-engate automático do microfone)
+
+Revisão adversarial do ciclo de re-engate do microfone no modo conversa
+(`useVoice`, `src/hooks/use-voice.ts`, contra o `voice-service.ts`) — a peça
+de 11/08/2026, nunca revista por ninguém de fora. Dois bugs reais, corrigidos:
+
+1. **Os erros transientes passavam pelo caminho de erro a sério.** O
+   `onError` da escuta chamava `setMode('error')` e registava um erro **antes**
+   de decidir se o erro era transiente. `no-speech` (um silêncio de rotina,
+   que acontece de cada vez que a pessoa demora mais de ~12s a responder no
+   modo conversa) e `a-falar` (o guarda de eco a segurar o microfone enquanto
+   a voz ainda soa — dispara no ciclo normal sempre que um comando dito em voz
+   alta gera uma confirmação falada) piscavam "erro" no núcleo e sujavam o
+   registo. Pior: no limiar (3.ª tentativa seguida sem fala), o
+   `setMode('error')` já tinha corrido quando o modo conversa se desligava, e
+   como o `onEnd` só repõe a "idle" se o modo for "listening", o núcleo ficava
+   **preso em "erro"** depois de o microfone se ter desligado sozinho — um
+   estado que nada repunha até a pessoa interagir. Corrigido tratando os
+   transientes primeiro, sem tocar no modo nem no registo.
+
+2. **Ao voltar do segundo plano, o ciclo nunca retomava.** O efeito de
+   visibilidade só agia quando a janela perdia o foco (parava fala/escuta e
+   limpava o re-engate); o histórico prometia "retoma-se ao voltar", mas não
+   havia ramo nenhum para o fazer. Resultado: depois de ir a segundo plano, o
+   microfone nunca mais ligava sozinho, apesar de o botão continuar aceso — e
+   clicar no microfone com o modo conversa ativo **desliga** o modo (é o gesto
+   de "parar"), por isso a ação natural da pessoa tinha o efeito contrário.
+   Corrigido com um ramo de foreground que re-engata quando o modo conversa
+   continua ativo e não se está a ouvir.
+
+5 testes novos (`tests/voice/conversation-mode.test.ts`), confirmados a falhar
+contra o código antigo e a passar com a correção. `tsc --noEmit` limpo,
+`eslint .` 0 erros (11 avisos pré-existentes noutros ficheiros), `vitest run`
+1685/1685. O que ficou de fora, de propósito: erros persistentes
+(`not-allowed`, serviço em baixo) param o ciclo e mostram uma notificação,
+mas não desligam o modo conversa — fica "aceso mas morto" até a pessoa o
+voltar a ligar; é uma escolha de desenho (o aviso já lá está), não desta
+peça.

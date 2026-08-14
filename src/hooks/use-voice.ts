@@ -138,20 +138,12 @@ export function useVoice(): {
           }
         },
         onError: (kind) => {
-          setMode('error');
-          logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
-
-          // `no-speech` e `a-falar` são transientes — vale a pena tentar
-          // outra vez. Os outros erros (serviço em baixo, microfone desligado)
-          // são persistentes: re-engatar seria um ciclo infinito.
+          // `no-speech` (silêncio) e `a-falar` (o guarda de eco a segurar o
+          // microfone enquanto a voz ainda soa) são transientes, não erros:
+          // não põem o núcleo em "erro" nem sujam o registo. Só os erros
+          // persistentes (serviço em baixo, microfone desligado) o fazem —
+          // re-engatar aí seria um ciclo infinito.
           const transiente = kind === 'no-speech' || kind === 'a-falar';
-
-          if (!transiente) {
-            erroFatalRef.current = true;
-            notificationService.error('Microfone', describeVoiceError(kind));
-            setTimeout(() => setMode('idle'), 2_000);
-            return;
-          }
 
           // `no-speech` acumula para desligar o modo conversa ao fim de
           // N tentativas. `a-falar` não conta — o sistema estar a falar
@@ -168,7 +160,20 @@ export function useVoice(): {
               return;
             }
           }
-          // Transiente — o `onEnd` que vem a seguir re-engata.
+
+          if (transiente) {
+            // `no-speech`: o `onEnd` que vem logo a seguir re-engata.
+            // `a-falar`: não há `onEnd` (o `toggleListening` devolveu antes
+            // de começar), mas o `onEnd` da fala em curso recupera o ciclo.
+            // Nenhum dos dois merece pôr o núcleo em erro.
+            return;
+          }
+
+          setMode('error');
+          logService.log('erro', 'voz', 'O reconhecimento falhou', kind ?? '(sem código)');
+          erroFatalRef.current = true;
+          notificationService.error('Microfone', describeVoiceError(kind));
+          setTimeout(() => setMode('idle'), 2_000);
         },
         onTranscript: (text) => {
           voiceService.resetNoSpeech();
@@ -344,12 +349,23 @@ export function useVoice(): {
 
   useEffect(() => {
     if (!isVisible) {
+      // Segundo plano: para tudo — fala, escuta e o re-engate pendente.
+      // O modo conversa fica ativo; o ramo de baixo retoma-o ao voltar.
       voiceService.stopSpeaking();
       voiceService.stopListening();
       limparReengate();
       limparFilaDeFala();
+      return;
     }
-  }, [isVisible, limparReengate, limparFilaDeFala]);
+
+    // Ao voltar (ou no arranque), se o modo conversa continua ativo, o ciclo
+    // retoma — sem isto, depois de ir a segundo plano o microfone nunca mais
+    // ligava sozinho, apesar de o botão continuar a dizer que o modo está
+    // ativo e o histórico prometer "retoma-se ao voltar".
+    if (voiceService.isConversationMode && !voiceService.isListening) {
+      tentarReengatar();
+    }
+  }, [isVisible, limparReengate, limparFilaDeFala, tentarReengatar]);
 
   useEffect(() => {
     return () => limparReengate();
