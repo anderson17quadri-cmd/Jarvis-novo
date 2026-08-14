@@ -7,14 +7,15 @@
 > começar — se o `push` falhar porque outra sessão já reservou o mesmo
 > item, `git pull` e escolhe o seguinte.
 >
-> **DeepSeek é a prioridade (14/08/2026).** O histórico mostra o Kimi e
-> o Qwen a bater em limites de quota/taxa repetidamente (14 vezes só
-> nesta sessão) — o DeepSeek tem sido quem fecha item atrás de item sem
-> interrupção. Dá ao DeepSeek o próximo item livre primeiro, sempre que
-> houver mais do que uma IA disponível a escolher; só passa a Kimi ou a
-> Qwen quando o DeepSeek já estiver ocupado com outra coisa. Se o
-> DeepSeek também bater num limite, volta ao padrão normal (quem estiver
-> livre).
+> **Só DeepSeek, a partir de agora (14/08/2026, pedido explícito do
+> utilizador).** Kimi e Qwen ficam de fora — não atribuir mais nada a
+> nenhum dos dois, mesmo que apareçam livres. Se houver mais itens do
+> que instâncias de DeepSeek a correr, **abre mais terminais com
+> DeepSeek** (duas, três, o que for preciso) em vez de recorrer a Kimi
+> ou Qwen — várias instâncias de DeepSeek em paralelo, cada uma com o
+> seu próprio item reservado (mesma disciplina de reserva por
+> `git push`, para não pegarem no mesmo item). Só volta a Kimi/Qwen se
+> o utilizador pedir explicitamente outra vez.
 >
 > Cada item fechado ganha a sua entrada normal em
 > `docs/log/historico-sessoes.md` e a atualização correspondente no
@@ -24,7 +25,12 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-### 16. Fala só depois de o texto inteiro estar escrito — **Kimi** (14/08/2026 03:12) `[livre]`
+### 16. Fala só depois de o texto inteiro estar escrito — **Claude local** (14/08/2026 03:15)
+
+Tentativa de atribuir à Kimi às 03:12 (14/08/2026) falhou de imediato —
+mesmo limite de taxa TPD da organização de ontem à noite (`429`,
+`current: 1528525`), sem sinal de recuperação em ~4h20. Coordenador
+assume o item diretamente.
 
 **Diagnóstico já feito** (sessão remota, não confirmado ao vivo — precisa
 de app a correr para testar a sério): `App.tsx`, dentro do tool
@@ -54,6 +60,23 @@ próxima frase enfileira-se atrás, não interrompe a que está a falar.
 Cuidado com abreviações comuns em português ("Sr.", "n.º", "etc.") não
 partirem a frase a meio sem necessidade — não precisa de ser perfeito,
 só melhor do que "espera tudo".
+
+**Pista acrescentada pelo utilizador (14/08/2026)**: olhou para
+[`KoljaB/RealtimeVoiceChat`](https://github.com/KoljaB/RealtimeVoiceChat)
+como possível referência. A app inteira não serve (frontend próprio em
+HTML/JS + servidor FastAPI/WebSocket, sem manutenção ativa — não é para
+copiar) — mas o `voice-clone-service/` já usa exatamente a mesma base
+que esse projeto por baixo (`coqui-tts`/XTTS-v2, `openai-whisper`,
+confirmado a funcionar na RTX 5070 desta máquina). O RealtimeVoiceChat
+usa essa mesma base através de duas bibliotecas do mesmo autor, feitas
+para isto — **`RealtimeTTS`** e **`RealtimeSTT`** (pip install, à parte
+da app de demonstração) — que já resolvem sintetizar por pedaços de
+frase e deteção de troca de turno (ver `turndetect.py` no repositório,
+como referência de desenho, não para copiar código). Vale a pena
+confirmar se `RealtimeTTS` dá para o `voice-clone-service/server.py`
+sintetizar por frase em vez do texto inteiro de uma vez — pode resolver
+metade deste item do lado do serviço Python, sem só empilhar lógica de
+corte de frases do lado do TypeScript.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
