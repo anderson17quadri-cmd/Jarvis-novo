@@ -5055,3 +5055,31 @@ quebradora no formato `.jarvis-plugin`, registei a decisão em
 `docs/log/perguntas-para-o-utilizador.md` (pergunta 1) em vez de a tomar
 sozinho. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
 `vitest run` 1710/1710.
+
+## 2026-08-14 — Revisão a sério: o motor de automações (`src/services/automation-service.ts`)
+
+Revisão adversarial do motor de automações como um todo (`add`/`update`/
+`remove`, a avaliação de gatilhos, a execução de ações e o temporizador de
+segundo plano), nunca revisto de fio a pavio por ninguém de fora — só
+`checkNativeTriggers` (item 4) e o `save()` do editor (item 10) tinham sido
+tocados.
+
+**Um bug real, corrigido.** As subscrições do Event Bus eram construídas uma
+única vez no `start()`, a partir da lista de automações *daquele momento*. Uma
+regra ligada a um evento criada ou editada depois do arranque (é o caminho
+normal do editor visual — o `start` só corre uma vez no `App.tsx`) ficava à
+espera de um evento ao qual ninguém estava subscrito, e **nunca corria até a
+aplicação reiniciar**. Os próprios testes contornavam isto à mão (chamavam
+`stop()` + `start()` depois de `add()`, com o comentário "reiniciar reavalia") —
+sinal claro de que a falha era conhecida, não resolvida. Corrigido com um
+`refreshEventSubscriptions()` que refaz as subscrições a partir da lista atual
+(guarda `timer !== null` para não subscrever com o motor parado) e é chamado por
+`start`, `add`, `update`, `remove` e `hydrate`. 3 testes novos (regra criada
+depois do arranque liga ao evento; editar para um evento novo liga; remover a
+única regra de um evento desliga), e os testes antigos deixaram de precisar do
+`stop`/`start` de contorno. O resto confirmado limpo: gatilhos nativos com o
+"anterior" de bateria capturado uma vez fora do predicado, ações executadas por
+ordem com paragem na primeira que rebenta, histórico limitado a 60, `update`
+preserva identidade, persistência distingue "nunca gravado" de "gravado vazio".
+`tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
+run` 1713/1713.

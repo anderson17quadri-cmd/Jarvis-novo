@@ -143,21 +143,60 @@ describe('gatilhos por evento', () => {
         actions: [{ kind: 'falar', text: 'chegou' }],
       }),
     );
-    // O motor só escuta os eventos que as regras usam — reiniciar reavalia.
-    service.stop();
-    service.start(executor, () => ({ now, systemState: 'normal' }));
 
     eventBus.emit('email:novo', { from: 'a', subject: 'b' });
 
     expect(executor.calls).toEqual(['voz:chegou']);
   });
 
+  it('uma regra criada depois do arranque fica logo ligada ao evento', () => {
+    // O arranque já aconteceu no `beforeEach`. Antes, criar uma regra por
+    // evento depois do `start` não a subscrevia — só corria depois de a
+    // aplicação reiniciar.
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'evento', event: 'janela:aberta' },
+        actions: [{ kind: 'falar', text: 'abriu' }],
+      }),
+    );
+
+    eventBus.emit('janela:aberta', { appId: 'notas' });
+
+    expect(executor.calls).toEqual(['voz:abriu']);
+  });
+
+  it('editar uma regra para um evento novo fica logo ligada a esse evento', () => {
+    const automation = service.add(makeAutomation({ trigger: { kind: 'manual' } }));
+
+    service.update(automation.id, {
+      name: 'Teste',
+      description: '',
+      trigger: { kind: 'evento', event: 'tema:alterado' },
+      conditions: [],
+      actions: [{ kind: 'falar', text: 'tema' }],
+      isEnabled: true,
+    });
+
+    eventBus.emit('tema:alterado', { theme: 'oled' });
+
+    expect(executor.calls).toEqual(['voz:tema']);
+  });
+
+  it('remover a única regra de um evento deixa de correr a esse evento', () => {
+    const automation = service.add(
+      makeAutomation({ trigger: { kind: 'evento', event: 'email:novo' } }),
+    );
+
+    service.remove(automation.id);
+    eventBus.emit('email:novo', { from: 'a', subject: 'b' });
+
+    expect(executor.calls).toHaveLength(0);
+  });
+
   it('uma regra desligada não corre', () => {
     service.add(
       makeAutomation({ trigger: { kind: 'evento', event: 'email:novo' }, isEnabled: false }),
     );
-    service.stop();
-    service.start(executor, () => ({ now, systemState: 'normal' }));
 
     eventBus.emit('email:novo', { from: 'a', subject: 'b' });
 
@@ -166,8 +205,6 @@ describe('gatilhos por evento', () => {
 
   it('parar o motor cancela as subscrições', () => {
     service.add(makeAutomation({ trigger: { kind: 'evento', event: 'email:novo' } }));
-    service.stop();
-    service.start(executor, () => ({ now, systemState: 'normal' }));
     service.stop();
 
     eventBus.emit('email:novo', { from: 'a', subject: 'b' });

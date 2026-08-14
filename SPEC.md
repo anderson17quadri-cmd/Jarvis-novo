@@ -516,7 +516,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Item | | |
 |---|:--:|---|
 | Gatilho → Condições → Ações | ✅ | `services/automation-service.ts` |
-| Gatilhos por hora, intervalo, evento e manual | ✅ | O relógio guarda marcas de disparo — uma regra das 08:00 corre uma vez, não três |
+| Gatilhos por hora, intervalo, evento e manual | ✅ | O relógio guarda marcas de disparo — uma regra das 08:00 corre uma vez, não três. **Revisão a sério (item 15, 14/08/2026): bug real corrigido** — uma regra por evento criada ou editada depois do `start()` ficava à espera de um evento ao qual ninguém estava subscrito e só corria depois de a aplicação reiniciar; as subscrições agora refazem-se em `add`/`update`/`remove`/`hydrate` |
 | Condições: dia da semana, faixa horária, estado do sistema | ✅ | Funções puras, testadas à parte. A faixa que atravessa a meia-noite também |
 | Ações: abrir janela, notificar, tema, estado, widget, voz | ✅ | Cumpridas por um executor injetado — o motor não conhece o WindowManager. As frases que as descrevem mostravam identificadores crus (`oled`, `economia`, `news`) até se partilhar `lib/names.ts` com os comandos de voz, que já tinham tido o mesmo defeito. Sem teste nenhum sobre o ficheiro, ninguém tinha reparado |
 | Histórico com resultado, duração e motivo | ✅ | 60 execuções, persistido |

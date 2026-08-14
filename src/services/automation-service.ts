@@ -91,17 +91,8 @@ export class AutomationService {
     this.executor = executor;
     this.context = context;
 
-    for (const event of this.subscribedEvents()) {
-      this.unsubscribers.push(
-        eventBus.on(event, () => {
-          this.runByTrigger((automation) =>
-            automation.trigger.kind === 'evento' && automation.trigger.event === event,
-          );
-        }),
-      );
-    }
-
     this.timer = setInterval(() => this.tick(), TICK_MS);
+    this.refreshEventSubscriptions();
     // Uma passagem imediata: sem isto, uma regra por intervalo só corria ao fim
     // do primeiro tique.
     this.tick();
@@ -182,6 +173,7 @@ export class AutomationService {
     };
 
     this.automations = [created, ...this.automations];
+    this.refreshEventSubscriptions();
     this.emit();
     void this.persist();
     return created;
@@ -206,6 +198,7 @@ export class AutomationService {
 
     const updated: Automation = { ...existing, ...changes };
     this.automations = this.automations.map((automation) => (automation.id === id ? updated : automation));
+    this.refreshEventSubscriptions();
     this.emit();
     void this.persist();
     return updated;
@@ -214,6 +207,7 @@ export class AutomationService {
   remove(id: string): void {
     this.automations = this.automations.filter((automation) => automation.id !== id);
     this.lastFired.delete(id);
+    this.refreshEventSubscriptions();
     this.emit();
     void this.persist();
   }
@@ -309,10 +303,36 @@ export class AutomationService {
     // automações não as quer de volta ao reabrir.
     this.automations = saved?.automations ?? seed;
     this.runs = saved?.runs ?? [];
+    this.refreshEventSubscriptions();
     this.emit();
   }
 
   // ── Interior ─────────────────────────────────────────────────────────────
+
+  /**
+   * Re-subscribe aos eventos que as automações usam.
+   *
+   * As subscrições são construídas a partir da lista atual de automações. Sem
+   * isto, uma regra ligada a um evento novo (criada ou editada depois do
+   * `start`) ficava à espera de um evento ao qual ninguém estava subscrito —
+   * nunca corria até a aplicação reiniciar. Se o motor está parado não há nada
+   * a refazer; o `start` chama isto a seguir a ligar o relógio.
+   */
+  private refreshEventSubscriptions(): void {
+    if (this.timer === null) return;
+
+    for (const off of this.unsubscribers.splice(0)) off();
+
+    for (const event of this.subscribedEvents()) {
+      this.unsubscribers.push(
+        eventBus.on(event, () => {
+          this.runByTrigger((automation) =>
+            automation.trigger.kind === 'evento' && automation.trigger.event === event,
+          );
+        }),
+      );
+    }
+  }
 
   /** Só os eventos que alguma automação usa — não se escuta o que ninguém quer. */
   private subscribedEvents(): readonly SystemEventName[] {
