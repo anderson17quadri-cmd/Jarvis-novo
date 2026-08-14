@@ -39,8 +39,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O serviço de voz, caminho `speak()` por SpeechSynthesis (`src/services/voice-service.ts`, 981 linhas) — DeepSeek (14/08/2026 06:22)**. A síntese normal por `speechSynthesis` (o caminho que fala quase tudo), nunca revisto como um todo por ninguém de fora: a revisão do item 15 só cobriu `speakClonada` (voz clonada), e a do modo conversa só o re-engate do microfone. Ficam por examinar a seleção de voz, o ciclo de vida da `SpeechSynthesisUtterance`, `stopSpeaking`, a fila e os estados `onend`/`onerror`. Corretude crítica: é a voz do sistema — uma fala que fica presa, não para, ou escolhe a voz errada sente-se em toda a conversa.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -60,6 +58,25 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O serviço de voz, caminho `speak()` por SpeechSynthesis (`src/services/voice-service.ts`) — revisão adversarial — DeepSeek — commit `98cf0b5`
+
+Revisão a sério da síntese normal por `speechSynthesis` (`speak()` →
+`speakSistema`, `stopSpeaking`, a seleção de voz e os estados
+`onstart`/`onend`/`onerror`), nunca revisto como um todo por ninguém de
+fora — a revisão anterior do item 15 só cobriu `speakClonada`, e a do modo
+conversa só o re-engate do microfone. **Um bug real, corrigido:** o
+`speak()` promete "`callbacks.onEnd` dispara sempre", mas `stopSpeaking()`
+nunca o disparava — o `pause()` do áudio clonado não dispara `onended`, e o
+`cancel()` da síntese "nem sempre" dispara nada. Quem usa `onEnd` para sair
+de "a falar" (o núcleo do assistente, `use-voice.ts`) ficava preso nesse
+estado para sempre ao interromper a fala a meio. O `speak()` embrulha agora
+o `onEnd` num fecho idempotente guardado em `activeSpeechEnd`, e o
+`stopSpeaking()` dispara-o. 3 testes novos. O resto confirmado limpo
+(seleção de voz com `voiceURI` por cima, `limparParaSintese` antes de
+escolher a voz, a fila por frases a avançar só no `onEnd`). Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o serviço de
+voz, caminho speak() por SpeechSynthesis").
 
 ### 15. A paleta de comandos (`src/components/command-palette/`) — revisão adversarial — DeepSeek — commit `ae121c8`
 
