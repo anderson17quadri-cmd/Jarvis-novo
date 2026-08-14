@@ -31,8 +31,6 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-- **A store de plugins (`src/stores/use-plugin-store.ts`) — as ações `install`/`uninstall`/`setPermission`/`setEnabled`** — reservado **DeepSeek, 14/08/2026 06:45**
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -60,6 +58,19 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A store de plugins (`src/stores/use-plugin-store.ts`) — revisão adversarial — DeepSeek — commit `c99becd`
+
+Revisão a sério das ações de estado da store de plugins (`install`/`uninstall`/
+`setPermission`/`setEnabled`), nunca revistas por ninguém de fora — a revisão de
+14/08 da assinatura só cobriu o `verifyAndInstallPlugin`, não estas ações. **Um
+bug real, corrigido:** o `uninstall()` removia o plugin de `installed` mas
+deixava as permissões recusadas dele órfãs em `deniedPermissions` — gravadas em
+disco a cada `persist` e herdadas em silêncio numa reinstalação, em vez de
+recomeçar com as permissões do manifesto. Agora o `uninstall` limpa também as
+recusas do plugin removido. 3 testes novos, confirmados a falhar contra o código
+antigo. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério:
+a store de plugins (use-plugin-store.ts)").
 
 ### 15. A store de definições de IA (`src/stores/use-ai-settings-store.ts`) — revisão adversarial — DeepSeek — commit `ee7c194`
 
