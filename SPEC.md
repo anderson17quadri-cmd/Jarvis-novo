@@ -150,6 +150,21 @@ normal (não só em testes automatizados), vale a pena olhar para o
 `Gestor de Tarefas` no momento da falha, e para os registos de eventos do
 Windows (`Get-WinEvent -LogName Application`) logo a seguir.
 
+**Reinvestigado a sério 14/08/2026** (item 20 da fila): o sintoma voltou
+em uso normal (≥6 vezes numa noite), com
+`Failed to unregister class Chrome_WidgetWin_0. Error = 1412`. Conclusão:
+a mensagem é ruído de desmontagem do WebView2, não a causa. Descartadas a
+pressão do `voice-clone-service` (nesta máquina não há `.venv`, logo não
+há modelos carregados), a janela-recriada-no-HMR, a corrida destroy/create
+do CLI e o WebView2 órfão. Evidência aponta para fora do código: três
+`LiveKernelEvent 0x141` (TDR no `nvlddmkm.sys`, driver NVIDIA Blackwell)
+na noite de 13/08 e um `RADAR_PRE_LEAK_64` no `msedgewebview2.exe`
+(10/08), sem nenhum `APPCRASH` do próprio `jarvis-ai-os.exe`. Teoria:
+reset do GPU a meio da animação de 60 fps do núcleo visual derruba o
+WebView2. Próximo passo: atualizar o driver NVIDIA; se voltar, testar
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como diagnóstico.
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026).
+
 ## 3. Regra em vigor a partir daqui
 
 > **Esta secção ficou por atualizar — corrigido 13/08/2026, na revisão do

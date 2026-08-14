@@ -5446,3 +5446,81 @@ utilizador confirmar que agora ouve a voz do sistema com o serviço
 desligado, e a notificação a explicar porquê. O passo que resolve de
 vez, do lado dele, continua a ser arrancar `voice-clone-service/run.ps1`
 para ter a voz clonada de volta.
+
+## 2026-08-14 — Dev server morre sozinho: erro 1412 é sintoma, causa provável fora do código (GPU/TDR)
+
+Reportado ao vivo: `npm run tauri dev` morre sozinho, sem janela nenhuma
+de erro (≥6 vezes numa noite), deixando na consola
+`Failed to unregister class Chrome_WidgetWin_0. Error = 1412`. Pedido:
+investigar a sério antes de corrigir, reproduzir de forma fiável, e — se
+não houver causa raiz corrigível no código — documentar e admitir, sem
+inventar uma correção cosmética. É o que este item faz: **não há
+correção de código**, e aqui fica o porquê, com a evidência recolhida.
+
+**O que o erro 1412 é (confirmado).** A mensagem vem do `ClassRegistrar`
+do Chromium (`ui/base/win/window_impl.cc`), no **fim** da vida do
+processo WebView2, quando se tenta desregistar a classe de janela nativa
+`Chrome_WidgetWin_0` e ainda há janelas vivas (1412 =
+`ERROR_CLASS_HAS_WINDOWS`). É ruído de desmontagem, não a causa — aparece
+em qualquer saída desta app porque o padrão de bandeja
+(fechar = esconder, nunca destruir) deixa a janela registada até ao fim.
+O próprio Tauri já o documenta como secundário: nos casos conhecidos
+(issue #2704 do tauri-docs, issue #7606 do tauri) a mensagem segue-se a
+um *panic* Rust ou a um `exit()` com janelas abertas — o que interessa é
+o que aconteceu **antes**, não esta linha.
+
+**O que se descartou, com evidência.** (1) Janela recriada no HMR: a
+janela "main" nasce uma única vez da `tauri.conf.json`; `lib.rs` não tem
+`WebviewWindowBuilder` nem recriação nenhuma. (2) Corrida destroy/create
+num restart automático do Tauri CLI: o CLI só vigia `src-tauri/`; o
+`vite.config.ts` vigia o frontend e ignora `src-tauri` — um hot-reload do
+Vite não passa por aí. (3) WebView2 órfão a colidir: os únicos processos
+`msedgewebview2` estranhos pertenciam ao Windows Search (`SearchHost.exe`),
+não a instâncias antigas do jarvis. (4) Servidores sobrepostos: porta 1420
+livre, uma única árvore node/cargo/jarvis. (5) Pressão de memória do modelo
+de voz: nesta máquina não há `.venv` do `voice-clone-service` (a app
+imprime "não está configurado"), logo não há modelo carregado. (6) Panic
+Rust no caminho principal: revistos `lib.rs`, `tray.rs`, `shortcuts.rs`,
+`voice_clone.rs` — os handlers que correm na thread do evento usam todos
+`if let Some`/`let _`/`try_state`, sem `unwrap`/`expect` alcançável; os
+monitores de fundo (bateria 30 s, USB 5 s) correm em threads próprias e,
+em dev (`panic = "abort"` só existe no perfil release), um panic aí
+desenrola a thread, não mata o processo.
+
+**O que a reprodução mostrou.** Dev server arrancado de raiz e
+martelado ~10 minutos com HMR + full-reload contínuos (44+ ciclos, a
+tocar `src/App.tsx`, `src/main.tsx`, `index.html`, `globals.css` de 4 em
+4 s) **sem um único crash**, e com a memória do processo estável: a
+árvore WebView2 do jarvis fixa em ~685 MB (renderer ~320 MB, gpu
+~105 MB, browser ~140 MB), sem crescimento. Ou seja: HMR sozinho não
+reproduz; o crash é intermitente e depende de outra condição.
+
+**A evidência que aponta para fora do código (Windows Error Reporting).**
+Sem nenhum `APPCRASH`/`BEX64` para o `jarvis-ai-os.exe` em 7 dias — o
+processo não morre de exceção não tratada; sai "limpo" ou é derrubado por
+um subprocesso. Dois sinais reais na máquina: (1) três
+`LiveKernelEvent LKD_0x141` (TDR — Timeout Detection and Recovery) no
+`nvlddmkm.sys` (driver NVIDIA, arquitetura Blackwell) na noite de 13/08,
+isto é, o GPU a ser reposto porque deixou de responder; (2) um
+`RADAR_PRE_LEAK_64` para o `msedgewebview2.exe` (10/08) — o detetor de
+esgotamento de recursos do Windows a acusar o *heap* nativo do WebView2.
+
+**A melhor teoria.** A app mantém uma animação canvas a 60 fps (o núcleo
+visual `AICore`) sempre que está no desktop — carga contínua no GPU, e o
+WebView2 renderiza por GPU. Numa máquina com driver a disparar TDR sob
+carga, um reset do GPU a meio de uma renderização derruba o processo
+gpu/browser do WebView2 e a app cai em bloco — e a mensagem 1412 é só o
+desmontar daí. Explica os três padrões (segundos após HMR = renderização
+nova; ~11 min parado = a animação continua a mexer o GPU mesmo em
+"idle"; ≥6 numa noite = intermitente como um reset de driver). O caminho
+secundário (pressão de memória nativa do WebView2, o RADAR) aponta na
+mesma direção: upstream, não o código deste projeto.
+
+**Porque não se mexeu no código.** Não se reproduziu em ~10 min de
+martelada, e não há causa raiz corrigível aqui — a correção cosmética
+que o pedido proibia (ex.: `--disable-gpu` no WebView2) só trocaria a
+renderização para CPU com custo real de fluidez, sem confirmar a causa.
+Fica para o utilizador, como próximos passos concretos: atualizar o
+driver NVIDIA (Blackwell), e — se voltar a acontecer — testar o
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como diagnóstico
+(se o crash parar, confirma-se a teoria do GPU). Sem commit de código.
