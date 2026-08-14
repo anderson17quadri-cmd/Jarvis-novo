@@ -103,8 +103,12 @@ export class AIService {
   /**
    * Envia uma mensagem e escreve a resposta no store.
    * Devolve o texto completo, para quem quiser lê-lo em voz alta.
+   *
+   * `onChunk`, se dado, recebe cada pedaço à medida que chega — para quem
+   * quiser reagir ao streaming em vez de esperar pelo texto completo (ex.:
+   * falar por frase, item 16 reportado ao vivo pelo utilizador).
    */
-  async send(prompt: string): Promise<string> {
+  async send(prompt: string, onChunk?: (chunk: string) => void): Promise<string> {
     const store = useAssistantStore.getState();
 
     // Um pedido novo cancela o anterior — não se acumulam respostas a escrever.
@@ -147,6 +151,7 @@ export class AIService {
         },
         text: '',
         isAborted: false,
+        onChunk,
       });
     }
     let hasStartedSpeaking = false;
@@ -169,6 +174,7 @@ export class AIService {
 
         full += chunk;
         useAssistantStore.getState().appendToMessage(messageId, chunk);
+        onChunk?.(chunk);
       }
     } catch (error) {
       return await this.recover(error, {
@@ -182,6 +188,7 @@ export class AIService {
         },
         text: full,
         isAborted: signal.aborted,
+        onChunk,
       });
     }
 
@@ -371,6 +378,7 @@ export class AIService {
       readonly request: AiRequest;
       readonly text: string;
       readonly isAborted: boolean;
+      readonly onChunk?: ((chunk: string) => void) | undefined;
     },
   ): Promise<string> {
     const store = (): ReturnType<typeof useAssistantStore.getState> =>
@@ -410,7 +418,9 @@ export class AIService {
         logService.audit(step.notice, 'executado');
 
         this.provider = step.member.provider;
-        store().appendToMessage(state.messageId, `\n\n— ${step.notice}\n\n`);
+        const notice = `\n\n— ${step.notice}\n\n`;
+        store().appendToMessage(state.messageId, notice);
+        state.onChunk?.(notice);
 
         let full = '';
         let hasStartedSpeaking = false;
@@ -426,6 +436,7 @@ export class AIService {
 
             full += chunk;
             store().appendToMessage(state.messageId, chunk);
+            state.onChunk?.(chunk);
           }
         } catch (nextError) {
           // A cadeia continua sozinha: a próxima falha volta a este mesmo
@@ -456,6 +467,7 @@ export class AIService {
 
     if (plan.action === 'nota') {
       store().appendToMessage(state.messageId, plan.note);
+      state.onChunk?.(plan.note);
       store().finishMessage(state.messageId);
       store().setMode('error');
       return state.text + plan.note;
@@ -463,6 +475,7 @@ export class AIService {
 
     if (plan.action === 'erro') {
       store().appendToMessage(state.messageId, plan.note);
+      state.onChunk?.(plan.note);
       store().finishMessage(state.messageId);
       store().setMode('error');
       return plan.note;
@@ -471,6 +484,7 @@ export class AIService {
     // Queda para o local. A nota vai primeiro, e o sinal é o do pedido
     // original: cancelar durante o fallback continua a cancelar.
     store().appendToMessage(state.messageId, plan.note);
+    state.onChunk?.(plan.note);
     let full = plan.note;
 
     try {
@@ -478,6 +492,7 @@ export class AIService {
         if (state.request.signal?.aborted) break;
         full += chunk;
         store().appendToMessage(state.messageId, chunk);
+        state.onChunk?.(chunk);
       }
     } catch {
       // O local não fala com ninguém, e por isso isto não devia acontecer. Se
