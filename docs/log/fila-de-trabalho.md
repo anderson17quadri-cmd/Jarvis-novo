@@ -40,6 +40,14 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — O catálogo de ferramentas e o executor (`tools.ts` /
+`tool-runner.ts` em `services/assistant/`) — DeepSeek (14/08/2026
+04:38)**. As 30 ferramentas do assistente e a validação/execução delas
+nunca foram revistas como um todo por ninguém de fora — só mudanças
+pontuais (o prazo do `parseDueDate`, o SSRF do navegador, o link
+simbólico do Obsidian). O executor é a "mão" do assistente: um bug aqui
+é uma ação errada ou perigosa.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
