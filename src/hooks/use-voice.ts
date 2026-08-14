@@ -52,6 +52,10 @@ export function useVoice(): {
   readonly isSupported: boolean;
   readonly toggleListening: () => void;
   readonly speak: (text: string) => void;
+  /** Como `speak`, mas enfileira — chamar várias vezes seguidas fala uma
+   *  frase de cada vez, sem cortar a anterior a meio. Para respostas em
+   *  streaming, onde o texto chega aos bocados. */
+  readonly speakQueued: (text: string) => void;
   readonly isConversationMode: boolean;
   readonly toggleConversationMode: () => void;
 } {
@@ -220,6 +224,56 @@ export function useVoice(): {
     [setMode, limparReengate, tentarReengatar],
   );
 
+  // ── Falar por frases, à medida que chegam (resposta em streaming) ──────
+
+  /**
+   * `voiceService.speak()` cancela qualquer fala anterior antes de começar
+   * (falas sobrepostas ficam impercetíveis) — chamá-lo uma vez por frase,
+   * sem mais nada, cortaria a frase anterior a meio em vez de as enfileirar.
+   * Esta fila só chama `voiceService.speak()` outra vez depois do `onEnd`
+   * da frase anterior, nunca em paralelo.
+   */
+  const speechQueueRef = useRef<string[]>([]);
+  const isSpeakingQueueRef = useRef(false);
+
+  /** Mesmo truque do `tentarReengatarRef` acima — evita a recursão direta
+   *  do `useCallback` a chamar-se a si próprio antes de estar declarado. */
+  const playNextQueuedRef = useRef<() => void>(() => undefined);
+
+  const playNextQueued = useCallback((): void => {
+    const next = speechQueueRef.current.shift();
+    if (next === undefined) {
+      isSpeakingQueueRef.current = false;
+      if (voiceService.isConversationMode) {
+        tentarReengatar();
+      } else {
+        setMode('idle');
+      }
+      return;
+    }
+
+    voiceService.speak(next, { onStart: () => setMode('speaking'), onEnd: () => playNextQueuedRef.current() });
+  }, [setMode, tentarReengatar]);
+
+  useEffect(() => {
+    playNextQueuedRef.current = playNextQueued;
+  }, [playNextQueued]);
+
+  const speakQueued = useCallback(
+    (text: string): void => {
+      if (text.trim().length === 0) return;
+
+      speechQueueRef.current.push(text);
+      if (isSpeakingQueueRef.current) return;
+
+      isSpeakingQueueRef.current = true;
+      limparReengate();
+      voiceService.stopListening();
+      playNextQueued();
+    },
+    [limparReengate, playNextQueued],
+  );
+
   // ── Microfone manual ───────────────────────────────────────────────────
 
   const toggleListening = useCallback((): void => {
@@ -286,6 +340,7 @@ export function useVoice(): {
     isSupported,
     toggleListening,
     speak,
+    speakQueued,
     isConversationMode: voiceService.isConversationMode,
     toggleConversationMode,
   };

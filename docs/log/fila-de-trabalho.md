@@ -88,6 +88,22 @@ trabalho a meio, esta segunda instância investiga só o lado Python
 fecham-se e reconciliam-se juntas quando ambas terminarem — não é um
 item duplicado, é a mesma peça vista dos dois lados.
 
+**Lado TypeScript concluído (Claude local, fork isolado, 14/08/2026,
+commit `1dffbb7`)**: `aiService.send()` ganhou `onChunk` opcional
+(chamado também nos três caminhos de `recover()`);
+`services/voice/sentence-segmenter.ts` (novo, função pura,
+`extractSentences`) corta o buffer acumulado em frases fechadas, sem
+partir abreviaturas comuns; `useVoice()` ganhou `speakQueued` —
+`voiceService.speak()` cancela qualquer fala em curso ao ser chamado,
+por isso uma fila local só passa a frase seguinte depois do `onEnd` da
+anterior. `ask` (`App.tsx`) liga tudo. 12 testes novos, `tsc`/`eslint`
+limpos, `vitest run` 1675/1675 (1 falha isolada pré-existente,
+confirmada sem relação). Detalhe em `docs/log/historico-sessoes.md`
+("Item 16: fala por frase, à medida que a resposta chega"). **Este
+item fica aqui, não em "Feito"**, até a sub-investigação Python acima
+terminar e as duas se reconciliarem — a sessão coordenadora decide
+quando fechar de vez.
+
 **Concluído — DeepSeek #2** (14/08/2026): RealtimeTTS testado a sério
 contra o stack instalado (coqui-tts 0.27.5, torch 2.13+cu130, Python
 3.13) — carrega o XTTS-v2 já em cache e sintetiza a voz clonada, mas não
@@ -98,34 +114,6 @@ fronteiras de frase nem WAV, e o motor corre num processo separado
 pena agora", sem mexer no server.py — o lado Python do item fica
 resolvido pela chamada por frase que o fork TypeScript do coordenador já
 faz (`POST /falar` por frase). Detalhe em `docs/log/historico-sessoes.md`.
-
-### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — **DeepSeek** (14/08/2026 03:12) `[livre]`
-
-Já existe uma linha no prompt de sistema (`deepseek-provider.ts`,
-`systemPrompt()`) especificamente contra isto — achado em uso real a
-13/08/2026, corrigido nesse mesmo dia, com teste
-(`deepseek.test.ts`, "diz de frente que o tema e o estado são só
-aparência"). `buildMessages()` (usado pela DeepSeek, pela Ollama e pelo
-Claude, confirmado por leitura do código) inclui sempre essa linha. O
-utilizador relata, num uso ao vivo posterior a essa correção, o mesmo
-sintoma a repetir-se — por isso a correção ou não chega para o modelo
-que ele está a usar (provavelmente um modelo local via Ollama, mais
-fraco a seguir instruções do que a DeepSeek/Claude), ou o histórico da
-conversa já tinha a frase errada dita antes da correção entrar em
-vigor, e o modelo está a repeti-la a partir do que já disse antes
-(reforço pelo próprio histórico, não pelo prompt de sistema).
-
-**O que se pede**: reproduzir ao vivo (com o Jarvis a correr) numa
-conversa **nova** (sem histórico antigo) contra o modelo que o
-utilizador está mesmo a usar — confirmar qual é. Se acontecer mesmo
-numa conversa nova, o prompt de sistema não está a chegar a ser
-respeitado por esse modelo especificamente — considerar reforçar a
-linha (repeti-la mais perto do fim do prompt, que costuma pesar mais em
-modelos mais fracos) ou, se for sempre o mesmo modelo fraco a falhar,
-documentar como limitação conhecida em vez de fingir que está
-resolvido. Se só acontecer com histórico antigo por perto, é reforço de
-conversa, não bug de código — documentar essa distinção, não corrigir
-código que já está certo.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
@@ -158,6 +146,18 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 17. "Modo JARVIS Classic" — DeepSeek — sem commit de código
+
+Confirmado ao vivo contra o `qwen3:8b` (único modelo local instalado no
+Ollama), usando o `OllamaProvider` e o `systemPrompt`/`buildMessages`
+reais: em conversa nova (sem histórico), o modelo gera código e nunca
+menciona "Modo JARVIS Classic" nem recusa por tema/estado — a linha do
+prompt de sistema está a ser respeitada. Até com a frase errada no
+histórico, continua a gerar o código. Não é bug de código: o sintoma foi
+o modelo a repetir o que já tinha dito antes da correção entrar em
+vigor. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Modo
+JARVIS Classic ao vivo").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 

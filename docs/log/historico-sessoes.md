@@ -4462,6 +4462,80 @@ suficiente para justificar continuar a atribuir trabalho esta noite.
 pedido: wake word configurável, e as capacidades de plugin Executar
 Voz/Ler Memória/Guardar Preferências.
 
+## 2026-08-14 — Item 16: fala por frase, à medida que a resposta chega
+
+O utilizador reportou ao vivo, já depois do fecho da fila de ontem à
+noite: o assistente escrevia a resposta toda no ecrã antes de dizer
+uma palavra. Diagnóstico já vinha feito na fila — `App.tsx`, dentro do
+tool `ask`, só chamava `speak(reply)` depois de `aiService.send()`
+resolver por inteiro, o que só acontece quando o streaming termina.
+Tentativa de atribuir à Kimi falhou de imediato (mesmo limite de taxa
+TPD de ontem à noite, sem sinal de recuperação em ~4h20) — o
+coordenador assumiu o item diretamente, num fork isolado.
+
+**O que mudou:**
+
+- `aiService.send()` ganhou um segundo parâmetro opcional,
+  `onChunk?: (chunk: string) => void`, chamado a par de cada
+  `appendToMessage` — não só no caminho principal, mas também nos três
+  caminhos de `recover()` (troca de provedor na cadeia, nota de aviso,
+  queda para o provedor local), para o que já se falava nesses casos
+  (incluindo o próprio aviso "— trocado para X —") continuar a ser
+  falado, agora por frase.
+- `src/services/voice/sentence-segmenter.ts` (novo) — `extractSentences`,
+  função pura: dado o buffer acumulado até agora, devolve as frases já
+  fechadas (`.`/`!`/`?`, um ou repetidos como "...", seguidos de espaço
+  ou fim) e o que sobra por fechar, para juntar ao próximo bocado.
+  Abreviaturas comuns ("Sr.", "n.º", "etc.") não contam como fim de
+  frase — um conjunto pequeno, verificado pela palavra imediatamente
+  antes da pontuação.
+- `useVoice()` ganhou `speakQueued` — `voiceService.speak()` cancela
+  qualquer fala em curso ao ser chamado ("falas sobrepostas ficam
+  impercetíveis", já documentado no próprio ficheiro), por isso
+  chamá-lo uma vez por frase sem mais nada cortaria a frase anterior a
+  meio. `speakQueued` enfileira em vez disso: só passa a frase seguinte
+  ao `voiceService.speak()` depois do `onEnd` da anterior. Mesmo truque
+  já usado no ficheiro para `tentarReengatarRef` (uma `ref` guarda a
+  versão mais recente da função recursiva, para o `useCallback` não se
+  chamar a si próprio antes de estar declarado — o `eslint` apanhou
+  isto a sério, não deixou passar).
+- `ask`, em `App.tsx`, acumula os pedaços num buffer local, corta por
+  frase a cada `onChunk`, chama `speakQueued` para cada frase fechada,
+  e no fim (quando a `Promise` do `send()` resolve) fala o que sobrar
+  no buffer, mesmo sem pontuação de fecho.
+
+**Testes**: 9 sobre `extractSentences` (frases completas, várias por
+buffer, frase incompleta que espera pelo bocado seguinte, reticências
+como um só fim, abreviaturas que não partem a frase, buffer vazio/só
+espaço) e 3 sobre `speakQueued` via `renderHook` (primeira frase fala
+logo, segunda só depois do `onEnd` da primeira, frase vazia não chega
+a chamar o serviço, fila esvaziada aceita uma frase nova de imediato) —
+`voiceService.speak` mockado, sem depender de `speechSynthesis` real.
+`tsc --noEmit` limpo, `eslint` 0 erros, `vitest run` — 1675/1675 a
+passar (1 falha isolada em `login-screen.test.tsx`, confirmada à parte
+como a mesma flakiness sob carga já documentada nesta fila, sem
+relação com esta peça).
+
+**Não confirmado ao vivo com áudio a sério** — sessão sem microfone
+nem colunas para ouvir a sério; confirmado por leitura cuidadosa do
+código e pelos testes automatizados, que provam a ordem das chamadas
+ao `voiceService.speak`, não o som em si.
+
+**Pista deixada pelo utilizador, registada mas não seguida nesta
+peça**: olhou para
+[`KoljaB/RealtimeVoiceChat`](https://github.com/KoljaB/RealtimeVoiceChat)
+como referência — a app em si não serve (frontend próprio, sem
+manutenção ativa), mas usa a mesma base (`coqui-tts`/XTTS-v2,
+`openai-whisper`) que o `voice-clone-service/` já usa, através de
+`RealtimeTTS`/`RealtimeSTT` (bibliotecas do mesmo autor). Vale a pena
+confirmar, noutra altura, se `RealtimeTTS` dá para sintetizar por
+frase do lado do serviço Python em vez de só cortar do lado do
+TypeScript — resolveria metade disto de forma mais robusta, sem
+depender de uma segmentação de frases escrita à mão. Documentado em
+vez de perseguido agora, para não misturar um pip install e uma
+mudança de protocolo Rust↔Python numa correção que já estava pedida
+para hoje.
+
 ## 2026-08-14 — Item 16, lado Python: RealtimeTTS testado e descartado para o server.py
 
 Sub-investigação da segunda instância DeepSeek (worktree
@@ -4483,3 +4557,22 @@ mexer no server.py. (Nota lateral, fora do âmbito: o `/falar` atual
 recomputa os latents da voz clonada a cada chamada por passar `speaker_wav`;
 o coqui-tts 0.27.5 já tem cache de voz via `voice_dir`, se isso um dia se
 tornar o gargalo.)
+
+## 2026-08-14 — "Modo JARVIS Classic" ao vivo: não é bug de código, é reforço de histórico
+
+Item 17 da fila. O utilizador reportou o sintoma outra vez depois da
+correção de 13/08 — por isso o teste não se ficou por ler o código:
+reproduziu-se ao vivo contra o `qwen3:8b` (o único modelo local
+instalado no Ollama), usando o `OllamaProvider` e o
+`systemPrompt`/`buildMessages` reais, não reescritos à mão. Em conversa
+nova (sem histórico), tema "JARVIS Classic" no contexto e um pedido
+direto de código, o modelo gerou a função nas 3 amostras, sem nunca
+mencionar "Modo JARVIS Classic" nem recusar por causa do tema/estado — a
+linha do prompt de sistema está a ser respeitada. Até com a frase errada
+plantada no histórico, continuou a gerar o código (a linha pesa mais do
+que o histórico já dito).
+
+Conclusão: nada a corrigir no código. O que o utilizador viu foi o
+modelo a repetir o que já tinha dito numa conversa anterior à correção
+(ou uma sessão ainda a correr o código antigo), não uma falha do prompt
+atual. Sem commit de código — só esta nota e a atualização da fila.
