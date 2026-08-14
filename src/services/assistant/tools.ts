@@ -34,6 +34,9 @@ export interface ToolParameter {
   readonly description: string;
   /** Valores aceites. Vazio quando é texto livre. */
   readonly options?: readonly string[];
+  /** Para números: o intervalo fechado aceite. Fora dele é argumento inválido. */
+  readonly minimum?: number;
+  readonly maximum?: number;
   readonly required: boolean;
 }
 
@@ -135,7 +138,9 @@ export const TOOLS: readonly ToolDefinition[] = [
       {
         name: 'desktop',
         type: 'number',
-        description: `Número do desktop, de ${DESKTOP_IDS[0]} a ${DESKTOP_IDS.at(-1)}.`,
+        description: `Número do desktop, de ${Math.min(...DESKTOP_IDS)} a ${Math.max(...DESKTOP_IDS)}.`,
+        minimum: Math.min(...DESKTOP_IDS),
+        maximum: Math.max(...DESKTOP_IDS),
         required: true,
       },
     ],
@@ -355,6 +360,8 @@ function parametersSchema(tool: ToolDefinition): {
           type: parameter.type,
           description: parameter.description,
           ...(parameter.options ? { enum: parameter.options } : {}),
+          ...(parameter.minimum !== undefined ? { minimum: parameter.minimum } : {}),
+          ...(parameter.maximum !== undefined ? { maximum: parameter.maximum } : {}),
         },
       ]),
     ),
@@ -417,6 +424,21 @@ export function validateArgs(
     // no executor, e uma ação com um argumento absurdo.
     if (parameter.type === 'number' && typeof value !== 'number') {
       return `"${parameter.name}" tem de ser um número.`;
+    }
+
+    if (parameter.type === 'number' && typeof value === 'number') {
+      // Um número fracionário, ou fora do intervalo, não pode chegar ao
+      // executor: sem esta barreira, um modelo que invente "desktop 99" (ou
+      // 2.5) corrompia o estado — `switchTo` guarda `current` sem confirmar
+      // que o id existe.
+      if (!Number.isInteger(value)) return `"${parameter.name}" tem de ser um número inteiro.`;
+
+      if (parameter.minimum !== undefined && value < parameter.minimum) {
+        return `"${parameter.name}" tem de ser pelo menos ${parameter.minimum}.`;
+      }
+      if (parameter.maximum !== undefined && value > parameter.maximum) {
+        return `"${parameter.name}" tem de ser no máximo ${parameter.maximum}.`;
+      }
     }
 
     if (parameter.type === 'boolean' && typeof value !== 'boolean') {
