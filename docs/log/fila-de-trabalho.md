@@ -39,8 +39,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O estado da conversa do assistente (`stores/use-assistant-store.ts`, 413 linhas) — DeepSeek (14/08/2026 05:18)**. A espinha dorsal da conversa — `addMessage`/`appendToMessage`/`finishMessage`/`removeMessage`, o modo do núcleo, favoritos e o `rewindToPrompt` do regenerar. Nunca revisto como um todo (só tocado de passagem por itens 16/18 e pela auditoria às 26 stores de 12/08), e sem teste dedicado — só coberto de raspão por `conversations.test.ts` e `history.test.ts`. Um bug aqui corrompe a conversa persistida, a mesma classe de dano do `ai-service.ts` acabado de fechar.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -91,6 +89,23 @@ confirmado limpo (limite de rondas, mensagens vazias removidas, máquina de
 modos sem transição ilegal, fallback nunca em silêncio). Detalhe em
 `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o orquestrador
 do assistente (ai-service.ts)").
+
+### 15. O estado da conversa (`use-assistant-store.ts`) — revisão adversarial — DeepSeek — commit `f4d5bf7`
+
+Revisão a sério de `stores/use-assistant-store.ts` como um todo — a espinha
+dorsal da conversa (mensagens, modo, favoritas, histórico, `rewindToPrompt`),
+nunca revista de fio a pavio e sem teste dedicado. **Um bug real, corrigido:**
+três mutadores mexiam em estado que é gravado sem chamar `persist()` —
+`removeMessage`, `rewindToPrompt` e `selectConversation` — ao contrário de
+todos os outros. A mensagem vazia que o `removeMessage` existe para tirar (uma
+linha em branco de ronda só-ferramentas) reaparecia ao reiniciar, e a app
+reabria na última conversa persistida em vez da escolhida. `persist()`
+acrescentado aos três. 3 testes novos (`tests/assistant/assistant-store-
+persist.test.ts`), confirmados a falhar contra o código antigo. Resto
+confirmado limpo (título só do primeiro pedido, `MSG_LIMIT` mantém a primeira
+mensagem, fixadas/ativa nunca caem do limite, `hydrate` assenta respostas a
+meio e cai num `activeId` válido). Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: o estado da conversa (use-assistant-store)").
 
 ### 15. Catálogo de ferramentas e executor — revisão adversarial — DeepSeek — commit `6776f58`
 
