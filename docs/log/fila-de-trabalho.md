@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — A verificação de assinatura de plugins (`src/plugins/signature.ts`, 281 linhas) — DeepSeek (14/08/2026 06:05)**. A criptografia que decide se um plugin é aceite: `generateSigningKeyPair`, `signManifest`, `verifyManifestSignature`, `getSignatureStatus` (Ed25519 via `crypto.subtle`), e o caminho de instalação que a usa (`verifyAndInstallPlugin` em `plugin-catalog.ts`). Nunca revista por ninguém de fora — só construída e confirmada "ao vivo" na Peça 5, Lote 2. Corretude crítica: uma verificação que aceite assinatura trocada deixa instalar um plugin não autorizado, e uma canonicalização ambígua quebra a garantia de autenticidade.
+**Em curso — O motor de automações (`src/services/automation-service.ts`, 462 linhas) — DeepSeek (14/08/2026 06:05)**. O que avalia regras e dispara ações (abrir janelas, notificar, comandos — algumas destrutivas, com confirmação): `add`/`update`/`remove`, a avaliação de gatilhos, a execução de ações e o temporizador que mantém o motor a correr em segundo plano. Nunca revisto como um todo por ninguém de fora — só `checkNativeTriggers` (item 4) e o `save()` do editor (item 10). Corretude crítica: uma regra mal avaliada dispara a ação errada, e uma ação destrutiva sem confirmação é pior.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -60,6 +60,23 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A verificação de assinatura de plugins (`src/plugins/signature.ts`, 281 linhas) — revisão adversarial — DeepSeek — commit `ade5223`
+
+Revisão a sério da criptografia que decide se um plugin é aceite
+(`signature.ts` + `verifyAndInstallPlugin` em `use-plugin-store.ts`), nunca
+revista por ninguém de fora — só construída e "confirmada ao vivo" na Peça 5.
+**A criptografia e o fluxo estão corretos e falham para o lado seguro**
+(canonicalização ordenada com proteção de `__proto__`, base64/assinatura/chave
+erradas recusadas, revogação conferida antes da matemática, externo sem
+assinatura ou sem manifesto recusado). **Um achado real, à espera de decisão da
+pessoa (não construído):** a assinatura cobre só o `manifest`, nunca o `code` —
+trocar o código não invalida a verificação, e a interface diz "Assinatura
+verificada" como se o plugin inteiro estivesse autenticado. A justificação
+documentada em `plugin.ts` está tecnicamente errada. Registado em
+`docs/log/perguntas-para-o-utilizador.md` (pergunta 1). Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: a verificação de
+assinatura de plugins").
 
 ### 15. A cadeia de provedores de IA (`src/services/ai-providers/`, 1512 linhas) — revisão adversarial — DeepSeek — commit `d435f3c`
 
