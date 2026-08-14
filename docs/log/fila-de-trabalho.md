@@ -81,22 +81,6 @@ fallback para a voz do sistema, não o arranque automático em si, que é
 uma peça mais antiga (10/08) nunca revista a sério e aparentemente a
 falhar agora.
 
-### 20. Dev server crasha sozinho — `Failed to unregister class Chrome_WidgetWin_0. Error = 1412` — DeepSeek, 14:26
-
-`npm run tauri dev` morre sozinho, repetidamente (≥6 vezes numa noite),
-sem janela nenhuma aberta. A mensagem vem do WebView2/Chromium
-(`window_impl.cc:172`), erro 1412 = `ERROR_CLASS_HAS_WINDOWS` (a classe
-de janela nativa ainda tem janelas abertas quando se tenta desregistá-la).
-Padrão: por vezes segundos depois de um hot-reload do Vite, mas ao menos
-uma vez ao fim de ~11 minutos sem nenhuma mudança de ficheiro. Já se
-descartou: WebView2 órfão a colidir (o único grupo extra pertencia ao
-Windows Search) e instâncias sobrepostas do dev server (cada crash tem
-uma só árvore node/cargo/jarvis-ai-os.exe limpa). Investigar a sério
-(janela recriada em vez de só recarregar o conteúdo no HMR? corrida
-destroy/create num restart automático do Tauri CLI? bug conhecido
-WebView2+Tauri com mitigação documentada?), reproduzir de forma fiável
-antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
-
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
@@ -136,6 +120,26 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 decisão continua da pessoa; não reescrever, só esperar a resposta.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 20. Dev server crasha sozinho (`Chrome_WidgetWin_0`, erro 1412) — DeepSeek — sem commit de código
+
+Investigado a sério e **sem causa raiz corrigível no código**: a mensagem
+1412 é ruído de desmontagem do WebView2 (classe de janela ainda registada
+ao sair, por causa do padrão bandeja "fechar = esconder"), não a causa.
+Descartados com evidência: janela recriada no HMR, corrida destroy/create
+do Tauri CLI, WebView2 órfão, servidores sobrepostos, pressão do modelo
+de voz, panic Rust no caminho principal. ~10 min de HMR + full-reload
+martelados sem reproduzir, memória estável (~685 MB). A evidência aponta
+para **fora do código**: três `LiveKernelEvent 0x141` (TDR no
+`nvlddmkm.sys`, driver NVIDIA Blackwell) na noite de 13/08 + um
+`RADAR_PRE_LEAK_64` no `msedgewebview2.exe` (10/08), e nenhum `APPCRASH`
+do próprio `jarvis-ai-os.exe`. Teoria: reset do GPU a meio da animação
+canvas de 60 fps do `AICore` derruba o WebView2 e a app cai em bloco.
+Próximo passo para o utilizador: atualizar o driver NVIDIA e, se voltar,
+testar `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como
+diagnóstico. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Dev server morre sozinho: erro 1412 é sintoma, causa provável fora do
+código (GPU/TDR)").
 
 ### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek — commit `271f014`
 
