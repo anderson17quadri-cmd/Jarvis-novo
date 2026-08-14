@@ -19,12 +19,13 @@ export type ChainProviderId = Exclude<AiProviderId, 'regras'>;
 /**
  * Ordem por omissão da cadeia de reserva (Parte 12 §Orquestrador multi-provedor).
  *
- * DeepSeek e Claude antes do Ollama porque, entre um provedor pago já
- * configurado e um modelo local mais fraco, é razoável tentar o melhor
- * primeiro. É uma preferência guardada — reordena-se em Personalização →
- * Assistente.
+ * Só o DeepSeek por omissão (14/08/2026): a cadeia com Claude e Ollama fazia
+ * o sistema saltar entre provedores sem ninguém ter pedido. O Ollama continua
+ * aqui no catálogo — é para onde entra o Llama, mais tarde — mas só entra na
+ * cadeia se for acrescentado à mão em Personalização → Assistente. É uma
+ * preferência guardada, não uma constante fixa.
  */
-export const DEFAULT_CHAIN_ORDER: readonly ChainProviderId[] = ['deepseek', 'claude', 'ollama'];
+export const DEFAULT_CHAIN_ORDER: readonly ChainProviderId[] = ['deepseek'];
 
 export interface AiProviderInfo {
   readonly id: AiProviderId;
