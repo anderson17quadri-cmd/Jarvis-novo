@@ -39,6 +39,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+### 15. A ponte de plugins (`src/plugins/runtime/plugin-bridge.ts`, 696 linhas) — revisão adversarial — DeepSeek — reservado 14/08 07:18
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
