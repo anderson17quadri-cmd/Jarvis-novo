@@ -30,6 +30,22 @@ export async function openWebPage(url: string): Promise<string> {
   return formatPageContent(url, page);
 }
 
+/** Abre o endereço no navegador predefinido do sistema — a janela visível,
+ *  não a leitura silenciosa de `openWebPage`. Mesma porta: desligado por
+ *  omissão, liga-se em Privacidade. */
+export async function openExternalUrl(url: string): Promise<string> {
+  if (!useBrowserToolSettingsStore.getState().settings.enabled) {
+    return 'O navegador controlado pelo assistente está desligado. Pode ligar-se em Privacidade.';
+  }
+
+  const opened = await getPlatformAdapter().openExternal(url);
+  logService.audit(`Assistente: abrir navegador em "${url}"`, opened ? 'executado' : 'recusado');
+
+  return opened
+    ? `Navegador aberto em "${url}".`
+    : `Não consegui abrir "${url}" — confirma o endereço (só https) ou tenta mais tarde.`;
+}
+
 /** Embrulha o texto extraído num delimitador claro, para nunca passar por uma instrução. */
 function formatPageContent(url: string, page: WebPageContent): string {
   const truncatedNote = page.truncated ? ' (texto cortado por ser demasiado longo)' : '';

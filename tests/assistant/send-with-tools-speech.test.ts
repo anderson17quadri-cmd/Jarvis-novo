@@ -51,6 +51,7 @@ function makeExecutor(): ToolExecutor {
     writeNote: async () => true,
     searchWeb: async () => ({ isSimulated: false, results: [] }),
     openWebPage: async () => 'desligado',
+    openExternalUrl: async () => 'desligado',
     music: () => undefined,
     speak: () => undefined,
     setAutomationEnabled: () => true,

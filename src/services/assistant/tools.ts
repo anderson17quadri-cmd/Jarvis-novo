@@ -261,6 +261,16 @@ export const TOOLS: readonly ToolDefinition[] = [
     risk: 'livre',
     parameters: [text('url', 'Endereço https da página a abrir.')],
   },
+  {
+    name: 'abrir_navegador',
+    description:
+      'Abre um endereço no navegador predefinido do sistema, numa janela visível que a pessoa vê ' +
+      'e pode fechar. Usa isto quando a pessoa quer VER a página no browser. Para leres tu o ' +
+      'conteúdo da página sem abrir janela visível, usa abrir_pagina. Só funciona se a pessoa ' +
+      'ligou o navegador controlado pelo assistente em Privacidade.',
+    risk: 'livre',
+    parameters: [text('url', 'Endereço https a abrir no navegador.')],
+  },
 
   // ── Sistema ───────────────────────────────────────────────────────────────
   {

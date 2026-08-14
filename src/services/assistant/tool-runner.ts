@@ -63,6 +63,8 @@ export interface ToolExecutor {
    * estiver desligado ou o pedido falhar. Nunca lança.
    */
   readonly openWebPage: (url: string) => Promise<string>;
+  /** Abre um endereço no navegador predefinido do sistema — janela visível, mesma porta do `openWebPage`. */
+  readonly openExternalUrl: (url: string) => Promise<string>;
   /** Pesquisa na web. Só devolve resultados estruturados — nunca abre páginas nem executa nada. */
   readonly searchWeb: (query: string) => Promise<SearchOutcome>;
   readonly music: (action: string) => void;
@@ -346,6 +348,9 @@ async function perform(
 
     case 'abrir_pagina':
       return run.openWebPage(text('url'));
+
+    case 'abrir_navegador':
+      return run.openExternalUrl(text('url'));
 
     case 'controlar_musica':
       run.music(text('acao'));

@@ -69,6 +69,10 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`abrir-pagina:${url}`);
       return `conteúdo de ${url}`;
     },
+    openExternalUrl: async (url) => {
+      calls.push(`abrir-navegador:${url}`);
+      return `navegador aberto em ${url}`;
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {

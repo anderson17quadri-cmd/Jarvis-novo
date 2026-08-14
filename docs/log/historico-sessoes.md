@@ -5914,3 +5914,25 @@ reinício.
 **Verificação**: `tsc --noEmit` limpo; suites de voz (151) e as que tocam
 nas definições de voz verdes; o teste do modo conversa passou a repor
 `micAlwaysOn` no `beforeEach` (sem isso a preferência vazava entre testes).
+
+## 2026-08-14 — Ferramenta `abrir_navegador`: o assistente abre o browser visível
+
+Primeiro passo da internet sem API. Já existia `openWebPage` — lê o texto de
+uma página sem chave nenhuma — mas não havia forma de o assistente **abrir o
+browser à vista da pessoa** para ela navegar. Faltava o elo: a infraestrutura
+(`openExternal` no adaptador de plataforma) existia, mas não estava ligada ao
+catálogo de ferramentas.
+
+**O que se fez**: nova ferramenta `abrir_navegador` (risco livre) no
+catálogo, que chama `openExternalUrl` no executor. Na prática distingue dois
+verbos agora: `abrir_pagina` (lê a página silenciosamente, sem janela) e
+`abrir_navegador` (abre o endereço no navegador predefinido, numa janela que
+a pessoa vê e pode fechar). Ambas partilham a mesma porta — desligadas por
+omissão, ligam-se em Privacidade — e a mesma política de endereços (só
+`https:` e `mailto:`).
+
+**Verificação**: `tsc --noEmit` limpo; as 406 suites afetadas verdes,
+incluindo o teste de cobertura que exige que cada ferramenta do catálogo
+tenha execução real (`abrir_navegador` entrou no mapa de argumentos) e as
+asserções da cadeia de reserva, que passaram a contar com a omissão de um só
+degrau (`['deepseek']`).
