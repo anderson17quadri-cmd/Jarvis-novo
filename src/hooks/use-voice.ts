@@ -41,6 +41,7 @@ function describeVoiceError(kind: SpeechRecognitionErrorKind | null): string {
 const MAX_NO_SPEECH_ATTEMPTS = 3;
 const REENGAGE_DELAY_MS = 1_100;
 const CONVERSATION_WARN_KEY = 'jarvis.conversation-warned';
+const CLONE_WARN_KEY = 'jarvis.clone-voice-warned';
 
 /**
  * Liga a voz ao núcleo e ao assistente.
@@ -68,6 +69,33 @@ export function useVoice(): {
   const pulse = useAssistantStore((state) => state.pulse);
 
   const isSupported = capabilities.voice && voiceService.isRecognitionSupported;
+
+  // ── Voz clonada indisponível ───────────────────────────────────────────
+
+  /**
+   * Explica o silêncio quando a voz clonada falha (achado ao vivo,
+   * 14/08/2026): o serviço local é um processo à parte, e esquecer de o
+   * arrancar deixava o assistente mudo sem dizer porquê. Agora cai para a
+   * voz do sistema e avisa — uma vez por sessão, que é o que basta para
+   * perceber; repetir a cada frase seria pior do que o silêncio.
+   */
+  useEffect(() => {
+    voiceService.onCloneServiceUnavailable = () => {
+      if (sessionStorage.getItem(CLONE_WARN_KEY) !== null) return;
+      sessionStorage.setItem(CLONE_WARN_KEY, '1');
+
+      notificationService.warn(
+        'Voz clonada indisponível',
+        'O serviço de voz local não respondeu — estou a usar a voz do sistema. ' +
+          'Para voltar à voz clonada, arranca o voice-clone-service (voice-clone-service/run.ps1).',
+        { category: 'assistente' },
+      );
+    };
+
+    return () => {
+      voiceService.onCloneServiceUnavailable = null;
+    };
+  }, []);
 
   // ── Re-engate do modo conversa ──────────────────────────────────────────
 

@@ -137,3 +137,101 @@ describe('voz clonada — falha na reprodução no lado cliente', () => {
     expect(env.audios[0]?.pause).toHaveBeenCalled();
   });
 });
+
+/**
+ * Achado ao vivo pelo utilizador (14/08/2026): com a voz clonada escolhida
+ * (o histórico mostra "Alison Dietlinde" como voz por omissão) e o serviço
+ * local desligado — é um processo à parte, `voice-clone-service/run.ps1`,
+ * fácil de esquecer de arrancar — o assistente ficava **completamente
+ * mudo**: sem som, sem erro, sem aviso nenhum. O `catch` do `speakClonada`
+ * fazia só `onSpeechEnd` + `onEnd`, e o silêncio parecia a app partida.
+ *
+ * Nenhum teste apanhava isto porque todos simulam o `fetch` a responder —
+ * o caminho do serviço em baixo nunca era exercitado até ao fim.
+ */
+describe('voz clonada — serviço local em baixo não pode deixar o assistente mudo', () => {
+  let restore: () => void;
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    restore?.();
+    global.fetch = originalFetch;
+    vi.unstubAllGlobals();
+  });
+
+  /** Substitui a síntese do sistema por um duplo que regista o que lhe pedem. */
+  function comSinteseDoSistema(): { faladas: string[] } {
+    const faladas: string[] = [];
+
+    class FakeUtterance {
+      onstart: (() => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: (() => void) | null = null;
+      voice: unknown = null;
+      lang = '';
+      rate = 1;
+      pitch = 1;
+      constructor(public readonly text: string) {}
+    }
+
+    vi.stubGlobal('SpeechSynthesisUtterance', FakeUtterance);
+    vi.stubGlobal('speechSynthesis', {
+      cancel: vi.fn(),
+      getVoices: () => [],
+      speak: (utterance: FakeUtterance) => {
+        faladas.push(utterance.text);
+        utterance.onstart?.();
+      },
+    });
+
+    return { faladas };
+  }
+
+  it('cai para a voz do sistema em vez de ficar em silêncio', async () => {
+    const env = withFakeAudio(false);
+    restore = env.restore;
+    const sistema = comSinteseDoSistema();
+
+    global.fetch = vi.fn(() => Promise.reject(new Error('serviço local em baixo')));
+
+    const service = new VoiceService();
+    service.speak('Bom dia, Anderson.', undefined, { kind: 'clonada', nome: null });
+
+    // Sem a correção, isto nunca acontece — nada é falado, por nada. O texto
+    // chega já passado por `limparParaSintese` (que tira a pontuação final).
+    await vi.waitFor(() => expect(sistema.faladas).toEqual(['Bom dia, Anderson']));
+    expect(env.audios.length).toBe(0);
+  });
+
+  it('avisa uma vez que a voz clonada não está disponível, para o silêncio ter explicação', async () => {
+    const env = withFakeAudio(false);
+    restore = env.restore;
+    comSinteseDoSistema();
+
+    global.fetch = vi.fn(() => Promise.reject(new Error('serviço local em baixo')));
+
+    const service = new VoiceService();
+    const avisar = vi.fn();
+    service.onCloneServiceUnavailable = avisar;
+
+    service.speak('Olá', undefined, { kind: 'clonada', nome: null });
+
+    await vi.waitFor(() => expect(avisar).toHaveBeenCalled());
+    expect(service.isCloneServiceUnavailable).toBe(true);
+  });
+
+  it('o onEnd do chamador dispara na mesma quando nem o sistema tem síntese', async () => {
+    const env = withFakeAudio(false);
+    restore = env.restore;
+
+    // Sem `speechSynthesis` nenhum: o caminho de último recurso.
+    vi.stubGlobal('speechSynthesis', undefined);
+    global.fetch = vi.fn(() => Promise.reject(new Error('serviço local em baixo')));
+
+    const service = new VoiceService();
+    const onEnd = vi.fn();
+    service.speak('Olá', { onEnd }, { kind: 'clonada', nome: null });
+
+    await vi.waitFor(() => expect(onEnd).toHaveBeenCalledTimes(1));
+  });
+});

@@ -5382,3 +5382,67 @@ de completar não é cancelar.
 Isto fecha o varrimento: as peças de peso (segurança, integridade de dados,
 concorrência) estão todas revistas nas entradas acima ou nas de 13/08; o que
 sobra são janelas de apresentação que delegam nessas stores/serviços já revistos.
+
+## 2026-08-14 — O assistente estava mudo: voz clonada sem serviço, a falhar em silêncio
+
+Relato ao vivo do utilizador, depois de uma noite inteira de gates
+verdes: *"nada, o modelo nem fala mais"*. Ponto de partida honesto —
+1734 testes a passar não valem nada se a app não fala na máquina de
+quem a usa, e foi exatamente esse o erro desta sessão remota: reportar
+suites verdes em vez de seguir o caminho real de ponta a ponta.
+
+**A causa.** A voz por omissão desta instalação é uma voz clonada
+(`{kind: 'clonada'}` — o histórico de 09/08 regista a escolha de
+"Alison Dietlinde", uma voz pronta do XTTS-v2). Com essa seleção,
+`speak()` desvia para `speakClonada()`, que pede o áudio ao serviço
+Python local (`voice-clone-service`, `POST /falar`). Esse serviço é um
+**processo à parte** do `npm run tauri dev` — e o `catch` de
+`speakClonada` fazia, no fim, apenas:
+
+```ts
+this.onSpeechEnd();
+callbacks?.onEnd?.();
+```
+
+Ou seja: serviço desligado → `fetch` rejeita → **silêncio absoluto**.
+Sem som, sem erro, sem aviso, sem cair para a voz do sistema. O próprio
+comentário no código admitia a lacuna ("quem chama não tem aqui uma
+forma síncrona de reportar isto"), mas tratava-a como aceitável — não
+é: o sintoma para quem usa é "a app está partida", sem uma única pista.
+O dev server foi reiniciado várias vezes esta noite (incluindo depois
+do incidente do Vite); nada nos registos mostra o serviço de voz a ser
+arrancado alguma vez.
+
+**Porque é que nenhum teste apanhou isto**: todos os testes de voz
+clonada simulam o `fetch` a responder com sucesso, ou testam a limpeza
+de recursos no caminho de falha (blob URLs, `pause()`) — nenhum
+verificava a única coisa que interessa a quem está do outro lado: **saiu
+som?** É a diferença entre testar a mecânica e testar o resultado.
+
+**Corrigido**, duas partes:
+1. **Cai para a voz do sistema.** O `catch` de `speakClonada` tenta
+   agora `speakSistema(text, callbacks)` antes de desistir. A voz do
+   sistema é pior do que a clonada, mas ouve-se — esquecer de arrancar
+   um processo à parte não pode significar um assistente mudo. Só se
+   liberta o microfone e dispara o `onEnd` seco quando nem o sistema
+   tem síntese. Se a geração já mudou (a fala perdeu a vez enquanto
+   falhava), não se avisa nem se fala — a resposta já não é esperada.
+2. **Explica o silêncio.** `onCloneServiceUnavailable`, um callback
+   (não uma importação — este ficheiro não importa nada de propósito),
+   ligado no `useVoice` a uma notificação, uma vez por sessão
+   (`sessionStorage`, mesmo padrão do modo conversa): diz que está a
+   usar a voz do sistema e como voltar à clonada
+   (`voice-clone-service/run.ps1`).
+
+**Verificação**: 3 testes novos em `tests/voice/voice-clone-synthesis.test.ts`
+— cai para a voz do sistema (o principal), avisa uma vez, e o `onEnd`
+dispara na mesma quando nem o sistema tem síntese. **Confirmado que o
+teste principal apanha mesmo o bug**: removida a linha da correção, o
+teste falhou; reposta, passou. `tsc` limpo, `eslint` 0 erros, suite
+completa 132 ficheiros / 1737 testes.
+
+**Não confirmado ao vivo** (por esta sessão remota, sem app): falta o
+utilizador confirmar que agora ouve a voz do sistema com o serviço
+desligado, e a notificação a explicar porquê. O passo que resolve de
+vez, do lado dele, continua a ser arrancar `voice-clone-service/run.ps1`
+para ter a voz clonada de volta.

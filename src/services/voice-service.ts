@@ -843,16 +843,53 @@ export class VoiceService {
         this.cloneAudio = null;
       }
 
-      // Quem chama (`useVoice`, o botão "testar") não tem aqui uma forma
-      // síncrona de reportar isto; a UI de definições confirma a
-      // disponibilidade à parte, com `getCloneServiceInfo`. `onSpeechEnd`
-      // liberta o microfone: sem áudio nenhum a tocar, `speak()` já o tinha
-      // marcado como "a falar", e sem isto ficava bloqueado à espera de um
-      // `onend` que nunca chega.
+      // Se a geração já não é a atual, esta fala perdeu a vez enquanto
+      // falhava — não vale a pena avisar nem cair para a voz do sistema por
+      // uma resposta que já ninguém espera.
+      if (toque !== this.speakGeneration) {
+        this.onSpeechEnd();
+        callbacks?.onEnd?.();
+        return;
+      }
+
+      // **Cair para a voz do sistema em vez de ficar mudo.** Achado ao vivo
+      // (14/08/2026): com uma voz clonada escolhida e o serviço local
+      // desligado, o assistente ficava silencioso — sem som, sem erro, sem
+      // pista nenhuma. O serviço local é um processo à parte
+      // (`voice-clone-service/run.ps1`); esquecer de o arrancar não pode
+      // significar um assistente mudo. A voz do sistema é pior, mas ouve-se.
+      this.cloneUnavailable = true;
+      this.onCloneServiceUnavailable?.();
+
+      if (this.speakSistema(text, callbacks)) return;
+
+      // Nem o sistema arrancou (sem suporte nenhum): liberta o microfone —
+      // `speak()` já o tinha marcado como "a falar", e sem isto ficava
+      // bloqueado à espera de um `onend` que nunca chega.
       this.onSpeechEnd();
       callbacks?.onEnd?.();
     }
   }
+
+  /**
+   * `true` depois de uma tentativa de voz clonada falhar por o serviço local
+   * não responder. A UI lê isto para explicar o silêncio — ver
+   * `onCloneServiceUnavailable`.
+   */
+  private cloneUnavailable = false;
+
+  get isCloneServiceUnavailable(): boolean {
+    return this.cloneUnavailable;
+  }
+
+  /**
+   * Avisado uma vez, quando a voz clonada falha e se cai para a do sistema.
+   *
+   * Um callback em vez de uma importação do `notificationService`: este
+   * ficheiro não importa nada de propósito (é um serviço de fronteira com o
+   * browser), e quem o liga à interface é o `useVoice`.
+   */
+  onCloneServiceUnavailable: (() => void) | null = null;
 
   /**
    * As vozes portuguesas que o sistema conhece.
