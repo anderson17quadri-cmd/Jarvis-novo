@@ -197,6 +197,18 @@ o caso separou-se do `core.fs.read`/`core.fs.list`. 4 testes novos
 Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: a
 validação do protocolo de plugins (protocol.ts)").
 
+### 15. Auxiliares de desktop em Rust (`tray.rs` + `shortcuts.rs` + `error.rs` + `terminal/registry.rs`) — revisão adversarial — DeepSeek #2 — sem commit de código
+
+Revisão a sério de quatro módulos Rust de desktop nunca revistos por ninguém
+de fora (o `session.rs` do terminal tinha sido, mas não o registo que o
+guarda). **Nada de funcional a corrigir** — confirmado limpo: bandeja alterna
+visível/escondido com aposta segura em mostrar quando o estado é indecidível;
+o atalho global falha sem derrubar o arranque e filtra o duplo disparo; o
+erro único nunca faz `unwrap`; e o registo do terminal solta o lock antes de
+escrever ao PTY e tem `kill` idempotente. Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: auxiliares de
+desktop em Rust").
+
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 
 Varrimento adversarial dos últimos "pesos" de interface/orquestração nunca
