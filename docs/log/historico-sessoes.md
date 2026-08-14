@@ -5615,3 +5615,22 @@ com campo extra o verificam, ex.: `core.command.register` confere `id`+`nome`+
 
 Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1741/1741 (4 novos).
+
+## 2026-08-14 — Perguntas para o utilizador: wake word e capacidades de plugin
+
+Com os itens repetíveis de revisão a fechar, o que sobrava de real na fila
+para as duas "Precisa de decisão da pessoa" era escrever a pergunta, não
+escolher. As duas ficaram em `docs/log/perguntas-para-o-utilizador.md`:
+
+- **§2 — Wake word configurável.** A decisão de privacidade não é técnica: com
+  o microfone sempre à escuta, o áudio vai ao serviço de fala do navegador
+  (Web Speech API, por omissão) ou fica só na máquina (motor local). Três
+  opções: local, Web Speech API contínua, ou não por agora.
+- **§3 — Executar Voz / Ler Memória / Guardar Preferências.** As três
+  capacidades da API de plugins que ficaram de fora de propósito. A pergunta
+  separa a que é barata (Executar Voz — já existe `voiceService.speak`) das
+  que mexem em dados (Ler Memória expõe preferências pessoais; Guardar
+  Preferências exige isolar o armazenamento por plugin antes de ser segura).
+
+Nada foi construído — só a pergunta, como manda a regra. Nenhuma alteração de
+código; `tsc`/`eslint`/`vitest` intactos.
