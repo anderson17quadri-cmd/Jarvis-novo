@@ -101,8 +101,6 @@ antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek (14/08/2026)
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -130,6 +128,24 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek — commit `271f014`
+
+Revisão a sério dos comandos `mail_fetch`/`mail_set_flag`/`mail_send` em
+`src-tauri/src/commands/mail.rs` (mais o provedor IMAP, a store e o ecrã de
+definições), nunca revistos por ninguém de fora. **Um bug real, corrigido:**
+`mail_send` usava `SmtpTransport::relay()` (TLS implícito, SMTPS na porta 465)
+apesar de o comentário e as definições prometerem STARTTLS na 587 — o primeiro
+byte no fio era um `ClientHello`, e um servidor STARTTLS desligava antes do
+EHLO, por isso enviar por uma conta normal falhava de origem. Corrigido para
+`starttls_relay`, com um teste Rust novo que prova que o primeiro byte é EHLO,
+não um handshake TLS (falha contra o código antigo). Resto confirmado limpo:
+palavra-passe nunca sai do cofre (storage sem `password`, cópia de segurança
+tapa, log e erros sem eco), certificado validado contra o domínio nos dois
+sentidos, sem injeção de cabeçalhos (destinatário por `parse::<Mailbox>`, assunto
+codificado RFC 2047), erros de rede apanhados sem rebentar a interface, simulado
+por omissão sem rede. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: email real (IMAP + SMTP no Rust)").
 
 ### 15. Métricas do sistema (Rust `system/monitor.rs` + `metrics.rs`, TS `system-service.ts` + `use-system-metrics.ts` + `use-system-store.ts`) — revisão adversarial — DeepSeek #2 — sem commit de código
 

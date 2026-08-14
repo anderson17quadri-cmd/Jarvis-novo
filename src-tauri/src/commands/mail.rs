@@ -249,6 +249,35 @@ pub fn mail_send(
     subject: String,
     body: String,
 ) -> Result<()> {
+    enviar_por_smtp(
+        &smtp_server,
+        smtp_port,
+        &username,
+        &password,
+        &from,
+        &to,
+        &subject,
+        &body,
+    )
+}
+
+/// Monta a mensagem e envia-a por SMTP.
+///
+/// Separada do comando para o teste poder observar o que chega primeiro ao fio
+/// sem um executor async — o corpo é bloqueante. `starttls_relay` (STARTTLS) e
+/// não `relay`: este último faz TLS implícito (SMTPS, porta 465) e, na porta
+/// 587 de origem, falharia logo no `ClientHello` que os servidores STARTTLS não
+/// esperam.
+fn enviar_por_smtp(
+    smtp_server: &str,
+    smtp_port: u16,
+    username: &str,
+    password: &str,
+    from: &str,
+    to: &str,
+    subject: &str,
+    body: &str,
+) -> Result<()> {
     use lettre::Transport;
 
     let email = lettre::Message::builder()
@@ -259,12 +288,15 @@ pub fn mail_send(
         .to(to.parse()
             .map_err(|e| Error::SystemRead(format!("destinatário inválido '{to}': {e}")))?)
         .subject(subject)
-        .body(body)
+        .body(body.to_owned())
         .map_err(|e| Error::SystemRead(format!("não deu para montar a mensagem: {e}")))?;
 
-    let creds = lettre::transport::smtp::authentication::Credentials::new(username, password);
+    let creds = lettre::transport::smtp::authentication::Credentials::new(
+        username.to_string(),
+        password.to_string(),
+    );
 
-    let mailer = lettre::SmtpTransport::relay(&smtp_server)
+    let mailer = lettre::SmtpTransport::starttls_relay(smtp_server)
         .map_err(|e| {
             Error::SystemRead(format!("não deu para preparar o envio para {smtp_server}: {e}"))
         })?
@@ -277,4 +309,48 @@ pub fn mail_send(
         .map_err(|e| Error::SystemRead(format!("o servidor SMTP recusou o envio: {e}")))?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    /// Prova que o envio começa por um EHLO em claro (STARTTLS), não por um
+    /// handshake TLS (TLS implícito). Na porta 587 os servidores esperam
+    /// STARTTLS: com TLS implícito o primeiro byte no fio seria o `0x16` de um
+    /// `ClientHello`, e o servidor desligaria antes de se entender com o cliente.
+    #[test]
+    fn envio_comeca_por_ehlo_em_claro() {
+        let servidor = TcpListener::bind("127.0.0.1:0").unwrap();
+        let porta = servidor.local_addr().unwrap().port();
+
+        let leitor = std::thread::spawn(move || {
+            let (mut ligacao, _) = servidor.accept().unwrap();
+            ligacao.write_all(b"220 teste ESMTP\r\n").unwrap();
+            let mut primeiro = [0u8; 1];
+            ligacao.read_exact(&mut primeiro).unwrap();
+            primeiro[0]
+        });
+
+        // O envio falha (o servidor de teste não responde ao EHLO) — o que
+        // interessa é o que chegou primeiro ao fio, não o resultado.
+        let _ = enviar_por_smtp(
+            "127.0.0.1",
+            porta,
+            "utilizador",
+            "palavra-passe",
+            "a@exemplo.pt",
+            "b@exemplo.pt",
+            "assunto",
+            "corpo",
+        );
+
+        let primeiro_byte = leitor.join().unwrap();
+        assert_eq!(
+            primeiro_byte, b'E',
+            "o primeiro byte devia ser 'E' (EHLO, STARTTLS), mas foi {primeiro_byte:#x} (TLS implícito)"
+        );
+    }
 }
