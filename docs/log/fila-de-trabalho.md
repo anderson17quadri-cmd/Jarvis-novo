@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — A paleta de comandos (`src/components/command-palette/`, 479 linhas) — DeepSeek (14/08/2026 06:12)**. O despachante universal: `command-registry.ts` define todos os comandos que a pessoa pode invocar (abrir/fechar janelas, temas, estados, plugins, paleta…) e `CommandPalette.tsx` mostra-os e executa-os. Nunca revisto como um todo por ninguém de fora — só migrado para stores limpas (linhas 1189/1264/1272 do histórico) e o grupo "Plugins" acrescentado de passagem. Corretude crítica: é o ponto único por onde passa toda a ação do utilizador; um comando a despachar para o sítio errado, ou uma ação destrutiva sem a confirmação devida, mexe no sistema inteiro.
+**Em curso — A paleta de comandos (`src/components/command-palette/`, 479 linhas) — DeepSeek (14/08/2026 06:12)**. Fechado — ver "Feito" abaixo (commit `ae121c8`).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -60,6 +60,22 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A paleta de comandos (`src/components/command-palette/`) — revisão adversarial — DeepSeek — commit `ae121c8`
+
+Revisão a sério da paleta de comandos como um todo (`command-registry.ts` +
+`CommandPalette.tsx`, mais `search-service.ts`/`use-search-store.ts` e as ações
+em `App.tsx`), nunca revista por ninguém de fora. **Um bug real, corrigido:** o
+despachante em si está correto e bem coberto, mas a capacidade `plugins.commands`
+estava meio construída — `core.command.register` registava o comando para
+aparecer, e a invocação nunca existiu: o `run` do comando na paleta estava
+codificado como `launchApp('plugins')`, por isso escolher um comando de plugin
+abria a Loja em vez de o executar, e o plugin nunca sabia que foi escolhido.
+Corrigido pelo padrão dos gémeos (`menu.add`/`shortcut.register`): a paleta
+ganhou `runPluginCommand` → `pushToPlugin` empurra `core.command.triggered`, e o
+`command.register` da SDK aceita um `callback`. 1 teste novo. Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: a paleta de
+comandos").
 
 ### 15. O motor de automações (`src/services/automation-service.ts`) — revisão adversarial — DeepSeek — commit `ea5857a`
 
