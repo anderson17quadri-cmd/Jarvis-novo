@@ -31,11 +31,6 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-> **Reservado — DeepSeek (14/08/2026, 07:01):** o caminho de reposição de
-> janelas (`workspace-service.ts` + `use-workspace.ts` +
-> `use-app-launcher.ts`) — `isMaximized` é guardado (`persistLayout` e
-> `captureWorkspace`) mas nunca reposto.
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -63,6 +58,20 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A reposição de janelas maximizadas (`workspace-service.ts` + `use-workspace.ts` + `use-app-launcher.ts`) — revisão adversarial — DeepSeek — commit `d21b37d`
+
+Revisão a sério dos dois caminhos que repõem janelas — `restoreSavedLayout`
+(arranque) e `applyWorkspace` (mudar de desktop / aplicar perfil). **Um bug
+real, corrigido:** `isMaximized` era guardado (`persistLayout` e
+`captureWorkspace`) mas nenhum dos dois restauros o lia de volta — a janela
+maximizada reabria sempre com o tamanho normal. Agora ambos repõem a
+maximização no ecrã atual (`toggleMaximize` com `maximizedRect`), sem tocar
+nas stores: o `applyWorkspace` ganhou um callback `maximizeRectFor` (paralelo
+ao `rectFor`) para o serviço continuar sem saber o que é um telemóvel, e no
+compacto não há maximizar. 4 testes novos, confirmados a falhar contra o
+código antigo. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: a reposição de janelas maximizadas (workspace)").
 
 ### 15. O bloqueio por inatividade (`src/hooks/use-idle-lock.ts`) — revisão adversarial — DeepSeek — commit `d1e5004`
 
