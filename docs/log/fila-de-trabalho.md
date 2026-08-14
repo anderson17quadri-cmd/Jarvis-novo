@@ -17,7 +17,7 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-### 16. Fala só depois de o texto inteiro estar escrito — `[livre]`
+### 16. Fala só depois de o texto inteiro estar escrito — **Kimi** (14/08/2026 03:12) `[livre]`
 
 **Diagnóstico já feito** (sessão remota, não confirmado ao vivo — precisa
 de app a correr para testar a sério): `App.tsx`, dentro do tool
@@ -48,7 +48,7 @@ Cuidado com abreviações comuns em português ("Sr.", "n.º", "etc.") não
 partirem a frase a meio sem necessidade — não precisa de ser perfeito,
 só melhor do que "espera tudo".
 
-### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — `[livre]`
+### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — **DeepSeek** (14/08/2026 03:12) `[livre]`
 
 Já existe uma linha no prompt de sistema (`deepseek-provider.ts`,
 `systemPrompt()`) especificamente contra isto — achado em uso real a
