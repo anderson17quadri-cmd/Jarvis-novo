@@ -176,6 +176,19 @@ de tema. O caso do tema personalizado apagado não se alcança (o `hydrate` já 
 confere na fronteira). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
 "Revisão a sério: serviços de tema, relógio e papel de parede").
 
+### 15. A validação do protocolo de plugins (`src/plugins/runtime/protocol.ts`) — revisão adversarial — DeepSeek #2 — commit `600aec2`
+
+Revisão a sério de `isPluginToCoreMessage`, a última barreira antes de o Core
+despachar uma mensagem da sandbox — nunca revisto por ninguém de fora (a ponte,
+`plugin-bridge.ts`, já tinha sido). **Um bug real, corrigido:** o `switch`
+juntava `core.fs.read` e `core.fs.write` num caso que só conferia `caminho`,
+deixando passar uma escrita sem `conteudo` — o tipo jurava `string`, e a ponte
+escrevia `writeTextFile(fullPath, undefined)`. O campo passou a ser conferido, e
+o caso separou-se do `core.fs.read`/`core.fs.list`. 4 testes novos
+(`tests/plugins/protocol.test.ts`), confirmados a falhar contra o código antigo.
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: a
+validação do protocolo de plugins (protocol.ts)").
+
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 
 Varrimento adversarial dos últimos "pesos" de interface/orquestração nunca
