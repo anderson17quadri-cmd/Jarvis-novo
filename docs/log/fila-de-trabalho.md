@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — A camada de plataforma (`src/platform/`, ~1586 linhas) — DeepSeek (14/08/2026 05:38)**. A ponte entre a app e o sistema operativo: ficheiros (`tauri-adapter-base.ts`, 536), a queda web (`web-adapter.ts`, 290), o contrato (`platform-adapter.ts`, 222), diálogos nativos, anexos, a política de URLs e a deteção de plataforma. Nunca revista como um todo por ninguém de fora — só o `secretSet`/`secretDelete` foram tocados de passagem na revisão do Obsidian. Fronteiras de caminhos (`join`/`canonicalize`), o cofre de segredos, o armazenamento WebAuthn e as origens permitidas são os pontos onde esta classe de código costuma ter o bug.
+**Em curso — A cadeia de provedores de IA (`src/services/ai-providers/`, 1512 linhas) — DeepSeek (14/08/2026 05:52)**. O que decide qual modelo responde e como cai para o seguinte: `provider-chain.ts` (a cadeia de reserva), `model-choice.ts` (escolha do modelo por capacidade), `rule-provider.ts` (o que responde localmente), `ai-provider.ts` (o contrato) e os provedores concretos (`deepseek`/`claude`/`ollama`). Nunca revista como um todo por ninguém de fora — só a ordem da cadeia foi reordenada (item 1), sem revisão do fluxo. Corretude crítica: um provedor mal escolhido responde com o modelo errado, e uma cadeia partida deixa o assistente mudo.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -60,6 +60,29 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A camada de plataforma (`src/platform/`, ~1586 linhas) — revisão adversarial — DeepSeek — commit `4c8e98d`
+
+Revisão a sério da ponte entre a app e o sistema operativo como um todo
+(`tauri-adapter-base.ts`, `web-adapter.ts`, o contrato `platform-adapter.ts`,
+diálogos nativos, anexos, política de URLs, deteção, singleton), nunca revista
+por ninguém de fora — só o `secretSet`/`secretDelete` tocados de passagem na
+revisão do Obsidian. **Um bug real, corrigido:** `pickAttachmentsNative`
+(`attachments.ts`, o caminho nativo dos anexos do email) lia os bytes
+**inteiros** de qualquer imagem para a memória para a miniatura, sem teto de
+tamanho — ao contrário dos caminhos gémeos (`readBrowserFile`,
+`attachViaNativeDialog`), que cortam em 5 MB. Uma fotografia de centenas de MB
+esgotava a memória só para uma miniatura de 32 px. Ganhou `MAX_PREVIEW_BYTES`
+(5 MB); acima disso o anexo continua válido, só sem miniatura. 3 testes novos
+(`tests/platform/attachments.test.ts`, que não cobria `pickAttachmentsNative`),
+confirmados a falhar contra o código antigo. Resto confirmado limpo: cofre
+(`secretGet` devolve `null` em erro como degradação de propósito — coberto por
+`tests/platform/secret-vault.test.ts`), `openExternal` com dupla barreira
+(lista de esquemas + capability Rust), ciclo de vida das blob URLs pareado
+(criação/revogação), `getTopProcesses` com `limit` opcional, storage a
+preservar falsos (`??`), consumidores WebAuthn/auto-login a falhar para o lado
+seguro. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a
+sério: a camada de plataforma (`src/platform/`)").
 
 ### 15. O laço de animação do núcleo visual (`use-animation-frame.ts`) — revisão adversarial — DeepSeek — commit `62d8e69`
 
