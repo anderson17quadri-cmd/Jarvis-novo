@@ -38,22 +38,7 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo. Em curso agora:
-
-- **Fala por frase (item 16, lado TypeScript) — revisão adversarial**
-  — **DeepSeek** (14/08/2026 04:02). Construído esta noite (fork
-  isolado do coordenador, commit `1dffbb7`), nunca revisto por ninguém
-  de fora — mesmo padrão de sempre: quem constrói não é quem confirma.
-  Ficheiros: `src/services/voice/sentence-segmenter.ts`
-  (`extractSentences`), `speakQueued` em `src/hooks/use-voice.ts`, e a
-  ligação em `App.tsx` (`ask`). Vale a pena confirmar: a segmentação
-  por frase não parte frases a meio em casos reais (números decimais
-  "3.14", reticências "...", abreviaturas fora da lista conhecida);
-  `speakQueued` não perde nem duplica frases se `speak()` for chamado
-  de outro sítio ao mesmo tempo (dois pedidos concorrentes ao
-  assistente, por exemplo); o resto por streaming ainda por dizer
-  quando o utilizador fecha a janela do assistente a meio não deixa
-  nada preso a falar depois.
+"Feito" abaixo. Sem instâncias em curso.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -74,6 +59,23 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Fala por frase (item 16, lado TypeScript) — revisão adversarial — DeepSeek — commit `c8ab9e6`
+
+Revisão a sério da peça construída esta noite (segmentador, `speakQueued`,
+ligação no `ask`), nunca revista por ninguém de fora. **Dois bugs reais,
+corrigidos:** (1) a meio do stream, `extractSentences` tratava o fim do
+buffer como fim de frase — "3.14"/"v2.0"/domínios cortados entre dois
+bocados saíam partidos a meio; flag `final` só fecha a frase no fim do
+buffer quando o stream acabou. (2) A fila por frases nunca era esvaziada —
+`stopSpeaking()` (segundo plano) ou uma `speak()` avulsa calavam só a
+frase a tocar, e o `onEnd` dela avançava a fila (falava o resto sem
+contexto, ou atropelava a fala avulsa); novo `limparFilaDeFala`, chamado
+pelo `speak()`, ao ir para segundo plano e no arranque de um `ask` novo
+(que também numera os pedidos para o fim de um streaming cancelado não
+falar frases atrasadas). 5 testes novos. Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: fala por
+frase (item 16, lado TypeScript)").
 
 ### 16. Fala por frase, à medida que a resposta chega — Claude local + DeepSeek #2 — commits `1dffbb7` / `e193593`
 
