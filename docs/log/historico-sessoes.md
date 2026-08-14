@@ -5884,3 +5884,33 @@ entrou na fila (itens 21-24):
 Nenhuma das quatro peças foi construída nesta entrada — só a decisão. O
 trabalho fica na fila, pela ordem de dependência (isolamento antes de
 Guardar Preferências).
+
+## 2026-08-14 — DeepSeek único, silêncio de 2s, e microfone sempre ativo
+
+Três afinações pedidas ao vivo. (1) Deixar só a DeepSeek como fornecedor
+por omissão. (2) Esperar o microfone ficar mudo antes de responder — o
+assistente cortava a meio das pausas de pensamento. (3) Microfone sempre
+ativo.
+
+**DeepSeek único**: a `DEFAULT_CHAIN_ORDER` era `deepseek → claude → ollama`
+e o sistema saltava entre provedores sem ninguém o pedir. Agora é só
+`['deepseek']`; o Ollama continua no catálogo — é para onde entra o Llama,
+mais tarde — mas só entra na cadeia se for acrescentado à mão em
+Personalização → Assistente.
+
+**Silêncio de 2s**: o `vigiarSilencio` cortava a gravação ao fim de 1,2s de
+silêncio, a meio de uma pausa para pensar. Subiu para 2s, e o limite de
+segurança de 12s para 20s, para não cortar frases longas. Só o caminho
+local (Whisper) usa esta deteção — é lá que o "responder antes de eu acabar"
+acontecia.
+
+**Microfone sempre ativo**: o modo conversa era só em memória — desligava ao
+fechar e era preciso carregar no botão a cada arranque. Agora a escolha
+grava-se (`micAlwaysOn` em `use-voice-settings-store`) e, ao arrancar, liga
+o modo conversa sozinho. O guard de "3 tentativas sem fala" mantém-se: uma
+pausa longa desliga o ciclo desta sessão, mas a preferência sobrevive ao
+reinício.
+
+**Verificação**: `tsc --noEmit` limpo; suites de voz (151) e as que tocam
+nas definições de voz verdes; o teste do modo conversa passou a repor
+`micAlwaysOn` no `beforeEach` (sem isso a preferência vazava entre testes).
