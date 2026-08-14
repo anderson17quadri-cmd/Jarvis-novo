@@ -821,12 +821,25 @@ export class VoiceService {
 
       await audio.play();
     } catch {
-      // O serviço local pode não estar a correr — quem chama (`useVoice`,
-      // o botão "testar") não tem aqui uma forma síncrona de reportar isto;
-      // a UI de definições confirma a disponibilidade à parte, com
-      // `getCloneServiceInfo`. `onSpeechEnd` liberta o microfone: sem áudio
-      // nenhum a tocar, `speak()` já o tinha marcado como "a falar", e sem
-      // isto ficava bloqueado à espera de um `onend` que nunca chega.
+      // O serviço local pode não estar a correr, OU o `audio.play()` pode
+      // recusar (política de autoplay). Num caso e no outro, se ainda há um
+      // áudio anterior a tocar, para-se e revoga-se a sua URL: sem isto, uma
+      // fala antiga continuava a soar já sem o microfone guardado (a
+      // `onSpeechEnd` abaixo liberta-o), e no caso do `play()` recusado a
+      // blob URL criada ficava órfã até à página fechar — o mesmo defeito
+      // que a variável `cloneAudio` existe para evitar.
+      if (this.cloneAudio) {
+        this.cloneAudio.audio.pause();
+        URL.revokeObjectURL(this.cloneAudio.url);
+        this.cloneAudio = null;
+      }
+
+      // Quem chama (`useVoice`, o botão "testar") não tem aqui uma forma
+      // síncrona de reportar isto; a UI de definições confirma a
+      // disponibilidade à parte, com `getCloneServiceInfo`. `onSpeechEnd`
+      // liberta o microfone: sem áudio nenhum a tocar, `speak()` já o tinha
+      // marcado como "a falar", e sem isto ficava bloqueado à espera de um
+      // `onend` que nunca chega.
       this.onSpeechEnd();
       callbacks?.onEnd?.();
     }

@@ -4687,3 +4687,35 @@ contra o código antigo e a passar com a correção. `tsc --noEmit` limpo,
 mas não desligam o modo conversa — fica "aceso mas morto" até a pessoa o
 voltar a ligar; é uma escolha de desenho (o aviso já lá está), não desta
 peça.
+
+## 2026-08-14 — Revisão a sério: voz clonada, síntese e reprodução no lado cliente
+
+Revisão adversarial de `speakClonada` (`src/services/voice-service.ts`), a
+síntese e reprodução da voz clonada no lado cliente — a peça ligada ao
+serviço local (`fetch /falar` → blob URL → `Audio`). Só o consentimento/CORS
+(item 12) tinha sido revisto; o ciclo de vida das blob URLs e o caminho de
+falha nunca tinham sido lidos por ninguém de fora. Dois buracos reais,
+corrigidos:
+
+1. **`audio.play()` a recusar deixava a blob URL órfã.** O `catch` do
+   `speakClonada` só fazia `onSpeechEnd` + `onEnd`. Se o `play()` recusasse
+   (política de autoplay, ou áudio ilegível), a URL acabada de criar nunca
+   era revogada e `cloneAudio` ficava a apontar para um áudio que já não ia
+   tocar — o mesmo defeito que a variável `cloneAudio` existe para evitar (o
+   `pause()` não dispara `onended`, e sem revogar a URL a blob fugia até a
+   página fechar), confirmado pelo próprio comentário da classe.
+2. **`fetch` a falhar deixava a fala anterior a tocar sem guarda.** Se o
+   pedido ao serviço local falhasse com uma fala anterior ainda a soar, essa
+   fala continuava — mas `onSpeechEnd` já tinha libertado o microfone, ou
+   seja, ficava um "a falar" sem ninguém a segurar o eco.
+
+Corrigido no `catch`: se ainda há um áudio anterior a tocar, para-se
+(`pause`) e revoga-se a sua URL antes de libertar o microfone. 2 testes novos
+(`tests/voice/voice-clone-synthesis.test.ts`), confirmados a falhar contra o
+código antigo e a passar com a correção. `tsc --noEmit` limpo, `eslint .` 0
+erros (11 avisos pré-existentes noutros ficheiros), `vitest run` 1687/1687.
+O `recordVoiceSample` (a gravação da amostra) foi lido na mesma passagem e
+não revelou defeito: o único caminho que manda áudio para `/voz` passa por
+`getUserMedia`, a falha de `getUserMedia` distingue `NotAllowedError` de
+captura, e o envio falha em silêncio com motivo — comportamento já coberto
+pelo item 12.
