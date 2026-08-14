@@ -4461,3 +4461,25 @@ suficiente para justificar continuar a atribuir trabalho esta noite.
 **Todas as peças "Precisa de decisão da pessoa" ficaram por tocar**, como
 pedido: wake word configurável, e as capacidades de plugin Executar
 Voz/Ler Memória/Guardar Preferências.
+
+## 2026-08-14 — Item 16, lado Python: RealtimeTTS testado e descartado para o server.py
+
+Sub-investigação da segunda instância DeepSeek (worktree
+`jarvis-novo-deepseek2`) sobre a pista do RealtimeTTS no item 16. Testado a
+sério, não só lido: o `CoquiEngine` do RealtimeTTS 0.7.3 carrega o XTTS-v2
+já em cache e sintetiza a voz clonada contra o stack instalado (coqui-tts
+0.27.5, torch 2.13+cu130, Python 3.13), com áudio a sair. Mas não serve
+para o `voice-clone-service/server.py`: a biblioteca é toda orientada a
+*reproduzir* áudio em tempo real nas colunas (StreamPlayer/PyAudio), e a
+única saída programável são pedaços de PCM float32 a 24 kHz, sem fronteiras
+de frase nem contentor WAV — o que o servidor devolve por HTTP teria de ser
+reconstruído à mão. O motor ainda corre num processo separado (`spawn`),
+frágil debaixo do uvicorn, e gere o modelo por um caminho próprio. E o
+ganho que se procurava já se atinge sem nada disto: o fork TypeScript do
+coordenador corta por frase e chama `POST /falar` uma vez por frase, e o
+`/falar` atual já sintetiza o texto que receber — uma frase por pedido já é
+síntese por frase. Fechado como "explorado, não vale a pena agora", sem
+mexer no server.py. (Nota lateral, fora do âmbito: o `/falar` atual
+recomputa os latents da voz clonada a cada chamada por passar `speaker_wav`;
+o coqui-tts 0.27.5 já tem cache de voz via `voice_dir`, se isso um dia se
+tornar o gargalo.)

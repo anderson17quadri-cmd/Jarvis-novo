@@ -88,6 +88,17 @@ trabalho a meio, esta segunda instância investiga só o lado Python
 fecham-se e reconciliam-se juntas quando ambas terminarem — não é um
 item duplicado, é a mesma peça vista dos dois lados.
 
+**Concluído — DeepSeek #2** (14/08/2026): RealtimeTTS testado a sério
+contra o stack instalado (coqui-tts 0.27.5, torch 2.13+cu130, Python
+3.13) — carrega o XTTS-v2 já em cache e sintetiza a voz clonada, mas não
+serve para o `server.py`: é uma biblioteca de *reprodução* em tempo real
+(StreamPlayer/PyAudio), a saída programável é PCM float32 cru sem
+fronteiras de frase nem WAV, e o motor corre num processo separado
+(`spawn`) frágil debaixo do uvicorn. Fechado como "explorado, não vale a
+pena agora", sem mexer no server.py — o lado Python do item fica
+resolvido pela chamada por frase que o fork TypeScript do coordenador já
+faz (`POST /falar` por frase). Detalhe em `docs/log/historico-sessoes.md`.
+
 ### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — **DeepSeek** (14/08/2026 03:12) `[livre]`
 
 Já existe uma linha no prompt de sistema (`deepseek-provider.ts`,
