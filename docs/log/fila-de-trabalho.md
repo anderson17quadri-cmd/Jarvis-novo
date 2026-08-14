@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O motor de automações (`src/services/automation-service.ts`, 462 linhas) — DeepSeek (14/08/2026 06:05)**. Fechado — ver "Feito" abaixo (commit `ea5857a`).
+**Em curso — A paleta de comandos (`src/components/command-palette/`, 479 linhas) — DeepSeek (14/08/2026 06:12)**. O despachante universal: `command-registry.ts` define todos os comandos que a pessoa pode invocar (abrir/fechar janelas, temas, estados, plugins, paleta…) e `CommandPalette.tsx` mostra-os e executa-os. Nunca revisto como um todo por ninguém de fora — só migrado para stores limpas (linhas 1189/1264/1272 do histórico) e o grupo "Plugins" acrescentado de passagem. Corretude crítica: é o ponto único por onde passa toda a ação do utilizador; um comando a despachar para o sítio errado, ou uma ação destrutiva sem a confirmação devida, mexe no sistema inteiro.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
