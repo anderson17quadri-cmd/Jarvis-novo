@@ -59,6 +59,22 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
+### 15. A store de definições de IA (`src/stores/use-ai-settings-store.ts`) — revisão adversarial — DeepSeek — commit `ee7c194`
+
+Revisão a sério da store que guarda e hidrata o provedor, o modelo e as
+chaves da API (DeepSeek e Claude), com o `persist()`/`hydrate()` no cofre do
+sistema — nunca revisto como um todo (a revisão de 13/08 do cofre cobriu a
+*migração* e o `secretSet` no adapter, não este `persist`). **Um bug real,
+corrigido:** o `persist()` escrevia as definições sem as chaves no storage
+primeiro e só depois mandava as chaves ao cofre, ignorando o booleano que o
+`secretSet` devolve (`false` quando o cofre falha). Uma escrita falhada
+deixava a chave em lado nenhum — nem storage nem cofre — e um reinício
+apagava-a. Agora as chaves vão primeiro ao cofre e só se a escrita correr
+mesmo bem é que se tiram do storage; se falhar, o storage mantém-nas, e o
+`hydrate()` volta a lê-las do storage quando o cofre não as tem. 3 testes
+novos. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a
+sério: a store de definições de IA (use-ai-settings-store.ts)").
+
 ### 15. O serviço de voz, caminho `speak()` por SpeechSynthesis (`src/services/voice-service.ts`) — revisão adversarial — DeepSeek — commit `98cf0b5`
 
 Revisão a sério da síntese normal por `speechSynthesis` (`speak()` →
