@@ -85,6 +85,8 @@ falhar agora.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
+### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek (14/08/2026)
+
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
