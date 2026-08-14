@@ -5447,6 +5447,84 @@ desligado, e a notificação a explicar porquê. O passo que resolve de
 vez, do lado dele, continua a ser arrancar `voice-clone-service/run.ps1`
 para ter a voz clonada de volta.
 
+## 2026-08-14 — Dev server morre sozinho: erro 1412 é sintoma, causa provável fora do código (GPU/TDR)
+
+Reportado ao vivo: `npm run tauri dev` morre sozinho, sem janela nenhuma
+de erro (≥6 vezes numa noite), deixando na consola
+`Failed to unregister class Chrome_WidgetWin_0. Error = 1412`. Pedido:
+investigar a sério antes de corrigir, reproduzir de forma fiável, e — se
+não houver causa raiz corrigível no código — documentar e admitir, sem
+inventar uma correção cosmética. É o que este item faz: **não há
+correção de código**, e aqui fica o porquê, com a evidência recolhida.
+
+**O que o erro 1412 é (confirmado).** A mensagem vem do `ClassRegistrar`
+do Chromium (`ui/base/win/window_impl.cc`), no **fim** da vida do
+processo WebView2, quando se tenta desregistar a classe de janela nativa
+`Chrome_WidgetWin_0` e ainda há janelas vivas (1412 =
+`ERROR_CLASS_HAS_WINDOWS`). É ruído de desmontagem, não a causa — aparece
+em qualquer saída desta app porque o padrão de bandeja
+(fechar = esconder, nunca destruir) deixa a janela registada até ao fim.
+O próprio Tauri já o documenta como secundário: nos casos conhecidos
+(issue #2704 do tauri-docs, issue #7606 do tauri) a mensagem segue-se a
+um *panic* Rust ou a um `exit()` com janelas abertas — o que interessa é
+o que aconteceu **antes**, não esta linha.
+
+**O que se descartou, com evidência.** (1) Janela recriada no HMR: a
+janela "main" nasce uma única vez da `tauri.conf.json`; `lib.rs` não tem
+`WebviewWindowBuilder` nem recriação nenhuma. (2) Corrida destroy/create
+num restart automático do Tauri CLI: o CLI só vigia `src-tauri/`; o
+`vite.config.ts` vigia o frontend e ignora `src-tauri` — um hot-reload do
+Vite não passa por aí. (3) WebView2 órfão a colidir: os únicos processos
+`msedgewebview2` estranhos pertenciam ao Windows Search (`SearchHost.exe`),
+não a instâncias antigas do jarvis. (4) Servidores sobrepostos: porta 1420
+livre, uma única árvore node/cargo/jarvis. (5) Pressão de memória do modelo
+de voz: nesta máquina não há `.venv` do `voice-clone-service` (a app
+imprime "não está configurado"), logo não há modelo carregado. (6) Panic
+Rust no caminho principal: revistos `lib.rs`, `tray.rs`, `shortcuts.rs`,
+`voice_clone.rs` — os handlers que correm na thread do evento usam todos
+`if let Some`/`let _`/`try_state`, sem `unwrap`/`expect` alcançável; os
+monitores de fundo (bateria 30 s, USB 5 s) correm em threads próprias e,
+em dev (`panic = "abort"` só existe no perfil release), um panic aí
+desenrola a thread, não mata o processo.
+
+**O que a reprodução mostrou.** Dev server arrancado de raiz e
+martelado ~10 minutos com HMR + full-reload contínuos (44+ ciclos, a
+tocar `src/App.tsx`, `src/main.tsx`, `index.html`, `globals.css` de 4 em
+4 s) **sem um único crash**, e com a memória do processo estável: a
+árvore WebView2 do jarvis fixa em ~685 MB (renderer ~320 MB, gpu
+~105 MB, browser ~140 MB), sem crescimento. Ou seja: HMR sozinho não
+reproduz; o crash é intermitente e depende de outra condição.
+
+**A evidência que aponta para fora do código (Windows Error Reporting).**
+Sem nenhum `APPCRASH`/`BEX64` para o `jarvis-ai-os.exe` em 7 dias — o
+processo não morre de exceção não tratada; sai "limpo" ou é derrubado por
+um subprocesso. Dois sinais reais na máquina: (1) três
+`LiveKernelEvent LKD_0x141` (TDR — Timeout Detection and Recovery) no
+`nvlddmkm.sys` (driver NVIDIA, arquitetura Blackwell) na noite de 13/08,
+isto é, o GPU a ser reposto porque deixou de responder; (2) um
+`RADAR_PRE_LEAK_64` para o `msedgewebview2.exe` (10/08) — o detetor de
+esgotamento de recursos do Windows a acusar o *heap* nativo do WebView2.
+
+**A melhor teoria.** A app mantém uma animação canvas a 60 fps (o núcleo
+visual `AICore`) sempre que está no desktop — carga contínua no GPU, e o
+WebView2 renderiza por GPU. Numa máquina com driver a disparar TDR sob
+carga, um reset do GPU a meio de uma renderização derruba o processo
+gpu/browser do WebView2 e a app cai em bloco — e a mensagem 1412 é só o
+desmontar daí. Explica os três padrões (segundos após HMR = renderização
+nova; ~11 min parado = a animação continua a mexer o GPU mesmo em
+"idle"; ≥6 numa noite = intermitente como um reset de driver). O caminho
+secundário (pressão de memória nativa do WebView2, o RADAR) aponta na
+mesma direção: upstream, não o código deste projeto.
+
+**Porque não se mexeu no código.** Não se reproduziu em ~10 min de
+martelada, e não há causa raiz corrigível aqui — a correção cosmética
+que o pedido proibia (ex.: `--disable-gpu` no WebView2) só trocaria a
+renderização para CPU com custo real de fluidez, sem confirmar a causa.
+Fica para o utilizador, como próximos passos concretos: atualizar o
+driver NVIDIA (Blackwell), e — se voltar a acontecer — testar o
+`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como diagnóstico
+(se o crash parar, confirma-se a teoria do GPU). Sem commit de código.
+
 ## 2026-08-14 — Revisão a sério: métricas do sistema (Rust `system/monitor.rs` + TS `system-service.ts`)
 
 Revisão adversarial da cadeia que mede o sistema — Rust
@@ -5626,3 +5704,51 @@ não booleano). Ambos confirmados a falhar contra o código antigo: `!'false'`
 
 Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1739/1739 (132 ficheiros).
+
+## 2026-08-14 — Revisão a sério: a validação do protocolo de plugins (protocol.ts)
+
+Revisão adversarial de `isPluginToCoreMessage` (`src/plugins/runtime/protocol.ts`)
+— a última barreira antes de o Core despachar uma mensagem vinda de um
+`<iframe sandbox>`. A ponte (`plugin-bridge.ts`) já tinha sido revista (commit
+`db3f24b`), mas o validador que a alimenta nunca o foi por ninguém de fora.
+
+**Um bug real, corrigido: uma escrita de ficheiro sem `conteudo` passava a
+fronteira.** O `switch` juntava `core.fs.read` e `core.fs.write` num só caso que
+conferia apenas `caminho` — mas `core.fs.write` exige também `conteudo: string`.
+O código de um plugin não é autenticado (a assinatura só cobre o manifesto, como
+a revisão de `signature.ts` já documentou), por isso um plugin a mandar
+`{type:'core.fs.write', payload:{caminho:'nota.txt'}}` é um caso real: passava a
+validação, o predicado de tipo jurava `conteudo: string`, e o `PluginRuntime`
+entregava a mensagem à ponte, que chamava `writeTextFile(fullPath, undefined)`.
+O campo obrigatório passou a ser conferido (`typeof payload.conteudo ===
+'string'`), e o caso separou-se do `core.fs.read`/`core.fs.list`, que só
+precisam do caminho. 4 testes novos (`tests/plugins/protocol.test.ts`), os dois
+casos de falta e tipo errado confirmados a falhar contra o código antigo.
+
+O resto confirmado limpo: as outras dezassete capacidades conferem todos os
+campos obrigatórios (só `core.fs.write` tinha um esquecido — todas as outras
+com campo extra o verificam, ex.: `core.command.register` confere `id`+`nome`+
+`descricao`); `valor`/`fallback` do armazenamento são `unknown` por desenho; e o
+`NaN` do `intervalMs` continua defendido do lado da ponte (commit `db3f24b`).
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1741/1741 (4 novos).
+
+## 2026-08-14 — Perguntas para o utilizador: wake word e capacidades de plugin
+
+Com os itens repetíveis de revisão a fechar, o que sobrava de real na fila
+para as duas "Precisa de decisão da pessoa" era escrever a pergunta, não
+escolher. As duas ficaram em `docs/log/perguntas-para-o-utilizador.md`:
+
+- **§2 — Wake word configurável.** A decisão de privacidade não é técnica: com
+  o microfone sempre à escuta, o áudio vai ao serviço de fala do navegador
+  (Web Speech API, por omissão) ou fica só na máquina (motor local). Três
+  opções: local, Web Speech API contínua, ou não por agora.
+- **§3 — Executar Voz / Ler Memória / Guardar Preferências.** As três
+  capacidades da API de plugins que ficaram de fora de propósito. A pergunta
+  separa a que é barata (Executar Voz — já existe `voiceService.speak`) das
+  que mexem em dados (Ler Memória expõe preferências pessoais; Guardar
+  Preferências exige isolar o armazenamento por plugin antes de ser segura).
+
+Nada foi construído — só a pergunta, como manda a regra. Nenhuma alteração de
+código; `tsc`/`eslint`/`vitest` intactos.
