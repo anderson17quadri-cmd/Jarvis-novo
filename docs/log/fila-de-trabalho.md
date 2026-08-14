@@ -38,7 +38,22 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo.
+"Feito" abaixo. Em curso agora:
+
+- **Fala por frase (item 16, lado TypeScript) — revisão adversarial**
+  — **DeepSeek** (14/08/2026 04:02). Construído esta noite (fork
+  isolado do coordenador, commit `1dffbb7`), nunca revisto por ninguém
+  de fora — mesmo padrão de sempre: quem constrói não é quem confirma.
+  Ficheiros: `src/services/voice/sentence-segmenter.ts`
+  (`extractSentences`), `speakQueued` em `src/hooks/use-voice.ts`, e a
+  ligação em `App.tsx` (`ask`). Vale a pena confirmar: a segmentação
+  por frase não parte frases a meio em casos reais (números decimais
+  "3.14", reticências "...", abreviaturas fora da lista conhecida);
+  `speakQueued` não perde nem duplica frases se `speak()` for chamado
+  de outro sítio ao mesmo tempo (dois pedidos concorrentes ao
+  assistente, por exemplo); o resto por streaming ainda por dizer
+  quando o utilizador fecha a janela do assistente a meio não deixa
+  nada preso a falar depois.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
