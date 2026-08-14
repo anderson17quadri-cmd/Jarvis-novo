@@ -114,7 +114,8 @@ export class AIService {
     // Um pedido novo cancela o anterior — não se acumulam respostas a escrever.
     this.cancel();
     this.controller = new AbortController();
-    const { signal } = this.controller;
+    const controller = this.controller;
+    const { signal } = controller;
 
     // A memória observa antes de responder: uma preferência dita agora tem de
     // estar guardada quando o provedor a for confirmar.
@@ -130,7 +131,9 @@ export class AIService {
     const history = selectMessages(useAssistantStore.getState());
     const resolvedPrompt = await resolveReferences(prompt, history, this.provider, signal);
     if (signal.aborted) {
-      useAssistantStore.getState().setMode('idle');
+      // Cancel a solo: ninguém tomou o lugar, repõe-se o modo. Se um pedido
+      // novo cancelou este, o modo já é dele — não se toca.
+      if (this.controller === null) useAssistantStore.getState().setMode('idle');
       return '';
     }
 
@@ -194,8 +197,16 @@ export class AIService {
 
     this.noteModel(messageId);
     useAssistantStore.getState().finishMessage(messageId);
+
+    // Um pedido novo já cancelou este e ficou com o modo e o controller —
+    // repor aqui apagava o estado dele (e, pior, deixava-o impossível de
+    // cancelar: item 15, revisão a sério). Um cancel a solo (controller a
+    // `null`) ainda precisa de repor o modo a "idle".
+    if (this.controller !== null && this.controller !== controller) {
+      return full;
+    }
     useAssistantStore.getState().setMode('idle');
-    this.controller = null;
+    if (this.controller === controller) this.controller = null;
 
     return full;
   }
@@ -234,7 +245,8 @@ export class AIService {
 
     this.cancel();
     this.controller = new AbortController();
-    const { signal } = this.controller;
+    const controller = this.controller;
+    const { signal } = controller;
 
     memoryService.observe(prompt);
     const store = useAssistantStore.getState();
@@ -245,7 +257,9 @@ export class AIService {
     const toolsHistory = selectMessages(useAssistantStore.getState());
     const toolsResolvedPrompt = await resolveReferences(prompt, toolsHistory, provider, signal);
     if (signal.aborted) {
-      useAssistantStore.getState().setMode('idle');
+      // Mesmo guarda do `send()`: cancel a solo repõe o modo; um pedido novo
+      // já tomou conta dele.
+      if (this.controller === null) useAssistantStore.getState().setMode('idle');
       return [];
     }
 
@@ -266,7 +280,7 @@ export class AIService {
     if (this.networkBlocked()) {
       const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
       await this.recover(new AiFailure('permissao'), { messageId, request, text: '', isAborted: false, onChunk });
-      this.controller = null;
+      if (this.controller === controller) this.controller = null;
       return pending;
     }
 
@@ -297,7 +311,7 @@ export class AIService {
          * que é exatamente a razão de o pedido passar a ser respondido sem elas.
          */
         await this.recover(error, { messageId, request, text, isAborted: signal.aborted, onChunk });
-        this.controller = null;
+        if (this.controller === controller) this.controller = null;
         return pending;
       }
 
@@ -348,8 +362,13 @@ export class AIService {
       }
     }
 
+    // Mesmo guarda do `send()`: um pedido novo já cancelou este e ficou com o
+    // modo e o controller — não se repõe nem se limpa por cima dele.
+    if (this.controller !== null && this.controller !== controller) {
+      return pending;
+    }
     useAssistantStore.getState().setMode(pending.length > 0 ? 'idle' : 'success');
-    this.controller = null;
+    if (this.controller === controller) this.controller = null;
     return pending;
   }
 
@@ -455,8 +474,14 @@ export class AIService {
 
         this.noteModel(state.messageId);
         store().finishMessage(state.messageId);
+
+        // Mesmo guarda do `send()`: se um pedido novo cancelou este durante a
+        // troca de provedor, o modo e o controller já são dele.
+        if (this.controller !== null && this.controller?.signal !== state.request.signal) {
+          return full;
+        }
         store().setMode('idle');
-        this.controller = null;
+        if (this.controller?.signal === state.request.signal) this.controller = null;
         return full;
       }
     }

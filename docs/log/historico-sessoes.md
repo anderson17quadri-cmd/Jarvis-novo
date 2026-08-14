@@ -4816,3 +4816,40 @@ ou ações confirmadas à parte), não o envio principal.
 `assistant-window-speaks.test.tsx`), confirmados a falhar contra o código
 antigo (4 a falhar). `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1696/1696.
+
+## 2026-08-14 — Revisão a sério: o orquestrador do assistente (ai-service.ts)
+
+Revisão adversarial de `services/ai-service.ts` como um todo — a peça por onde
+passa toda a conversa (`send`, `sendWithTools`, o ciclo de ferramentas e o
+`recover` da cadeia), nunca revista de fio a pavio (só peças pontuais nos
+itens 16/18, e o `recover` tinha ficado explicitamente de fora de uma revisão
+anterior). Um bug real, corrigido:
+
+**O fim de um pedido cancelado destruía o pedido novo.** Quando um `send()`/`
+`sendWithTools()` novo cancela o anterior, o prólogo do novo é síncrono
+(`cancel()` → `this.controller = ctrlNovo` → `setMode('thinking')`), mas a
+limpeza do cancelado corre num microtask — e corria **por cima**: repunha o
+modo a "idle" e fazia `this.controller = null`, apagando o controller do
+pedido que acabara de começar. Resultado observável (e testado): um terceiro
+pedido deixa de conseguir cancelar o segundo (`signal.aborted` fica `false`),
+e duas respostas passam a escrever na conversa ao mesmo tempo — corrupção de
+estado no sítio mais importante do assistente.
+
+Corrigido com um guarda por identidade do controller (`this.controller ===
+controller`) em cada ponto de limpeza pós-`await`: o fim do `send()`, o fim/`catch`/
+rede-bloqueada do `sendWithTools()`, e a troca de provedor dentro do `recover`.
+O guarda distingue os três casos — conclusão normal (é dono: repõe e limpa),
+cancel a solo (`controller === null`: repõe o modo, nada a limpar) e pedido
+novo a correr (não toca em nada). A reposição a "idle" do cancel a solo
+mantém-se, para não regredir o botão de parar.
+
+1 teste novo (`tests/assistant/abort-race.test.ts`) monta a corrida com um
+provedor que bloqueia até ser cancelado e confirma que o terceiro pedido ainda
+cancela o segundo; falha contra o código antigo (`expected false to be true`).
+O resto confirmado limpo: `TOOL_ROUNDS` limita o ciclo de ferramentas; as
+mensagens vazias de rondas que só pediram ferramentas são removidas; a máquina
+de modos não tem transição ilegal (o `AssistantMode` inclui `success` de
+propósito, para o fim das ferramentas); e o `recover` nunca cai para o local
+sem dizer — a nota vai sempre primeiro e o "error" final é deliberado. `tsc
+--noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run`
+1697/1697.
