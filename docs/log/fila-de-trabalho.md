@@ -29,6 +29,8 @@ Os itens 16 e 17 estão fechados — ver "Feito" abaixo.
 
 ### 18. A resposta na janela normal do assistente nunca fala — `[livre]`
 
+**Em curso — DeepSeek (14/08/2026 04:56)**.
+
 **Diagnóstico já feito** (sessão remota, leitura do código, confirmado
 por `git log` que nunca foi diferente — não é regressão de hoje): a
 fala por frase (item 16) só está ligada ao caminho de **comandos por
