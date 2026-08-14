@@ -85,3 +85,47 @@ describe('estado dos plugins', () => {
     }
   });
 });
+
+describe('desinstalar limpa as permissões recusadas', () => {
+  it('remover um plugin apaga as recusas que ele tinha', () => {
+    const id = REMOVABLE[0]!.id;
+    usePluginStore.getState().install(id);
+    usePluginStore.getState().setPermission(id, 'network', false);
+
+    expect(usePluginStore.getState().deniedPermissions[id]).toContain('network');
+
+    usePluginStore.getState().uninstall(id);
+
+    expect(usePluginStore.getState().deniedPermissions[id]).toBeUndefined();
+  });
+
+  it('as recusas de um plugin removido não sobrevivem a recarregar', async () => {
+    const id = REMOVABLE[0]!.id;
+    usePluginStore.getState().install(id);
+    usePluginStore.getState().setPermission(id, 'network', false);
+    await usePluginStore.getState().persist();
+
+    usePluginStore.getState().uninstall(id);
+    await usePluginStore.getState().persist();
+
+    // Reinício: o estado em memória volta ao início e é hidratado do disco.
+    usePluginStore.setState({ installed: {}, deniedPermissions: {} });
+    await usePluginStore.getState().hydrate();
+
+    expect(usePluginStore.getState().deniedPermissions[id]).toBeUndefined();
+  });
+
+  it('remover um plugin não mexe nas recusas dos outros', () => {
+    const id = REMOVABLE[0]!.id;
+    const outro = REMOVABLE[1]!.id;
+    usePluginStore.getState().install(id);
+    usePluginStore.getState().install(outro);
+    usePluginStore.getState().setPermission(id, 'network', false);
+    usePluginStore.getState().setPermission(outro, 'network', false);
+
+    usePluginStore.getState().uninstall(id);
+
+    expect(usePluginStore.getState().deniedPermissions[outro]).toContain('network');
+    expect(usePluginStore.getState().deniedPermissions[id]).toBeUndefined();
+  });
+});

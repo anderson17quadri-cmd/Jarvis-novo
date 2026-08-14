@@ -5188,3 +5188,31 @@ do cofre. 3 testes novos em `tests/stores/ai-settings-store.test.ts`
 (escrever bem → storage sem chave e cofre com ela; cofre falha → chave fica
 no storage; reinício depois da falha → chave sobrevive). `tsc --noEmit`
 limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1720/1720.
+
+## 2026-08-14 — Revisão a sério: a store de plugins (use-plugin-store.ts)
+
+Revisão adversarial da store que guarda os plugins instalados e as permissões
+recusadas por plugin (`install`, `uninstall`, `setPermission`, `setEnabled`,
+`toggleEnabled`, `persist`/`hydrate`). A revisão de 14/08 da *assinatura* só
+cobrira o `verifyAndInstallPlugin` (a criptografia e o fluxo de instalação),
+nunca as ações de estado da store em si.
+
+**Um bug real, corrigido.** `uninstall()` removia o plugin de `installed` mas
+deixava as permissões que lhe tinham sido recusadas em `deniedPermissions`. A
+entrada ficava órfã — gravada em disco a cada `persist()`, sem nunca ser limpa
+— e, se o plugin voltasse a ser instalado, herdava em silêncio as recusas da
+instalação antiga em vez de recomeçar com as permissões do manifesto. Não é
+um buraco de segurança (recusar é o lado seguro), mas é estado errado: a
+semântica de "remover" devia apagar o plugin por inteiro, decisões incluídas.
+
+Corrigido: `uninstall()` passa a reconstruir também `deniedPermissions` sem a
+chave do plugin removido, no mesmo estilo do `semSegredos` da store de IA
+(iterar `Object.entries` e filtrar a chave). As recusas dos outros plugins
+ficam intactas. 3 testes novos em `tests/stores/plugin-store.test.ts` (remover
+apaga as recusas do plugin; as recusas não sobrevivem a recarregar; remover um
+não mexe nas recusas dos outros), confirmados a falhar contra o código antigo
+e a passar depois. O resto confirmado limpo: `install` idempotente, os do
+sistema não se removem nem se ativam à força, `hydrate` repõe os do sistema e
+preserva os externos que já não estão no catálogo, `setPermission` falha para
+o lado seguro (recusa guardada, concessão retirada). `tsc --noEmit` limpo,
+`eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1723/1723.

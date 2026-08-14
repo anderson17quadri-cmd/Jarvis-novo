@@ -82,7 +82,17 @@ export const usePluginStore = create<PluginState>((set, get) => ({
 
       eventBus.emit('plugin:removido', { pluginId: id });
       logService.audit(`Remover o plugin ${id}`, 'executado');
-      return { installed: rest };
+
+      // Remover também as recusas que o plugin tinha: deixá-las órfãs depois de
+      // desinstalar só as faria reaparecer se o plugin voltasse a ser instalado,
+      // e a entrada ficava gravada em disco a cada `persist`, sem nunca ser
+      // limpa. Uma reinstalação deve recomeçar com as permissões do manifesto,
+      // não herdar decisões de uma instalação antiga.
+      const restantes: Record<string, readonly string[]> = {};
+      for (const [chave, valor] of Object.entries(state.deniedPermissions)) {
+        if (chave !== id) restantes[chave] = valor;
+      }
+      return { installed: rest, deniedPermissions: restantes };
     }),
 
   setPermission: (pluginId, permission, allow) =>
