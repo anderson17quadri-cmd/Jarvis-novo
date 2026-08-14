@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — A cadeia de provedores de IA (`src/services/ai-providers/`, 1512 linhas) — DeepSeek (14/08/2026 05:52)**. O que decide qual modelo responde e como cai para o seguinte: `provider-chain.ts` (a cadeia de reserva), `model-choice.ts` (escolha do modelo por capacidade), `rule-provider.ts` (o que responde localmente), `ai-provider.ts` (o contrato) e os provedores concretos (`deepseek`/`claude`/`ollama`). Nunca revista como um todo por ninguém de fora — só a ordem da cadeia foi reordenada (item 1), sem revisão do fluxo. Corretude crítica: um provedor mal escolhido responde com o modelo errado, e uma cadeia partida deixa o assistente mudo.
+**Em curso — A verificação de assinatura de plugins (`src/plugins/signature.ts`, 281 linhas) — DeepSeek (14/08/2026 06:05)**. A criptografia que decide se um plugin é aceite: `generateSigningKeyPair`, `signManifest`, `verifyManifestSignature`, `getSignatureStatus` (Ed25519 via `crypto.subtle`), e o caminho de instalação que a usa (`verifyAndInstallPlugin` em `plugin-catalog.ts`). Nunca revista por ninguém de fora — só construída e confirmada "ao vivo" na Peça 5, Lote 2. Corretude crítica: uma verificação que aceite assinatura trocada deixa instalar um plugin não autorizado, e uma canonicalização ambígua quebra a garantia de autenticidade.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -60,6 +60,23 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A cadeia de provedores de IA (`src/services/ai-providers/`, 1512 linhas) — revisão adversarial — DeepSeek — commit `d435f3c`
+
+Revisão a sério da camada que decide qual modelo responde e como cai para o
+seguinte (`provider-chain.ts`, `model-choice.ts`, `rule-provider.ts`,
+`ai-provider.ts`, `deepseek`/`claude`/`ollama`), nunca revista como um todo.
+**Nada de funcional a corrigir** — confirmado limpo: a cadeia só contém
+provedores configurados com nomes estáveis e únicos (o `nextStep` nunca procura
+um nome ausente), a escolha de modelo trata acentos/blocos de código/prompts
+longos e os dois sentidos, cada provedor tem teto de 60s + aborto + erro
+tipado, e os parsers acumulam argumentos de ferramenta por índice e deixam cair
+JSON malformado em vez de o executar a meio. O único caminho sem teste —
+`collect()` (a acumulação de ferramentas da DeepSeek) — ganhou 5 testes novos
+(`tests/assistant/deepseek.test.ts`). Duas observações sem bug: `firstInChain`
+nunca chamado em produção; provedor ativo não volta ao primeiro após exaustão
+completa (em `ai-service.ts`). Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: a cadeia de provedores de IA").
 
 ### 15. A camada de plataforma (`src/platform/`, ~1586 linhas) — revisão adversarial — DeepSeek — commit `4c8e98d`
 
