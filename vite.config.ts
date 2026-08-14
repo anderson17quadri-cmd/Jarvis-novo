@@ -26,8 +26,13 @@ export default defineConfig({
     host: host ?? false,
     hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
     watch: {
-      // O Vite não deve vigiar o lado Rust — o `cargo` trata disso.
-      ignored: ['**/src-tauri/**'],
+      // O Vite não deve vigiar o lado Rust — o `cargo` trata disso. Também
+      // não deve vigiar worktrees isolados de forks (`.claude/worktrees/`,
+      // cada um uma cópia completa do repositório, com o seu próprio
+      // `index.html`/`tsconfig.json`) — sem isto, uma edição nesse worktree
+      // isolado disparava um full-reload aqui com o tsconfig errado,
+      // deixando a app a servir um estado partido até se reiniciar.
+      ignored: ['**/src-tauri/**', '**/.claude/worktrees/**'],
     },
   },
 
