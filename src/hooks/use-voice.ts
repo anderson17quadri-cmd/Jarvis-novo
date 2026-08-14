@@ -7,6 +7,7 @@ import { notificationService } from '@/services/notification-service';
 import { voiceService, type SpeechRecognitionErrorKind } from '@/services/voice-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useVoiceCorrectionStore } from '@/stores/use-voice-correction-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 import { runIntent } from '@/services/voice/executor';
 import { describeIntent, isCritical, parseSpeech } from '@/services/voice/intents';
 
@@ -67,6 +68,7 @@ export function useVoice(): {
   const isVisible = useIsVisible();
   const setMode = useAssistantStore((state) => state.setMode);
   const pulse = useAssistantStore((state) => state.pulse);
+  const micAlwaysOn = useVoiceSettingsStore((state) => state.micAlwaysOn);
 
   const isSupported = capabilities.voice && voiceService.isRecognitionSupported;
 
@@ -374,6 +376,9 @@ export function useVoice(): {
   const toggleConversationMode = useCallback((): void => {
     const ativo = !voiceService.isConversationMode;
     voiceService.setConversationMode(ativo);
+    // Guardar a escolha: com isto, o microfone fica "sempre ativo" a atravessar
+    // reinícios, e não só até fechar a aplicação.
+    useVoiceSettingsStore.getState().setMicAlwaysOn(ativo);
 
     if (ativo) {
       if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(CONVERSATION_WARN_KEY)) {
@@ -392,6 +397,20 @@ export function useVoice(): {
       limparReengate();
     }
   }, [limparReengate, tentarReengatar]);
+
+  // ── Microfone sempre ativo ─────────────────────────────────────────────
+
+  /**
+   * Se a preferência ficou guardada, liga o modo conversa sozinho no
+   * arranque. Só dispara quando `micAlwaysOn` passa a `true` — o que acontece
+   * depois do `hydrate`, nunca durante o render — por isso não arranca o
+   * microfone antes de se saber que o querem a ouvir.
+   */
+  useEffect(() => {
+    if (!micAlwaysOn || voiceService.isConversationMode) return;
+    voiceService.setConversationMode(true);
+    if (!voiceService.isListening) tentarReengatar();
+  }, [micAlwaysOn, tentarReengatar]);
 
   // ── Segundo plano ──────────────────────────────────────────────────────
 

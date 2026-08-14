@@ -13,8 +13,15 @@ import { storageService, STORAGE_KEYS } from '@/services/storage-service';
  */
 interface VoiceSettingsState {
   selection: VoiceSelection;
+  /**
+   * Microfone sempre ativo (14/08/2026): o modo conversa fica ligado e
+   * reengata-se sozinho, mesmo a atravessar reinícios — é a forma de o
+   * microfone "estar sempre a ouvir" sem carregar no botão a cada arranque.
+   */
+  micAlwaysOn: boolean;
 
   setSelection: (selection: VoiceSelection) => void;
+  setMicAlwaysOn: (enabled: boolean) => void;
 
   persist: () => Promise<void>;
   hydrate: () => Promise<void>;
@@ -33,6 +40,7 @@ const DEFAULT_SELECTION: VoiceSelection = { kind: 'clonada', nome: 'Alison Dietl
 
 export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
   selection: DEFAULT_SELECTION,
+  micAlwaysOn: false,
 
   setSelection: (selection) => {
     set({ selection });
@@ -40,15 +48,33 @@ export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
     void get().persist();
   },
 
+  setMicAlwaysOn: (enabled) => {
+    set({ micAlwaysOn: enabled });
+    void get().persist();
+  },
+
   persist: async () => {
-    await storageService.set(STORAGE_KEYS.voiceSettings, get().selection);
+    await storageService.set(STORAGE_KEYS.voiceSettings, {
+      selection: get().selection,
+      micAlwaysOn: get().micAlwaysOn,
+    });
   },
 
   hydrate: async () => {
-    const saved = await storageService.get<VoiceSelection | null>(STORAGE_KEYS.voiceSettings, null);
+    // Formato antigo: só a `VoiceSelection` (ex.: `{ kind, nome }`). Novo:
+    // `{ selection, micAlwaysOn }`. O `&` cobre as duas leituras sem migração.
+    const saved = await storageService.get<
+      (VoiceSelection & { selection?: VoiceSelection; micAlwaysOn?: boolean }) | null
+    >(STORAGE_KEYS.voiceSettings, null);
 
-    const selection = saved?.kind ? saved : DEFAULT_SELECTION;
-    set({ selection });
+    const selection = saved?.selection?.kind
+      ? saved.selection
+      : saved?.kind
+        ? saved
+        : DEFAULT_SELECTION;
+    const micAlwaysOn = saved?.micAlwaysOn === true;
+
+    set({ selection, micAlwaysOn });
     voiceService.setSelection(selection);
   },
 }));
