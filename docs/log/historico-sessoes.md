@@ -5346,3 +5346,39 @@ proxy grosseiro, pré-existente). 2 testes novos, confirmados a falhar contra o
 código antigo (`intervalMs` devolvido como `NaN`; `reason` `undefined` no
 redireccionamento) e a passar depois. `tsc --noEmit` limpo, `eslint .` 0 erros
 (11 avisos pré-existentes), `vitest run` 1734/1734.
+
+## 2026-08-14 — Revisão a sério (varrimento final): ecrãs e orquestração de voz, limpos
+
+Depois de fechar a ponte de plugins, varrimento adversarial dos últimos "pesos"
+de interface e orquestração nunca revistos como um todo — a ler cada um como se
+fosse a primeira vez, sem confiar nos testes que os cobrem indiretamente. **Nada
+de funcional a corrigir** em nenhum:
+
+- **`LoginScreen.tsx`** (747 linhas) — o fluxo de autenticação está correto:
+  `isResolvedRef` impede dupla concessão em todos os caminhos (biometria, chave,
+  PIN, palavra-passe, sessão automática); o 2FA falha para o lado seguro (sem
+  chave → nega, não concede); biometria/chave bastam-se a si mesmas como está
+  documentado; o painel do segundo fator não mostra os botões que o contornariam.
+- **`PinKeypad.tsx`** — demonstração correta; "qualquer PIN entra" é o desenho.
+- **`PrivacyWindow.tsx`** — a orquestração é só fiação sobre stores já revistas;
+  o `SecurityKeySection` liga/desliga o 2FA corretamente (o interruptor só existe
+  com chave registada, e remover a chave desliga o 2FA).
+- **`AssistantWindow.tsx`** — o envio, a saudação só em conversa vazia, e a
+  confirmação de ferramentas destrutivas ("ignorar = não fazer") estão certos.
+- **`use-voice.ts`** — o ciclo de re-engate, a fila por frases e o segundo plano
+  estão corretos, já equilibrados pelas revisões anteriores.
+- **`AiSettings.tsx`** — entrada de chaves com máscara e "Guardar" delegando na
+  store cujo `persist`/`hydrate` já foi revisto.
+
+**Duas notas sem bug, abaixo da barra de correção** (documentadas, não mexidas):
+(1) em `LoginScreen.tsx` o `setInterval` do varrimento de impressão digital
+simulado não entra em `timersRef`, por isso não é limpo ao desmontar — num
+método abandonado a meio (janela de ~1,7s) pode pisar a `hint` de outro método
+ou disparar `grant`, mas o `isResolvedRef` já trava a dupla concessão, e o dano
+é cosmético; (2) em `PinKeypad.tsx` o `setTimeout(onComplete, 260)` não é limpo,
+mas completar os 4 dígitos é o próprio ato de autenticação — "cancelar" depois
+de completar não é cancelar.
+
+Isto fecha o varrimento: as peças de peso (segurança, integridade de dados,
+concorrência) estão todas revistas nas entradas acima ou nas de 13/08; o que
+sobra são janelas de apresentação que delegam nessas stores/serviços já revistos.

@@ -59,6 +59,17 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
+### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
+
+Varrimento adversarial dos últimos "pesos" de interface/orquestração nunca
+revistos como um todo (`LoginScreen.tsx`, `PinKeypad.tsx`, `PrivacyWindow.tsx`,
+`AssistantWindow.tsx`, `use-voice.ts`, `AiSettings.tsx`). **Nada de funcional a
+corrigir** — todos delegam em stores/serviços já revistos, e o fluxo de
+autenticação/2FA/voz está correto. Duas notas sem bug (intervalo da impressão
+digital e o `setTimeout` do PIN não limpos ao desmontar), abaixo da barra de
+correção. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a
+sério (varrimento final): ecrãs e orquestração de voz, limpos").
+
 ### 15. A ponte de plugins (`src/plugins/runtime/plugin-bridge.ts`, 696 linhas) — revisão adversarial — DeepSeek — commit `db3f24b`
 
 Revisão a sério do despacho das dezoito capacidades de plugin no Core
