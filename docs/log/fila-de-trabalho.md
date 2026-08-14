@@ -38,12 +38,7 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo.
-
-**Em curso — Modo conversa (re-engate automático do microfone,
-`src/hooks/use-voice.ts` + `voice-service.ts`) — DeepSeek (14/08/2026
-04:20)**. Nunca revisto por ninguém de fora; peça de peso (microfone
-automático, ciclo de re-engate, privacidade).
+"Feito" abaixo. Sem instâncias em curso.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -64,6 +59,20 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Modo conversa (re-engate automático do microfone) — revisão adversarial — DeepSeek — commit `bcab755`
+
+Revisão a sério do ciclo de re-engate do microfone (`useVoice` +
+`voice-service`), nunca revisto por ninguém de fora. **Dois bugs reais,
+corrigidos:** (1) os erros transientes (`no-speech`, `a-falar`) passavam
+pelo caminho de erro a sério — piscavam "erro" no núcleo e, no limiar da
+3.ª tentativa sem fala, ficavam **presos em "erro"**; agora tratam-se
+primeiro, sem tocar no modo nem no registo. (2) Ao voltar do segundo
+plano o ciclo nunca retomava (o histórico prometia "retoma-se ao voltar",
+sem código nenhum a fazê-lo); agora o ramo de foreground re-engata quando
+o modo conversa continua ativo. 5 testes novos. Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: modo
+conversa").
 
 ### 15. Fala por frase (item 16, lado TypeScript) — revisão adversarial — DeepSeek — commit `c8ab9e6`
 
