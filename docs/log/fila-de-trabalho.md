@@ -27,7 +27,7 @@
 
 Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
-### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador
+### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador — DeepSeek (14/08/2026)
 
 **Não é para diagnosticar por perguntas ao utilizador — já se tentou
 isso por várias voltas nesta sessão e ele está fartinho de ser posto a
@@ -83,9 +83,19 @@ falhar agora.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
+### 15. O restauro de cópias e a hidratação (`hydrate-all.ts` vs. as chaves persistidas lidas fora dele) — revisão adversarial — DeepSeek, 14:54
 
-### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek (14/08/2026)
+`restoreBackup` promete devolver tudo o que a cópia traz, mas o
+`hydrate-all.ts` não cobre todas as `STORAGE_KEYS` — `windowLayout`,
+`newsMarks`, `booted`, `lastUser` e `reducedMotion` são lidos por fora
+(`use-window-store`, `news-api-provider`, `BootSequence`, sessão,
+`use-media-query`). Se repor uma cópia grava essas chaves no armazenamento
+mas não as re-hidrata em memória, o restauro fica incompleto até reiniciar.
+Conferir o fluxo real (quem chama `restoreSavedLayout`/lê essas chaves
+depois do restauro) antes de corrigir — pode ser leitura preguiçosa por
+desenho, ou uma falha real de cobertura.
+
+### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
@@ -120,6 +130,19 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 decisão continua da pessoa; não reescrever, só esperar a resposta.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek — commit `0d6055d`
+
+Revisão a sério do portão que decide se a capacidade pedida por um plugin
+está *declarada* no manifesto assinado, nunca revisto desde a revisão de
+13/08 da fronteira do sandbox. **Um bug real, corrigido:** o portão lia a
+permissão como verdade de JavaScript (`if (!declaration.permissions?.[permission])`),
+por isso um manifesto assinado com `"false"` (string não vazia, verdade em JS)
+ou `1` passava como "declarada", a contradizer o contrato documentado de
+permissão `true`. Agora compara estrito (`!== true`) e o `validateManifest`
+recusa à instalação valores não booleanos. 2 testes novos, confirmados a
+falhar contra o código antigo. Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: a fronteira de permissões de plugins").
 
 ### 20. Dev server crasha sozinho (`Chrome_WidgetWin_0`, erro 1412) — DeepSeek — sem commit de código
 

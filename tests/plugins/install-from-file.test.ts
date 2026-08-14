@@ -294,6 +294,15 @@ describe('validateManifest (campos obrigatórios)', () => {
     delete manifest.permissions;
     expect(validateManifest(manifest as unknown as PluginManifest)).toMatch('permissões');
   });
+
+  it('permissão com valor não booleano: recusado', () => {
+    const manifest = testManifest();
+    // `"false"` em string é verdade em JavaScript — recusa-se à instalação
+    // em vez de deixar a fronteira de runtime tratar um valor desses como `true`.
+    (manifest.permissions as unknown as Record<string, unknown>)['notifications'] = 'false';
+
+    expect(validateManifest(manifest)).toMatch('true ou false');
+  });
 });
 
 // ─── verifyAndInstallPlugin com isExternal ────────────────────────────────────
