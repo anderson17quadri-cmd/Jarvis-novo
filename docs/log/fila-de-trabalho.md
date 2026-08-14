@@ -25,8 +25,32 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-Os dois itens desta secção (16 e 17) estão fechados — ver "Feito" abaixo.
-Fica vazia à espera do próximo relato ao vivo.
+Os itens 16 e 17 estão fechados — ver "Feito" abaixo.
+
+### 18. A resposta na janela normal do assistente nunca fala — `[livre]`
+
+**Diagnóstico já feito** (sessão remota, leitura do código, confirmado
+por `git log` que nunca foi diferente — não é regressão de hoje): a
+fala por frase (item 16) só está ligada ao caminho de **comandos por
+voz** — `services/voice/executor.ts`, `runIntent()` para um intent
+`'perguntar'`, chama `executor.ask(intent.text)`, que é o `ask` de
+`App.tsx` com o `speakQueued` já ligado. **A janela normal do
+assistente (`AssistantWindow.tsx`, onde a maior parte da conversa
+acontece, escrita ou falada através dela) usa `aiService.sendWithTools()`
+— que nunca, em nenhum commit da história deste ficheiro, chamou
+`speak()` nem `speakQueued()`.** Confirmado com `git log -p --follow`
+sobre o ficheiro.
+
+**O que se pede**: ligar a mesma fala por frase (o mecanismo já existe —
+`extractSentences` + `speakQueued`, ver item 16) também ao caminho de
+`sendWithTools`/`AssistantWindow.tsx`, não só ao `ask`. Precisa de uma
+decisão pequena de desenho: falar sempre, só quando a pergunta chegou
+por voz, ou atrás de uma preferência nas definições de voz (a pessoa
+pode preferir ler em silêncio quando está a escrever). Se não houver
+sinal já guardado de "isto chegou por voz", o mais simples e mais
+parecido com "conversa real" é falar sempre que a resposta terminar,
+com a preferência de sempre para desligar se for indesejado — decidir
+com bom senso, documentar a escolha.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
