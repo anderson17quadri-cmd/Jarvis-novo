@@ -4576,3 +4576,38 @@ Conclusão: nada a corrigir no código. O que o utilizador viu foi o
 modelo a repetir o que já tinha dito numa conversa anterior à correção
 (ou uma sessão ainda a correr o código antigo), não uma falha do prompt
 atual. Sem commit de código — só esta nota e a atualização da fila.
+
+## 2026-08-14 — Incidente: o dev server ficou preso a servir um estado partido
+
+O utilizador reportou o JARVIS a não responder, com prioridade sobre
+qualquer item da fila. Diagnóstico: o `npm run tauri dev` que ficava
+aberto a noite toda **não vigiava só o projeto** — o `vite.config.ts`
+só excluía `src-tauri/**` da vigilância, nunca `.claude/worktrees/**`
+(onde cada fork isolado do coordenador vive, uma cópia completa do
+repositório com o seu próprio `index.html`/`tsconfig.json`). Às 03:16,
+uma alteração no worktree do fork do item 16 (`agent-a65b3a73e2ebc293c`)
+disparou um `page reload` e depois um `full-reload` no dev server
+principal **com o `tsconfig.json` desse worktree isolado, não o do
+projeto** — e não houve mais nenhum output depois disso: a app ficou a
+servir esse estado partido, sem cair, sem recuperar sozinha.
+
+Corrigido em duas frentes:
+1. `vite.config.ts` — `.claude/worktrees/**` acrescentado à lista de
+   caminhos ignorados pelo vigiador (`watch.ignored`), ao lado de
+   `src-tauri/**`. Sem isto, qualquer fork futuro do coordenador volta
+   a arriscar o mesmo.
+2. Processo do dev server morto e reiniciado do zero, já com o
+   ficheiro corrigido — compilação limpa, sem avisos novos.
+
+**Confirmado a funcionar de novo**: suite E2E
+(`tests/e2e/assistant.spec.ts`) corrida a sério contra a app reiniciada
+— abre a janela do Assistente, manda uma pergunta a sério, recebe
+resposta do `RuleProvider`. Não foi possível abrir as devtools da
+janela nativa para confirmar a consola (sem automação de ecrã segura
+disponível nesta sessão — ver o incidente de foco de 13/08), mas o
+teste E2E cobre o mesmo caminho de ponta a ponta.
+
+**Porque interessa manter registado**: qualquer sessão futura que
+lance um fork isolado (`Agent` com `isolation: worktree`) enquanto o
+dev server principal está aberto tem de saber que isto já foi uma
+causa real de "a app parou de responder" — não é hipotético.
