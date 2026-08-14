@@ -4853,3 +4853,41 @@ propósito, para o fim das ferramentas); e o `recover` nunca cai para o local
 sem dizer — a nota vai sempre primeiro e o "error" final é deliberado. `tsc
 --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run`
 1697/1697.
+
+## 2026-08-14 — Revisão a sério: o estado da conversa (use-assistant-store)
+
+Revisão adversarial de `stores/use-assistant-store.ts` como um todo — a
+espinha dorsal da conversa (mensagens, modo, favoritas, histórico,
+`rewindToPrompt` do regenerar), nunca revista de fio a pavio (só tocada de
+passagem pelos itens 16/18 e pela auditoria às 26 stores de 12/08), e sem
+teste dedicado. Um bug real, corrigido:
+
+**Três mutadores mexiam em estado persistido sem gravar.** Todos os mutadores
+da store chamam `void persist()` — menos `removeMessage`, `rewindToPrompt` e
+`selectConversation`. O `removeMessage` é o caso que dói: existe para tirar a
+linha em branco que uma ronda só-ferramentas deixa no histórico, mas a remoção
+só vivia em memória — ao reiniciar, o `hydrate` lia o estado antigo e o lixo
+voltava. O `selectConversation` era a mesma inconsistência noutra chave: a
+conversa escolhida (`activeId`, que **é** gravado) não sobrevivia, e a app
+reabria na última conversa persistida. O `rewindToPrompt` cortava as mensagens
+sem gravar — disfarçado porque o `regenerate` reenvia logo a seguir e o
+`addMessage` grava, mas ainda assim inconsistente. Corrigido com `persist()`
+nos três, cada um com o seu porquê em comentário.
+
+3 testes novos (`tests/assistant/assistant-store-persist.test.ts`), com
+`vi.spyOn(storageService, 'set')` para afirmar a gravação de forma
+determinística (o `persist` é fire-and-forget, por isso o "recarregar e ver"
+correria antes da escrita). Confirmados a falhar contra o código antigo (0
+chamadas a `set` nos três).
+
+O resto confirmado limpo, e documentado para não se rever duas vezes: o título
+sai só do primeiro pedido de quem escreve (a saudação não dá nome); `titleFrom`
+corta em palavra inteira; `withinLimit` nunca deixa cair fixadas nem a conversa
+ativa; o `MSG_LIMIT` mantém a primeira mensagem e corta as mais antigas;
+`appendToMessage` não grava de propósito (é o `finishMessage` que grava, para
+não escrever centenas de vezes por resposta); `noteModel` também não grava de
+propósito (o `finishMessage` grava); o `celebrate` usa um `setTimeout` guardado
+que não repõe a repouso por cima de um pedido novo; e o `hydrate` assenta o
+cursor a piscar de respostas a meio e cai num `activeId` válido quando o
+guardado já não existe. `tsc --noEmit` limpo, `eslint .` 0 erros, `vitest run`
+1700/1700.

@@ -264,6 +264,10 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
         messages: conversation.messages.filter((message) => message.id !== id),
       })),
     }));
+
+    // Como os outros mutadores: sem gravar, a mensagem vazia removida voltava
+    // ao reiniciar — o lixo que esta função existe para tirar reaparecia.
+    void get().persist();
   },
 
   rewindToPrompt: (messageId) => {
@@ -293,6 +297,8 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
       })),
     });
 
+    void get().persist();
+
     return prompt;
   },
 
@@ -319,6 +325,10 @@ export const useAssistantStore = create<AssistantState>((set, get) => ({
   selectConversation: (id) => {
     if (!get().conversations.some((entry) => entry.id === id)) return;
     set({ activeId: id });
+
+    // A conversa escolhida também sobrevive: `activeId` é gravado, e sem isto
+    // a app reabria na última conversa persistida, não na que se deixou aberta.
+    void get().persist();
   },
 
   togglePinned: (id) => {
