@@ -17,6 +17,7 @@ import { useElementWidth } from '@/hooks/use-element-width';
 import { useVoice } from '@/hooks/use-voice';
 import { cn } from '@/lib/cn';
 import { aiService, type PendingConfirmation } from '@/services/ai-service';
+import { extractSentences } from '@/services/voice/sentence-segmenter';
 import { greetingFor, readContext } from '@/services/assistant/context';
 import { notificationService } from '@/services/notification-service';
 import { memoryService } from '@/services/assistant/memory-service';
@@ -57,11 +58,17 @@ export default function AssistantWindow(): React.JSX.Element {
   const isNarrow = width > 0 && width < SIDE_BY_SIDE_MIN_WIDTH;
 
   // O mesmo microfone do header: o executor é um só, registado pela App.
-  const { isSupported: isVoiceSupported, toggleListening } = useVoice();
+  // `speakQueued` e `limparFilaDeFala` vêm daqui para a resposta desta janela
+  // falar frase a frase, como a dos comandos por voz (item 18).
+  const { isSupported: isVoiceSupported, toggleListening, speakQueued, limparFilaDeFala } =
+    useVoice();
 
   const [draft, setDraft] = useState('');
   const logRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Como no `ask` da App: uma geração nova invalida a fala de uma resposta
+  // cancelada, para o fim de um streaming já abandonado não falar frases soltas.
+  const geracaoRef = useRef(0);
 
   // A saudação só entra se a conversa estiver mesmo vazia — reabrir a janela
   // não deve repetir o cumprimento por cima do histórico.
@@ -84,25 +91,47 @@ export default function AssistantWindow(): React.JSX.Element {
     if (text.length === 0) return;
 
     setDraft('');
+
+    // Fala frase a frase à medida que a resposta chega, tal como o caminho dos
+    // comandos por voz (item 16). Sem isto, a janela normal — onde acontece a
+    // maior parte da conversa — respondia sempre em silêncio (item 18,
+    // reportado ao vivo pelo utilizador).
+    limparFilaDeFala();
+    const geracao = ++geracaoRef.current;
+    let buffer = '';
+
     // `sendWithTools` cai num envio normal quando o provedor não sabe pedir
     // ferramentas — a janela não precisa de saber qual está ligado.
-    void aiService.sendWithTools(text).then((waiting) => {
-      setPending(waiting);
+    void aiService
+      .sendWithTools(text, (chunk) => {
+        if (geracao !== geracaoRef.current) return;
+        buffer += chunk;
+        const { sentences, remainder } = extractSentences(buffer, false);
+        buffer = remainder;
+        for (const sentence of sentences) speakQueued(sentence);
+      })
+      .then((waiting) => {
+        // O resto que não fechou frase também se diz, no fim.
+        if (geracao === geracaoRef.current && buffer.trim().length > 0) {
+          speakQueued(buffer);
+        }
 
-      // A pergunta vive dentro desta janela, e esta janela pode ter ficado
-      // atrás de outra. Um aviso aparece por cima de tudo — sem ele, uma ação
-      // destrutiva ficava à espera sem ninguém saber.
-      if (waiting.length > 0) {
-        notificationService.warn(
-          'O assistente está à espera de si',
-          waiting.length === 1
-            ? 'Há uma ação que não se pode desfazer por confirmar.'
-            : `Há ${waiting.length} ações que não se podem desfazer por confirmar.`,
-          { category: 'assistente' },
-        );
-      }
-    });
-  }, [draft]);
+        setPending(waiting);
+
+        // A pergunta vive dentro desta janela, e esta janela pode ter ficado
+        // atrás de outra. Um aviso aparece por cima de tudo — sem ele, uma ação
+        // destrutiva ficava à espera sem ninguém saber.
+        if (waiting.length > 0) {
+          notificationService.warn(
+            'O assistente está à espera de si',
+            waiting.length === 1
+              ? 'Há uma ação que não se pode desfazer por confirmar.'
+              : `Há ${waiting.length} ações que não se podem desfazer por confirmar.`,
+            { category: 'assistente' },
+          );
+        }
+      });
+  }, [draft, limparFilaDeFala, speakQueued]);
 
   const isBusy = mode === 'thinking' || mode === 'speaking';
 

@@ -210,8 +210,16 @@ export class AIService {
    *
    * Devolve as confirmações pendentes, se houver: nada destrutivo corre sem
    * alguém dizer que sim, e quem pergunta é a interface.
+   *
+   * `onChunk`, se dado, recebe cada pedaço de texto do modelo à medida que
+   * chega — o mesmo contrato de `send()`. É por aqui que a janela normal do
+   * assistente fala frase a frase (item 18, reportado ao vivo): antes, este
+   * caminho não expunha o streaming e a resposta saía sempre em silêncio.
    */
-  async sendWithTools(prompt: string): Promise<readonly PendingConfirmation[]> {
+  async sendWithTools(
+    prompt: string,
+    onChunk?: (chunk: string) => void,
+  ): Promise<readonly PendingConfirmation[]> {
     const provider = this.provider;
 
     // A DeepSeek e o Claude sabem sempre pedir ferramentas. A Ollama só
@@ -220,7 +228,7 @@ export class AIService {
     // capacidade recebe um pedido sem ferramentas, exatamente como o
     // `RuleProvider`.
     if (!isToolCapable(provider)) {
-      await this.send(prompt);
+      await this.send(prompt, onChunk);
       return [];
     }
 
@@ -257,7 +265,7 @@ export class AIService {
     // Ollama é sempre `false` (não sai da máquina).
     if (this.networkBlocked()) {
       const messageId = useAssistantStore.getState().addMessage('assistant', '', true);
-      await this.recover(new AiFailure('permissao'), { messageId, request, text: '', isAborted: false });
+      await this.recover(new AiFailure('permissao'), { messageId, request, text: '', isAborted: false, onChunk });
       this.controller = null;
       return pending;
     }
@@ -277,6 +285,7 @@ export class AIService {
           }
           text += chunk;
           useAssistantStore.getState().appendToMessage(messageId, chunk);
+          onChunk?.(chunk);
         });
       } catch (error) {
         /*
@@ -287,7 +296,7 @@ export class AIService {
          * e o local existe para onde cair — só não sabe pedir ferramentas, o
          * que é exatamente a razão de o pedido passar a ser respondido sem elas.
          */
-        await this.recover(error, { messageId, request, text, isAborted: signal.aborted });
+        await this.recover(error, { messageId, request, text, isAborted: signal.aborted, onChunk });
         this.controller = null;
         return pending;
       }

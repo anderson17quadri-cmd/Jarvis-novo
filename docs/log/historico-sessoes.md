@@ -4784,3 +4784,35 @@ praticamente o nome ("calendário" abre, "o que tenho no calendário" vai ao
 assistente); e `describeIntent` devolve nomes, não identificadores. `tsc
 --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run`
 1692/1692.
+
+## 2026-08-14 — Item 18: a resposta na janela normal do assistente fala
+
+Reportado ao vivo pelo utilizador: na janela normal do assistente (onde
+acontece a maior parte da conversa, escrita ou falada), a resposta nunca
+falava — o diagnóstico já tinha vindo de outra sessão: a fala por frase
+(item 16) só estava ligada ao caminho dos comandos por voz (`ask`), nunca ao
+`sendWithTools`/`AssistantWindow.tsx`. Confirmado por `git log` que nunca
+tinha sido diferente.
+
+Feito: `sendWithTools` ganhou o mesmo `onChunk` opcional do `send()`, enfiado
+nas rondas de ferramentas (o `provider.run` chama-o por pedaço) e nos caminhos
+de recuperação/queda (permissão de rede recusada, falha de rede) — para o que
+já se falava nesses casos não regredir. `AssistantWindow.tsx` liga esse
+`onChunk` a `extractSentences`+`speakQueued`+`limparFilaDeFala`, com contador
+de geração como o `ask`, para o fim de um streaming cancelado não falar frases
+atrasadas. O resto que não fechou frase é dito no fim, também como no `ask`.
+
+Decisão de desenho (pequena, delegada pelo item): **falar sempre que a
+resposta chega**, não só quando a pergunta veio por voz. A pessoa reportou o
+silêncio como problema, e é o mais parecido com conversa real; não existe hoje
+um interruptor "falar respostas" separado (as definições de voz guardam só
+*qual* voz), e adicionar um saía fora deste item pequeno. Se se quiser ler em
+silêncio ao escrever, é a próxima decisão a tomar — fica aqui o registo da
+escolha, para não se decidir duas vezes. Limite conhecido, deixado de fora:
+`regenerate` e o resultado de `confirmTool` não falam (são respostas já ditas,
+ou ações confirmadas à parte), não o envio principal.
+
+4 testes novos (2 ficheiros: `send-with-tools-speech.test.ts` e
+`assistant-window-speaks.test.tsx`), confirmados a falhar contra o código
+antigo (4 a falhar). `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1696/1696.
