@@ -27,7 +27,7 @@
 
 Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
-### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador
+### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador — DeepSeek (14/08/2026)
 
 **Não é para diagnosticar por perguntas ao utilizador — já se tentou
 isso por várias voltas nesta sessão e ele está fartinho de ser posto a
