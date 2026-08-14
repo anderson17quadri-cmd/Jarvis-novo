@@ -31,6 +31,8 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
+- **A store de plugins (`src/stores/use-plugin-store.ts`) — as ações `install`/`uninstall`/`setPermission`/`setEnabled`** — reservado **DeepSeek, 14/08/2026 06:45**
+
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
