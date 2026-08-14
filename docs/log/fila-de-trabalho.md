@@ -83,6 +83,18 @@ falhar agora.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
+### 15. O restauro de cópias e a hidratação (`hydrate-all.ts` vs. as chaves persistidas lidas fora dele) — revisão adversarial — DeepSeek, 14:54
+
+`restoreBackup` promete devolver tudo o que a cópia traz, mas o
+`hydrate-all.ts` não cobre todas as `STORAGE_KEYS` — `windowLayout`,
+`newsMarks`, `booted`, `lastUser` e `reducedMotion` são lidos por fora
+(`use-window-store`, `news-api-provider`, `BootSequence`, sessão,
+`use-media-query`). Se repor uma cópia grava essas chaves no armazenamento
+mas não as re-hidrata em memória, o restauro fica incompleto até reiniciar.
+Conferir o fluxo real (quem chama `restoreSavedLayout`/lê essas chaves
+depois do restauro) antes de corrigir — pode ser leitura preguiçosa por
+desenho, ou uma falha real de cobertura.
+
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
