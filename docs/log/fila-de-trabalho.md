@@ -64,8 +64,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O interpretador de comandos de voz (`services/voice/intents.ts`) — DeepSeek (14/08/2026 04:45)**. As seis famílias de comandos e a separação de comandos compostos nunca foram revistas como um todo por ninguém de fora — só alargadas (`stripPoliteness`, mais verbos por família). É o caminho que responde sem modelo: um bug aqui é uma ação errada por voz.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -85,6 +83,18 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Interpretador de comandos de voz (`intents.ts`) — revisão adversarial — DeepSeek — commit `a554145`
+
+Revisão a sério de `services/voice/intents.ts`, nunca revisto como um todo por
+ninguém de fora. **Um bug real, corrigido:** o casamento de verbos de tarefa
+usa `startsWith` sem espaço à frente, e `anota` vinha antes de `anotar` — como
+um é prefixo do outro, "Anotar comprar leite" casava no `anota` e o título da
+tarefa ficava "r comprar leite". Reordenado `anotar` antes de `anota`, com
+teste a provar (falha no código antigo). O resto confirmado limpo (seis
+famílias, comandos compostos, cortesia, música, estados/temas/widgets,
+descrição por nomes). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: interpretador de comandos de voz").
 
 ### 15. Catálogo de ferramentas e executor — revisão adversarial — DeepSeek — commit `6776f58`
 
