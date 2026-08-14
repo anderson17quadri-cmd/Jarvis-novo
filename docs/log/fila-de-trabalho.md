@@ -81,6 +81,22 @@ fallback para a voz do sistema, não o arranque automático em si, que é
 uma peça mais antiga (10/08) nunca revista a sério e aparentemente a
 falhar agora.
 
+### 20. Dev server crasha sozinho — `Failed to unregister class Chrome_WidgetWin_0. Error = 1412` — DeepSeek, 14:26
+
+`npm run tauri dev` morre sozinho, repetidamente (≥6 vezes numa noite),
+sem janela nenhuma aberta. A mensagem vem do WebView2/Chromium
+(`window_impl.cc:172`), erro 1412 = `ERROR_CLASS_HAS_WINDOWS` (a classe
+de janela nativa ainda tem janelas abertas quando se tenta desregistá-la).
+Padrão: por vezes segundos depois de um hot-reload do Vite, mas ao menos
+uma vez ao fim de ~11 minutos sem nenhuma mudança de ficheiro. Já se
+descartou: WebView2 órfão a colidir (o único grupo extra pertencia ao
+Windows Search) e instâncias sobrepostas do dev server (cada crash tem
+uma só árvore node/cargo/jarvis-ai-os.exe limpa). Investigar a sério
+(janela recriada em vez de só recarregar o conteúdo no HMR? corrida
+destroy/create num restart automático do Tauri CLI? bug conhecido
+WebView2+Tauri com mitigação documentada?), reproduzir de forma fiável
+antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
+
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
