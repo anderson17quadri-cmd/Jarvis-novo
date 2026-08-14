@@ -156,7 +156,7 @@ function vigiarSilencio(
   opcoes: { limiarVolume?: number; silencioMs?: number; minFalaMs?: number } = {},
 ): () => void {
   const limiarVolume = opcoes.limiarVolume ?? 0.02;
-  const silencioMs = opcoes.silencioMs ?? 1_200;
+  const silencioMs = opcoes.silencioMs ?? 2_000;
   const minFalaMs = opcoes.minFalaMs ?? 300;
 
   const AudioContextConstructor =
@@ -577,7 +577,7 @@ export class VoiceService {
 
     const limiteDeSeguranca = setTimeout(() => {
       if (recorder.state !== 'inactive') recorder.stop();
-    }, 12_000);
+    }, 20_000);
 
     const pararDeVigiarSilencio = vigiarSilencio(stream, () => {
       if (recorder.state !== 'inactive') recorder.stop();
