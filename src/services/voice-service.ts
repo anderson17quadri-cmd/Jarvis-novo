@@ -631,6 +631,15 @@ export class VoiceService {
    */
   private speakGeneration = 0;
 
+  /**
+   * O `onEnd` da fala em curso, embrulhado por `speak()` para disparar
+   * exatamente uma vez. Guardado aqui para `stopSpeaking()` o poder
+   * disparar também quando a fala é cortada a meio — o `pause()` do áudio
+   * clonado nunca dispara `onended`, e o `cancel()` da síntese nem sempre
+   * dispara nada. Ver `speak()`.
+   */
+  private activeSpeechEnd: (() => void) | null = null;
+
   setSelection(selection: VoiceSelection): void {
     this.selection = selection;
   }
@@ -890,19 +899,48 @@ export class VoiceService {
     this.onSpeechStart();
     const toque = ++this.speakGeneration;
 
+    // O `onEnd` do chamador tem de disparar exatamente uma vez, aconteça o
+    // que acontecer — a fala acabar sozinha (`onend`/`onerror`), o serviço
+    // local falhar, ou a fala ser cortada a meio por `stopSpeaking`. O
+    // `pause()` do áudio clonado nunca dispara `onended`, e o `cancel()` da
+    // síntese nem sempre dispara nada — sem este embrulho, quem usa `onEnd`
+    // para mudar de estado (o núcleo do assistente) ficava preso em
+    // "a falar" para sempre. Idempotente de propósito: um motor que dispare
+    // `onend` *e* `onerror` pela mesma fala não duplica o `onEnd`.
+    let acabou = false;
+    const terminar = (): void => {
+      if (acabou) return;
+      acabou = true;
+      callbacks?.onEnd?.();
+    };
+    this.activeSpeechEnd = terminar;
+
+    // `speakClonada`/`speakSistema` recebem o `onEnd` embrulhado, mas o
+    // `onStart` original. Construir o objeto à mão (em vez de espalhar) é o
+    // que mantém o `exactOptionalPropertyTypes` feliz: `onStart` só entra
+    // quando existe de facto.
+    const embrulhado: { onStart?: () => void; onEnd: () => void } = { onEnd: terminar };
+    if (callbacks?.onStart) embrulhado.onStart = callbacks.onStart;
+
     if (selection.kind === 'clonada') {
-      void this.speakClonada(limpo, selection.nome, toque, callbacks);
+      void this.speakClonada(limpo, selection.nome, toque, embrulhado);
       return true;
     }
 
     const arrancou = this.speakSistema(
       limpo,
-      callbacks,
+      embrulhado,
       selection.kind === 'sistema' ? selection.voiceURI : undefined,
     );
     // Não arrancou (sem suporte, ou o construtor rebentou): não vem nenhum
-    // `onend` a libertar o microfone, por isso liberta-se já aqui.
-    if (!arrancou) this.onSpeechEnd();
+    // `onend` a libertar o microfone, nem a disparar o `onEnd`. Liberta-se
+    // o microfone já aqui, e limpa-se o `activeSpeechEnd` para um
+    // `stopSpeaking` futuro não disparar um `onEnd` por uma fala que nunca
+    // chegou a começar.
+    if (!arrancou) {
+      this.activeSpeechEnd = null;
+      this.onSpeechEnd();
+    }
     return arrancou;
   }
 
@@ -975,6 +1013,14 @@ export class VoiceService {
     // isto, interromper a voz a meio podia deixar o microfone bloqueado
     // para sempre, à espera de um fim que já não vem.
     this.onSpeechEnd();
+
+    // O `onEnd` do chamador também tem de disparar: `onSpeechEnd` liberta
+    // o microfone, mas quem usa `onEnd` para mudar de estado (o núcleo do
+    // assistente) ficava preso em "a falar" para sempre. O embrulho de
+    // `speak()` garante que dispara uma única vez, mesmo que o `cancel()`
+    // acima já tenha disparado o `onend` da fala cortada.
+    this.activeSpeechEnd?.();
+    this.activeSpeechEnd = null;
   }
 }
 

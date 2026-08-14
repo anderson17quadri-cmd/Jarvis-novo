@@ -114,4 +114,26 @@ describe('voz clonada — falha na reprodução no lado cliente', () => {
 
     expect(env.audios[0]?.pause).toHaveBeenCalled();
   });
+
+  it('stopSpeaking() a meio do áudio clonado dispara o onEnd — o pause() nunca dispara onended', async () => {
+    // O `pause()` do `HTMLAudioElement` não dispara `onended` — por isso
+    // parar a fala clonada a meio nunca ia passar pelo `onended` que chama
+    // o `onEnd` do chamador. Sem o `stopSpeaking` disparar o `onEnd`, quem
+    // usa esse callback para mudar de estado ficava preso em "a falar".
+    const env = withFakeAudio(false);
+    restore = env.restore;
+
+    global.fetch = vi.fn(() => Promise.resolve(new Response(new Blob(['audio-a-fingir']), { status: 200 })));
+
+    const service = new VoiceService();
+    const onEnd = vi.fn();
+    service.speak('Bom dia', { onStart: vi.fn(), onEnd }, { kind: 'clonada', nome: null });
+
+    await vi.waitFor(() => expect(env.audios.length).toBe(1));
+
+    service.stopSpeaking();
+
+    expect(onEnd).toHaveBeenCalledTimes(1);
+    expect(env.audios[0]?.pause).toHaveBeenCalled();
+  });
 });

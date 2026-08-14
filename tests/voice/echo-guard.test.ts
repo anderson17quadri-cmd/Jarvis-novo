@@ -135,6 +135,36 @@ describe('o microfone nunca liga enquanto se fala', () => {
     expect(onError).toHaveBeenCalledWith('a-falar');
   });
 
+  it('stopSpeaking() dispara o onEnd do chamador — o cancel() não dispara onend/onerror', () => {
+    // O `cancel()` da síntese "nem sempre" dispara nada (a nota em
+    // `stopSpeaking`) — aqui a síntese falsa não dispara, e o `onEnd` tem
+    // de sair na mesma, senão o núcleo ficava preso em "a falar".
+    const env = withFakeSynthesis();
+    restore = env.restore;
+
+    const service = new VoiceService();
+    const onEnd = vi.fn();
+    service.speak('Bom dia', { onStart: vi.fn(), onEnd }, { kind: 'sistema', voiceURI: 'x' });
+
+    service.stopSpeaking();
+
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
+  it('se o cancel() disparar o onend, o onEnd dispara uma única vez (não duplica)', () => {
+    const env = withFakeSynthesis();
+    restore = env.restore;
+
+    const service = new VoiceService();
+    const onEnd = vi.fn();
+    service.speak('Bom dia', { onStart: vi.fn(), onEnd }, { kind: 'sistema', voiceURI: 'x' });
+
+    env.utterance?.onend?.(); // o cancel() disparou o onend da fala cortada
+    service.stopSpeaking(); // e stopSpeaking tenta disparar outra vez
+
+    expect(onEnd).toHaveBeenCalledTimes(1);
+  });
+
   it('sem nada a falar, o microfone liga normalmente — o bloqueio não fica sempre ligado', () => {
     const service = new VoiceService();
     const onError = vi.fn();

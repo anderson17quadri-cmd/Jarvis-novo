@@ -5116,3 +5116,42 @@ uma vez e devolve a limpeza ao efeito), a navegação por setas não rebenta com
 a lista vazia, o `execute` captura o comando antes de fechar, e o `openExternal`
 das notícias passa pela dupla barreira do adapter. `tsc --noEmit` limpo,
 `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1714/1714.
+
+## 2026-08-14 — Revisão a sério: o serviço de voz, caminho `speak()` por SpeechSynthesis
+
+Revisão adversarial da síntese normal por `speechSynthesis` — `speak()` →
+`speakSistema`, a seleção de voz, o ciclo de vida da `SpeechSynthesisUtterance`
+(`onstart`/`onend`/`onerror`) e o `stopSpeaking` — nunca revisto como um todo
+por ninguém de fora. As revisões anteriores do item 15 só tinham tocado o
+`speakClonada` (voz clonada) e o re-engate do microfone no modo conversa; este
+é o caminho que fala quase tudo o que o sistema diz.
+
+**Um bug real, corrigido.** O contrato de `speak()` diz "`callbacks.onEnd`
+dispara sempre, mesmo que o serviço local falhe, para quem estiver a usar isto
+para mudar de estado (ex.: `AICore`) não ficar preso em 'a falar' para
+sempre". Mas `stopSpeaking()` nunca disparava esse `onEnd`: no caminho do
+sistema, o `cancel()` "nem sempre" dispara `onend`/`onerror` (a própria nota em
+`stopSpeaking` o admite); no caminho clonado, o `pause()` do `HTMLAudioElement`
+nunca dispara `onended`. Resultado: interromper a fala a meio (segundo plano,
+"parar", arranque novo) calava o som mas o núcleo do assistente (`use-voice.ts`,
+que usa `onEnd` para sair de `setMode('speaking')`) ficava preso em "a falar"
+para sempre — o microfone continuava guardado sem ninguém a falar.
+
+Corrigido com um embrulho idempotente: `speak()` cria um `terminar` que dispara
+o `onEnd` exatamente uma vez (um motor que dispare `onend` *e* `onerror` pela
+mesma fala não duplica), guarda-o em `activeSpeechEnd`, e passa-o aos dois
+caminhos. `stopSpeaking()` dispara `activeSpeechEnd` depois de libertar o
+microfone. No caso de a síntese nem arrancar (sem suporte), o `activeSpeechEnd`
+é limpo para um `stopSpeaking` futuro não disparar um `onEnd` por uma fala que
+nunca começou. 3 testes novos (2 no `echo-guard.test.ts`, 1 no
+`voice-clone-synthesis.test.ts`): `stopSpeaking` dispara o `onEnd` sem
+`cancel()` disparar nada, não duplica quando o `cancel()` dispara o `onend`, e
+faz o mesmo no caminho clonado (onde o `pause()` nunca dispara `onended`).
+
+O resto confirmado limpo: a seleção de voz respeita o `voiceURI` por cima e
+cai na voz masculina / primeira portuguesa só quando não há escolha explícita,
+`limparParaSintese` corre antes de escolher a voz (vale para a clonada e para a
+do sistema), a fila por frases só avança no `onEnd`, e o contador de geração
+descartava já corretamente uma `speakClonada` em voo ultrapassada por um
+`stopSpeaking`. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1717/1717.
