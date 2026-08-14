@@ -1,13 +1,20 @@
 # Fila de trabalho — sessões locais (13/08/2026)
 
-> O Claude Code local atribui o primeiro item da lista a cada IA (ver
-> `docs/log/prompt-orquestracao-noturna.md`), e continua a atribuir o
-> próximo item por baixo a quem for terminando — a fila não é para
-> esgotar num turno só, é para durar a noite inteira. Os quatro primeiros
-> já têm dono fixo para começar; os restantes são por ordem, primeiro a
-> chegar primeiro a servir (reserva por `git push`: nome + hora a seguir
-> ao título, `commit`/`push` antes de começar — se o `push` falhar porque
-> outra sessão já reservou o mesmo item, `git pull` e escolhe o seguinte).
+> O Claude Code local lê esta fila e atribui item a item a quem estiver
+> livre, continuando a atribuir o próximo a quem for terminando — não é
+> para esgotar num turno só, é para durar a noite inteira. Reserva por
+> `git push`: nome + hora a seguir ao título, `commit`/`push` antes de
+> começar — se o `push` falhar porque outra sessão já reservou o mesmo
+> item, `git pull` e escolhe o seguinte.
+>
+> **DeepSeek é a prioridade (14/08/2026).** O histórico mostra o Kimi e
+> o Qwen a bater em limites de quota/taxa repetidamente (14 vezes só
+> nesta sessão) — o DeepSeek tem sido quem fecha item atrás de item sem
+> interrupção. Dá ao DeepSeek o próximo item livre primeiro, sempre que
+> houver mais do que uma IA disponível a escolher; só passa a Kimi ou a
+> Qwen quando o DeepSeek já estiver ocupado com outra coisa. Se o
+> DeepSeek também bater num limite, volta ao padrão normal (quem estiver
+> livre).
 >
 > Cada item fechado ganha a sua entrada normal em
 > `docs/log/historico-sessoes.md` e a atualização correspondente no
