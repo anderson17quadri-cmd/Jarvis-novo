@@ -4929,3 +4929,48 @@ redimensionamento com DPR é coerente (raio e posições em pixéis do dispositi
 outros consumidores (`Wallpaper` ignora o `elapsed`; `CoreRings`/`BootRings`/
 `CoreWaveform` só o usam em funções periódicas). `tsc --noEmit` limpo, `eslint
 .` 0 erros (11 avisos pré-existentes), `vitest run` 1702/1702.
+
+## 2026-08-14 — Revisão a sério: a camada de plataforma (`src/platform/`)
+
+Revisão adversarial da camada de plataforma como um todo — a ponte entre a
+aplicação e o sistema operativo (`tauri-adapter-base.ts`, `web-adapter.ts`,
+`platform-adapter.ts`, `native-dialogs.ts`, `attachments.ts`, `url-policy.ts`,
+`detect-platform.ts`, `index.ts`, `desktop-adapter.ts`, `android-adapter.ts`,
+`simulated-metrics.ts`), ~1586 linhas, nunca revista por ninguém de fora — só o
+`secretSet`/`secretDelete` foram tocados de passagem na revisão do Obsidian.
+Lidas as duas adaptações, os diálogos, os anexos, a política de URLs e os
+consumidores de segurança (WebAuthn, auto-login, o cofre). Um bug real,
+corrigido:
+
+**`pickAttachmentsNative` lia os bytes inteiros de qualquer imagem para a
+memória, sem teto.** O caminho nativo dos anexos do email (`attachments.ts`)
+fazia `readFile` do ficheiro completo e `new Blob([bytes])` para a miniatura,
+sem limite de tamanho — ao contrário dos dois caminhos gémeos
+(`readBrowserFile` e `attachViaNativeDialog`), que ambos cortam em 5 MB. Como a
+blob URL fica viva enquanto o anexo existir, escolher uma fotografia de
+centenas de MB esgotava a memória só para uma miniatura de 32 px. Ganhou o
+mesmo teto (`MAX_PREVIEW_BYTES = 5 MB`); acima dele o anexo continua válido,
+só fica sem miniatura (ícone de clipe), igual aos outros caminhos.
+
+3 testes novos em `tests/platform/attachments.test.ts` (que até aqui não cobria
+`pickAttachmentsNative` — só `attachmentsFromFileList` e `formatBytes`),
+simulando `@tauri-apps/plugin-dialog`/`plugin-fs`; confirmados a falhar contra
+o código antigo (o `readFile` era chamado mesmo com o `stat` a devolver 200 MB)
+e a passar com a correção.
+
+O resto confirmado limpo, e documentado para não se rever duas vezes: o cofre
+(`secretSet`/`secretDelete` distinguem sucesso por não ter lançado, como já
+estava; `secretGet` devolve `null` em erro como degradação de propósito — é o
+comportamento desejado, coberto por `tests/platform/secret-vault.test.ts`, e os
+consumidores falham para o lado seguro: sem sessão/sem chave quando o cofre
+falha); `openExternal` tem dupla barreira (lista `https:`/`mailto:` na interface
++ capability no Rust), sem esquema que `new URL().protocol` normalize para um
+dos permitidos; o ciclo de vida das blob URLs dos anexos está pareado (criadas
+em `attachments.ts`, revogadas no desmontar e no remover do composer — sem
+fuga, e o `URL.createObjectURL` do browser é preguiçoso, não lê o ficheiro);
+`getTopProcesses(limit?)` passa `{ limit: undefined }` mas o Rust recebe
+`Option<usize>` → `None` → 8 por omissão (o teto de 50 está do lado Rust);
+`storageGet` usa `??` (preserva `false`/`0`/`''`); `info` devolve objeto novo
+antes da inicialização mas ninguém o lê repetidamente (lê-se uma vez no
+arranque). `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
+`vitest run` 1705/1705.

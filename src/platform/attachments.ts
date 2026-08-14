@@ -16,6 +16,15 @@ export interface DraftAttachment {
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg']);
 
+/**
+ * Limite acima do qual uma imagem não ganha pré-visualização — o mesmo dos
+ * caminhos gémeos (`readBrowserFile` e `attachViaNativeDialog`). O `readFile`
+ * lê o ficheiro inteiro para a memória para construir a miniatura: sem este
+ * teto, escolher uma fotografia de centenas de MB esgotava a memória só para
+ * uma miniatura de 32 px.
+ */
+const MAX_PREVIEW_BYTES = 5 * 1024 * 1024;
+
 function extensionOf(name: string): string {
   return name.split('.').pop()?.toLowerCase() ?? '';
 }
@@ -37,7 +46,7 @@ export async function pickAttachmentsNative(): Promise<readonly DraftAttachment[
       const info = await stat(path);
 
       let previewUrl: string | null = null;
-      if (IMAGE_EXTENSIONS.has(extensionOf(name))) {
+      if (IMAGE_EXTENSIONS.has(extensionOf(name)) && info.size <= MAX_PREVIEW_BYTES) {
         try {
           const bytes = await readFile(path);
           previewUrl = URL.createObjectURL(new Blob([bytes]));
