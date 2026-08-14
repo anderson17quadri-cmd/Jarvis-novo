@@ -314,10 +314,10 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
     case 'core.notify':
       return typeof payload.titulo === 'string' && typeof payload.corpo === 'string';
     case 'core.fs.read':
-    case 'core.fs.write':
-      return typeof payload.caminho === 'string';
     case 'core.fs.list':
       return typeof payload.caminho === 'string';
+    case 'core.fs.write':
+      return typeof payload.caminho === 'string' && typeof payload.conteudo === 'string';
     case 'core.fetch':
       return typeof payload.url === 'string';
     case 'core.automation.run':
