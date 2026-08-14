@@ -39,6 +39,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — O orquestrador do assistente (`services/ai-service.ts`, 560 linhas) — DeepSeek (14/08/2026 05:06)**. Toda a conversa passa por aqui (`send`, `sendWithTools`, o ciclo de ferramentas e o `recover` da cadeia de provedores). Nunca foi revisto como um todo — só peças pontuais (item 16/18 no streaming, o `recover` foi explicitamente deixado de fora numa revisão anterior). Um bug no `recover` ou na máquina de modos é uma resposta errada ou um fallback mudo.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
