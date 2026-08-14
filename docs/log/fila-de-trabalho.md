@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O motor de automações (`src/services/automation-service.ts`, 462 linhas) — DeepSeek (14/08/2026 06:05)**. O que avalia regras e dispara ações (abrir janelas, notificar, comandos — algumas destrutivas, com confirmação): `add`/`update`/`remove`, a avaliação de gatilhos, a execução de ações e o temporizador que mantém o motor a correr em segundo plano. Nunca revisto como um todo por ninguém de fora — só `checkNativeTriggers` (item 4) e o `save()` do editor (item 10). Corretude crítica: uma regra mal avaliada dispara a ação errada, e uma ação destrutiva sem confirmação é pior.
+**Em curso — O motor de automações (`src/services/automation-service.ts`, 462 linhas) — DeepSeek (14/08/2026 06:05)**. Fechado — ver "Feito" abaixo (commit `ea5857a`).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
@@ -60,6 +60,25 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O motor de automações (`src/services/automation-service.ts`) — revisão adversarial — DeepSeek — commit `ea5857a`
+
+Revisão a sério do motor de automações como um todo (`add`/`update`/`remove`,
+a avaliação de gatilhos, a execução de ações e o temporizador de segundo
+plano), nunca revisto de fio a pavio por ninguém de fora — só
+`checkNativeTriggers` (item 4) e o `save()` do editor (item 10). **Um bug
+real, corrigido:** as subscrições do Event Bus eram construídas uma única vez
+no `start()`, a partir da lista de automações daquele momento — uma regra
+ligada a um evento criada ou editada depois do arranque (caminho normal do
+editor visual) ficava à espera de um evento ao qual ninguém estava subscrito e
+nunca corria até a aplicação reiniciar. Os próprios testes contornavam isto com
+`stop()`+`start()` depois de `add()`. Novo `refreshEventSubscriptions()` refaz
+as subscrições a partir da lista atual, chamado por `start`/`add`/`update`/
+`remove`/`hydrate`. 3 testes novos. O resto confirmado limpo (gatilhos nativos
+com o "anterior" de bateria capturado uma vez fora do predicado, ações por
+ordem com paragem na primeira que rebenta, `update` preserva identidade).
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o
+motor de automações (automation-service.ts)").
 
 ### 15. A verificação de assinatura de plugins (`src/plugins/signature.ts`, 281 linhas) — revisão adversarial — DeepSeek — commit `ade5223`
 
