@@ -39,8 +39,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O orquestrador do assistente (`services/ai-service.ts`, 560 linhas) — DeepSeek (14/08/2026 05:06)**. Toda a conversa passa por aqui (`send`, `sendWithTools`, o ciclo de ferramentas e o `recover` da cadeia de provedores). Nunca foi revisto como um todo — só peças pontuais (item 16/18 no streaming, o `recover` foi explicitamente deixado de fora numa revisão anterior). Um bug no `recover` ou na máquina de modos é uma resposta errada ou um fallback mudo.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -72,6 +70,25 @@ teste a provar (falha no código antigo). O resto confirmado limpo (seis
 famílias, comandos compostos, cortesia, música, estados/temas/widgets,
 descrição por nomes). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
 "Revisão a sério: interpretador de comandos de voz").
+
+### 15. O orquestrador do assistente (`ai-service.ts`) — revisão adversarial — DeepSeek — commit `85c193d`
+
+Revisão a sério de `services/ai-service.ts` como um todo — a peça por onde
+passa toda a conversa (`send`, `sendWithTools`, o ciclo de ferramentas e o
+`recover` da cadeia), nunca revista de fio a pavio. **Um bug real, corrigido:**
+o fim de um `send()`/`sendWithTools()` cancelado corria por cima do pedido
+novo — repunha o modo a "idle" e fazia `this.controller = null` já depois de o
+pedido novo ter tomado o controller (o prólogo do novo é síncrono; a limpeza do
+cancelado é um microtask). Resultado observável: um terceiro pedido deixava de
+conseguir cancelar o segundo, e duas respostas escreviam na conversa ao mesmo
+tempo. Corrigido com guarda por identidade do controller em cada ponto de
+limpeza (`send`, `sendWithTools` — rede bloqueada/`catch`/fim — e a troca de
+provedor no `recover`), preservando a reposição do cancel a solo. 1 teste novo
+(`tests/assistant/abort-race.test.ts`), falha contra o código antigo. Resto
+confirmado limpo (limite de rondas, mensagens vazias removidas, máquina de
+modos sem transição ilegal, fallback nunca em silêncio). Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o orquestrador
+do assistente (ai-service.ts)").
 
 ### 15. Catálogo de ferramentas e executor — revisão adversarial — DeepSeek — commit `6776f58`
 
