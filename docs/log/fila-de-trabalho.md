@@ -163,6 +163,19 @@ campo. O único achado é cosmético — o aviso "pré-existente" de duas sessõ
 em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: métricas do
 sistema").
 
+### 15. Serviços de tema, relógio e papel de parede (`theme-service.ts` + `clock-service.ts` + `wallpaper-service.ts`) — revisão adversarial — DeepSeek #2 — sem commit de código
+
+Revisão a sério de três serviços pequenos sem teste dedicado, mais as dependências
+`custom-theme.ts` e `use-theme-store.ts`. **Nada de funcional a corrigir** —
+confirmado limpo: `apply` limpa sempre as variáveis inline do tema personalizado
+anterior antes de aplicar o novo; o temporizador único do relógio liga/desliga com
+o primeiro/último subscritor e pausa sem perder subscritores (sem duplo
+temporizador); o `parseHexColor` do papel de parede trata `#rgb`/`#rrggbb`/alpha e
+cai no ciano em malformado; o `readAccentColor` resolve `--accent` nos dois tipos
+de tema. O caso do tema personalizado apagado não se alcança (o `hydrate` já o
+confere na fronteira). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: serviços de tema, relógio e papel de parede").
+
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 
 Varrimento adversarial dos últimos "pesos" de interface/orquestração nunca

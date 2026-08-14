@@ -5546,3 +5546,43 @@ O resto confirmado limpo, caso a caso:
 Verificação: `cargo test` 21+6 a passar (1 novo), `cargo check` limpo,
 `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
 `vitest run` 1737/1737.
+
+## 2026-08-14 — Revisão a sério: serviços de tema, relógio e papel de parede
+
+Revisão adversarial de três serviços pequenos e **sem teste dedicado** —
+`theme-service.ts`, `clock-service.ts` e `wallpaper-service.ts` — mais as
+dependências que usam (`custom-theme.ts` e `use-theme-store.ts`). Nunca revistos
+por ninguém de fora: o tema só era tocado de raspão no `theme-editor.test.tsx`, e
+o relógio e o papel de parede não tinham um único teste.
+
+**Nada de funcional a corrigir — confirmado limpo, caso a caso:**
+
+- **`ThemeService.apply`** limpa sempre as quinze variáveis inline que um tema
+  personalizado anterior escreveu antes de aplicar o novo — sem isto, voltar a um
+  oficial deixava metade das cores do antigo em vigor. `data-theme` no `<html>` é
+  o único sítio por onde o tema entra, e a troca é instantânea por variáveis CSS.
+  Tentei partir o caso do tema personalizado apagado: `apply(idCustom, null)` cai
+  no `data-theme` sem bloco CSS nem variáveis — mas o único caminho alcançável
+  passa por `hydrate`, que já confere `isCustomThemeId(saved) && !custom` e volta
+  ao base; `setTheme` só recebe temas que existem na lista. A fronteira certa já
+  lá está, e o estado auto-corrige no arranque seguinte.
+- **`ClockService`** tem um só temporizador para todos os subscritores: o primeiro
+  liga (`start`), o último desliga (`unsubscribe` → `size===0` → `stop`), e
+  `setPaused` suspende sem perder subscritores. Confirmei que não há duplo
+  temporizador (pausar põe `timer=null` antes de retomar), que a primeira
+  atualização é imediata (não espera os 15 s), e que um subscritor novo em pausa
+  recebe só o valor inicial (correto — não faz ticks em segundo plano). Tentei
+  partir o ciclo com pause/subscribe/unsubscribe em todas as ordens: fecha sempre.
+- **`WallpaperService.parseHexColor`** lê `#rgb`/`#rrggbb` (expande o curto, corta
+  o alpha de um `#rrggbbaa`) e cai no ciano do tema (`#00CFFF`) se `parseInt`
+  der `NaN`. A entrada vem sempre do `themeService.readAccentColor()`, que
+  devolve um `--accent` bem formado, por isso o fallback não dispara em produção
+  — mas existe.
+- **`readAccentColor`** usa `getComputedStyle` no `<html>`, que resolve
+  `--accent` tanto no tema oficial (`themes.css`) como no personalizado (inline) —
+  o canvas do núcleo recebe sempre um valor concreto, nunca um `var()` por
+  resolver.
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1737/1737 (sem código alterado nesta revisão —
+confirmação sobre o estado fundido).
