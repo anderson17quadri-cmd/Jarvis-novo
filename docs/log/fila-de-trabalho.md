@@ -107,11 +107,17 @@ explicitamente. Se sobrar tempo, o trabalho certo é escrever as
 perguntas concretas num ficheiro `docs/log/perguntas-para-o-
 utilizador.md`, não escolher por conta própria.
 
+→ Pergunta já escrita: `perguntas-para-o-utilizador.md` §2 (14/08/2026). A
+decisão continua da pessoa; não reescrever, só esperar a resposta.
+
 ### Executar Voz / Ler Memória / Guardar Preferências, capacidades de plugin
 
 `docs/spec/plugins-sandbox.md` §"O que ainda falta": mexem em microfone
 e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
+
+→ Pergunta já escrita: `perguntas-para-o-utilizador.md` §3 (14/08/2026). A
+decisão continua da pessoa; não reescrever, só esperar a resposta.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
