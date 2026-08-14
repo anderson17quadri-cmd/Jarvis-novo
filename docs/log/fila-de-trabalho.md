@@ -31,8 +31,6 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-- **O bloqueio por inatividade (`src/hooks/use-idle-lock.ts`)** — reservado **DeepSeek, 14/08/2026 06:51**
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -60,6 +58,21 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O bloqueio por inatividade (`src/hooks/use-idle-lock.ts`) — revisão adversarial — DeepSeek — commit `d1e5004`
+
+Revisão a sério do bloqueio automático da sessão (Parte 14 §Autenticação). Já
+tinha testes, mas só cobriam "bloqueia ao fim do tempo" (`toHaveBeenCalled`),
+nunca "bloqueia e pára". **Um bug real, corrigido:** depois de o tempo esgotar,
+a verificação de 15 em 15 segundos tornava a chamar `onLock` — e continuava
+enquanto ninguém mexesse no rato. Hoje o `logout` síncrono mascarava-o
+(desligava o desktop e desmontava o efeito logo no primeiro disparo), mas o hook
+não podia depender desse acidente: um `logout` assíncrono ou um chamador sem
+mudança de fase encheria o registo de auditoria de entradas. Guarda `locked`
+pára a verificação depois do primeiro bloqueio. 1 teste novo, confirmado a
+falhar contra o código antigo (5 disparos) e a passar depois. Detalhe em
+`docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o bloqueio por
+inatividade (use-idle-lock.ts)").
 
 ### 15. A store de plugins (`src/stores/use-plugin-store.ts`) — revisão adversarial — DeepSeek — commit `c99becd`
 
