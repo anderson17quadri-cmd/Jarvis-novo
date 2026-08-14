@@ -131,9 +131,29 @@
 
     /** Regista um comando na paleta — `plugins.commands`. */
     command: {
-      register: function (id, nome, descricao) {
+      /**
+       * @param {string} id — identificador único do comando, dentro do próprio plugin
+       * @param {string} nome — texto mostrado na paleta
+       * @param {string} descricao — texto à direita do comando
+       * @param {function} callback — chamado quando a pessoa executa o comando na paleta
+       * @returns {Promise<function>} — devolve a função para cancelar o registo
+       */
+      register: function (id, nome, descricao, callback) {
         return pedir('core.command.register', { id: id, nome: nome, descricao: descricao }).then(function (ack) {
-          return ack.ok;
+          if (!ack.ok) throw new Error(ack.reason || 'command.register falhou');
+
+          // Ouve o evento empurrado pelo Core quando o comando é executado.
+          var handler = function (event) {
+            if (
+              event.data &&
+              event.data.type === 'core.command.triggered' &&
+              event.data.id === id
+            ) {
+              try { callback(); } catch (e) { /* não estraga os outros */ }
+            }
+          };
+          window.addEventListener('message', handler);
+          return function () { window.removeEventListener('message', handler); };
         });
       },
     },

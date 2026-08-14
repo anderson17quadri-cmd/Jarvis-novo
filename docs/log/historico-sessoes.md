@@ -5083,3 +5083,36 @@ ordem com paragem na primeira que rebenta, histórico limitado a 60, `update`
 preserva identidade, persistência distingue "nunca gravado" de "gravado vazio".
 `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
 run` 1713/1713.
+
+## 2026-08-14 — Revisão a sério: a paleta de comandos (`src/components/command-palette/`)
+
+Revisão adversarial da paleta de comandos como um todo — `command-registry.ts`
+(o despachante universal que deriva os comandos dos registos) e
+`CommandPalette.tsx` (a lista com navegação por teclado), mais os fios que a
+ligam ao resto (`search-service.ts`, `use-search-store.ts`, as ações em
+`App.tsx`). Nunca revista por ninguém de fora — só migrada para stores limpas
+e o grupo "Plugins" acrescentado de passagem.
+
+**Um bug real, corrigido.** O despachante em si está correto e bem coberto
+(derivação dos registos, filtragem sem acentos, conteúdo primeiro, cada ação
+para o sítio certo). Mas a capacidade `plugins.commands` estava **meio
+construída**: `core.command.register` registava o comando para aparecer na
+paleta, e a invocação nunca existia — o `run` do comando na paleta estava
+codificado como `launchApp('plugins')`, por isso escolher um comando de plugin
+abria a Loja de plugins em vez de o executar, e o plugin nunca sabia que a
+pessoa o tinha escolhido. Isto é o exato oposto dos gémeos desta capacidade:
+`core.menu.add` e `core.shortcut.register` já aceitam um `callback` e recebem
+um `core.menu.triggered`/`core.shortcut.triggered` empurrado de volta.
+
+Corrigido pelo padrão já assente: a paleta ganhou uma ação
+`runPluginCommand(pluginId, commandId)` (`command-registry.ts` → `App.tsx`),
+que empurra `core.command.triggered` ao plugin via `pushToPlugin`; e o
+`command.register` da SDK passou a aceitar um `callback` que ouve esse
+empurrão, como os irmãos. O exemplo `regista-comando` agora reage à invocação
+em vez de só se registar. 1 teste novo em `command-registry.test.ts` (executar
+um comando de plugin invoca o plugin, não abre a Loja). O resto confirmado
+limpo: a paleta está sempre montada (a hidratação da store de pesquisa corre
+uma vez e devolve a limpeza ao efeito), a navegação por setas não rebenta com
+a lista vazia, o `execute` captura o comando antes de fechar, e o `openExternal`
+das notícias passa pela dupla barreira do adapter. `tsc --noEmit` limpo,
+`eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1714/1714.

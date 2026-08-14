@@ -670,6 +670,9 @@ export function App(): React.JSX.Element {
 
         notificationService.success('Layout aplicado', `${layout.name} está agora no ecrã.`);
       },
+      runPluginCommand: (pluginId, commandId) => {
+        pushToPlugin(pluginId, { type: 'core.command.triggered', id: commandId });
+      },
     }),
     [applyLayout, goToDesktop, launch, restartBootSequence, setTheme, toggleListening],
   );

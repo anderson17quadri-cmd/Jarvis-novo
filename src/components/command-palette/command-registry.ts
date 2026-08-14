@@ -91,6 +91,8 @@ export interface CommandActions {
   readonly setSystemState: (stateId: SystemStateId) => void;
   readonly goToDesktop: (desktop: DesktopId) => void;
   readonly applyLayout: (layoutId: string) => void;
+  /** Executa um comando registado por um plugin na paleta. */
+  readonly runPluginCommand: (pluginId: string, commandId: string) => void;
 }
 
 /** Conteúdo pesquisável, injetado por quem monta a paleta. */
@@ -254,7 +256,7 @@ export function buildCommands(
     label: cmd.nome,
     icon: Puzzle,
     hint: cmd.descricao,
-    run: (actions: CommandActions) => actions.launchApp('plugins'),
+    run: (actions: CommandActions) => actions.runPluginCommand(cmd.pluginId, cmd.id),
   }));
 
   // Ordenados por grupo, para os cabeçalhos não se repetirem na lista.

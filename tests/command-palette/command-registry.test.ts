@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { buildCommands, filterCommands, type CommandActions } from '@/components/command-palette/command-registry';
 import { ALL_APPS } from '@/apps/registry';
 import { THEMES } from '@/design-system/tokens';
+import { clearPluginCommands, handlePluginMessage } from '@/plugins/runtime/plugin-bridge';
+import { usePluginStore } from '@/stores/use-plugin-store';
 
 function createActions(): CommandActions & { calls: string[] } {
   const calls: string[] = [];
@@ -20,6 +22,7 @@ function createActions(): CommandActions & { calls: string[] } {
     setSystemState: (stateId) => calls.push(`estado:${stateId}`),
     goToDesktop: (desktop) => calls.push(`desktop:${desktop}`),
     applyLayout: (layoutId) => calls.push(`layout:${layoutId}`),
+    runPluginCommand: (pluginId, commandId) => calls.push(`plugin-cmd:${pluginId}:${commandId}`),
   };
 }
 
@@ -204,5 +207,38 @@ describe('execução', () => {
     const spy = vi.spyOn(actions, 'launchApp');
     buildCommands();
     expect(spy).not.toHaveBeenCalled();
+  });
+});
+
+describe('comandos de plugin', () => {
+  const PLUGIN_ID = 'regista-comando';
+
+  beforeEach(() => {
+    localStorage.clear();
+    usePluginStore.setState({ deniedPermissions: {} });
+    clearPluginCommands();
+  });
+
+  afterEach(() => {
+    clearPluginCommands();
+  });
+
+  it('executar um comando de plugin invoca o plugin — não abre a janela de plugins', async () => {
+    const ack = await handlePluginMessage(PLUGIN_ID, {
+      type: 'core.command.register',
+      requestId: 'req-cmd-paleta',
+      payload: { id: 'cmd-ola', nome: 'Dizer olá', descricao: 'O plugin cumprimenta.' },
+    });
+    expect(ack.ok).toBe(true);
+
+    const command = buildCommands().find((candidate) => candidate.id === 'plugin:cmd-ola');
+    expect(command).toBeDefined();
+
+    const actions = createActions();
+    command?.run(actions);
+
+    // O comando tem de chegar ao plugin que o registou — não abrir a Loja de
+    // plugins (que era o que acontecia antes, e deixava o plugin sem saber).
+    expect(actions.calls).toEqual(['plugin-cmd:regista-comando:cmd-ola']);
   });
 });

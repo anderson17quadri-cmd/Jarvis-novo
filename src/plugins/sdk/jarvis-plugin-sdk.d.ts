@@ -55,9 +55,10 @@ export interface JarvisPluginSDK {
      * Regista um comando na paleta. `plugins.commands`.
      *
      * O comando aparece na Command Palette (Ctrl+K) com o nome e a
-     * descrição dados. O `id` é usado para evitar duplicados.
+     * descrição dados. `callback` é chamado quando a pessoa executa o
+     * comando na paleta. Devolve uma função para cancelar o registo.
      */
-    register(id: string, nome: string, descricao: string): Promise<boolean>;
+    register(id: string, nome: string, descricao: string, callback: () => void): Promise<() => void>;
   };
 
   event: {
