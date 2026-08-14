@@ -5247,3 +5247,36 @@ zero minutos desliga, fora do desktop não bloqueia, rato/teclado/voltar ao
 separador adiam, desmontar pára a contagem, relógio de parede cobre a suspensão.
 `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
 run` 1724/1724.
+
+## 2026-08-14 — Revisão a sério: a reposição de janelas maximizadas (workspace)
+
+Revisão adversarial dos dois caminhos que repõem janelas — `restoreSavedLayout`
+(no arranque, `use-app-launcher.ts`) e `applyWorkspace` (ao mudar de desktop ou
+aplicar um perfil, `workspace-service.ts` + `use-workspace.ts`). A peça nunca
+tinha sido revista por ninguém de fora; a revisão de 13/08 do workspace só
+confirmara a *arquitetura* ("não tocar nas duas stores mais bem testadas"), não
+o comportamento.
+
+**Um bug real, corrigido.** Uma janela maximizada era guardada com
+`isMaximized: true` — tanto `persistLayout` (no `use-window-store`, para o
+arranque seguinte) como `captureWorkspace` (no `workspace-service`, para a
+fotografia do desktop) — mas **nenhum** dos dois caminhos de restauro lia o
+flag de volta. O `isMaximized` estava lá de propósito (a geometria guardada é a
+*restaurada*, não a maximizada, para não reabrir com o tamanho de outro ecrã),
+mas o restauro só usava o `rect` e ignorava o `isMaximized`: a janela reabria
+sempre com o tamanho normal, nunca maximizada. Era um flag gravado em disco
+que ninguém voltava a ler.
+
+Corrigido nos dois sítios, sem tocar nas stores (mesma regra da Peça 6.2): o
+`restoreSavedLayout` e o `applyWorkspace` repõem agora a maximização com
+`toggleMaximize(id, maximizedRect(readViewport()))` quando `isMaximized` está
+ligado — no ecrã *atual*, não no tamanho guardado. O `applyWorkspace` ganhou um
+callback opcional `maximizeRectFor` (paralelo ao `rectFor` já existente) para
+manter o serviço sem saber o que é um telemóvel: quem chama decide que no
+compacto não há maximizar (as janelas empilham-se a largura toda). 4 testes
+novos — 2 em `tests/workspace/workspace-service.test.ts` (repõe maximizada;
+não maximiza quando quem chama devolve `null`) e 2 em `tests/windows/app-
+launcher.test.tsx` (restaura maximizada no arranque; restaura normal como
+normal) — confirmados a falhar contra o código antigo (`isMaximized` a `false`)
+e a passar depois. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-
+existentes), `vitest run` 1728/1728.

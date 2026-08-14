@@ -41,6 +41,7 @@ export interface WorkspaceStores {
     readonly windows: readonly WindowInstance[];
     open(appId: AppId, title: string, rect: WindowRect): string;
     close(id: string): void;
+    toggleMaximize(id: string, maximizedRect: WindowRect): void;
   };
   readonly widgets: {
     readonly widgets: readonly WidgetInstance[];
@@ -69,6 +70,7 @@ export function getWorkspaceStores(): WorkspaceStores {
       get windows() { return useWindowStore.getState().windows; },
       open: (appId, title, rect) => useWindowStore.getState().open(appId, title, rect),
       close: (id) => useWindowStore.getState().close(id),
+      toggleMaximize: (id, maximizedRect) => useWindowStore.getState().toggleMaximize(id, maximizedRect),
     },
     widgets: {
       get widgets() { return useWidgetStore.getState().widgets; },
@@ -134,6 +136,13 @@ export function applyWorkspace(
   rectFor: (entry: WorkspaceSnapshot['windows'][number]) => WindowRect,
   stores: WorkspaceStores,
   scope: WorkspaceScope = 'desktop',
+  /**
+   * Onde maximizar uma janela que estava maximizada, no ecrã de agora. `null`
+   * (ou a ausência da função) deixa-a com a geometria restaurada. Quem chama
+   * conhece o ecrã, e por isso decide se maximizar faz sentido — no compacto,
+   * por exemplo, não.
+   */
+  maximizeRectFor?: (entry: WorkspaceSnapshot['windows'][number]) => WindowRect | null,
 ): void {
   const windowStore = stores.windows;
 
@@ -143,7 +152,16 @@ export function applyWorkspace(
 
   for (const entry of snapshot.windows) {
     const definition = getAppDefinition(entry.appId);
-    windowStore.open(entry.appId, definition.title, rectFor(entry));
+    const id = windowStore.open(entry.appId, definition.title, rectFor(entry));
+
+    // `captureWorkspace` guarda o `isMaximized` à parte da geometria (que é a
+    // restaurada, não a maximizada) exatamente para uma janela maximizada
+    // voltar maximizada no ecrã atual. Sem isto, o flag ficava gravado e nunca
+    // era lido de volta: a janela reabria sempre com o tamanho normal.
+    if (entry.isMaximized) {
+      const maximized = maximizeRectFor?.(entry);
+      if (maximized) windowStore.toggleMaximize(id, maximized);
+    }
   }
 
   // Um widget guardado que já não exista no registo é descartado, como na

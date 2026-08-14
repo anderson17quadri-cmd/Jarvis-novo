@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from 'react';
 
 import { getAppDefinition } from '@/apps/registry';
-import { readViewport } from '@/components/windows/snap';
+import { maximizedRect, readViewport } from '@/components/windows/snap';
 import { useIsCompact } from '@/hooks/use-media-query';
 import { eventBus } from '@/services/event-bus';
 import { soundService } from '@/services/sound-service';
@@ -21,6 +21,7 @@ export function useAppLauncher(): {
 } {
   const isCompact = useIsCompact();
   const open = useWindowStore((state) => state.open);
+  const toggleMaximize = useWindowStore((state) => state.toggleMaximize);
   const persistLayout = useWindowStore((state) => state.persistLayout);
   const loadLayout = useWindowStore((state) => state.loadLayout);
 
@@ -43,13 +44,21 @@ export function useAppLauncher(): {
 
     for (const entry of layout) {
       const definition = getAppDefinition(entry.appId);
-      open(
+      const id = open(
         entry.appId,
         definition.title,
         isCompact ? centeredRect(definition.defaultSize) : entry.rect,
       );
+
+      // Uma janela guardada maximizada volta maximizada no ecrã atual — é para
+      // isso que `persistLayout` guarda o `isMaximized` à parte da geometria
+      // (que é a restaurada, não a maximizada). No compacto não há maximizar:
+      // as janelas empilham-se com a largura toda.
+      if (entry.isMaximized && !isCompact) {
+        toggleMaximize(id, maximizedRect(readViewport()));
+      }
     }
-  }, [isCompact, loadLayout, open]);
+  }, [isCompact, loadLayout, open, toggleMaximize]);
 
   // Guardar o layout ao fechar a aplicação, além de a cada manipulação.
   useEffect(() => {

@@ -349,7 +349,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 
 | Item | | |
 |---|:--:|---|
-| Janelas: arrastar, redimensionar, z-index, persistência | ✅ | |
+| Janelas: arrastar, redimensionar, z-index, persistência | ✅ | **Revisão a sério (item 15, DeepSeek, 14/08/2026): bug real corrigido** — uma janela maximizada era guardada com `isMaximized: true` (tanto `persistLayout` como `captureWorkspace`), mas nenhum dos dois caminhos de restauro (`restoreSavedLayout` no arranque, `applyWorkspace` ao mudar de desktop/aplicar perfil) lia o flag de volta: a janela reabria sempre com o tamanho normal. Agora ambos repõem a maximização no ecrã atual (via `toggleMaximize` com `maximizedRect`), exceto no compacto, onde as janelas se empilham a largura toda. 4 testes novos |
 | Encaixe: metades, quartos, ecrã inteiro | ✅ | `components/windows/snap.ts` |
 | Minimizar com viagem até ao dock | ✅ | `.window-minimizing` |
 | Command Palette | ✅ | Comandos **e conteúdo**: emails, notícias e notificações entram nos resultados |

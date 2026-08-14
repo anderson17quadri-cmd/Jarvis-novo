@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import { getAppDefinition } from '@/apps/registry';
+import { maximizedRect, readViewport } from '@/components/windows/snap';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { soundService } from '@/services/sound-service';
@@ -43,6 +44,9 @@ export function useWorkspace(): {
         },
         getWorkspaceStores(),
         scope,
+        // Maximizar só faz sentido num ecrã largo; no compacto as janelas
+        // empilham-se com a largura toda, e "maximizada" não acrescenta nada.
+        () => (isCompact ? null : maximizedRect(readViewport())),
       );
 
       void useWindowStore.getState().persistLayout();

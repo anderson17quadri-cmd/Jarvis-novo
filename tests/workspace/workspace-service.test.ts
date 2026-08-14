@@ -109,4 +109,32 @@ describe('aplicar', () => {
 
     expect(useWindowStore.getState().windows).toHaveLength(0);
   });
+
+  it('repõe uma janela maximizada como maximizada', () => {
+    const id = useWindowStore.getState().open('tasks', 'Tarefas', RECT);
+    useWindowStore.getState().toggleMaximize(id, { x: 0, y: 0, width: 1920, height: 1040 });
+    const snapshot = captureWorkspace(getWorkspaceStores());
+
+    applyWorkspace(
+      snapshot,
+      rectFor,
+      getWorkspaceStores(),
+      'desktop',
+      () => ({ x: 0, y: 0, width: 1920, height: 1040 }),
+    );
+
+    const [restored] = useWindowStore.getState().windows;
+    expect(restored?.isMaximized).toBe(true);
+  });
+
+  it('não maximiza quando quem chama não dá geometria de maximizar', () => {
+    const id = useWindowStore.getState().open('tasks', 'Tarefas', RECT);
+    useWindowStore.getState().toggleMaximize(id, { x: 0, y: 0, width: 1920, height: 1040 });
+    const snapshot = captureWorkspace(getWorkspaceStores());
+
+    applyWorkspace(snapshot, rectFor, getWorkspaceStores(), 'desktop', () => null);
+
+    const [restored] = useWindowStore.getState().windows;
+    expect(restored?.isMaximized).toBe(false);
+  });
 });
