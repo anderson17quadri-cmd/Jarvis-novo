@@ -38,7 +38,13 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo. Sem instâncias em curso.
+"Feito" abaixo.
+
+**Em curso — Voz clonada, síntese e gravação no lado cliente
+(`speakClonada`/`recordVoiceSample` em `voice-service.ts`) — DeepSeek
+(14/08/2026 04:29)**. Só o consentimento/CORS tinha sido revisto (item
+12); a síntese por `fetch /falar`, o contador de gerações e o ciclo de
+vida das blob URLs nunca foram revistos por ninguém de fora.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
