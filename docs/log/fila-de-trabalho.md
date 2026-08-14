@@ -64,6 +64,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — O interpretador de comandos de voz (`services/voice/intents.ts`) — DeepSeek (14/08/2026 04:45)**. As seis famílias de comandos e a separação de comandos compostos nunca foram revistas como um todo por ninguém de fora — só alargadas (`stripPoliteness`, mais verbos por família). É o caminho que responde sem modelo: um bug aqui é uma ação errada por voz.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
