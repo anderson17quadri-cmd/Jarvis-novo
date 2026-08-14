@@ -5446,3 +5446,52 @@ utilizador confirmar que agora ouve a voz do sistema com o serviço
 desligado, e a notificação a explicar porquê. O passo que resolve de
 vez, do lado dele, continua a ser arrancar `voice-clone-service/run.ps1`
 para ter a voz clonada de volta.
+
+## 2026-08-14 — Revisão a sério: email real (IMAP + SMTP no Rust)
+
+Revisão adversarial do correio real da Peça 8, lote 2 (commit `e943a30`) — os
+comandos `mail_fetch`/`mail_set_flag`/`mail_send` em
+`src-tauri/src/commands/mail.rs`, o provedor `imap-mail-provider.ts`, a store de
+definições e o ecrã `MailSettings.tsx`. Nunca revisto por ninguém de fora; os
+únicos testes que havia eram TypeScript a trocar o adapter por um falso — nenhum
+tocava no Rust.
+
+**Um bug real, corrigido: o envio SMTP fazia TLS implícito, não STARTTLS.**
+`mail_send` chamava `SmtpTransport::relay()`, que no `lettre` é TLS *implícito*
+(SMTPS, porta 465) — e não o `starttls_relay`, que faz STARTTLS na porta 587. O
+comentário e as definições diziam "STARTTLS (porta 587)", mas o primeiro byte que
+saía para o fio era o `0x16` de um `ClientHello`, e um servidor STARTTLS (que
+espera um EHLO em claro na 587) desligava antes de se entender com o cliente —
+enviar por uma conta normal (Gmail e semelhantes) falhava de origem. Corrigido
+para `starttls_relay`, com um teste Rust novo (`envio_comeca_por_ehlo_em_claro`)
+que liga a um servidor falso e prova que o primeiro byte no fio é `E` (EHLO) e
+não `0x16`. Confirmado a falhar contra o código antigo.
+
+O resto confirmado limpo, caso a caso:
+
+- **A palavra-passe não escapa por nenhum campo normal.** O storage guarda a
+  configuração sem a palavra-passe (`semSegredos`), o cofre guarda
+  `mail-password`, a cópia de segurança apaga `password`
+  (`SECRET_FIELDS[mailSettings]`), o `logService.audit` regista só a ação, e os
+  erros do Rust ecoam o servidor e o motivo — nunca a palavra-passe (`imap`,
+  `lettre` e `native-tls` não a incluem nas mensagens de erro).
+- **TLS a sério nos dois.** IMAP: `imap::connect(..., server, &tls)` valida o
+  certificado contra o domínio e a cadeia do sistema (`native_tls`). SMTP
+  (agora): `starttls_relay` exige STARTTLS e falha se o servidor não o oferecer
+  (sem downgrade), validando o certificado contra o domínio.
+- **Sem injeção de cabeçalhos.** O destinatário passa por `parse::<Mailbox>()`
+  (recusa CRLF), e o `Subject` passa pelo codificador do `lettre`, que manda
+  CR/LF para RFC 2047 em vez de os escrever crus no cabeçalho — tentei partir
+  com `\r\nBcc:` no assunto/destinatário e não passa.
+- **Erros não rebentam a interface.** A leitura falhada (palavra-passe errada,
+  servidor em baixo) é apanhada pelo `PollingDataService` (`console.warn` +
+  `null`, sem crash); o envio mostra a mensagem no rascunho (`role="alert"`).
+  Sem configurar nada, mantém-se o simulado e não se toca em rede nenhuma.
+- **Cobertura.** Os testes TypeScript cobriam o contrato do provedor e a divisão
+  storage/cofre, mas o comportamento de rede do Rust estava a zero — foi por aí
+  que o buraco do STARTTLS passou. O teste novo é o primeiro a exercitar
+  `mail_send`.
+
+Verificação: `cargo test` 21+6 a passar (1 novo), `cargo check` limpo,
+`tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
+`vitest run` 1737/1737.
