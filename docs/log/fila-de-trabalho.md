@@ -88,6 +88,22 @@ trabalho a meio, esta segunda instância investiga só o lado Python
 fecham-se e reconciliam-se juntas quando ambas terminarem — não é um
 item duplicado, é a mesma peça vista dos dois lados.
 
+**Lado TypeScript concluído (Claude local, fork isolado, 14/08/2026,
+commit `1dffbb7`)**: `aiService.send()` ganhou `onChunk` opcional
+(chamado também nos três caminhos de `recover()`);
+`services/voice/sentence-segmenter.ts` (novo, função pura,
+`extractSentences`) corta o buffer acumulado em frases fechadas, sem
+partir abreviaturas comuns; `useVoice()` ganhou `speakQueued` —
+`voiceService.speak()` cancela qualquer fala em curso ao ser chamado,
+por isso uma fila local só passa a frase seguinte depois do `onEnd` da
+anterior. `ask` (`App.tsx`) liga tudo. 12 testes novos, `tsc`/`eslint`
+limpos, `vitest run` 1675/1675 (1 falha isolada pré-existente,
+confirmada sem relação). Detalhe em `docs/log/historico-sessoes.md`
+("Item 16: fala por frase, à medida que a resposta chega"). **Este
+item fica aqui, não em "Feito"**, até a sub-investigação Python acima
+terminar e as duas se reconciliarem — a sessão coordenadora decide
+quando fechar de vez.
+
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`

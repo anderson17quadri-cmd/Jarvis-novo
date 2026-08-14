@@ -51,6 +51,7 @@ import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigat
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
 import { setVoiceExecutor } from '@/services/voice/executor';
+import { extractSentences } from '@/services/voice/sentence-segmenter';
 import { useAppearanceStore } from '@/stores/use-appearance-store';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
@@ -126,7 +127,7 @@ export function App(): React.JSX.Element {
   const { goToDesktop, applyLayout } = useWorkspace();
   const idleLockMinutes = useAppearanceStore((state) => state.appearance.idleLockMinutes);
   const openWindowCount = useWindowStore((state) => state.windows.length);
-  const { toggleListening, speak, isConversationMode, toggleConversationMode } = useVoice();
+  const { toggleListening, speak, speakQueued, isConversationMode, toggleConversationMode } = useVoice();
 
   // O email passa a produzir notificações assim que o desktop está de pé.
   useNotificationSources(isDesktop);
@@ -424,12 +425,23 @@ export function App(): React.JSX.Element {
       restartInterface: () => void restartBootSequence(),
       ask: (text) => {
         launch('assistant');
-        void aiService.send(text).then((reply) => {
-          if (reply.length > 0) speak(reply);
-        });
+
+        // Fala frase a frase à medida que o texto chega, em vez de esperar
+        // pelo fim do streaming inteiro (item 16, reportado ao vivo).
+        let buffer = '';
+        void aiService
+          .send(text, (chunk) => {
+            buffer += chunk;
+            const { sentences, remainder } = extractSentences(buffer);
+            buffer = remainder;
+            for (const sentence of sentences) speakQueued(sentence);
+          })
+          .then(() => {
+            if (buffer.trim().length > 0) speakQueued(buffer);
+          });
       },
     });
-  }, [isDesktop, launch, openPalette, restartBootSequence, setTheme, speak]);
+  }, [isDesktop, launch, openPalette, restartBootSequence, setTheme, speakQueued]);
 
 
   /**
