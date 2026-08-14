@@ -275,6 +275,9 @@ def falar(pedido: dict) -> Response:
 
     `pedido["idioma"]` por omissão `"pt"` — o XTTS-v2 aceita um código de
     idioma, não um código de região; "pt-PT" não é um valor válido aqui.
+
+    `pedido["velocidade"]` por omissão `1.0` (o ritmo de base do modelo) —
+    aceita um número entre 0.5 e 2.0, colando-se aos limites fora disso.
     """
     if _tts_model is None:
         raise HTTPException(503, "O modelo ainda está a carregar. Tenta outra vez em instantes.")
@@ -285,8 +288,20 @@ def falar(pedido: dict) -> Response:
 
     idioma = pedido.get("idioma", "pt")
     voz = pedido.get("voz")
+    velocidade = pedido.get("velocidade")
 
     kwargs: dict = {"text": texto, "language": idioma}
+
+    # `velocidade` (opcional) acelera a leitura: 1.0 é o ritmo de base do
+    # XTTS-v2, que sai deliberado de mais para conversa. Aceita-se um número
+    # entre 0.5 e 2.0 — fora disso, cola-se ao limite, para um pedido errado
+    # não produzir áudio inaudível nem esticado ao ponto de não caber.
+    if velocidade is not None:
+        try:
+            velocidade_float = float(velocidade)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "A velocidade tem de ser um número.")
+        kwargs["speed"] = max(0.5, min(2.0, velocidade_float))
 
     if voz:
         vozes_validas = _vozes_disponiveis if _vozes_disponiveis is not None else list(VOZES_PRONTAS)

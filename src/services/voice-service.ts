@@ -61,6 +61,15 @@ type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
  */
 const CLONE_SERVICE_URL = 'http://127.0.0.1:8090';
 
+/**
+ * Quanto mais depressa a voz clonada lê. `1.0` é o ritmo de base do XTTS-v2,
+ * que sai deliberado de mais para conversa — um valor acima acelera sem
+ * distorcer (o modelo ajusta o comprimento, não o tom). Achado ao vivo
+ * (14/08/2026): a leitura "muito lenta, com pausas" era isto a acumular-se à
+ * latência da síntese frase a frase.
+ */
+const VELOCIDADE_FALA = 1.12;
+
 /** Uma das vozes prontas do XTTS-v2 (ver `GET /vozes` no serviço local). */
 export interface CloneVoiceInfo {
   readonly nome: string;
@@ -234,10 +243,12 @@ function limparParaSintese(texto: string): string {
       // orações. Vira vírgula, pela mesma razão das reticências: mantém a
       // pausa na prosódia sem arriscar ser lido.
       .replace(/;/g, ',')
-      // O ponto final da frase inteira é o que, por vezes, sai como a
-      // palavra "ponto" — sem ele, o fim da frase continua a ouvir-se pela
-      // entoação, não por um caráter a mais.
-      .replace(/\.+\s*$/, '')
+      // O ponto — final ou a meio de uma resposta com várias frases num só
+      // `speak` — é o que, por vezes, sai como a palavra "ponto". Viram todos
+      // vírgula: a vírgula pausa a prosódia sem arriscar ser lida à letra.
+      .replace(/\./g, ',')
+      // Uma vírgula no fim não faz pausa nenhuma — tira-se.
+      .replace(/,+\s*$/, '')
       .trim()
   );
 }
@@ -286,6 +297,11 @@ export class VoiceService {
   /** `true` enquanto se estiver a falar, ou durante o período de segurança logo a seguir. */
   private get isSpeakingOrGuarded(): boolean {
     return this.speaking || Date.now() < this.speakGuardUntil;
+  }
+
+  /** `true` enquanto a voz estiver mesmo a tocar — sem o período de guarda. */
+  get isSpeaking(): boolean {
+    return this.speaking;
   }
 
   /**
@@ -366,6 +382,30 @@ export class VoiceService {
     // decide qual motor usar (ver `startListening`) tem de parar, não
     // arrancar uma segunda escuta por cima.
     this.listening = true;
+    void this.startListening(callbacks);
+    return true;
+  }
+
+  /**
+   * Liga a escuta já, interrompendo a fala se estiver a decorrer.
+   *
+   * É o caminho do microfone manual: quem carrega no botão quis falar por
+   * cima da resposta, e o guard de eco (`'a-falar'`) é só para o re-engate
+   * automático do modo conversa — uma pessoa nunca devia receber esse erro,
+   * nem ter de esperar a resposta acabar para ser ouvida.
+   *
+   * A escuta marca-se ANTES de `stopSpeaking()`: parar a fala dispara o
+   * `onEnd` de quem a pediu, e esse `onEnd` (no modo conversa) re-engataria o
+   * microfone se o visse ainda desligado. Marcar primeiro fecha essa porta.
+   */
+  bargeIn(callbacks: VoiceCallbacks): boolean {
+    if (this.listening) {
+      this.stopListening();
+      return false;
+    }
+
+    this.listening = true;
+    if (this.speaking) this.stopSpeaking();
     void this.startListening(callbacks);
     return true;
   }
@@ -640,8 +680,84 @@ export class VoiceService {
    */
   private activeSpeechEnd: (() => void) | null = null;
 
+  /**
+   * Pré-síntese da frase seguinte (Parte 7.1 §Voz): enquanto uma frase
+   * clonada toca, a frase que já está na fila é sintetizada em paralelo, para
+   * o `speakClonada` seguinte a achar pronta em vez de pagar a latência do
+   * `/falar` (5–9 s) outra vez — é essa latência, somada frase a frase, que o
+   * utilizador ouvia como "pausas" entre frases.
+   */
+  private prefetchProntas = new Map<string, string>();
+
+  /** Frases com um `/falar` em voo, para não pedir a mesma duas vezes. */
+  private prefetchEmVoo = new Set<string>();
+
+  /** Avança a cada `stopSpeaking`/`setSelection` para invalidar pré-sínteses em voo. */
+  private prefetchGeracao = 0;
+
   setSelection(selection: VoiceSelection): void {
     this.selection = selection;
+    // Voz nova → pré-sínteses feitas para a voz antiga já não servem.
+    this.prefetchGeracao += 1;
+    this.descartarPrefetch();
+  }
+
+  /** Pede áudio ao serviço local; devolve a URL, ou `null` se falhou. */
+  private async fetchCloneUrl(text: string, nome: string | null): Promise<string | null> {
+    try {
+      const resposta = await fetch(`${CLONE_SERVICE_URL}/falar`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          texto: text,
+          velocidade: VELOCIDADE_FALA,
+          ...(nome ? { voz: nome } : {}),
+        }),
+      });
+      if (!resposta.ok) return null;
+      return URL.createObjectURL(await resposta.blob());
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Pré-sintetiza `text` se a voz clonada for a escolhida. No-op para a voz
+   * do sistema (que não tem latência de rede para esconder) e para pedidos
+   * repetidos da mesma frase.
+   */
+  prefetchClonada(text: string): void {
+    const selection = this.selection;
+    if (selection.kind !== 'clonada') return;
+
+    // A chave tem de ser o texto *limpo* — é esse que `speak()` passa a
+    // `speakClonada` (a frase crua ainda traz o ponto final, e a limpeza
+    // tira-o). Guardar sob a frase crua nunca ia bater com o `speak`.
+    const limpo = limparParaSintese(text);
+    if (limpo.length === 0) return;
+    if (this.prefetchProntas.has(limpo) || this.prefetchEmVoo.has(limpo)) return;
+
+    const nome = selection.nome;
+    const geracao = this.prefetchGeracao;
+    this.prefetchEmVoo.add(limpo);
+
+    void this.fetchCloneUrl(limpo, nome).then((url) => {
+      this.prefetchEmVoo.delete(limpo);
+      if (url === null) return;
+      // Uma interrupção entretanto (stopSpeaking/setSelection) invalida a
+      // pré-síntese — revoga-se a URL em vez de a deixar órfã.
+      if (geracao !== this.prefetchGeracao) {
+        URL.revokeObjectURL(url);
+        return;
+      }
+      this.prefetchProntas.set(limpo, url);
+    });
+  }
+
+  /** Revoga e esvazia tudo o que a pré-síntese tenha em curso ou pronto. */
+  private descartarPrefetch(): void {
+    for (const url of this.prefetchProntas.values()) URL.revokeObjectURL(url);
+    this.prefetchProntas.clear();
   }
 
   /**
@@ -775,18 +891,20 @@ export class VoiceService {
     callbacks?: { onStart?: () => void; onEnd?: () => void },
   ): Promise<void> {
     try {
-      const resposta = await fetch(`${CLONE_SERVICE_URL}/falar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ texto: text, ...(nome ? { voz: nome } : {}) }),
-      });
-      if (!resposta.ok) throw new Error(`o serviço de voz local devolveu ${resposta.status}`);
+      // Pré-síntese pronta (ver `prefetchClonada`)? Usa-se, sem pagar a
+      // latência do `/falar`. A frase sai do mapa na mesma — é de uma fala só.
+      const prefetched = this.prefetchProntas.get(text);
+      this.prefetchProntas.delete(text);
+
+      const url = prefetched !== undefined ? prefetched : await this.fetchCloneUrl(text, nome);
+      if (url === null) throw new Error('o serviço de voz local devolveu erro');
 
       // Se a geração já não é a atual, o áudio perdeu a vez — descarta-se
       // antes de criar o Audio sequer.
-      if (toque !== this.speakGeneration) return;
-
-      const url = URL.createObjectURL(await resposta.blob());
+      if (toque !== this.speakGeneration) {
+        URL.revokeObjectURL(url);
+        return;
+      }
 
       // Limpa o áudio anterior, e a URL que ele segurava — o `onended`
       // nunca dispara em `pause()`, e sem revogar aqui a blob URL fugia.
@@ -1039,6 +1157,11 @@ export class VoiceService {
     // voo (a meio do `fetch`) se descarte em vez de tocar — o utilizador
     // pediu para parar, e o áudio que chegar depois já não lhe pertence.
     this.speakGeneration += 1;
+
+    // O mesmo para a pré-síntese: as frases que ainda estavam a ser
+    // sintetizadas para a fala que acabou de ser cortada já não fazem falta.
+    this.prefetchGeracao += 1;
+    this.descartarPrefetch();
 
     if (this.cloneAudio) {
       this.cloneAudio.audio.pause();

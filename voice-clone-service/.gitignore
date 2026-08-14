@@ -2,6 +2,7 @@
 # descarregado sozinho na primeira vez que o serviço arranca).
 voices/*.wav
 voices/*.mp3
+voices/*.json
 __pycache__/
 *.pyc
 .venv/

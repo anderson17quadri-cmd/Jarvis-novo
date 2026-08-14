@@ -303,7 +303,17 @@ export function useVoice(): {
       return;
     }
 
-    voiceService.speak(next, { onStart: () => setMode('speaking'), onEnd: () => playNextQueuedRef.current() });
+    voiceService.speak(next, {
+      onStart: () => {
+        setMode('speaking');
+        // Enquanto esta frase toca, pré-sintetiza a seguinte (se já cá está)
+        // para a próxima não pagar a latência do serviço de voz local — é
+        // essa latência, frase a frase, que se ouvia como pausas.
+        const seguinte = speechQueueRef.current[0];
+        if (seguinte !== undefined) voiceService.prefetchClonada(seguinte);
+      },
+      onEnd: () => playNextQueuedRef.current(),
+    });
   }, [setMode, tentarReengatar]);
 
   useEffect(() => {
@@ -338,6 +348,16 @@ export function useVoice(): {
       return;
     }
 
+    // A falar: o clique é um barge-in — para a fala e ouve já, sem esperar
+    // pela resposta acabar. A fila esvazia-se primeiro, senão o `onEnd` da
+    // fala cortada avançava a fila e a frase seguinte falava por cima da
+    // escuta que está a começar.
+    if (voiceService.isSpeaking) {
+      limparFilaDeFala();
+      voiceService.bargeIn(makeListeningCallbacks());
+      return;
+    }
+
     // Clicar no microfone com o modo conversa ativo desliga-o.
     if (voiceService.isConversationMode) {
       voiceService.setConversationMode(false);
@@ -347,7 +367,7 @@ export function useVoice(): {
     }
 
     voiceService.toggleListening(makeListeningCallbacks());
-  }, [isSupported, pulse, setMode, limparReengate, makeListeningCallbacks]);
+  }, [isSupported, pulse, setMode, limparReengate, makeListeningCallbacks, limparFilaDeFala]);
 
   // ── Modo conversa ──────────────────────────────────────────────────────
 

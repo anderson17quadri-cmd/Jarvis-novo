@@ -5811,3 +5811,45 @@ os dois formatos legítimos continuam a ler-se sem regressão.
 
 Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1744/1744 (3 novos).
+
+## 2026-08-14 — Voz natural, barge-in, sem "ponto", e fallback rápido do Ollama
+
+Quatro pedidos ao vivo, agora que a voz clonada já fala: ler "muito
+lento com pausas"; parar de falar e ouvir logo quando a pessoa fala por
+cima; deixar de ler a palavra "ponto"; e responder depressa (DeepSeek)
+quando o Ollama não está a funcionar.
+
+**Leitura lenta com pausas** eram duas coisas somadas. (1) O ritmo de
+base do XTTS-v2 é deliberado de mais — agora o `speakClonada` manda
+`velocidade` no `/falar`, e o `server.py` passa isso ao `speed` do
+modelo (constante `VELOCIDADE_FALA = 1.12`, colada a [0.5, 2.0] no
+servidor). (2) Cada frase pagava à vez a latência da síntese (5–9 s) —
+agora `prefetchClonada()` sintetiza a frase seguinte **enquanto** a
+atual toca, e o `speak` seguinte acha o áudio pronto em vez de refazer o
+pedido. A chave do prefetch é o texto já limpo, porque é esse que
+`speak()` entrega a `speakClonada` (a frase crua ainda traz o ponto).
+
+**Barge-in**: carregar no microfone a meio de uma resposta parava a fala
+(`stopSpeaking`) e ligava a escuta já — sem o guard de eco `'a-falar'`,
+que continua a valer só para o re-engate automático do modo conversa.
+Novos `isSpeaking` (sem o período de guarda) e `bargeIn()` no serviço; a
+fila esvazia-se antes, senão o `onEnd` da fala cortada avançava a frase
+seguinte por cima da escuta.
+
+**"Ponto" lido à letra**: o `limparParaSintese` só tirava o ponto final.
+O achado ao vivo alargou isso — todo o ponto vira vírgula (pausa
+mantida, sem risco de ser vocalizado), como já se fazia com o ponto e
+vírgula e as reticências. O teste `text-cleaning.test.ts` que guardava
+o ponto a meio foi atualizado para a decisão nova.
+
+**Fallback Ollama → DeepSeek**: o timeout do Ollama baixou de 60 s para
+20 s. Uma falha de rede do Ollama é imediata (o `fetch` recusa a
+ligação); quem chegava ao timeout era o Ollama *preso*, e ficar 60 s
+calado antes de cair para a DeepSeek era o sintoma de "não funciona e
+não diz nada".
+
+**Verificação**: `tsc` e `eslint` limpos; testes novos em
+`barge-in.test.ts` (4) e `prefetch.test.ts` (3); suites de voz (151) e
+assistente/fallback (44) verdes. A única mudança que exige reinício é o
+`voice-clone-service` (o `velocidade` só é lido pelo `server.py` novo);
+a app já o manda, inofensivo, até lá.
