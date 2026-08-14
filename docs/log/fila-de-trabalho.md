@@ -213,6 +213,19 @@ escrever ao PTY e tem `kill` idempotente. Detalhe em
 `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: auxiliares de
 desktop em Rust").
 
+### 15. O serviço de plugins (`src/services/plugin-service.ts`) — revisão adversarial — DeepSeek #2 — commit `03fd3a8`
+
+Revisão a sério do `load()`/`save()` de plugins e permissões recusadas, nunca
+revisto por ninguém de fora (a revisão `c99becd` cobriu as ações da store, não
+esta fronteira). **Um bug real, corrigido:** `load()` conferia só
+`Array.isArray(raw)` — um armazenamento na forma errada (`{}`, `installed:
+null`, objeto sem `deniedPermissions`) rebentava em `for...of undefined` ou
+devolvia `deniedPermissions` `undefined` que a store lia como `undefined[id]`.
+Mesma classe do `f120c82`/`d6bb7a8`. Agora não-lista cai em `[]` e
+`deniedPermissions` em falta cai em `{}`. 3 testes novos, confirmados a falhar
+contra o código antigo. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: o serviço de plugins (plugin-service.ts)").
+
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 
 Varrimento adversarial dos últimos "pesos" de interface/orquestração nunca
