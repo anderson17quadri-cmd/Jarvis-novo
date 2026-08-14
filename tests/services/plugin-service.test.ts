@@ -153,5 +153,30 @@ describe('PluginService', () => {
       expect(result.installed[id]).toBeDefined();
       expect(result.deniedPermissions[id]).toEqual(['network', 'notifications']);
     });
+
+    it('não rebenta com um objeto vazio em vez de lista', async () => {
+      await storageService.set(STORAGE_KEYS.plugins, {});
+
+      const { installed, deniedPermissions } = await service.load();
+
+      expect(installed[BUILT_IN[0]!.id]).toBeDefined();
+      expect(deniedPermissions).toEqual({});
+    });
+
+    it('não rebenta com `installed` que não é uma lista', async () => {
+      await storageService.set(STORAGE_KEYS.plugins, { installed: null });
+
+      const { installed } = await service.load();
+
+      expect(installed[BUILT_IN[0]!.id]).toBeDefined();
+    });
+
+    it('devolve `deniedPermissions` vazio quando a forma não o inclui', async () => {
+      await storageService.set(STORAGE_KEYS.plugins, { installed: [] });
+
+      const { deniedPermissions } = await service.load();
+
+      expect(deniedPermissions).toEqual({});
+    });
   });
 });

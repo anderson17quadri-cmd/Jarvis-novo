@@ -5743,3 +5743,31 @@ sessões) — 275 linhas no total. O `session.rs` do terminal tinha sido revisto
 
 Verificação: `cargo check` limpo (só o aviso de dependência `imap-proto`,
 alheio ao código). Sem código alterado.
+
+## 2026-08-14 — Revisão a sério: o serviço de plugins (plugin-service.ts)
+
+Revisão adversarial de `src/services/plugin-service.ts` (ler/persistir o estado
+de plugins e as permissões recusadas), nunca revisto por ninguém de fora — a
+revisão da store de plugins (commit `c99becd`) cobriu as *ações*
+(`install`/`uninstall`/`setPermission`), não este serviço de fronteira.
+
+**Um bug real, corrigido: `load()` rebentava com armazenamento na forma
+errada.** O `load()` já tratava os dois formatos (lista antiga vs objeto novo),
+mas só conferia `Array.isArray(raw)` — um valor guardado na forma errada
+(`{}`, ou `{"installed": null}`, ou um objeto sem `deniedPermissions`) passava
+e rebentava de duas maneiras: `for (const entry of undefined)` no próprio
+`load()`, ou `deniedPermissions` devolvido `undefined` que o
+`selectPermissionDenied`/`setPermission` da store lia como `undefined[id]` e
+crashava. É a mesma classe de buraco já corrigida na sessão automática
+(commit `f120c82`) e no restauro de cópias (commit `d6bb7a8`): a fronteira
+aceitava uma forma que não devia. Agora `installed` não-lista cai em `[]` e
+`deniedPermissions` em falta cai em `{}`. 3 testes novos
+(`tests/services/plugin-service.test.ts`), confirmados a falhar contra o
+código antigo.
+
+O resto confirmado limpo: `getBuiltInState` repõe sempre os do sistema,
+plugins fora do catálogo (instalados de ficheiro) sobrevivem ao recarregar, e
+os dois formatos legítimos continuam a ler-se sem regressão.
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1744/1744 (3 novos).
