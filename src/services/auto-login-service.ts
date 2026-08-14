@@ -41,14 +41,24 @@ export async function hasValidAutoLoginSession(): Promise<boolean> {
   const raw = await adapter.secretGet(SESSION_TOKEN_KEY);
   if (!raw) return false;
 
-  let stored: StoredToken;
+  let parsed: unknown;
   try {
-    stored = JSON.parse(raw) as StoredToken;
+    parsed = JSON.parse(raw);
   } catch {
     await adapter.secretDelete(SESSION_TOKEN_KEY);
     return false;
   }
 
+  // O `try` acima só apanha JSON *inválido*. JSON válido com a forma errada
+  // (`"null"`, `"42"`, `"true"`, `"\"texto\""`) passa o `parse` e rebentava
+  // logo a seguir ao ler `.expiresAt` de `null` — um cofre corrompido não deve
+  // lançar, deve invalidar a sessão como qualquer outro valor que não serve.
+  if (typeof parsed !== 'object' || parsed === null) {
+    await adapter.secretDelete(SESSION_TOKEN_KEY);
+    return false;
+  }
+
+  const stored = parsed as StoredToken;
   if (typeof stored.expiresAt !== 'number' || Date.now() >= stored.expiresAt) {
     await adapter.secretDelete(SESSION_TOKEN_KEY);
     return false;

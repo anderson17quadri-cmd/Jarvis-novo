@@ -5280,3 +5280,32 @@ launcher.test.tsx` (restaura maximizada no arranque; restaura normal como
 normal) — confirmados a falhar contra o código antigo (`isMaximized` a `false`)
 e a passar depois. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-
 existentes), `vitest run` 1728/1728.
+
+## 2026-08-14 — Revisão a sério: a sessão automática (auto-login-service.ts)
+
+Revisão adversarial da "sessão continuada" pós-Windows Hello — o serviço que
+guarda no cofre uma marca de "já foste verificado há pouco" e deixa o login
+avançar sozinho durante 30 minutos. A revisão de 13/08 já a tinha passado a
+pente fino e concluíra "nada de real a corrigir" — mas só olhara para a
+*validade* (token não fixo, 30 minutos conferidos, sessão só depois de
+`verified` real). Esta revisão olhou para o caminho de leitura.
+
+**Um bug real, corrigido.** `hasValidAutoLoginSession()` trata um cofre
+corrompido com `try/catch` à volta do `JSON.parse` — mas esse `try` só apanha
+JSON *inválido*. JSON válido com a forma errada passa o `parse` e rebenta logo
+a seguir: `JSON.parse("null")` devolve `null`, e ler `.expiresAt` de `null`
+lança `TypeError`. Um cofre que contivesse a string `"null"` (uma escrita
+corrompida, ou `JSON.stringify(null)` de outra versão) fazia o ecrã de login
+rebentar no `hasValidAutoLoginSession` que corre ao montar, em vez de
+simplesmente não haver sessão automática. O contrato do serviço é "valor que
+não serve → invalida e limpa", não "lança".
+
+Corrigido: o valor do cofre é lido para `unknown`, e valida-se a forma
+(`typeof === 'object'` e não `null`) antes de se ler `.expiresAt`. O resto
+confirmado limpo: validade conferida a sério (`Date.now() >= expiresAt`),
+sessão expirada/corrompida apaga-se sozinha, `clearAutoLoginSession` no logout
+torna o logout real. 4 testes novos (formas não-objeto `null`/`42`/`true`/
+`"texto"` via `it.each`), o do `null` confirmado a falhar contra o código
+antigo (`TypeError: Cannot read properties of null`) e a passar depois.
+`tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
+run` 1732/1732.

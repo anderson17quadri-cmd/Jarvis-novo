@@ -57,6 +57,15 @@ describe('auto-login-service', () => {
     expect(secretStore.has('session-token')).toBe(false);
   });
 
+  it.each(['null', '42', 'true', '"texto"'])(
+    'um JSON válido que não é objeto não lança, só invalida (%s)',
+    async (valor) => {
+      secretStore.set('session-token', valor);
+      await expect(hasValidAutoLoginSession()).resolves.toBe(false);
+      expect(secretStore.has('session-token')).toBe(false);
+    },
+  );
+
   it('clearAutoLoginSession apaga a sessão — logout é logout a sério', async () => {
     await createAutoLoginSession();
     await clearAutoLoginSession();
