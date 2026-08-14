@@ -5752,3 +5752,34 @@ escolher. As duas ficaram em `docs/log/perguntas-para-o-utilizador.md`:
 
 Nada foi construído — só a pergunta, como manda a regra. Nenhuma alteração de
 código; `tsc`/`eslint`/`vitest` intactos.
+
+## 2026-08-14 — Revisão a sério: auxiliares de desktop em Rust (bandeja, atalhos, erro, registo do terminal)
+
+Revisão adversarial dos pequenos módulos Rust de desktop nunca revistos por
+ninguém de fora: `tray.rs` (bandeja), `shortcuts.rs` (atalho global),
+`error.rs` (o erro único dos comandos) e `terminal/registry.rs` (o registo de
+sessões) — 275 linhas no total. O `session.rs` do terminal tinha sido revisto
+(commit `dc353bb`), mas o registo que o guarda não.
+
+**Nada de funcional a corrigir — confirmado limpo, caso a caso:**
+
+- **Bandeja.** O clique esquerdo alterna visível/escondido, e quando o estado
+  é indecidível a aposta segura é mostrar (`Ok(false) | Err(_) => focus_main`).
+  `focus_main` faz `unminimize` + `show` + `set_focus`, por isso trazer uma
+  janela minimizada para a frente funciona. O "sair" passa por `app.exit(0)`; o
+  ícone cai com erro legível se faltar (`AssetNotFound`), sem `unwrap`.
+- **Atalho global.** Falhar a registar (outro programa já o tem) imprime e
+  continua o arranque — não derruba a app. O filtro `!= ShortcutState::Pressed`
+  impede o duplo disparo em cima do mesmo premir.
+- **Erro.** Todos os comandos devolvem `Result<T, Error>` (nenhum `unwrap`), o
+  `Serialize` envia a string legível ao IPC, e o `#[from] tauri::Error` deixa o
+  `?` converter sem ruído. Os `cfg_attr` de `dead_code` cobrem os ramos por
+  plataforma.
+- **Registo do terminal.** `spawn` usa `AtomicU64::fetch_add` para ids únicos
+  (`Relaxed` chega para unicidade, sem corrida); `write` solta o lock do
+  registo antes de escrever ao PTY (a correção do `dc353bb`, que a documentação
+  local explica); `kill` é idempotente — remove antes de matar, por isso uma
+  segunda chamada devolve `Ok` em vez de `UnknownSession`.
+
+Verificação: `cargo check` limpo (só o aviso de dependência `imap-proto`,
+alheio ao código). Sem código alterado.
