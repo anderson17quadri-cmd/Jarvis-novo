@@ -64,6 +64,27 @@ Nunca reportar sucesso sem ter corrido isto.
   outro serviço como se fosse uma gravação real. Só a voz de quem usa o
   sistema, ou de alguém que autorizou. Ver `docs/spec/voz-clonada-local.md`.
 
+- **As três decisões de `docs/log/perguntas-para-o-utilizador.md`
+  (14/08/2026), decididas pelo utilizador ao delegar em "tome a melhor
+  decisão":**
+  1. **Assinatura de plugins passa a cobrir o `code`, não só o
+     `manifest`.** A justificação antiga (código não seria serializável
+     de forma determinística) estava tecnicamente errada. Sem plugins
+     externos reais em circulação ainda, o custo da mudança quebradora é
+     baixo agora e só cresce com o tempo — corrigir já.
+  2. **Wake word: local, nunca por um serviço de fala na nuvem.** Escuta
+     contínua só entra com um motor a correr na própria máquina, sem
+     áudio a sair — a mesma disciplina que já levou a construir o
+     Whisper local para o reconhecimento manual. Uma wake word que manda
+     áudio para a nuvem 24 horas por dia é uma categoria de exposição
+     diferente de um pedido pontual, e vai contra o resto do projeto.
+  3. **Capacidades de plugin — Executar Voz e Ler Memória autorizadas
+     já** (mesma disciplina de permissão explícita por plugin que as
+     outras dez já têm). **Guardar Preferências fica condicionada**: só
+     se autoriza depois de existir isolamento por plugin no
+     armazenamento (`plugins:<id>:` ou equivalente) — sem isso, um
+     plugin já podia ler ou escrever por cima dos dados de outro.
+
 ## Git
 
 Mensagens de commit em português, focadas no **porquê**, não no que já se

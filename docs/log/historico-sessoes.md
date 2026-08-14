@@ -5853,3 +5853,34 @@ não diz nada".
 assistente/fallback (44) verdes. A única mudança que exige reinício é o
 `voice-clone-service` (o `velocidade` só é lido pelo `server.py` novo);
 a app já o manda, inofensivo, até lá.
+
+## 2026-08-14 — As três perguntas pendentes, decididas pelo utilizador
+
+O utilizador delegou explicitamente ("tome a melhor decisão") as três
+perguntas em `docs/log/perguntas-para-o-utilizador.md`, escritas mais
+cedo por sessões que se recusaram, com razão, a decidir sozinhas. As
+decisões, com o raciocínio de cada uma, ficam registadas em
+`docs/estilo-de-codigo.md` §"Decisões éticas já assentes" (para não se
+voltar a discutir sem pedido explícito) e o trabalho correspondente
+entrou na fila (itens 21-24):
+
+1. **Assinatura de plugins**: passa a cobrir o `code`, não só o
+   `manifest`. A justificação antiga para não o fazer estava tecnicamente
+   errada (a revisão de 14/08 já o tinha assinalado); sem plugins
+   externos reais em circulação, o custo da mudança quebradora é baixo
+   agora e só cresce.
+2. **Wake word**: sim, mas só com um motor local — nunca por um serviço
+   de fala na nuvem. Um pedido pontual (carregar para falar) e escuta
+   contínua 24h/dia são categorias de exposição diferentes; a segunda só
+   é aceitável sem áudio a sair da máquina, a mesma disciplina que já
+   levou a construir o Whisper local para o reconhecimento manual.
+3. **Capacidades de plugin**: Executar Voz e Ler Memória autorizadas já
+   — mesma disciplina de permissão explícita das outras dez capacidades
+   do Core. Guardar Preferências fica condicionada a construir primeiro
+   o isolamento por plugin no armazenamento (hoje um plugin já podia, em
+   teoria, ler ou escrever por cima dos dados de outro) — sem isso, não
+   se autoriza.
+
+Nenhuma das quatro peças foi construída nesta entrada — só a decisão. O
+trabalho fica na fila, pela ordem de dependência (isolamento antes de
+Guardar Preferências).
