@@ -24,7 +24,12 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-### 16. Fala só depois de o texto inteiro estar escrito — **Kimi** (14/08/2026 03:12) `[livre]`
+### 16. Fala só depois de o texto inteiro estar escrito — **Claude local** (14/08/2026 03:15)
+
+Tentativa de atribuir à Kimi às 03:12 (14/08/2026) falhou de imediato —
+mesmo limite de taxa TPD da organização de ontem à noite (`429`,
+`current: 1528525`), sem sinal de recuperação em ~4h20. Coordenador
+assume o item diretamente.
 
 **Diagnóstico já feito** (sessão remota, não confirmado ao vivo — precisa
 de app a correr para testar a sério): `App.tsx`, dentro do tool
