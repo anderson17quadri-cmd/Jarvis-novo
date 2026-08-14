@@ -145,8 +145,11 @@ const TASK_VERBS = [
   'adicionar tarefa',
   'lembra-me de',
   'lembrar-me de',
-  'anota',
+  // "anotar" antes de "anota": um é prefixo do outro, e o casamento abaixo é
+  // por `startsWith`. Com "anota" primeiro, "Anotar comprar leite" casava no
+  // "anota" e sobrava um "r" preso ao título da tarefa.
   'anotar',
+  'anota',
 ];
 
 // ── Interpretação ──────────────────────────────────────────────────────────

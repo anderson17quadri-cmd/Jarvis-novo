@@ -264,6 +264,14 @@ describe('mais variações do mesmo pedido', () => {
     expect(intent.kind === 'criar-tarefa' && intent.title).toBe('comprar leite');
   });
 
+  it('o infinitivo "anotar" também cria, sem sobrar um "r" no título', () => {
+    // "anota" é prefixo de "anotar"; se o casamento casasse no mais curto
+    // primeiro, o título ficava "r comprar leite".
+    const intent = first('Anotar comprar leite.');
+    expect(intent.kind).toBe('criar-tarefa');
+    expect(intent.kind === 'criar-tarefa' && intent.title).toBe('comprar leite');
+  });
+
   it('"fecha tudo" fecha as janelas, sem precisar de dizer "janelas"', () => {
     expect(first('Fecha tudo.').kind).toBe('fechar-janelas');
   });
