@@ -550,7 +550,11 @@ export async function handlePluginMessage(
         return { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'servico-ja-registado' };
       }
 
-      const intervaloReal = Math.max(intervalMs, MIN_SERVICE_INTERVAL_MS);
+      // `intervalMs` vem de um plugin (não é de confiança): um `NaN` passa na
+      // validação do protocolo (`typeof NaN` é "number") mas `Math.max` devolve
+      // `NaN`, e `setInterval(cb, NaN)` dispara em 0ms — uma martelada ao Core.
+      // Tudo o que não for um número finito cai no mínimo, como um pedido de 0ms.
+      const intervaloReal = Math.max(Number.isFinite(intervalMs) ? intervalMs : 0, MIN_SERVICE_INTERVAL_MS);
       const intervalId = setInterval(() => {
         pushToPlugin(pluginId, { type: 'core.service.tick', id });
       }, intervaloReal);
@@ -677,11 +681,18 @@ async function handlePluginFetch(
   }
 
   try {
-    const init: RequestInit = { method: payload.metodo ?? 'GET' };
+    // `redirect: 'manual'` — a verificação do domínio é só sobre a URL *inicial*;
+    // deixar o `fetch` seguir redireccionamentos por conta própria deixava um
+    // domínio autorizado apontar para `localhost`/IP privado e ler a resposta.
+    // Com `manual`, o browser não segue nada: o plugin recebe a recusa e decide.
+    const init: RequestInit = { method: payload.metodo ?? 'GET', redirect: 'manual' };
     if (payload.cabecalhos) init.headers = payload.cabecalhos;
     if (payload.corpo !== undefined) init.body = payload.corpo;
 
     const resposta = await fetch(payload.url, init);
+    if (resposta.type === 'opaqueredirect') {
+      return { type: 'core.ack', requestId, ok: false, reason: 'redireccionamento-nao-seguido' };
+    }
     const texto = await resposta.text();
     return {
       type: 'core.ack',

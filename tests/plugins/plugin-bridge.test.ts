@@ -364,6 +364,30 @@ describe('handlePluginMessage — rede (ola-rede, allowedDomains declarado)', ()
     expect(ack.reason).toBe('permissao-negada');
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('um redireccionamento não é seguido — o domínio autorizado não aponta para dentro', async () => {
+    const fetchMock = vi.fn(
+      async () =>
+        ({ type: 'opaqueredirect', status: 0, ok: false, text: async () => '' }) as unknown as Response,
+    );
+    globalThis.fetch = fetchMock;
+
+    const ack = await handlePluginMessage(NET_PLUGIN_ID, {
+      type: 'core.fetch',
+      requestId: 'req-net-5',
+      payload: { url: 'https://jsonplaceholder.typicode.com/redirecciona' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('redireccionamento-nao-seguido');
+    // A verificação do domínio é só sobre a URL inicial — sem `redirect:
+    // 'manual'`, o `fetch` seguia o redireccionamento e entregava a resposta
+    // de outro anfitrião (localhost/IP privado) ao plugin.
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('jsonplaceholder.typicode.com'),
+      expect.objectContaining({ redirect: 'manual' }),
+    );
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1065,6 +1089,17 @@ describe('handlePluginMessage — core.service.register', () => {
       type: 'core.service.register',
       requestId: 'sv-2',
       payload: { id: 'contador', intervalMs: 100 },
+    });
+
+    expect(ack.ok).toBe(true);
+    expect((ack.data as { intervalMs: number }).intervalMs).toBe(5_000);
+  });
+
+  it('um intervalo NaN (não finito) cai no mínimo, não numa martelada de 0ms', async () => {
+    const ack = await handlePluginMessage(SERVICE_PLUGIN_ID, {
+      type: 'core.service.register',
+      requestId: 'sv-7',
+      payload: { id: 'contador-nan', intervalMs: Number.NaN },
     });
 
     expect(ack.ok).toBe(true);

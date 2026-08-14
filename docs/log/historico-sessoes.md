@@ -5309,3 +5309,40 @@ torna o logout real. 4 testes novos (formas não-objeto `null`/`42`/`true`/
 antigo (`TypeError: Cannot read properties of null`) e a passar depois.
 `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
 run` 1732/1732.
+
+## 2026-08-14 — Revisão a sério: a ponte de plugins (plugin-bridge.ts)
+
+Revisão adversarial da ponte que decide, do lado do Core, o que cada pedido de
+um plugin isolado pode ou não fazer — `handlePluginMessage` em
+`src/plugins/runtime/plugin-bridge.ts` (696 linhas), o despacho das dezoito
+capacidades (`core.notify`, `core.fs.*`, `core.fetch`, `core.service.register`,
+etc.). A revisão de 13/08 ("fronteira do sandbox") cobrira o `iframe`, o
+`postMessage` e o `resolveWithinRoot`, mas nunca este despacho completo.
+
+**Dois bugs reais, corrigidos.** (1) `core.service.register` aplicava um mínimo
+de 5s com `Math.max(intervalMs, MIN_SERVICE_INTERVAL_MS)` — mas `intervalMs`
+vem de um plugin, e um `NaN` passa na validação do protocolo (`typeof NaN` é
+"number") e faz `Math.max` devolver `NaN`, que o `setInterval` lê como 0ms.
+Um plugin mal-intencionado registava um serviço a "tickar" o mais depressa
+possível — uma martelada ao Core, por cima do mínimo que existe precisamente
+para a impedir. Agora o que não for um número finito cai no mínimo. (2)
+`core.fetch` verificava o domínio só sobre a URL *inicial* e deixava o `fetch`
+seguir redireccionamentos por conta própria — um domínio autorizado podia
+apontar para `localhost`/IP privado e devolver a resposta lida, o mesmo buraco
+de SSRF por redireccionamento que já se corrigira no navegador controlado
+(Peça 19). Agora `redirect: 'manual'`, e um redireccionamento é recusado
+(`redireccionamento-nao-seguido`) sem nunca chegar a outro anfitrião.
+
+O resto confirmado limpo: dois degraus de permissão (declarada no manifesto e
+não recusada em Privacidade), tipos de mensagem desconhecidos recusados
+fail-closed, `resolveWithinRoot` rejeita `..` e absolutos, domínios de
+`fetch` conferidos contra a lista do manifesto, eventos só do barramento
+(`ALL_EVENTS`), atalhos reservados do sistema não cedidos, prefixo
+`plugins:<id>:` a isolar o armazenamento de cada plugin, e todos os registos
+(comandos, atalhos, serviços, widgets, menus, definições, painéis) a rejeitar
+duplicados do próprio plugin. Uma observação sem bug: `core.automation.run` é
+gated pela permissão `notifications` (não há permissão própria de automações —
+proxy grosseiro, pré-existente). 2 testes novos, confirmados a falhar contra o
+código antigo (`intervalMs` devolvido como `NaN`; `reason` `undefined` no
+redireccionamento) e a passar depois. `tsc --noEmit` limpo, `eslint .` 0 erros
+(11 avisos pré-existentes), `vitest run` 1734/1734.
