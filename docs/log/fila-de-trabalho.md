@@ -25,95 +25,8 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-### 16. Fala só depois de o texto inteiro estar escrito — **Claude local** (14/08/2026 03:15)
-
-Tentativa de atribuir à Kimi às 03:12 (14/08/2026) falhou de imediato —
-mesmo limite de taxa TPD da organização de ontem à noite (`429`,
-`current: 1528525`), sem sinal de recuperação em ~4h20. Coordenador
-assume o item diretamente.
-
-**Diagnóstico já feito** (sessão remota, não confirmado ao vivo — precisa
-de app a correr para testar a sério): `App.tsx`, dentro do tool
-`ask` (~linha 425-429):
-
-```ts
-ask: (text) => {
-  launch('assistant');
-  void aiService.send(text).then((reply) => {
-    if (reply.length > 0) speak(reply);
-  });
-},
-```
-
-`aiService.send()` só resolve a `Promise` depois de o streaming inteiro
-terminar (o texto já todo escrito no ecrã) — só aí `speak(reply)` é
-chamado. É por isto que parece "escreve tudo, só depois fala": não há
-nada a falar incrementalmente enquanto o texto chega.
-
-**O que se pede**: falar por frase, à medida que o texto vai chegando —
-não esperar pelo fim. `aiService` já expõe o streaming pedaço a pedaço
-para a store (`appendToMessage`); falta uma forma de, em paralelo,
-acumular os pedaços, cortar por frase (`.`, `!`, `?`, seguido de espaço
-ou fim), e chamar `voiceService.speak()` (ou o `speak()` do
-`use-voice.ts`) para cada frase completa assim que ela fechar — a
-próxima frase enfileira-se atrás, não interrompe a que está a falar.
-Cuidado com abreviações comuns em português ("Sr.", "n.º", "etc.") não
-partirem a frase a meio sem necessidade — não precisa de ser perfeito,
-só melhor do que "espera tudo".
-
-**Pista acrescentada pelo utilizador (14/08/2026)**: olhou para
-[`KoljaB/RealtimeVoiceChat`](https://github.com/KoljaB/RealtimeVoiceChat)
-como possível referência. A app inteira não serve (frontend próprio em
-HTML/JS + servidor FastAPI/WebSocket, sem manutenção ativa — não é para
-copiar) — mas o `voice-clone-service/` já usa exatamente a mesma base
-que esse projeto por baixo (`coqui-tts`/XTTS-v2, `openai-whisper`,
-confirmado a funcionar na RTX 5070 desta máquina). O RealtimeVoiceChat
-usa essa mesma base através de duas bibliotecas do mesmo autor, feitas
-para isto — **`RealtimeTTS`** e **`RealtimeSTT`** (pip install, à parte
-da app de demonstração) — que já resolvem sintetizar por pedaços de
-frase e deteção de troca de turno (ver `turndetect.py` no repositório,
-como referência de desenho, não para copiar código). Vale a pena
-confirmar se `RealtimeTTS` dá para o `voice-clone-service/server.py`
-sintetizar por frase em vez do texto inteiro de uma vez — pode resolver
-metade deste item do lado do serviço Python, sem só empilhar lógica de
-corte de frases do lado do TypeScript.
-
-**Sub-investigação em paralelo — DeepSeek #2** (14/08/2026 03:20,
-segunda instância, worktree `jarvis-novo-deepseek2`): a pista do
-`RealtimeTTS` acima, especificamente — o coordenador já tinha um fork
-próprio em curso com o lado TypeScript (corte de frases +
-fila de fala) quando esta pista chegou; em vez de interromper esse
-trabalho a meio, esta segunda instância investiga só o lado Python
-(`voice-clone-service/server.py`) em paralelo. As duas contribuições
-fecham-se e reconciliam-se juntas quando ambas terminarem — não é um
-item duplicado, é a mesma peça vista dos dois lados.
-
-**Lado TypeScript concluído (Claude local, fork isolado, 14/08/2026,
-commit `1dffbb7`)**: `aiService.send()` ganhou `onChunk` opcional
-(chamado também nos três caminhos de `recover()`);
-`services/voice/sentence-segmenter.ts` (novo, função pura,
-`extractSentences`) corta o buffer acumulado em frases fechadas, sem
-partir abreviaturas comuns; `useVoice()` ganhou `speakQueued` —
-`voiceService.speak()` cancela qualquer fala em curso ao ser chamado,
-por isso uma fila local só passa a frase seguinte depois do `onEnd` da
-anterior. `ask` (`App.tsx`) liga tudo. 12 testes novos, `tsc`/`eslint`
-limpos, `vitest run` 1675/1675 (1 falha isolada pré-existente,
-confirmada sem relação). Detalhe em `docs/log/historico-sessoes.md`
-("Item 16: fala por frase, à medida que a resposta chega"). **Este
-item fica aqui, não em "Feito"**, até a sub-investigação Python acima
-terminar e as duas se reconciliarem — a sessão coordenadora decide
-quando fechar de vez.
-
-**Concluído — DeepSeek #2** (14/08/2026): RealtimeTTS testado a sério
-contra o stack instalado (coqui-tts 0.27.5, torch 2.13+cu130, Python
-3.13) — carrega o XTTS-v2 já em cache e sintetiza a voz clonada, mas não
-serve para o `server.py`: é uma biblioteca de *reprodução* em tempo real
-(StreamPlayer/PyAudio), a saída programável é PCM float32 cru sem
-fronteiras de frase nem WAV, e o motor corre num processo separado
-(`spawn`) frágil debaixo do uvicorn. Fechado como "explorado, não vale a
-pena agora", sem mexer no server.py — o lado Python do item fica
-resolvido pela chamada por frase que o fork TypeScript do coordenador já
-faz (`POST /falar` por frase). Detalhe em `docs/log/historico-sessoes.md`.
+Os dois itens desta secção (16 e 17) estão fechados — ver "Feito" abaixo.
+Fica vazia à espera do próximo relato ao vivo.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
@@ -146,6 +59,36 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 16. Fala por frase, à medida que a resposta chega — Claude local + DeepSeek #2 — commits `1dffbb7` / `e193593`
+
+Reportado ao vivo pelo utilizador, prioridade sobre o resto. Duas
+partes, fechadas e reconciliadas pelo coordenador:
+
+- **Lado TypeScript** (Claude local, fork isolado, commit `1dffbb7`):
+  `aiService.send()` ganhou `onChunk` opcional (incluído nos três
+  caminhos de `recover()`); `services/voice/sentence-segmenter.ts`
+  (novo, `extractSentences`, função pura) corta o buffer acumulado em
+  frases fechadas sem partir abreviaturas comuns ("Sr.", "n.º", "etc.");
+  `useVoice()` ganhou `speakQueued` — como `voiceService.speak()`
+  cancela qualquer fala em curso, uma fila local só avança para a frase
+  seguinte depois do `onEnd` da anterior. `ask` (`App.tsx`) liga tudo.
+  12 testes novos.
+- **Lado Python, investigado e descartado com razão concreta**
+  (DeepSeek #2, worktree `jarvis-novo-deepseek2`, commit `e193593`): a
+  pista do utilizador (`RealtimeTTS`, a mesma base do
+  `KoljaB/RealtimeVoiceChat`) foi testada a sério — carrega o XTTS-v2 em
+  cache e sintetiza a voz clonada — mas não serve para o `server.py`:
+  é uma biblioteca de *reprodução* (PCM cru, sem WAV, motor `spawn`
+  frágil sob o uvicorn). O ganho por frase já está coberto pela chamada
+  `POST /falar` por frase que o lado TypeScript faz — `/falar` já
+  sintetiza o que lhe for dado, uma frase por pedido já é síntese por
+  frase. Sem mexer no `server.py`.
+
+Verificação (coordenador, sobre o estado fundido): `tsc --noEmit`
+limpo, `eslint .` 0 erros, `vitest run` 1675/1675, confirmado ao vivo
+com `tests/e2e/assistant.spec.ts` depois do incidente do dev server
+(ver entrada própria). Detalhe em `docs/log/historico-sessoes.md`.
 
 ### 17. "Modo JARVIS Classic" — DeepSeek — sem commit de código
 
