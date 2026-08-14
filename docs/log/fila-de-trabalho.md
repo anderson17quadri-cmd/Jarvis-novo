@@ -39,8 +39,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-### 15. A ponte de plugins (`src/plugins/runtime/plugin-bridge.ts`, 696 linhas) — revisão adversarial — DeepSeek — reservado 14/08 07:18
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -60,6 +58,23 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A ponte de plugins (`src/plugins/runtime/plugin-bridge.ts`, 696 linhas) — revisão adversarial — DeepSeek — commit `db3f24b`
+
+Revisão a sério do despacho das dezoito capacidades de plugin no Core
+(`handlePluginMessage`), nunca revisto como um todo — a revisão de 13/08
+cobrira só a *fronteira* do sandbox (`iframe`, `postMessage`, `resolveWithinRoot`).
+**Dois bugs reais, corrigidos:** (1) `core.service.register` aplicava o mínimo
+de 5s com `Math.max(intervalMs, mínimo)`, mas um `intervalMs` `NaN` passa na
+validação (`typeof` é "number") e `Math.max(NaN, mínimo)` devolve `NaN`, que o
+`setInterval` lê como 0ms — martelada ao Core por cima do mínimo que existe para
+a impedir; agora o não-finito cai no mínimo. (2) `core.fetch` seguia
+redireccionamentos e verificava o domínio só sobre a URL inicial — um domínio
+autorizado podia apontar para `localhost`/IP privado e devolver a resposta
+(SSRF por redireccionamento, o mesmo buraco já corrigido na Peça 19); agora
+`redirect: 'manual'` recusa o redireccionamento. 2 testes novos, confirmados a
+falhar contra o código antigo. Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: a ponte de plugins (plugin-bridge.ts)").
 
 ### 15. A sessão automática (`src/services/auto-login-service.ts`) — revisão adversarial — DeepSeek — commit `f120c82`
 
