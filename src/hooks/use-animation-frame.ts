@@ -10,11 +10,13 @@ import { useReducedMotion } from './use-media-query';
  * para segundo plano, respeita `prefers-reduced-motion` e mantém a callback
  * atualizada sem reiniciar o loop a cada render.
  *
- * @param callback recebe o tempo em milissegundos desde o arranque do loop
+ * @param callback recebe o tempo em milissegundos desde o primeiro arranque —
+ *                 continua a crescer ao voltar do segundo plano, não recomeça
  * @param enabled  desligar sem desmontar o componente
  */
 export function useAnimationFrame(callback: (elapsedMs: number) => void, enabled = true): void {
   const callbackRef = useRef(callback);
+  const startRef = useRef<number | null>(null);
   const isVisible = useIsVisible();
   const reducedMotion = useReducedMotion();
 
@@ -24,21 +26,26 @@ export function useAnimationFrame(callback: (elapsedMs: number) => void, enabled
     callbackRef.current = callback;
   }, [callback]);
 
+  // Com movimento reduzido não há loop: desenha-se um frame estático. Vive num
+  // efeito próprio, dependente da callback, para que mudar de modo ou de cor o
+  // redesenhe — senão o canvas ficava preso no primeiro estado para sempre.
   useEffect(() => {
-    if (!enabled || !isVisible) return;
+    if (!enabled || !isVisible || !reducedMotion) return;
+    callbackRef.current(0);
+  }, [callback, enabled, isVisible, reducedMotion]);
 
-    // Com movimento reduzido desenhamos um frame estático e ficamos por aí.
-    if (reducedMotion) {
-      callbackRef.current(0);
-      return;
-    }
+  useEffect(() => {
+    if (!enabled || !isVisible || reducedMotion) return;
 
     let frame = 0;
-    let start: number | null = null;
 
     const tick = (now: number): void => {
-      start ??= now;
-      callbackRef.current(now - start);
+      // O `start` vive numa ref, não no efeito: quando a janela volta do
+      // segundo plano, o `elapsed` continua a partir de onde ia. Se recomeçasse
+      // em 0, um consumidor que calcula o delta entre frames (o `AICore`) veria
+      // um salto negativo de centenas de frames num só — item 15, revisão a sério.
+      if (startRef.current === null) startRef.current = now;
+      callbackRef.current(now - startRef.current);
       frame = requestAnimationFrame(tick);
     };
 

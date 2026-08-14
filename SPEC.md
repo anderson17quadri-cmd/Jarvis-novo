@@ -455,7 +455,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 | Curvas ease-out / ease-in-out | ✅ | |
 | Nunca `linear` fora de radar e scanner | ✅ | |
 | 60 FPS, `requestAnimationFrame`, GPU | ✅ | Movimento normalizado a 60 FPS |
-| Pausar em segundo plano | ✅ | `useAnimationFrame` |
+| Pausar em segundo plano | ✅ | `useAnimationFrame`. **Revisto a sério (DeepSeek, 14/08/2026), dois bugs reais corrigidos no laço**: (1) ao voltar do segundo plano o `elapsed` recomeçava em 0 — o `AICore`, que calcula o delta entre frames, via então um salto negativo de centenas de frames num só (partículas a andar para trás, ondas a ganhar brilho), porque o `Math.min(delta, 3)` só corta o limite de cima; o `start` passou para uma ref, e o tempo continua a crescer. (2) Com movimento reduzido o frame estático era desenhado uma única vez no arranque — mudar de modo ou de cor não o redesenhava, e o núcleo ficava preso no estado inicial; o frame estático passou para um efeito próprio dependente da callback. 2 testes novos (`tests/ai-core/use-animation-frame.test.tsx`), confirmados a falhar contra o código antigo |
 | **Nunca animar `width`/`height`/`top`/`left`** | ⚠️ | Ver abaixo |
 | Partículas sem trajetórias repetitivas | ✅ | |
 | Sons | ✅ | `services/sound-service.ts` — sintetizados com Web Audio, sem um único ficheiro de áudio. Desligados por omissão |

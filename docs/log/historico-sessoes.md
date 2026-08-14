@@ -4891,3 +4891,41 @@ que não repõe a repouso por cima de um pedido novo; e o `hydrate` assenta o
 cursor a piscar de respostas a meio e cai num `activeId` válido quando o
 guardado já não existe. `tsc --noEmit` limpo, `eslint .` 0 erros, `vitest run`
 1700/1700.
+
+## 2026-08-14 — Revisão a sério: o laço de animação do núcleo visual (use-animation-frame)
+
+Revisão adversarial do núcleo visual (`components/ai-core/` + o laço partilhado
+`hooks/use-animation-frame.ts`), nunca revisto como um todo por ninguém de fora
+— só tocado para cor/velocidade/anéis (aparência). Lidos os seis ficheiros do
+núcleo (`AICore.tsx`, `CoreRings.tsx`, `CoreWaveform.tsx`, `particle-field.ts`,
+`ai-core-modes.ts`, `core-size.ts`) e os outros consumidores do laço
+(`Wallpaper.tsx`, `BootRings.tsx`). Dois bugs reais, os dois no laço:
+
+**1. O `elapsed` recomeçava em 0 ao voltar do segundo plano.** O `start` do
+`useAnimationFrame` vivia dentro do efeito, por isso cada ciclo de
+visibilidade (sair e voltar) criava um `start` novo e o tempo recomeçava. O
+`AICore` calcula o delta entre frames (`(elapsed - anterior) / 16.7`, limitado
+por `Math.min(delta, 3)`) — e esse limite só corta o de cima. Com o `elapsed`
+de volta a 0 e o `anterior` ainda grande, o delta saía um salto negativo de
+centenas de frames num só: partículas a andar para trás, ondas a ganhar brilho,
+o scanner a desaparecer. O `start` passou para uma ref (`startRef`), e o tempo
+continua a crescer ao regressar — o salto grande fica então no lado positivo,
+onde o `Math.min` já o cortava.
+
+**2. Com movimento reduzido, o frame estático nunca era redesenhado.** O ramo
+`reducedMotion` desenhava o frame uma única vez, no arranque do efeito — e o
+efeito só dependia de `enabled`/`isVisible`/`reducedMotion`, não da callback.
+Mudar de modo (idle → a analisar → a responder) ou de cor não redesenhava o
+canvas, que ficava preso no estado inicial para sempre. O frame estático passou
+para um efeito próprio dependente da callback, que o redesenha a cada mudança.
+
+2 testes novos (`tests/ai-core/use-animation-frame.test.tsx`), com rAF
+controlado e `visibilitychange` à mão; confirmados a falhar contra o código
+antigo (o tempo recomeçava em 0 depois do ciclo de visibilidade, e o segundo
+frame estático nunca era chamado). O resto confirmado limpo: `particle-field.ts`
+sem fugas de partículas nem de ondas (renascem/apagam-se, contagem estável), o
+redimensionamento com DPR é coerente (raio e posições em pixéis do dispositivo,
+`dpr` aplicado só onde deve), e a mudança do `start` para ref é segura para os
+outros consumidores (`Wallpaper` ignora o `elapsed`; `CoreRings`/`BootRings`/
+`CoreWaveform` só o usam em funções periódicas). `tsc --noEmit` limpo, `eslint
+.` 0 erros (11 avisos pré-existentes), `vitest run` 1702/1702.
