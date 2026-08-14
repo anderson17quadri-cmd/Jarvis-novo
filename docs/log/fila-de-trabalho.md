@@ -31,10 +31,6 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-> **Reservado — DeepSeek (14/08/2026, 07:07):** a sessão automática
-> (`auto-login-service.ts`) — um valor do cofre que seja JSON válido mas não
-> um objeto (`"null"`, `"42"`, `"true"`) rebenta `hasValidAutoLoginSession`.
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -62,6 +58,17 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A sessão automática (`src/services/auto-login-service.ts`) — revisão adversarial — DeepSeek — commit `f120c82`
+
+Revisão a sério do serviço da "sessão continuada" pós-Windows Hello. **Um bug
+real, corrigido:** `hasValidAutoLoginSession` só tratava JSON *inválido* como
+cofre corrompido; JSON válido com a forma errada (`"null"`) passava o `parse`
+e rebentava a ler `.expiresAt` (`TypeError`), em vez de invalidar a sessão e
+limpar o cofre. Agora valida a forma do valor lido antes de tocar no campo. 4
+testes novos (formas não-objeto), o de `null` confirmado a falhar contra o
+código antigo. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: a sessão automática (auto-login-service.ts)").
 
 ### 15. A reposição de janelas maximizadas (`workspace-service.ts` + `use-workspace.ts` + `use-app-launcher.ts`) — revisão adversarial — DeepSeek — commit `d21b37d`
 
