@@ -5216,3 +5216,34 @@ sistema não se removem nem se ativam à força, `hydrate` repõe os do sistema 
 preserva os externos que já não estão no catálogo, `setPermission` falha para
 o lado seguro (recusa guardada, concessão retirada). `tsc --noEmit` limpo,
 `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1723/1723.
+
+## 2026-08-14 — Revisão a sério: o bloqueio por inatividade (use-idle-lock.ts)
+
+Revisão adversarial do bloqueio automático da sessão (Parte 14 §Autenticação)
+— o hook que devolve ao ecrã de login ao fim do tempo escolhido. Já tinha
+testes, mas a disciplina desta revisão é não confiar neles só porque passam:
+os testes cobriam "bloqueia ao fim do tempo" com `toHaveBeenCalled()` (uma ou
+mais vezes), nunca "bloqueia e pára".
+
+**Um bug real, corrigido.** A verificação corre de 15 em 15 segundos; quando o
+tempo esgotava, cada verificação seguinte tornava a chamar `onLock` — e
+continuava a chamar enquanto ninguém mexesse no rato. Hoje o defeito está
+mascarado: o `onLock` do `App.tsx` chama `logout()`, que põe `phase: 'login'`
+de forma síncrona, e o `isActive` falso desmonta o efeito antes da verificação
+seguinte. Mas o hook não podia depender desse acidente — se alguma vez o
+`logout` passasse a ser assíncrono, ou houvesse um chamador cujo `onLock` não
+desligasse o desktop (um ecrã de bloqueio sobreposto, por exemplo), o logout
+corria de novo e o registo de auditoria enchia-se de "Bloquear a sessão por
+inatividade" de 15 em 15 segundos.
+
+Corrigido com um guarda `locked` local ao efeito: a primeira vez que o tempo
+esgota, dispara `onLock` e marca `locked`; as verificações seguintes saem logo.
+O efeito re-arranca (e o guarda repõe-se) quando `isActive` ou `timeoutMinutes`
+mudam — que é exatamente quando um novo ciclo de presença deve começar. 1 teste
+novo em `tests/auth/idle-lock.test.tsx` (depois de bloquear, não volta a
+disparar mesmo continuando a avançar o relógio), confirmado a falhar contra o
+código antigo (disparava 5 vezes) e a passar depois. O resto confirmado limpo:
+zero minutos desliga, fora do desktop não bloqueia, rato/teclado/voltar ao
+separador adiam, desmontar pára a contagem, relógio de parede cobre a suspensão.
+`tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest
+run` 1724/1724.

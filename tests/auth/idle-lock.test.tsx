@@ -63,6 +63,20 @@ describe('bloqueio', () => {
     expect(onLock).toHaveBeenCalled();
   });
 
+  it('depois de bloquear uma vez, não volta a disparar a cada verificação', () => {
+    const onLock = vi.fn();
+    render(<Harness timeoutMinutes={5} onLock={onLock} />);
+
+    // Ultrapassa os 5 minutos e continua a avançar: a verificação corre de 15
+    // em 15 segundos, e sem o guarda `locked` cada uma delas tornava a chamar
+    // `onLock` — o logout corria de novo e o registo enchia-se de entradas.
+    advance(6);
+    expect(onLock).toHaveBeenCalledTimes(1);
+
+    advance(10);
+    expect(onLock).toHaveBeenCalledTimes(1);
+  });
+
   it('mexer no rato adia a contagem', () => {
     const onLock = vi.fn();
     render(<Harness timeoutMinutes={5} onLock={onLock} />);

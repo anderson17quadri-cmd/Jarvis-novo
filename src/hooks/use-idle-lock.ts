@@ -65,8 +65,18 @@ export function useIdleLock({
     // no instante em que se olha para o ecrã seria hostil.
     document.addEventListener('visibilitychange', markActive);
 
+    // Uma vez atingido o tempo, bloqueia-se uma só vez — sem isto, a
+    // verificação seguinte (15 s depois) tornava a disparar `onLock`, e outra,
+    // e outra, enquanto ninguém mexesse no rato: o `logout` corria de novo, e
+    // o registo de auditoria enchia-se de "Bloquear a sessão por inatividade".
+    let locked = false;
+
     const timer = setInterval(() => {
-      if (Date.now() - lastActivity.current >= timeoutMinutes * 60_000) lock.current();
+      if (locked) return;
+      if (Date.now() - lastActivity.current >= timeoutMinutes * 60_000) {
+        locked = true;
+        lock.current();
+      }
     }, CHECK_INTERVAL_MS);
 
     return () => {
