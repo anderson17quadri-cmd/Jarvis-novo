@@ -5586,3 +5586,43 @@ o relógio e o papel de parede não tinham um único teste.
 Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1737/1737 (sem código alterado nesta revisão —
 confirmação sobre o estado fundido).
+
+## 2026-08-14 — Revisão a sério: a fronteira de permissões de plugins
+
+Revisão adversarial da fronteira que decide o que um plugin pode fazer —
+`plugin-bridge.ts` (o portão de runtime do `handlePluginMessage`) e
+`install-from-file.ts` (a validação do manifesto à instalação). A ponte em si
+já tinha sido revista esta sessão (NaN no `core.service.register`, SSRF por
+redireccionamento no `core.fetch`), mas o **portão de permissões** — o degrau
+que confirma que a capacidade pedida está *declarada* no manifesto assinado —
+não tinha sido olhado de novo depois de ter nascido na revisão de 13/08 da
+fronteira do sandbox.
+
+**Um bug real, corrigido (fail-open numa fronteira de segurança):** o portão
+lia a permissão como *verdade de JavaScript* —
+`if (!declaration.permissions?.[permission])` — e o contrato documentado no
+comentário ao lado diz que a permissão conta só quando é `true`. Em JavaScript,
+`"false"` (string não vazia), `1`, `{}` ou `[]` são todos verdade, por isso um
+manifesto **assinado** com `permissions: { notifications: "false" }` passava por
+aqui como "declarada". A assinatura Ed25519 garante que o manifesto não foi
+adulterado a caminho, mas não impede o *autor* de escrever um valor assim — e o
+portão dava-lho como concedido. Corrigido para comparação estrita
+(`!== true`): só `true` conta. Como reforço em profundidade, o
+`validateManifest` passou a recusar à instalação qualquer valor de permissão
+que não seja `boolean` — apanha o problema à entrada, em vez de o deixar
+correr até ao runtime.
+
+**Resto confirmado limpo:** o segundo degrau (não recusada na Privacidade)
+continua intacto e é independente deste; a lista `PERMISSION_BY_MESSAGE_TYPE`
+casa cada tipo de mensagem com a chave de permissão certa; e a validação da
+forma do pacote (`validatePackage`) já confere `manifest`/`signature`/
+`signerPublicKey`/`code` por tipo antes de se chegar aqui.
+
+**Testes:** 2 novos — um em `tests/plugins/plugin-bridge.test.ts` (uma
+permissão não booleana, string `"false"`, não conta como declarada) e um em
+`tests/plugins/install-from-file.test.ts` (`validateManifest` recusa o valor
+não booleano). Ambos confirmados a falhar contra o código antigo: `!'false'`
+é `false`, o antigo `if (!…)` não entrava, e o `ack.ok` saía `true`.
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1739/1739 (132 ficheiros).

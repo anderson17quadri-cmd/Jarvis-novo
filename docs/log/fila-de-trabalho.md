@@ -101,8 +101,6 @@ antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek (14/08/2026)
-
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
@@ -130,6 +128,19 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek — commit `0d6055d`
+
+Revisão a sério do portão que decide se a capacidade pedida por um plugin
+está *declarada* no manifesto assinado, nunca revisto desde a revisão de
+13/08 da fronteira do sandbox. **Um bug real, corrigido:** o portão lia a
+permissão como verdade de JavaScript (`if (!declaration.permissions?.[permission])`),
+por isso um manifesto assinado com `"false"` (string não vazia, verdade em JS)
+ou `1` passava como "declarada", a contradizer o contrato documentado de
+permissão `true`. Agora compara estrito (`!== true`) e o `validateManifest`
+recusa à instalação valores não booleanos. 2 testes novos, confirmados a
+falhar contra o código antigo. Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: a fronteira de permissões de plugins").
 
 ### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek — commit `271f014`
 
