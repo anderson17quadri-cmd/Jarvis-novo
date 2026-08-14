@@ -39,6 +39,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — O núcleo visual (`components/ai-core/`, ~1067 linhas) — DeepSeek (14/08/2026 05:25)**. O centro do ecrã inteiro — campo de partículas em canvas (`particle-field.ts`, 321), anéis SVG (`CoreRings.tsx`, 262), forma de onda (`CoreWaveform.tsx`, 89), a orquestração (`AICore.tsx`, 218), os modos visuais (`ai-core-modes.ts`) e o laço `requestAnimationFrame` (`use-animation-frame.ts`). Nunca revisto como um todo por ninguém de fora — só tocado para cor/velocidade/anéis (aparência). Fugas de `requestAnimationFrame`, partículas que nunca morrem ou redimensionamento com DPR são os bugs típicos desta classe de código.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
