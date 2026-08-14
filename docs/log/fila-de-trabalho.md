@@ -39,6 +39,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — O estado da conversa do assistente (`stores/use-assistant-store.ts`, 413 linhas) — DeepSeek (14/08/2026 05:18)**. A espinha dorsal da conversa — `addMessage`/`appendToMessage`/`finishMessage`/`removeMessage`, o modo do núcleo, favoritos e o `rewindToPrompt` do regenerar. Nunca revisto como um todo (só tocado de passagem por itens 16/18 e pela auditoria às 26 stores de 12/08), e sem teste dedicado — só coberto de raspão por `conversations.test.ts` e `history.test.ts`. Um bug aqui corrompe a conversa persistida, a mesma classe de dano do `ai-service.ts` acabado de fechar.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
