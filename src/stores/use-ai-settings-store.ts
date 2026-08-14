@@ -166,19 +166,29 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
     const adapter = getPlatformAdapter();
 
     if (adapter.capabilities.secretVault) {
-      // Cofre disponível: definições sem segredos → storage, chaves → cofre.
-      await storageService.set(STORAGE_KEYS.aiSettings, semSegredos(settings));
+      // As chaves vão PRIMEIRO para o cofre, e só se a escrita lá tiver
+      // mesmo corrido é que se tiram do storage. O `secretSet` devolve
+      // `false` (não lança) quando o cofre falha — ignorar esse valor era
+      // escrever as definições sem segredos no storage e deixar a chave em
+      // lado nenhum, nem storage nem cofre.
+      const apiKeyNoCofre = settings.apiKey
+        ? await adapter.secretSet('deepseek-api-key', settings.apiKey)
+        : true;
+      const claudeNoCofre = settings.claudeApiKey
+        ? await adapter.secretSet('claude-api-key', settings.claudeApiKey)
+        : true;
 
-      if (settings.apiKey) {
-        await adapter.secretSet('deepseek-api-key', settings.apiKey);
-      } else {
-        await adapter.secretDelete('deepseek-api-key');
-      }
-      if (settings.claudeApiKey) {
-        await adapter.secretSet('claude-api-key', settings.claudeApiKey);
-      } else {
-        await adapter.secretDelete('claude-api-key');
-      }
+      if (!settings.apiKey) await adapter.secretDelete('deepseek-api-key');
+      if (!settings.claudeApiKey) await adapter.secretDelete('claude-api-key');
+
+      // Só se escrevem as definições sem segredos quando o cofre as tem de
+      // certeza. Se alguma escrita falhou, o storage mantém as chaves (em
+      // texto simples, como antes do cofre) — perder a chave é pior do que
+      // ela ficar em texto simples mais uma sessão.
+      await storageService.set(
+        STORAGE_KEYS.aiSettings,
+        apiKeyNoCofre && claudeNoCofre ? semSegredos(settings) : settings,
+      );
     } else {
       // Sem cofre: comportamento de sempre — tudo no storage.
       await storageService.set(STORAGE_KEYS.aiSettings, settings);
@@ -232,6 +242,13 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
 
       apiKey = (await adapter.secretGet('deepseek-api-key')) ?? '';
       claudeApiKey = (await adapter.secretGet('claude-api-key')) ?? '';
+
+      // Se uma escrita ao cofre falhou (a chave não está lá), a cópia em
+      // texto simples no storage é a única que existe — usa-se, não se
+      // perde. Sem isto, um `persist` que falhou a escrever no cofre
+      // deixava a chave em lado nenhum ao reiniciar.
+      if (!apiKey) apiKey = typeof saved?.apiKey === 'string' ? saved.apiKey : '';
+      if (!claudeApiKey) claudeApiKey = typeof saved?.claudeApiKey === 'string' ? saved.claudeApiKey : '';
     } else {
       // Sem cofre: comportamento de sempre — as chaves vêm do storage.
       apiKey = typeof saved?.apiKey === 'string' ? saved.apiKey : '';

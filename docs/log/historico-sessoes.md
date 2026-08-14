@@ -5155,3 +5155,36 @@ do sistema), a fila por frases só avança no `onEnd`, e o contador de geração
 descartava já corretamente uma `speakClonada` em voo ultrapassada por um
 `stopSpeaking`. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1717/1717.
+
+## 2026-08-14 — Revisão a sério: a store de definições de IA (use-ai-settings-store.ts)
+
+Revisão adversarial da store que guarda e hidrata as definições do
+assistente — provedor, modelo e as chaves da API (DeepSeek e Claude), com o
+caminho de persistência no cofre do sistema. A revisão de 13/08 do "Cofre de
+segredos" tinha coberto a *migração* (`hydrate`) e o valor de retorno do
+`secretSet` no adapter, mas nunca este `persist()` como um todo.
+
+**Um bug real, corrigido.** A migração estava protegida ("só se limpa o
+storage depois de a cópia para o cofre confirmar"), mas o `persist()` — o
+caminho de *todas* as escritas seguintes — tinha o mesmo buraco e não o
+apanhado. Escrevia primeiro `semSegredos(settings)` no storage (as definições
+sem as chaves) e só depois mandava as chaves ao cofre, **ignorando** o
+booleano que `secretSet` devolve — `false` quando o cofre falha, sem lançar
+(é exatamente por isso que o `tauri-adapter-base.ts` documenta esse valor de
+retorno: para quem chama saber se algo "ficou mesmo guardado"). Resultado:
+se o cofre falhasse a escrever, a chave ficava em **lado nenhum** — já não no
+storage, e não no cofre — e um reinício apagava-a de vez. Perder a chave é
+pior do que ela ficar em texto simples mais uma sessão (a própria store o diz
+noutro sítio), mas aqui a perda era silenciosa e definitiva.
+
+Corrigido nos dois lados, de forma coerente. `persist()` passa a escrever as
+chaves **primeiro** no cofre e só escreve `semSegredos` no storage quando
+`secretSet` devolveu `true` para as duas; se alguma falhar, o storage mantém
+as chaves em texto simples como cópia de segurança. `hydrate()` (pós-migração)
+ganhou o respetivo fallback: quando o cofre não tem uma chave, lê a cópia do
+storage em vez de a tratar como vazia — sem isto, o `persist` de segurança
+não chegava, porque o `hydrate` descarta sempre as chaves do storage a favor
+do cofre. 3 testes novos em `tests/stores/ai-settings-store.test.ts`
+(escrever bem → storage sem chave e cofre com ela; cofre falha → chave fica
+no storage; reinício depois da falha → chave sobrevive). `tsc --noEmit`
+limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1720/1720.
