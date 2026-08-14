@@ -38,7 +38,12 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo. Sem instâncias em curso.
+"Feito" abaixo.
+
+**Em curso — Modo conversa (re-engate automático do microfone,
+`src/hooks/use-voice.ts` + `voice-service.ts`) — DeepSeek (14/08/2026
+04:20)**. Nunca revisto por ninguém de fora; peça de peso (microfone
+automático, ciclo de re-engate, privacidade).
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
