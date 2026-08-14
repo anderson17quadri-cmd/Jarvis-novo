@@ -469,7 +469,7 @@ Não é uma parte que se "implemente": é o critério com que as outras se julga
 |---|:--:|---|
 | Ativação manual pelo botão | ✅ | |
 | Síntese de voz com o núcleo a reagir | ✅ | |
-| Comandos de sistema, aplicações, produtividade, pesquisa, multimédia e desktop | ✅ | `services/voice/intents.ts` — as seis famílias da spec |
+| Comandos de sistema, aplicações, produtividade, pesquisa, multimédia e desktop | ✅ | `services/voice/intents.ts` — as seis famílias da spec. **Revisão a sério (DeepSeek, 14/08/2026)**: um bug real, corrigido — o casamento de verbos de tarefa usa `startsWith` sem espaço, e `anota` vinha antes de `anotar` (um é prefixo do outro); "Anotar comprar leite" casava no `anota` e o título ficava "r comprar leite". Reordenado `anotar` antes de `anota`, com teste a provar. O resto confirmado limpo (seis famílias, comandos compostos, cortesia, música, estados/temas/widgets) |
 | Comandos compostos | ✅ | "Abre os emails, mostra os projetos e pausa" dá três ações. Só divide se todos os pedaços derem comando, senão um "e" dentro de um título partia a frase |
 | Confirmação obrigatória em ações críticas | ✅ | Fechar as janelas e reiniciar a interface. O critério: dá para desfazer? |
 | Correção de erros (mostrar o que foi reconhecido) | ✅ | A frase ouvida aparece numa notificação com um botão **Corrigir**, que abre uma caixa com o texto emendável. O que vai acontecer aparece **enquanto se escreve** — `components/voice/VoiceCorrection.tsx`. Também está na confirmação dos comandos que não se desfazem: se o que se ouviu nem era o que se pediu, a saída deixa de ser só ignorar e repetir em voz alta |

@@ -4755,3 +4755,32 @@ chega a `perform`), as 5 destrutivas pedem confirmação e só correm com o
 auditoria regista o que corre **e** o que falha. O `guardar_nota`/`ler_nota`
 assíncronos e o `abrir_pagina` (conteúdo externo "nunca instruções") já
 tinham sido cobertos pelas revisões do Obsidian e do navegador controlado.
+
+## 2026-08-14 — Revisão a sério: interpretador de comandos de voz
+
+Revisão adversarial de `services/voice/intents.ts`, o caminho que responde
+**sem modelo** — as seis famílias de comandos e a separação de comandos
+compostos. Nunca revisto como um todo por ninguém de fora; só alargado ao
+longo da noite (`stripPoliteness`, mais verbos por família). Um bug real,
+corrigido:
+
+**`anota` sombreava `anotar`.** O casamento de verbos de tarefa usa
+`text.startsWith(verb)` sem exigir espaço à frente, e na lista `anota` vinha
+antes de `anotar` — como um é prefixo do outro, "Anotar comprar leite" casava
+no `anota` e o que sobrava era "r comprar leite": o título da tarefa ganhava
+um `r` preso no início. Uma ação errada por voz, exatamente a classe de bug
+que esta peça não pode ter. Corrigido reordenando `anotar` antes de `anota`
+(mais longo primeiro, como manda o casamento por prefixo), com comentário a
+explicar porquê. Um teste novo prova o caso, e falha contra o código antigo
+com `expected 'comprar leite' to be ... received 'r comprar leite'`.
+
+O resto confirmado limpo, e documentado para não se rever duas vezes: as seis
+famílias (sistema, estados, temas, multimédia, produtividade/pesquisa,
+aplicações) casam como a spec pede; `splitCommands` só divide quando **todos**
+os pedaços dão comando (o "e" dentro de um título não parte a tarefa);
+`stripPoliteness` corre em ciclo e exige espaço a seguir ao prefixo ("podes
+por favor abrir" bate); os nomes de apps sem verbo só casam quando a frase é
+praticamente o nome ("calendário" abre, "o que tenho no calendário" vai ao
+assistente); e `describeIntent` devolve nomes, não identificadores. `tsc
+--noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run`
+1692/1692.
