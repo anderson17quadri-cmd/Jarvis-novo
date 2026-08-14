@@ -4535,3 +4535,22 @@ depender de uma segmentação de frases escrita à mão. Documentado em
 vez de perseguido agora, para não misturar um pip install e uma
 mudança de protocolo Rust↔Python numa correção que já estava pedida
 para hoje.
+
+## 2026-08-14 — "Modo JARVIS Classic" ao vivo: não é bug de código, é reforço de histórico
+
+Item 17 da fila. O utilizador reportou o sintoma outra vez depois da
+correção de 13/08 — por isso o teste não se ficou por ler o código:
+reproduziu-se ao vivo contra o `qwen3:8b` (o único modelo local
+instalado no Ollama), usando o `OllamaProvider` e o
+`systemPrompt`/`buildMessages` reais, não reescritos à mão. Em conversa
+nova (sem histórico), tema "JARVIS Classic" no contexto e um pedido
+direto de código, o modelo gerou a função nas 3 amostras, sem nunca
+mencionar "Modo JARVIS Classic" nem recusar por causa do tema/estado — a
+linha do prompt de sistema está a ser respeitada. Até com a frase errada
+plantada no histórico, continuou a gerar o código (a linha pesa mais do
+que o histórico já dito).
+
+Conclusão: nada a corrigir no código. O que o utilizador viu foi o
+modelo a repetir o que já tinha dito numa conversa anterior à correção
+(ou uma sessão ainda a correr o código antigo), não uma falha do prompt
+atual. Sem commit de código — só esta nota e a atualização da fila.
