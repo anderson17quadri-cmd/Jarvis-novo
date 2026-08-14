@@ -40,14 +40,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O catálogo de ferramentas e o executor (`tools.ts` /
-`tool-runner.ts` em `services/assistant/`) — DeepSeek (14/08/2026
-04:38)**. As 30 ferramentas do assistente e a validação/execução delas
-nunca foram revistas como um todo por ninguém de fora — só mudanças
-pontuais (o prazo do `parseDueDate`, o SSRF do navegador, o link
-simbólico do Obsidian). O executor é a "mão" do assistente: um bug aqui
-é uma ação errada ou perigosa.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -67,6 +59,20 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Catálogo de ferramentas e executor — revisão adversarial — DeepSeek — commit `6776f58`
+
+Revisão a sério de `tools.ts` + `tool-runner.ts`, nunca revistos como um todo
+por ninguém de fora. **Um bug real, corrigido:** `mudar_de_desktop` só validava
+o tipo (`number`), não o intervalo nem a integridade — um modelo a inventar
+"desktop 99" (ou 2.5) chegava a `switchTo`, que guarda `current` sem confirmar
+que o id existe, e corrompia o estado do ambiente (persistido). O parâmetro
+ganhou `minimum`/`maximum` (derivados de `DESKTOP_IDS`), a validação passou a
+recusar números fora do intervalo ou fracionários, e o esquema JSON agora diz
+ao modelo o intervalo. 4 testes novos. O resto confirmado limpo (30 ferramentas
+com execução, validação antes do executor, 5 destrutivas com confirmação,
+auditoria). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a
+sério: catálogo de ferramentas e executor").
 
 ### 15. Voz clonada, síntese e reprodução no lado cliente — revisão adversarial — DeepSeek — commit `b46a6e7`
 
