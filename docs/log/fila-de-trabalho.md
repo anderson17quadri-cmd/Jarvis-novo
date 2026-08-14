@@ -15,6 +15,67 @@
 > completa a passar, `git pull` antes de cada `push`, nunca `--force`,
 > nunca commitar segredos, tudo em português). Isto aqui é só a fila.
 
+## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
+
+### 16. Fala só depois de o texto inteiro estar escrito — `[livre]`
+
+**Diagnóstico já feito** (sessão remota, não confirmado ao vivo — precisa
+de app a correr para testar a sério): `App.tsx`, dentro do tool
+`ask` (~linha 425-429):
+
+```ts
+ask: (text) => {
+  launch('assistant');
+  void aiService.send(text).then((reply) => {
+    if (reply.length > 0) speak(reply);
+  });
+},
+```
+
+`aiService.send()` só resolve a `Promise` depois de o streaming inteiro
+terminar (o texto já todo escrito no ecrã) — só aí `speak(reply)` é
+chamado. É por isto que parece "escreve tudo, só depois fala": não há
+nada a falar incrementalmente enquanto o texto chega.
+
+**O que se pede**: falar por frase, à medida que o texto vai chegando —
+não esperar pelo fim. `aiService` já expõe o streaming pedaço a pedaço
+para a store (`appendToMessage`); falta uma forma de, em paralelo,
+acumular os pedaços, cortar por frase (`.`, `!`, `?`, seguido de espaço
+ou fim), e chamar `voiceService.speak()` (ou o `speak()` do
+`use-voice.ts`) para cada frase completa assim que ela fechar — a
+próxima frase enfileira-se atrás, não interrompe a que está a falar.
+Cuidado com abreviações comuns em português ("Sr.", "n.º", "etc.") não
+partirem a frase a meio sem necessidade — não precisa de ser perfeito,
+só melhor do que "espera tudo".
+
+### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — `[livre]`
+
+Já existe uma linha no prompt de sistema (`deepseek-provider.ts`,
+`systemPrompt()`) especificamente contra isto — achado em uso real a
+13/08/2026, corrigido nesse mesmo dia, com teste
+(`deepseek.test.ts`, "diz de frente que o tema e o estado são só
+aparência"). `buildMessages()` (usado pela DeepSeek, pela Ollama e pelo
+Claude, confirmado por leitura do código) inclui sempre essa linha. O
+utilizador relata, num uso ao vivo posterior a essa correção, o mesmo
+sintoma a repetir-se — por isso a correção ou não chega para o modelo
+que ele está a usar (provavelmente um modelo local via Ollama, mais
+fraco a seguir instruções do que a DeepSeek/Claude), ou o histórico da
+conversa já tinha a frase errada dita antes da correção entrar em
+vigor, e o modelo está a repeti-la a partir do que já disse antes
+(reforço pelo próprio histórico, não pelo prompt de sistema).
+
+**O que se pede**: reproduzir ao vivo (com o Jarvis a correr) numa
+conversa **nova** (sem histórico antigo) contra o modelo que o
+utilizador está mesmo a usar — confirmar qual é. Se acontecer mesmo
+numa conversa nova, o prompt de sistema não está a chegar a ser
+respeitado por esse modelo especificamente — considerar reforçar a
+linha (repeti-la mais perto do fim do prompt, que costuma pesar mais em
+modelos mais fracos) ou, se for sempre o mesmo modelo fraco a falhar,
+documentar como limitação conhecida em vez de fingir que está
+resolvido. Se só acontecer com histórico antigo por perto, é reforço de
+conversa, não bug de código — documentar essa distinção, não corrigir
+código que já está certo.
+
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
