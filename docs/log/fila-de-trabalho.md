@@ -39,8 +39,6 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — O núcleo visual (`components/ai-core/`, ~1067 linhas) — DeepSeek (14/08/2026 05:25)**. O centro do ecrã inteiro — campo de partículas em canvas (`particle-field.ts`, 321), anéis SVG (`CoreRings.tsx`, 262), forma de onda (`CoreWaveform.tsx`, 89), a orquestração (`AICore.tsx`, 218), os modos visuais (`ai-core-modes.ts`) e o laço `requestAnimationFrame` (`use-animation-frame.ts`). Nunca revisto como um todo por ninguém de fora — só tocado para cor/velocidade/anéis (aparência). Fugas de `requestAnimationFrame`, partículas que nunca morrem ou redimensionamento com DPR são os bugs típicos desta classe de código.
-
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
@@ -60,6 +58,23 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O laço de animação do núcleo visual (`use-animation-frame.ts`) — revisão adversarial — DeepSeek — commit `62d8e69`
+
+Revisão a sério de `hooks/use-animation-frame.ts` e dos seis ficheiros do
+núcleo visual (`components/ai-core/`), nunca revistos como um todo por ninguém
+de fora (só tocados para cor/velocidade/anéis). **Dois bugs reais, corrigidos,
+os dois no laço:** (1) ao voltar do segundo plano o `elapsed` recomeçava em 0
+(o `start` vivia dentro do efeito) — o `AICore`, que calcula o delta entre
+frames e só limita o de cima (`Math.min(delta, 3)`), via um salto negativo de
+centenas de frames num só; o `start` passou para uma ref. (2) Com movimento
+reduzido, o frame estático era desenhado uma única vez e nunca redesenhado ao
+mudar de modo/cor; passou para um efeito próprio dependente da callback. 2
+testes novos (`tests/ai-core/use-animation-frame.test.tsx`), confirmados a
+falhar contra o código antigo. Resto confirmado limpo (partículas/ondas sem
+fugas, DPR coerente, mudança segura para os outros consumidores do laço).
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: o
+laço de animação do núcleo visual (use-animation-frame)").
 
 ### 15. Interpretador de comandos de voz (`intents.ts`) — revisão adversarial — DeepSeek — commit `a554145`
 
