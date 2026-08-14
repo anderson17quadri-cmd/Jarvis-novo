@@ -31,6 +31,10 @@ Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
+> **Reservado — DeepSeek (14/08/2026, 07:07):** a sessão automática
+> (`auto-login-service.ts`) — um valor do cofre que seja JSON válido mas não
+> um objeto (`"null"`, `"42"`, `"true"`) rebenta `hasValidAutoLoginSession`.
+
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
