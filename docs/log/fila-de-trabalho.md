@@ -101,6 +101,8 @@ antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
+### 15. Métricas do sistema (Rust `system/monitor.rs` + `metrics.rs`, TS `system-service.ts` + `use-system-metrics.ts` + `use-system-store.ts`) — revisão adversarial — DeepSeek #2 (14/08/2026)
+
 ### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek (14/08/2026)
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
