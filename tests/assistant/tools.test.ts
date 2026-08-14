@@ -193,6 +193,16 @@ describe('o que se manda ao modelo', () => {
     const tarefa = schema.find((entry) => entry.name === 'criar_tarefa');
     expect(tarefa?.input_schema.required).toEqual(['titulo']);
   });
+
+  it('o intervalo do desktop vai no esquema, para o modelo não inventar um número', async () => {
+    const schema = toolsAsJsonSchema() as {
+      function: { name: string; parameters: { properties: Record<string, { minimum?: number; maximum?: number }> } };
+    }[];
+
+    const desktop = schema.find((entry) => entry.function.name === 'mudar_de_desktop');
+    expect(desktop?.function.parameters.properties['desktop']?.minimum).toBe(1);
+    expect(desktop?.function.parameters.properties['desktop']?.maximum).toBe(4);
+  });
 });
 
 describe('validação', () => {
@@ -217,6 +227,30 @@ describe('validação', () => {
 
   it('um campo opcional em falta não é erro', async () => {
     expect(validateArgs(getTool('criar_tarefa')!, { titulo: 'x' })).toBeNull();
+  });
+
+  it('um desktop fora do intervalo não passa — não pode corromper o estado', async () => {
+    // `switchTo` guarda `current` sem confirmar que o id existe: um "desktop
+    // 99" inventado pelo modelo corrompia o estado do ambiente. A validação
+    // tem de o travar antes de chegar ao executor.
+    const outcome = await runTool({ id: '1', name: 'mudar_de_desktop', args: { desktop: 99 } });
+
+    expect(outcome.status).toBe('erro');
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('um desktop com vírgula (não inteiro) também não passa', async () => {
+    const outcome = await runTool({ id: '1', name: 'mudar_de_desktop', args: { desktop: 2.5 } });
+
+    expect(outcome.status).toBe('erro');
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('o desktop de fronteira continua a passar', async () => {
+    const outcome = await runTool({ id: '1', name: 'mudar_de_desktop', args: { desktop: 4 } });
+
+    expect(outcome.status).toBe('ok');
+    expect(executor.calls).toEqual(['desktop:4']);
   });
 });
 

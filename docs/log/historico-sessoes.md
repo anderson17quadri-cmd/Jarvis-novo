@@ -4719,3 +4719,39 @@ não revelou defeito: o único caminho que manda áudio para `/voz` passa por
 `getUserMedia`, a falha de `getUserMedia` distingue `NotAllowedError` de
 captura, e o envio falha em silêncio com motivo — comportamento já coberto
 pelo item 12.
+
+## 2026-08-14 — Revisão a sério: catálogo de ferramentas e executor
+
+Revisão adversarial de `tools.ts` + `tool-runner.ts` (`services/assistant/`),
+a "mão" do assistente — as 30 ferramentas e a validação/execução delas. Nunca
+revisto como um todo por ninguém de fora; só mudanças pontuais ao longo da
+noite (o prazo do `parseDueDate`, o SSRF do navegador, o link simbólico do
+Obsidian). Um bug real, corrigido:
+
+**`mudar_de_desktop` só validava o tipo, não o valor.** O parâmetro `desktop`
+era `type: 'number'` e a validação parava em "é um número?" — não confirmava
+inteiro nem intervalo. Um modelo a inventar "muda para o desktop 99" (ou 2.5)
+passava a validação, e `goToDesktop(99 as DesktopId)` chegava a `switchTo`
+(`use-workspace-store.ts`), que faz `set({ current: id })` **sem confirmar que
+o id existe** — ficava um `current: 99` num ambiente com 4 desktops, emitido
+`desktop:mudou` e persistido. Estado corrompido por um número alucinado.
+
+Corrigido na fronteira certa (a validação, não o executor): `ToolParameter`
+ganhou `minimum`/`maximum`, o `desktop` passou a trazê-los (derivados de
+`DESKTOP_IDS`, como o resto do catálogo deriva dos registos), `validateArgs`
+passou a recusar números fracionários e fora do intervalo, e `parametersSchema`
+emite `minimum`/`maximum` no JSON Schema — o modelo fica a saber o intervalo
+em vez de o adivinhar. 4 testes novos (`tests/assistant/tools.test.ts`),
+confirmados a falhar contra o código antigo (3 a falhar) e a passar com a
+correção. `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes
+noutros ficheiros), `vitest run` 1691/1691.
+
+O resto confirmado limpo, e documentado para não se rever duas vezes: as 30
+ferramentas têm todas execução (o teste de cobertura percorre-as uma a uma),
+a validação de tipos e de opções trava tudo antes do executor (um número
+escrito como texto, um tema fora das opções, um argumento em falta — nada
+chega a `perform`), as 5 destrutivas pedem confirmação e só correm com o
+`confirmed` vindo da interface (nunca de um argumento do modelo), e a
+auditoria regista o que corre **e** o que falha. O `guardar_nota`/`ler_nota`
+assíncronos e o `abrir_pagina` (conteúdo externo "nunca instruções") já
+tinham sido cobertos pelas revisões do Obsidian e do navegador controlado.
