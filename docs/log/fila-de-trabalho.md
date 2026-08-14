@@ -78,6 +78,16 @@ sintetizar por frase em vez do texto inteiro de uma vez — pode resolver
 metade deste item do lado do serviço Python, sem só empilhar lógica de
 corte de frases do lado do TypeScript.
 
+**Sub-investigação em paralelo — DeepSeek #2** (14/08/2026 03:20,
+segunda instância, worktree `jarvis-novo-deepseek2`): a pista do
+`RealtimeTTS` acima, especificamente — o coordenador já tinha um fork
+próprio em curso com o lado TypeScript (corte de frases +
+fila de fala) quando esta pista chegou; em vez de interromper esse
+trabalho a meio, esta segunda instância investiga só o lado Python
+(`voice-clone-service/server.py`) em paralelo. As duas contribuições
+fecham-se e reconciliam-se juntas quando ambas terminarem — não é um
+item duplicado, é a mesma peça vista dos dois lados.
+
 ### 17. "Modo JARVIS Classic" continua a aparecer, apesar da correção já existente — **DeepSeek** (14/08/2026 03:12) `[livre]`
 
 Já existe uma linha no prompt de sistema (`deepseek-provider.ts`,
