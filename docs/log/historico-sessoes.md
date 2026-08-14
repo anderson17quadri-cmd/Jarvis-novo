@@ -5524,3 +5524,143 @@ Fica para o utilizador, como próximos passos concretos: atualizar o
 driver NVIDIA (Blackwell), e — se voltar a acontecer — testar o
 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como diagnóstico
 (se o crash parar, confirma-se a teoria do GPU). Sem commit de código.
+
+## 2026-08-14 — Revisão a sério: métricas do sistema (Rust `system/monitor.rs` + TS `system-service.ts`)
+
+Revisão adversarial da cadeia que mede o sistema — Rust
+(`system/metrics.rs` + `monitor.rs`, comando `commands/system.rs`) e o lado
+TypeScript (`system-service.ts`, `use-system-metrics.ts`, `use-system-store.ts`,
+`use-system-state-store.ts`), mais a simulação do browser. Nunca revista por
+ninguém de fora, e **sem um único teste Rust** (só `browser.rs`, `files.rs`,
+`obsidian.rs` e `terminal/session.rs` têm `#[cfg(test)]`). É a peça que alimenta
+o Monitor de recursos e o ritmo de sondagem dos estados do sistema.
+
+**Nada de funcional a corrigir — confirmado limpo, ponto a ponto:**
+- **Divisão por zero**: `percent()` (metrics.rs) devolve 0 quando o total é 0;
+  disco usa `saturating_sub` para `used` nunca exceder `total`.
+- **Concorrência**: cada `Mutex` do monitor é tomado e largado dentro do seu
+  método (sem aninhamento → sem deadlock); lock envenenado vira `Error` em vez
+  de pânico (`lock()`).
+- **Primeira leitura**: CPU/ritmo de rede a zero no primeiro `snapshot()` é
+  comportamento documentado (`mark_refresh` devolve 0 sem leitura anterior) e o
+  ritmo de rede nunca divide por zero (guarda `elapsed_secs <= 0`).
+- **Ciclo de vida da sondagem**: `subscribe`/`start`/`stop`/`setPaused`/
+  `setInterval` fecham em todos os caminhos — último subscritor a sair pára o
+  `setInterval`, `setPaused(false)` retoma só com ouvintes, `setInterval`
+  reinicia o temporizador em vez de adiar o novo ritmo.
+- **`setInterval` não se sombreia**: dentro de `start()`, o `setInterval(...)`
+  sem `this.` resolve para a função global, não para o método da classe — o
+  temporizador usa mesmo o ritmo pretendido.
+- **Pausa global partilhada**: `setPaused` é um booleano único do serviço, mas
+  todos os consumidores partilham o mesmo `document.hidden` (`useIsVisible`) —
+  num só WebView não há dois valores a pisarem-se.
+- **Limites**: `get_top_processes` faz `clamp(1, 50)` no Rust; `sort_by` com
+  `partial_cmp` + `unwrap_or(Equal)` não rebenta com `f32` que nunca é NaN.
+- **Estado gerido**: `SystemMonitor` é `manage`d no builder partilhado e os três
+  comandos estão registados nos dois ramos (`desktop`/`not(desktop)`).
+- **Espelho TS/Rust**: `types/system.ts` casa com os `#[serde(rename_all =
+  "camelCase")]` do Rust, campo a campo.
+
+Casos que tentei partir sem sucesso: intervalo 0/negativo a martelar a sondagem
+(os ritmos vêm de `SYSTEM_STATES`, todos ≥ 1000 ms), subscrição dupla a duplicar
+o temporizador (guardado por `timer !== null`), desmontar em segundo plano a
+deixar `paused` preso (o `setPaused(false)` do mount seguinte retoma), e a
+leitura da bateria/USB/disco com valores agressivos (tudo `saturating`).
+
+**Achado único, cosmético**: o aviso que duas sessões anteriores apontaram como
+"pré-existente em `system/monitor.rs`" é o `clippy::for_kv_map` na linha 135
+(`for (_, data) in networks.iter()` → `networks.values()`). Não é bug, e deixei
+ficar — limpeza sem correção não se faz.
+
+**Verificação**: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes noutros ficheiros), `vitest run` 1737/1737, `cargo check` limpo,
+`cargo clippy` só com o `for_kv_map` acima.
+
+## 2026-08-14 — Revisão a sério: email real (IMAP + SMTP no Rust)
+
+Revisão adversarial do correio real da Peça 8, lote 2 (commit `e943a30`) — os
+comandos `mail_fetch`/`mail_set_flag`/`mail_send` em
+`src-tauri/src/commands/mail.rs`, o provedor `imap-mail-provider.ts`, a store de
+definições e o ecrã `MailSettings.tsx`. Nunca revisto por ninguém de fora; os
+únicos testes que havia eram TypeScript a trocar o adapter por um falso — nenhum
+tocava no Rust.
+
+**Um bug real, corrigido: o envio SMTP fazia TLS implícito, não STARTTLS.**
+`mail_send` chamava `SmtpTransport::relay()`, que no `lettre` é TLS *implícito*
+(SMTPS, porta 465) — e não o `starttls_relay`, que faz STARTTLS na porta 587. O
+comentário e as definições diziam "STARTTLS (porta 587)", mas o primeiro byte que
+saía para o fio era o `0x16` de um `ClientHello`, e um servidor STARTTLS (que
+espera um EHLO em claro na 587) desligava antes de se entender com o cliente —
+enviar por uma conta normal (Gmail e semelhantes) falhava de origem. Corrigido
+para `starttls_relay`, com um teste Rust novo (`envio_comeca_por_ehlo_em_claro`)
+que liga a um servidor falso e prova que o primeiro byte no fio é `E` (EHLO) e
+não `0x16`. Confirmado a falhar contra o código antigo.
+
+O resto confirmado limpo, caso a caso:
+
+- **A palavra-passe não escapa por nenhum campo normal.** O storage guarda a
+  configuração sem a palavra-passe (`semSegredos`), o cofre guarda
+  `mail-password`, a cópia de segurança apaga `password`
+  (`SECRET_FIELDS[mailSettings]`), o `logService.audit` regista só a ação, e os
+  erros do Rust ecoam o servidor e o motivo — nunca a palavra-passe (`imap`,
+  `lettre` e `native-tls` não a incluem nas mensagens de erro).
+- **TLS a sério nos dois.** IMAP: `imap::connect(..., server, &tls)` valida o
+  certificado contra o domínio e a cadeia do sistema (`native_tls`). SMTP
+  (agora): `starttls_relay` exige STARTTLS e falha se o servidor não o oferecer
+  (sem downgrade), validando o certificado contra o domínio.
+- **Sem injeção de cabeçalhos.** O destinatário passa por `parse::<Mailbox>()`
+  (recusa CRLF), e o `Subject` passa pelo codificador do `lettre`, que manda
+  CR/LF para RFC 2047 em vez de os escrever crus no cabeçalho — tentei partir
+  com `\r\nBcc:` no assunto/destinatário e não passa.
+- **Erros não rebentam a interface.** A leitura falhada (palavra-passe errada,
+  servidor em baixo) é apanhada pelo `PollingDataService` (`console.warn` +
+  `null`, sem crash); o envio mostra a mensagem no rascunho (`role="alert"`).
+  Sem configurar nada, mantém-se o simulado e não se toca em rede nenhuma.
+- **Cobertura.** Os testes TypeScript cobriam o contrato do provedor e a divisão
+  storage/cofre, mas o comportamento de rede do Rust estava a zero — foi por aí
+  que o buraco do STARTTLS passou. O teste novo é o primeiro a exercitar
+  `mail_send`.
+
+Verificação: `cargo test` 21+6 a passar (1 novo), `cargo check` limpo,
+`tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
+`vitest run` 1737/1737.
+
+## 2026-08-14 — Revisão a sério: serviços de tema, relógio e papel de parede
+
+Revisão adversarial de três serviços pequenos e **sem teste dedicado** —
+`theme-service.ts`, `clock-service.ts` e `wallpaper-service.ts` — mais as
+dependências que usam (`custom-theme.ts` e `use-theme-store.ts`). Nunca revistos
+por ninguém de fora: o tema só era tocado de raspão no `theme-editor.test.tsx`, e
+o relógio e o papel de parede não tinham um único teste.
+
+**Nada de funcional a corrigir — confirmado limpo, caso a caso:**
+
+- **`ThemeService.apply`** limpa sempre as quinze variáveis inline que um tema
+  personalizado anterior escreveu antes de aplicar o novo — sem isto, voltar a um
+  oficial deixava metade das cores do antigo em vigor. `data-theme` no `<html>` é
+  o único sítio por onde o tema entra, e a troca é instantânea por variáveis CSS.
+  Tentei partir o caso do tema personalizado apagado: `apply(idCustom, null)` cai
+  no `data-theme` sem bloco CSS nem variáveis — mas o único caminho alcançável
+  passa por `hydrate`, que já confere `isCustomThemeId(saved) && !custom` e volta
+  ao base; `setTheme` só recebe temas que existem na lista. A fronteira certa já
+  lá está, e o estado auto-corrige no arranque seguinte.
+- **`ClockService`** tem um só temporizador para todos os subscritores: o primeiro
+  liga (`start`), o último desliga (`unsubscribe` → `size===0` → `stop`), e
+  `setPaused` suspende sem perder subscritores. Confirmei que não há duplo
+  temporizador (pausar põe `timer=null` antes de retomar), que a primeira
+  atualização é imediata (não espera os 15 s), e que um subscritor novo em pausa
+  recebe só o valor inicial (correto — não faz ticks em segundo plano). Tentei
+  partir o ciclo com pause/subscribe/unsubscribe em todas as ordens: fecha sempre.
+- **`WallpaperService.parseHexColor`** lê `#rgb`/`#rrggbb` (expande o curto, corta
+  o alpha de um `#rrggbbaa`) e cai no ciano do tema (`#00CFFF`) se `parseInt`
+  der `NaN`. A entrada vem sempre do `themeService.readAccentColor()`, que
+  devolve um `--accent` bem formado, por isso o fallback não dispara em produção
+  — mas existe.
+- **`readAccentColor`** usa `getComputedStyle` no `<html>`, que resolve
+  `--accent` tanto no tema oficial (`themes.css`) como no personalizado (inline) —
+  o canvas do núcleo recebe sempre um valor concreto, nunca um `var()` por
+  resolver.
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1737/1737 (sem código alterado nesta revisão —
+confirmação sobre o estado fundido).

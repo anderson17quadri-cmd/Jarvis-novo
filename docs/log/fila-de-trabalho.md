@@ -85,7 +85,7 @@ falhar agora.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek (14/08/2026)
+### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek (14/08/2026)
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
 do histórico mencionam uma "revisão independente" alheia — sobra sempre
@@ -134,6 +134,53 @@ testar `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--disable-gpu` como
 diagnóstico. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
 "Dev server morre sozinho: erro 1412 é sintoma, causa provável fora do
 código (GPU/TDR)").
+
+### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek — commit `271f014`
+
+Revisão a sério dos comandos `mail_fetch`/`mail_set_flag`/`mail_send` em
+`src-tauri/src/commands/mail.rs` (mais o provedor IMAP, a store e o ecrã de
+definições), nunca revistos por ninguém de fora. **Um bug real, corrigido:**
+`mail_send` usava `SmtpTransport::relay()` (TLS implícito, SMTPS na porta 465)
+apesar de o comentário e as definições prometerem STARTTLS na 587 — o primeiro
+byte no fio era um `ClientHello`, e um servidor STARTTLS desligava antes do
+EHLO, por isso enviar por uma conta normal falhava de origem. Corrigido para
+`starttls_relay`, com um teste Rust novo que prova que o primeiro byte é EHLO,
+não um handshake TLS (falha contra o código antigo). Resto confirmado limpo:
+palavra-passe nunca sai do cofre (storage sem `password`, cópia de segurança
+tapa, log e erros sem eco), certificado validado contra o domínio nos dois
+sentidos, sem injeção de cabeçalhos (destinatário por `parse::<Mailbox>`, assunto
+codificado RFC 2047), erros de rede apanhados sem rebentar a interface, simulado
+por omissão sem rede. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: email real (IMAP + SMTP no Rust)").
+
+### 15. Métricas do sistema (Rust `system/monitor.rs` + `metrics.rs`, TS `system-service.ts` + `use-system-metrics.ts` + `use-system-store.ts`) — revisão adversarial — DeepSeek #2 — sem commit de código
+
+Revisão a sério da cadeia que mede o sistema, nunca revista por ninguém de
+fora e **sem um único teste Rust**. **Nada de funcional a corrigir** — confirmado
+limpo ponto a ponto: `percent()` guarda divisão por zero; mutexes sem
+aninhamento (sem deadlock) e envenenados viram erro; primeira leitura a zero é
+documentada; ciclo de vida da sondagem (`subscribe`/`start`/`stop`/`setPaused`/
+`setInterval`) fecha em todos os caminhos e o `setInterval` de `start()` não se
+sombreia com o método; `get_top_processes` com `clamp(1, 50)`; `SystemMonitor`
+`manage`d e comandos registados nos dois ramos; espelho TS/Rust casado campo a
+campo. O único achado é cosmético — o aviso "pré-existente" de duas sessões é o
+`clippy::for_kv_map` em `monitor.rs:135`, não bug, deixado ficar. Verificação:
+`tsc` limpo, `eslint` 0 erros, `vitest` 1737/1737, `cargo check` limpo. Detalhe
+em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: métricas do
+sistema").
+
+### 15. Serviços de tema, relógio e papel de parede (`theme-service.ts` + `clock-service.ts` + `wallpaper-service.ts`) — revisão adversarial — DeepSeek #2 — sem commit de código
+
+Revisão a sério de três serviços pequenos sem teste dedicado, mais as dependências
+`custom-theme.ts` e `use-theme-store.ts`. **Nada de funcional a corrigir** —
+confirmado limpo: `apply` limpa sempre as variáveis inline do tema personalizado
+anterior antes de aplicar o novo; o temporizador único do relógio liga/desliga com
+o primeiro/último subscritor e pausa sem perder subscritores (sem duplo
+temporizador); o `parseHexColor` do papel de parede trata `#rgb`/`#rrggbb`/alpha e
+cai no ciano em malformado; o `readAccentColor` resolve `--accent` nos dois tipos
+de tema. O caso do tema personalizado apagado não se alcança (o `hydrate` já o
+confere na fronteira). Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: serviços de tema, relógio e papel de parede").
 
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 
