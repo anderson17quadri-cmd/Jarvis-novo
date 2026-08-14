@@ -39,7 +39,7 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-**Em curso — A paleta de comandos (`src/components/command-palette/`, 479 linhas) — DeepSeek (14/08/2026 06:12)**. Fechado — ver "Feito" abaixo (commit `ae121c8`).
+**Em curso — O serviço de voz, caminho `speak()` por SpeechSynthesis (`src/services/voice-service.ts`, 981 linhas) — DeepSeek (14/08/2026 06:22)**. A síntese normal por `speechSynthesis` (o caminho que fala quase tudo), nunca revisto como um todo por ninguém de fora: a revisão do item 15 só cobriu `speakClonada` (voz clonada), e a do modo conversa só o re-engate do microfone. Ficam por examinar a seleção de voz, o ciclo de vida da `SpeechSynthesisUtterance`, `stopSpeaking`, a fila e os estados `onend`/`onerror`. Corretude crítica: é a voz do sistema — uma fala que fica presa, não para, ou escolhe a voz errada sente-se em toda a conversa.
 
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
