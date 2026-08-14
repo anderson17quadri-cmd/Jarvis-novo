@@ -5664,3 +5664,32 @@ o relógio e o papel de parede não tinham um único teste.
 Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
 pré-existentes), `vitest run` 1737/1737 (sem código alterado nesta revisão —
 confirmação sobre o estado fundido).
+
+## 2026-08-14 — Revisão a sério: a validação do protocolo de plugins (protocol.ts)
+
+Revisão adversarial de `isPluginToCoreMessage` (`src/plugins/runtime/protocol.ts`)
+— a última barreira antes de o Core despachar uma mensagem vinda de um
+`<iframe sandbox>`. A ponte (`plugin-bridge.ts`) já tinha sido revista (commit
+`db3f24b`), mas o validador que a alimenta nunca o foi por ninguém de fora.
+
+**Um bug real, corrigido: uma escrita de ficheiro sem `conteudo` passava a
+fronteira.** O `switch` juntava `core.fs.read` e `core.fs.write` num só caso que
+conferia apenas `caminho` — mas `core.fs.write` exige também `conteudo: string`.
+O código de um plugin não é autenticado (a assinatura só cobre o manifesto, como
+a revisão de `signature.ts` já documentou), por isso um plugin a mandar
+`{type:'core.fs.write', payload:{caminho:'nota.txt'}}` é um caso real: passava a
+validação, o predicado de tipo jurava `conteudo: string`, e o `PluginRuntime`
+entregava a mensagem à ponte, que chamava `writeTextFile(fullPath, undefined)`.
+O campo obrigatório passou a ser conferido (`typeof payload.conteudo ===
+'string'`), e o caso separou-se do `core.fs.read`/`core.fs.list`, que só
+precisam do caminho. 4 testes novos (`tests/plugins/protocol.test.ts`), os dois
+casos de falta e tipo errado confirmados a falhar contra o código antigo.
+
+O resto confirmado limpo: as outras dezassete capacidades conferem todos os
+campos obrigatórios (só `core.fs.write` tinha um esquecido — todas as outras
+com campo extra o verificam, ex.: `core.command.register` confere `id`+`nome`+
+`descricao`); `valor`/`fallback` do armazenamento são `unknown` por desenho; e o
+`NaN` do `intervalMs` continua defendido do lado da ponte (commit `db3f24b`).
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1741/1741 (4 novos).
