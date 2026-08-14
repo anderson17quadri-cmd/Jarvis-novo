@@ -25,34 +25,7 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-Os itens 16 e 17 estão fechados — ver "Feito" abaixo.
-
-### 18. A resposta na janela normal do assistente nunca fala — `[livre]`
-
-**Em curso — DeepSeek (14/08/2026 04:56)**.
-
-**Diagnóstico já feito** (sessão remota, leitura do código, confirmado
-por `git log` que nunca foi diferente — não é regressão de hoje): a
-fala por frase (item 16) só está ligada ao caminho de **comandos por
-voz** — `services/voice/executor.ts`, `runIntent()` para um intent
-`'perguntar'`, chama `executor.ask(intent.text)`, que é o `ask` de
-`App.tsx` com o `speakQueued` já ligado. **A janela normal do
-assistente (`AssistantWindow.tsx`, onde a maior parte da conversa
-acontece, escrita ou falada através dela) usa `aiService.sendWithTools()`
-— que nunca, em nenhum commit da história deste ficheiro, chamou
-`speak()` nem `speakQueued()`.** Confirmado com `git log -p --follow`
-sobre o ficheiro.
-
-**O que se pede**: ligar a mesma fala por frase (o mecanismo já existe —
-`extractSentences` + `speakQueued`, ver item 16) também ao caminho de
-`sendWithTools`/`AssistantWindow.tsx`, não só ao `ask`. Precisa de uma
-decisão pequena de desenho: falar sempre, só quando a pergunta chegou
-por voz, ou atrás de uma preferência nas definições de voz (a pessoa
-pode preferir ler em silêncio quando está a escrever). Se não houver
-sinal já guardado de "isto chegou por voz", o mais simples e mais
-parecido com "conversa real" é falar sempre que a resposta terminar,
-com a preferência de sempre para desligar se for indesejado — decidir
-com bom senso, documentar a escolha.
+Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
@@ -197,6 +170,21 @@ histórico, continua a gerar o código. Não é bug de código: o sintoma foi
 o modelo a repetir o que já tinha dito antes da correção entrar em
 vigor. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Modo
 JARVIS Classic ao vivo").
+
+### 18. A resposta na janela normal do assistente nunca fala — DeepSeek — commit `6e7c9a1`
+
+Reportado ao vivo pelo utilizador. A fala por frase (item 16) só estava
+ligada ao caminho dos comandos por voz (`ask`), nunca ao `sendWithTools`/
+`AssistantWindow.tsx`, onde acontece a maior parte da conversa. `sendWithTools`
+ganhou o `onChunk` opcional do `send` (enfiado nas rondas de ferramentas e nos
+caminhos de recuperação/queda), e `AssistantWindow` liga-o a
+`extractSentences`+`speakQueued`+`limparFilaDeFala` com contador de geração.
+Decisão de desenho documentada: falar sempre que a resposta chega (o silêncio
+foi reportado como problema, e é o mais parecido com conversa real); não há
+hoje um interruptor "falar respostas" separado, e adicioná-lo saía fora deste
+item pequeno. 4 testes novos, confirmados a falhar contra o código antigo.
+Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Item 18: a resposta
+na janela normal do assistente fala").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 
