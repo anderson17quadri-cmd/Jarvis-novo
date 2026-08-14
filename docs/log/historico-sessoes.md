@@ -4974,3 +4974,47 @@ fuga, e o `URL.createObjectURL` do browser é preguiçoso, não lê o ficheiro);
 antes da inicialização mas ninguém o lê repetidamente (lê-se uma vez no
 arranque). `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos pré-existentes),
 `vitest run` 1705/1705.
+
+## 2026-08-14 — Revisão a sério: a cadeia de provedores de IA (`src/services/ai-providers/`)
+
+Revisão adversarial da camada que decide qual modelo responde e como cai para o
+seguinte — `ai-provider.ts` (o contrato), `provider-chain.ts` (a cadeia de
+reserva), `model-choice.ts` (a escolha por capacidade), `rule-provider.ts` (o
+local) e os provedores concretos (`deepseek`/`claude`/`ollama`), 1512 linhas,
+nunca revistas como um todo por ninguém de fora (só a ordem da cadeia foi
+reordenada, item 1, sem revisão do fluxo). Lidas ainda as peças vizinhas que o
+fluxo atravessa (`types/ai-failure.ts`, o `setChain`/`recover` de
+`ai-service.ts`). **Nada de funcional a corrigir** — mas o caminho mais
+complexo e sem um teste sequer (`collect()`, a acumulação de pedidos de
+ferramenta da DeepSeek) ganhou cobertura.
+
+O que se confirmou, ponto a ponto:
+
+- **A cadeia só contém provedores configurados.** `applyAiSettings` monta-a com
+  `buildProvider`, que devolve `null` para provedor sem chave — por isso
+  `nextStep` (`provider-chain.ts`) nunca procura um nome que não lá está (o caso
+  `findIndex === -1` que reiniciaria a cadeia é inalcançável hoje: os nomes são
+  estáveis e únicos, e `this.provider` é sempre um membro da cadeia).
+- **A escolha de modelo** (`model-choice.ts`) trata acentos, blocos de código,
+  prompts longos (>400 carateres) e tanto a subida como a descida de
+  capacidade; os dois sentidos têm teste.
+- **Cada provedor** tem teto de 60s, aborto por `AbortSignal`, e erro tipado em
+  vez de texto de erro disfarçado de resposta; o `finally` limpa sempre o timer
+  e o listener.
+- **Os parsers de streaming** (DeepSeek e Claude) acumulam argumentos de
+  ferramenta por índice e só os interpretam no fim — JSON que não fecha perde o
+  pedido em vez de correr a ferramenta a meio; linhas malformadas não partem a
+  resposta; o raciocínio do `reasoner` não se mostra.
+- **O mapeamento de falhas** (`failureFromStatus`, `claudeFailureFromResponse`
+  com o 400+saldo da Anthropic, `ollamaFailure` com o 404 de modelo em falta)
+  cobre os códigos reais de cada serviço.
+
+5 testes novos em `tests/assistant/deepseek.test.ts` para `collect()`: juntar
+argumentos partidos por vários eventos, texto e ferramenta na mesma passagem,
+JSON malformado a perder o pedido, pedido sem nome ignorado, e o fallback do
+`id` para o nome. Duas observações que não chegam a bug, anotadas para não se
+reverem: `firstInChain` está exportado e testado mas nunca é chamado em
+produção (`setChain` usa o equivalente `chain[0]`); e depois de uma exaustão
+completa da cadeia o provedor ativo não volta ao primeiro (comportamento em
+`ai-service.ts`, já revisto como item 15 — pode ser intencional). `tsc --noEmit`
+limpo, `eslint .` 0 erros (11 avisos pré-existentes), `vitest run` 1710/1710.

@@ -9,6 +9,7 @@ import {
 
 import {
   buildMessages,
+  collect,
   DeepSeekProvider,
   parseEventLine,
   readStream,
@@ -56,6 +57,11 @@ function streamOf(...chunks: readonly string[]): ReadableStream<Uint8Array> {
 /** Uma linha de evento com o texto pedido. */
 function event(content: string): string {
   return `data: ${JSON.stringify({ choices: [{ delta: { content } }] })}\n`;
+}
+
+/** Uma linha de evento com o `delta` pedido (texto e/ou ferramentas). */
+function deltaLine(delta: Record<string, unknown>): string {
+  return `data: ${JSON.stringify({ choices: [{ delta }] })}\n`;
 }
 
 /** Um `fetch` que responde o que se lhe mandar, sem tocar na rede. */
@@ -124,6 +130,74 @@ describe('montar a resposta', () => {
     }
 
     expect(parts).toEqual([]);
+  });
+});
+
+describe('collect (ferramentas)', () => {
+  it('junta os argumentos de uma ferramenta partidos por vários eventos', async () => {
+    // Os argumentos chegam aos bocados, como o modelo os escreve. Só se podem
+    // interpretar no fim — aqui confirma-se que a acumulação os reconstrói.
+    const body = streamOf(
+      deltaLine({ tool_calls: [{ index: 0, id: 'call_1', function: { name: 'abrir_app', arguments: '' } }] }),
+      deltaLine({ tool_calls: [{ index: 0, function: { arguments: '{"nome":"' } }] }),
+      deltaLine({ tool_calls: [{ index: 0, function: { arguments: 'bloco de notas"}' } }] }),
+    );
+
+    const result = await collect(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toHaveLength(1);
+    expect(result.toolCalls[0]).toEqual({
+      id: 'call_1',
+      name: 'abrir_app',
+      args: { nome: 'bloco de notas' },
+    });
+  });
+
+  it('devolve texto e pedido de ferramenta na mesma passagem', async () => {
+    const received: string[] = [];
+    const body = streamOf(
+      deltaLine({
+        content: 'Vou abrir.',
+        tool_calls: [{ index: 0, id: 'c1', function: { name: 'abrir_app', arguments: '{}' } }],
+      }),
+    );
+
+    const result = await collect(body, undefined, (chunk) => received.push(chunk));
+
+    expect(received.join('')).toBe('Vou abrir.');
+    expect(result.text).toBe('Vou abrir.');
+    expect(result.toolCalls).toEqual([{ id: 'c1', name: 'abrir_app', args: {} }]);
+  });
+
+  it('argumentos que não fecham em JSON válido não chegam a correr', async () => {
+    const body = streamOf(
+      deltaLine({ tool_calls: [{ index: 0, id: 'c1', function: { name: 'abrir_app', arguments: '{"nome":' } }] }),
+    );
+
+    const result = await collect(body, undefined, () => undefined);
+
+    // Correr uma ferramenta com valores a metade é pior do que perdê-la.
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('um pedido sem nome de ferramenta é ignorado', async () => {
+    const body = streamOf(
+      deltaLine({ tool_calls: [{ index: 0, function: { arguments: '{}' } }] }),
+    );
+
+    const result = await collect(body, undefined, () => undefined);
+
+    expect(result.toolCalls).toEqual([]);
+  });
+
+  it('sem id, o nome serve de identificação', async () => {
+    const body = streamOf(
+      deltaLine({ tool_calls: [{ index: 0, function: { name: 'abrir_app', arguments: '{}' } }] }),
+    );
+
+    const result = await collect(body, undefined, () => undefined);
+
+    expect(result.toolCalls[0]?.id).toBe('abrir_app');
   });
 });
 
