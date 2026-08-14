@@ -39,6 +39,8 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
+**Em curso — A camada de plataforma (`src/platform/`, ~1586 linhas) — DeepSeek (14/08/2026 05:38)**. A ponte entre a app e o sistema operativo: ficheiros (`tauri-adapter-base.ts`, 536), a queda web (`web-adapter.ts`, 290), o contrato (`platform-adapter.ts`, 222), diálogos nativos, anexos, a política de URLs e a deteção de plataforma. Nunca revista como um todo por ninguém de fora — só o `secretSet`/`secretDelete` foram tocados de passagem na revisão do Obsidian. Fronteiras de caminhos (`join`/`canonicalize`), o cofre de segredos, o armazenamento WebAuthn e as origens permitidas são os pontos onde esta classe de código costuma ter o bug.
+
 ## Precisa de decisão da pessoa — não construir sem perguntar
 
 ### Wake word configurável (escuta contínua)
