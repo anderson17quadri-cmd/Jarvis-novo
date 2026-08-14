@@ -101,8 +101,6 @@ antes de corrigir, e confirmar ao vivo antes de dar como resolvido.
 
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
-### 15. Métricas do sistema (Rust `system/monitor.rs` + `metrics.rs`, TS `system-service.ts` + `use-system-metrics.ts` + `use-system-store.ts`) — revisão adversarial — DeepSeek #2 (14/08/2026)
-
 ### 15. Email real (IMAP + SMTP no Rust, Peça 8 Lote 2, commit e943a30) — revisão adversarial — DeepSeek (14/08/2026)
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
@@ -132,6 +130,22 @@ e dados guardados — exigem autorização explícita antes de se desenhar
 sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Métricas do sistema (Rust `system/monitor.rs` + `metrics.rs`, TS `system-service.ts` + `use-system-metrics.ts` + `use-system-store.ts`) — revisão adversarial — DeepSeek #2 — sem commit de código
+
+Revisão a sério da cadeia que mede o sistema, nunca revista por ninguém de
+fora e **sem um único teste Rust**. **Nada de funcional a corrigir** — confirmado
+limpo ponto a ponto: `percent()` guarda divisão por zero; mutexes sem
+aninhamento (sem deadlock) e envenenados viram erro; primeira leitura a zero é
+documentada; ciclo de vida da sondagem (`subscribe`/`start`/`stop`/`setPaused`/
+`setInterval`) fecha em todos os caminhos e o `setInterval` de `start()` não se
+sombreia com o método; `get_top_processes` com `clamp(1, 50)`; `SystemMonitor`
+`manage`d e comandos registados nos dois ramos; espelho TS/Rust casado campo a
+campo. O único achado é cosmético — o aviso "pré-existente" de duas sessões é o
+`clippy::for_kv_map` em `monitor.rs:135`, não bug, deixado ficar. Verificação:
+`tsc` limpo, `eslint` 0 erros, `vitest` 1737/1737, `cargo check` limpo. Detalhe
+em `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: métricas do
+sistema").
 
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 

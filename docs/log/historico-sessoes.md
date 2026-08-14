@@ -5446,3 +5446,54 @@ utilizador confirmar que agora ouve a voz do sistema com o serviço
 desligado, e a notificação a explicar porquê. O passo que resolve de
 vez, do lado dele, continua a ser arrancar `voice-clone-service/run.ps1`
 para ter a voz clonada de volta.
+
+## 2026-08-14 — Revisão a sério: métricas do sistema (Rust `system/monitor.rs` + TS `system-service.ts`)
+
+Revisão adversarial da cadeia que mede o sistema — Rust
+(`system/metrics.rs` + `monitor.rs`, comando `commands/system.rs`) e o lado
+TypeScript (`system-service.ts`, `use-system-metrics.ts`, `use-system-store.ts`,
+`use-system-state-store.ts`), mais a simulação do browser. Nunca revista por
+ninguém de fora, e **sem um único teste Rust** (só `browser.rs`, `files.rs`,
+`obsidian.rs` e `terminal/session.rs` têm `#[cfg(test)]`). É a peça que alimenta
+o Monitor de recursos e o ritmo de sondagem dos estados do sistema.
+
+**Nada de funcional a corrigir — confirmado limpo, ponto a ponto:**
+- **Divisão por zero**: `percent()` (metrics.rs) devolve 0 quando o total é 0;
+  disco usa `saturating_sub` para `used` nunca exceder `total`.
+- **Concorrência**: cada `Mutex` do monitor é tomado e largado dentro do seu
+  método (sem aninhamento → sem deadlock); lock envenenado vira `Error` em vez
+  de pânico (`lock()`).
+- **Primeira leitura**: CPU/ritmo de rede a zero no primeiro `snapshot()` é
+  comportamento documentado (`mark_refresh` devolve 0 sem leitura anterior) e o
+  ritmo de rede nunca divide por zero (guarda `elapsed_secs <= 0`).
+- **Ciclo de vida da sondagem**: `subscribe`/`start`/`stop`/`setPaused`/
+  `setInterval` fecham em todos os caminhos — último subscritor a sair pára o
+  `setInterval`, `setPaused(false)` retoma só com ouvintes, `setInterval`
+  reinicia o temporizador em vez de adiar o novo ritmo.
+- **`setInterval` não se sombreia**: dentro de `start()`, o `setInterval(...)`
+  sem `this.` resolve para a função global, não para o método da classe — o
+  temporizador usa mesmo o ritmo pretendido.
+- **Pausa global partilhada**: `setPaused` é um booleano único do serviço, mas
+  todos os consumidores partilham o mesmo `document.hidden` (`useIsVisible`) —
+  num só WebView não há dois valores a pisarem-se.
+- **Limites**: `get_top_processes` faz `clamp(1, 50)` no Rust; `sort_by` com
+  `partial_cmp` + `unwrap_or(Equal)` não rebenta com `f32` que nunca é NaN.
+- **Estado gerido**: `SystemMonitor` é `manage`d no builder partilhado e os três
+  comandos estão registados nos dois ramos (`desktop`/`not(desktop)`).
+- **Espelho TS/Rust**: `types/system.ts` casa com os `#[serde(rename_all =
+  "camelCase")]` do Rust, campo a campo.
+
+Casos que tentei partir sem sucesso: intervalo 0/negativo a martelar a sondagem
+(os ritmos vêm de `SYSTEM_STATES`, todos ≥ 1000 ms), subscrição dupla a duplicar
+o temporizador (guardado por `timer !== null`), desmontar em segundo plano a
+deixar `paused` preso (o `setPaused(false)` do mount seguinte retoma), e a
+leitura da bateria/USB/disco com valores agressivos (tudo `saturating`).
+
+**Achado único, cosmético**: o aviso que duas sessões anteriores apontaram como
+"pré-existente em `system/monitor.rs`" é o `clippy::for_kv_map` na linha 135
+(`for (_, data) in networks.iter()` → `networks.values()`). Não é bug, e deixei
+ficar — limpeza sem correção não se faz.
+
+**Verificação**: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes noutros ficheiros), `vitest run` 1737/1737, `cargo check` limpo,
+`cargo clippy` só com o `for_kv_map` acima.
