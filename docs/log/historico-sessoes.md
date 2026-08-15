@@ -5991,3 +5991,41 @@ executor no `App.tsx` a passar o passo pela porta de presença.
 **Verificação**: `tsc --noEmit` limpo; 1758 testes verdes (135 ficheiros);
 `cargo test --lib` 24 verdes (3 novos em `commands::control`). Rato/teclado
 (3.4) e visão do ecrã (3.3/3.5) ficam para as sub-fases seguintes.
+
+## 2026-08-14 — Auditoria (continuação): aviso do "navegador controlado" desatualizado depois do abrir_navegador
+
+Ao verificar o trabalho da DeepSeek desta sessão a sério (não só correr
+os gates), revi a peça de maior risco que ela tinha acabado de tocar:
+Fase 3.2 do Controlo Direto (`open_path`, Rust) e a ferramenta nova
+`abrir_navegador`. O código em si está bem desenhado — `open_path`
+canonicaliza e confirma que o caminho existe antes de entregar ao
+abridor do sistema (nunca `std::process::Command`, só `open::that`,
+sem forma de esconder um executável arbitrário por trás de um caminho);
+`openPath` no `App.tsx` passa pela porta de presença do
+`directControlService` (`requestStep`, que só deixa o passo chegar ao
+overlay com o controlo direto ligado e sessão ativa, e `executeStep`
+confere a porta outra vez antes de executar a sério — a mesma
+disciplina de "a fronteira vive na função, não em quem chama" fixada
+antes nesta sessão).
+
+**Um achado real, menor**: `abrir_navegador` (abre o navegador do
+sistema a sério, `shellOpen` do Tauri, só `https`/`mailto`) partilha o
+mesmo interruptor de Privacidade que `abrir_pagina` (busca só o texto,
+nunca abre nada visível) — mas o texto do aviso e a notificação de
+primeira ativação continuavam a descrever só o comportamento antigo:
+"Não clica em nada, não preenche formulários, não navega por conta
+própria — só busca e lê a página que pedires." Isso deixou de ser
+verdade assim que `abrir_navegador` entrou: o mesmo interruptor agora
+também abre uma janela de navegador viva, fora do controlo do
+assistente a partir do momento em que abre. Não é uma falha de
+segurança (o esquema continua limitado, o Controlo Direto não entra em
+jogo aqui), mas é o mesmo tipo de lacuna de honestidade já encontrado
+antes nesta auditoria (SPEC.md a dizer coisas que já não eram
+verdade): o consentimento que a pessoa dá ao ligar o interruptor já não
+descrevia o que o interruptor realmente autoriza.
+
+**Corrigido**: o texto da secção e a notificação de primeira ativação
+(`PrivacyWindow.tsx`, `WebBrowserSection`) passam a descrever as duas
+capacidades — buscar texto, e abrir o navegador a sério — em vez de só
+a primeira. 14 testes existentes (`tests/diagnostics/privacy.test.tsx`)
+continuam a passar, nenhum dependia do texto exato antigo.
