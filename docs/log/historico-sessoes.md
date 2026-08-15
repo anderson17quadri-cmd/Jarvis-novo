@@ -6029,3 +6029,48 @@ descrevia o que o interruptor realmente autoriza.
 capacidades — buscar texto, e abrir o navegador a sério — em vez de só
 a primeira. 14 testes existentes (`tests/diagnostics/privacy.test.tsx`)
 continuam a passar, nenhum dependia do texto exato antigo.
+
+## 2026-08-15 — Item 19: a voz clonada não arrancava sozinha — órfão preso na 8090 a fingir que estava tudo bem
+
+O item 19 pedia para abrir o terminal e resolver, sem perguntas ao
+utilizador: a voz clonada não arrancava sozinha e a app caía na voz
+robótica do sistema. O `tauri-dev.err.log` tinha o rasto: quatro vezes
+`[jarvis] voice-clone-service já está a correr — não arranco outro.`,
+sempre que a app subia. Não havia nenhum serviço a funcionar a sério —
+havia um **órfão** a ocupar a porta 8090: um `uvicorn server:app`
+deixado para trás por uma sessão anterior (reparentado para um
+`chrome.exe`), com o contexto CUDA envenenado pelo reset da GPU do item
+20. O `ja_a_correr()` antigo era um `TcpStream::connect_timeout` nu: a
+porta abria, o processo respondia, e a app dava-o como "a correr" sem
+perguntar mais nada.
+
+O pior é que o `/health` não ajudava sozinho: `server.py` devolve sempre
+`"ok": True` (hardcoded), e o `modelo_carregado` continuava `true` —
+porque o objeto do modelo existia em memória, só o contexto CUDA é que
+estava morto. `/falar` é que falhava (`torch.AcceleratorError: CUDA
+error: device-side assert triggered`) e aí a app caía no fallback
+robótico, que é comportamento correto mas escondia que o serviço
+clonado nunca chegou a subir.
+
+**Corrigido em `src-tauri/src/voice_clone.rs`**: `servico_saudavel()`
+deixou de confiar no TCP ou no `ok:true` sozinho — agora, se a porta
+responder, prova-se a sério com uma síntese mínima (`POST /falar` com
+uma palavra e uma voz pronta do modelo, confirmando o cabeçalho
+`RIFF`/`WAVE` de volta). Só um serviço que realmente sintetiza é dado
+como saudável; caso contrário, `matar_servico_preso()` mata o órfão
+(identificado pela linha de comando `uvicorn server:app 8090`, não só
+pela porta — para nunca matar um processo alheio que esteja a usar a
+8090) e arranca-se um novo. A verificação de voz pronta foi confirmada
+ao vivo (síntese de "a" com a voz "Ana Florence" devolveu WAV válido).
+5 testes Rust (o `e_wav` do cabeçalho, mais os 4 já existentes).
+
+De caminho, a suite de testes tinha um teste flaky pré-existente em
+`tests/auth/login-screen.test.tsx` (a mensagem de negação do 2FA sem
+chave registada é a mais longa, e o `findByText` por texto exato
+esperava o typewriter terminar os ~110 caracteres dentro de 5s — sob a
+carga da suite inteira, às vezes não chegava). Mudou-se a asserção para
+uma regex do prefixo distintivo, o mesmo padrão que o teste vizinho já
+usava. Sem isto, a suite inteira não passava de forma fiável.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1758/1758,
+`cargo check` limpo, `cargo test --lib voice_clone` 5/5.

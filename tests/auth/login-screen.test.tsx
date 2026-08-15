@@ -262,7 +262,7 @@ describe('LoginScreen', () => {
 
       expect(
         await screen.findByText(
-          'O segundo fator está ligado, mas não há chave física registada para o confirmar — a palavra-passe sozinha não chega.',
+          /O segundo fator está ligado, mas não há chave física registada/,
           {},
           { timeout: 5_000 },
         ),
