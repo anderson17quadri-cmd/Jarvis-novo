@@ -46,7 +46,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 22. Isolamento por plugin no armazenamento — pré-requisito do item 23 — `[livre]`
+### 22. Isolamento por plugin no armazenamento — pré-requisito do item 23 — DeepSeek (15/08/2026)
 
 `storageService` guarda tudo num `jarvis.store.json` sem namespace por
 plugin — hoje já é um risco em teoria (um plugin podia ler/escrever por
