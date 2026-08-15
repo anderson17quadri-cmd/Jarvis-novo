@@ -6099,3 +6099,34 @@ novos testes para o travão de mão (`direct-control-service.test.ts`) e para os
 dois provedores de visão (`vision-provider.test.ts`). Continua por fazer a
 validação ao vivo no PC real (nativo testado em Rust, app Tauri não arrancou
 nesta sessão).
+
+## 2026-08-15 — Item 21: a assinatura de plugins passa a cobrir o código
+
+Decisão "opção (a)" da pergunta 1 (14/08/2026), construída agora. A
+assinatura Ed25519 cobria só o manifesto — trocar o `code` por outro
+JavaScript qualquer não invalidava a verificação, e a interface dizia
+"Assinatura verificada" como se o plugin inteiro estivesse autenticado. O
+achado está na entrada de 14/08 ("Revisão a sério: a verificação de
+assinatura de plugins") e em `docs/log/perguntas-para-o-utilizador.md`.
+
+**O que mudou**: `signPlugin`/`verifyPluginSignature`/`verifySignedPluginPackage`
+(substituem `signManifest`/`verifyManifestSignature`/`verifySignedManifest`)
+assinam e verificam sobre `canonicalManifestBytes(manifest)` seguido do hash
+SHA-256 dos bytes UTF-8 do `code` — o código entra pelo hash (32 bytes fixos),
+não em bruto, para não haver ambiguidade de fronteira nem depender de como
+`JSON.stringify` escaparia o código entre motores. O `getSignatureStatus` e o
+`verifyAndInstallPlugin` falham para o lado seguro: assinatura presente mas sem
+`code` → `assinatura-invalida` (não se prova o código). O fluxo de instalação
+de ficheiro (`install-from-file.ts`), a store (`use-plugin-store.ts`), o
+catálogo externo (`plugin-catalog.ts`) e o cartão (`PluginCard.tsx`) entregam o
+`code` à verificação. A mensagem da interface ("Assinatura verificada") já não
+mente: agora a assinatura cobre o plugin inteiro.
+
+**Testes**: `signature.test.ts` e `install-from-file.test.ts` reescritos para a
+nova API — provas novas de que código diferente produz assinaturas diferentes,
+código alterado depois de assinar é recusado, e assinatura sem código é
+recusada; o `describe` antigo que codificava o bug ("o código pode mudar") foi
+invertido para provar o contrário.
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
+1779/1779.

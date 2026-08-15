@@ -97,6 +97,7 @@ export async function selectAndInstallPluginFile(): Promise<InstallFromFileResul
     signerPublicKey: pkg.signerPublicKey,
     isExternal: true,
     manifest: pkg.manifest,
+    code: pkg.code,
   });
 
   if (!result.ok) {

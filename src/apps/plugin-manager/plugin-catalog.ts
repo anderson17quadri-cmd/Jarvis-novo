@@ -85,7 +85,7 @@ export interface CatalogEntry {
    */
   readonly allowedDomains?: readonly string[];
   /**
-   * Assinatura Ed25519 do manifesto (64 bytes raw) em base64.
+   * Assinatura Ed25519 do manifesto e do código (64 bytes raw) em base64.
    *
    * Se ausente, o plugin é tratado como "não assinado" — aceite no catálogo
    * local (confia-se na origem), mas recusado se vier de uma fonte externa.
@@ -104,6 +104,13 @@ export interface CatalogEntry {
    * verificação criptográfica.
    */
   readonly signerName?: string;
+  /**
+   * Código JavaScript do plugin, só para plugins instalados de ficheiro.
+   *
+   * Vive apenas nas entradas sintéticas de `getExternalCatalogEntries`. A
+   * assinatura cobre `manifest` + `code`, por isso a verificação precisa dele.
+   */
+  readonly code?: string;
 }
 
 /**
@@ -611,6 +618,7 @@ export function getExternalCatalogEntries(): readonly CatalogEntry[] {
       requires: [],
       signature: pkg.signature,
       signerPublicKey: pkg.signerPublicKey,
+      code: pkg.code,
     };
 
     if (pkg.signerName) {

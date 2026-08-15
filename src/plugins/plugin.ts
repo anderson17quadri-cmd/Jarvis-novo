@@ -51,25 +51,6 @@ export interface PluginManifest {
 }
 
 /**
- * Manifesto assinado pelo autor.
- *
- * A assinatura cobre a representação canónica do `manifest` (chaves ordenadas,
- * sem espaços). `signerPublicKey` é a chave pública Ed25519 em base64 (32 bytes
- * raw). `signature` são os 64 bytes da assinatura Ed25519, também em base64.
- *
- * Ver `src/plugins/signature.ts` para gerar, assinar e verificar.
- */
-export interface SignedManifest {
-  readonly manifest: PluginManifest;
-  /** Assinatura Ed25519 (64 bytes raw) codificada em base64. */
-  readonly signature: string;
-  /** Chave pública do signatário (32 bytes raw) codificada em base64. */
-  readonly signerPublicKey: string;
-  /** Nome legível do signatário — para a interface, não para verificação. */
-  readonly signerName?: string;
-}
-
-/**
  * Um plugin instalado.
  *
  * As janelas que contribui entram no registo de aplicações — daí reutilizar
@@ -97,12 +78,11 @@ export interface PluginManager {
  * assinado (manifesto + assinatura + chave pública do signatário), mais o
  * código JavaScript que corre dentro da sandbox.
  *
- * A assinatura cobre só o `manifest` — o `code` não faz parte da assinatura
- * porque não é serializado na forma canónica (pode conter caracteres que o
- * `JSON.stringify` escape de forma diferente entre engines). Para plugins
- * externos, a assinatura do manifesto é o suficiente para provar a
- * identidade do autor; o código corre num iframe restrito e não pode fazer
- * nada além do que o manifesto declara nas permissões.
+ * A assinatura cobre o `manifest` **e** o `code` — o código entra pelo hash
+ * SHA-256 dos seus bytes UTF-8 (não por uma serialização JSON), por isso não
+ * há o problema de `JSON.stringify` escapar caracteres de forma diferente
+ * entre engines. Trocar o código por outro JavaScript qualquer invalida a
+ * assinatura, exatamente como trocar o manifesto. Ver `src/plugins/signature.ts`.
  */
 export interface PluginPackage {
   readonly manifest: PluginManifest;

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import { PLUGIN_CATALOG, toManifest } from '@/apps/plugin-manager/plugin-catalog';
 import type { PluginManifest } from '@/plugins/plugin';
-import { verifySignedManifest, type SignatureStatus } from '@/plugins/signature';
+import { verifySignedPluginPackage, type SignatureStatus } from '@/plugins/signature';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { pluginService } from '@/services/plugin-service';
@@ -178,6 +178,13 @@ export async function verifyAndInstallPlugin(params: {
    * a assinatura de um plugin externo não pode ser verificada.
    */
   readonly manifest?: PluginManifest;
+  /**
+   * Código JavaScript contra o qual verificar a assinatura.
+   *
+   * Obrigatório sempre que houver assinatura: a assinatura cobre manifesto e
+   * código. Sem ele não se prova que o código está coberto, e recusa-se.
+   */
+  readonly code?: string;
 }): Promise<{ ok: boolean; status: SignatureStatus }> {
   const store = usePluginStore.getState();
 
@@ -204,8 +211,17 @@ export async function verifyAndInstallPlugin(params: {
       return { ok: false, status: 'assinatura-invalida' };
     }
 
-    const status = await verifySignedManifest({
+    if (typeof params.code !== 'string') {
+      // Assinatura presente mas sem código para a verificar: não se prova que
+      // o código está coberto, e aceitar seria voltar a confiar só no
+      // manifesto — o buraco que esta correção fecha.
+      logService.audit(`Assinatura de ${params.id}: sem código para verificar`, 'recusado');
+      return { ok: false, status: 'assinatura-invalida' };
+    }
+
+    const status = await verifySignedPluginPackage({
       manifest,
+      code: params.code,
       signature: params.signature,
       signerPublicKey: params.signerPublicKey,
     });

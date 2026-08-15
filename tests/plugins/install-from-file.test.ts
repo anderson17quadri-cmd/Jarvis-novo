@@ -16,7 +16,8 @@ import {
 import {
   clearRevokedKeys,
   generateSigningKeyPair,
-  signManifest,
+  signPlugin,
+  verifySignedPluginPackage,
 } from '@/plugins/signature';
 import { validateManifest, validatePackage } from '@/plugins/install-from-file';
 import type { PluginManifest, PluginPackage } from '@/plugins/plugin';
@@ -63,20 +64,24 @@ function testManifest(overrides?: Partial<PluginManifest>): PluginManifest {
   };
 }
 
+/** Código mínimo mas real — a assinatura cobre `manifest` + este `code`. */
+const CODE =
+  'window.addEventListener("message", (e) => { if (e.data?.type === "core.run") { parent.postMessage({ type: "core.notify", requestId: "t", payload: { titulo: "OK", corpo: "Teste" }}, "*"); } });';
+
 /** Cria um pacote assinado e válido. */
 async function signedPackage(
   overrides?: Partial<PluginManifest>,
 ): Promise<{ pkg: PluginPackage; privateKey: string }> {
   const pair = await generateSigningKeyPair();
   const manifest = testManifest(overrides);
-  const signature = await signManifest(manifest, pair.privateKey);
+  const signature = await signPlugin(manifest, CODE, pair.privateKey);
 
   const pkg: PluginPackage = {
     manifest,
     signature,
     signerPublicKey: pair.publicKey,
     signerName: 'Testador',
-    code: 'window.addEventListener("message", (e) => { if (e.data?.type === "core.run") { parent.postMessage({ type: "core.notify", requestId: "t", payload: { titulo: "OK", corpo: "Teste" }}, "*"); } });',
+    code: CODE,
   };
 
   return { pkg, privateKey: pair.privateKey };
@@ -337,6 +342,26 @@ describe('verifyAndInstallPlugin — isExternal', () => {
     expect(result.status).toBe('assinatura-invalida');
   });
 
+  it('plugin externo com assinatura e manifesto mas sem código: recusado', async () => {
+    const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
+    const pair = await generateSigningKeyPair();
+    const manifest = testManifest({ id: 'externo-sem-codigo' });
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
+
+    // Assinatura e manifesto presentes, mas sem o código que a assinatura cobre
+    // — não se prova que o código está coberto, e recusa-se.
+    const result = await verifyAndInstallPlugin({
+      id: manifest.id,
+      signature,
+      signerPublicKey: pair.publicKey,
+      isExternal: true,
+      manifest,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe('assinatura-invalida');
+  });
+
   it('plugin externo com assinatura inválida: recusado', async () => {
     const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
     const pair = await generateSigningKeyPair();
@@ -348,6 +373,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
       signerPublicKey: pair.publicKey,
       isExternal: true,
       manifest,
+      code: CODE,
     });
 
     expect(result.ok).toBe(false);
@@ -359,7 +385,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
     const { revokeKey } = await import('@/plugins/signature');
     const pair = await generateSigningKeyPair();
     const manifest = testManifest({ id: 'externo-chave-revogada' });
-    const signature = await signManifest(manifest, pair.privateKey);
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
 
     revokeKey(pair.publicKey, 'Chave de teste comprometida.');
 
@@ -369,6 +395,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
       signerPublicKey: pair.publicKey,
       isExternal: true,
       manifest,
+      code: CODE,
     });
 
     expect(result.ok).toBe(false);
@@ -379,7 +406,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
     const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
     const pair = await generateSigningKeyPair();
     const manifest = testManifest({ id: 'externo-valido' });
-    const signature = await signManifest(manifest, pair.privateKey);
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
 
     const result = await verifyAndInstallPlugin({
       id: manifest.id,
@@ -387,6 +414,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
       signerPublicKey: pair.publicKey,
       isExternal: true,
       manifest,
+      code: CODE,
     });
 
     expect(result.ok).toBe(true);
@@ -397,7 +425,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
     const { verifyAndInstallPlugin } = await import('@/stores/use-plugin-store');
     const pair = await generateSigningKeyPair();
     const manifest = testManifest({ id: 'externo-ja-instalado' });
-    const signature = await signManifest(manifest, pair.privateKey);
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
 
     // Primeira instalação: aceite.
     const r1 = await verifyAndInstallPlugin({
@@ -406,6 +434,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
       signerPublicKey: pair.publicKey,
       isExternal: true,
       manifest,
+      code: CODE,
     });
     expect(r1.ok).toBe(true);
 
@@ -416,6 +445,7 @@ describe('verifyAndInstallPlugin — isExternal', () => {
       signerPublicKey: pair.publicKey,
       isExternal: true,
       manifest,
+      code: CODE,
     });
     expect(r2.ok).toBe(false);
   });
@@ -436,6 +466,7 @@ describe('fluxo completo de instalação de ficheiro (integração)', () => {
       signerPublicKey: pkg.signerPublicKey,
       isExternal: true,
       manifest: pkg.manifest,
+      code: pkg.code,
     });
     expect(result.ok).toBe(true);
 
@@ -483,35 +514,38 @@ describe('fluxo completo de instalação de ficheiro (integração)', () => {
   });
 });
 
-// ─── Assinatura cobre o manifesto, não o código ──────────────────────────────
+// ─── A assinatura cobre o manifesto E o código ──────────────────────────────
 
-describe('a assinatura só cobre o manifesto — o código pode mudar', () => {
-  it('código diferente com o mesmo manifesto: assinatura continua válida', async () => {
+describe('a assinatura cobre o manifesto e o código', () => {
+  it('código diferente do assinado: assinatura inválida', async () => {
     const pair = await generateSigningKeyPair();
-    const manifest = testManifest({ id: 'codigo-diferente' });
-    const signature = await signManifest(manifest, pair.privateKey);
+    const manifest = testManifest({ id: 'codigo-adulterado' });
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
 
-    const pkg: PluginPackage = {
+    // Código trocado depois de assinar — o hash muda e a assinatura tem de
+    // deixar de bater. É o buraco que esta correção fecha.
+    const status = await verifySignedPluginPackage({
       manifest,
+      code: 'console.log("versão 2 do código");',
       signature,
       signerPublicKey: pair.publicKey,
-      // Código diferente — não faz parte da assinatura.
-      code: 'console.log("versão 2 do código");',
-    };
+    });
 
-    // A assinatura verifica o manifesto, não o código.
-    const { verifySignedManifest } = await import('@/plugins/signature');
-    const status = await verifySignedManifest({
-      manifest: pkg.manifest,
-      signature: pkg.signature,
-      signerPublicKey: pkg.signerPublicKey,
+    expect(status).toBe('assinatura-invalida');
+  });
+
+  it('código exato ao que foi assinado: assinatura válida', async () => {
+    const pair = await generateSigningKeyPair();
+    const manifest = testManifest({ id: 'codigo-exato' });
+    const signature = await signPlugin(manifest, CODE, pair.privateKey);
+
+    const status = await verifySignedPluginPackage({
+      manifest,
+      code: CODE,
+      signature,
+      signerPublicKey: pair.publicKey,
     });
 
     expect(status).toBe('assinado-valido');
-
-    // E o pacote guarda-se e carrega-se normalmente.
-    saveExternalPlugin(pkg);
-    const loaded = loadExternalPlugin('codigo-diferente');
-    expect(loaded?.code).toBe('console.log("versão 2 do código");');
   });
 });

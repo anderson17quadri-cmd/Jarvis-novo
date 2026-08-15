@@ -46,9 +46,15 @@ export function PluginCard({ entry, capabilities }: PluginCardProps): React.JSX.
   useEffect(() => {
     let cancelled = false;
     const manifest = toManifest(entry);
-    const params: { manifest: typeof manifest; signature?: string; signerPublicKey?: string } = {
+    const params: {
+      manifest: typeof manifest;
+      code?: string;
+      signature?: string;
+      signerPublicKey?: string;
+    } = {
       manifest,
     };
+    if (entry.code) params.code = entry.code;
     if (entry.signature) params.signature = entry.signature;
     if (entry.signerPublicKey) params.signerPublicKey = entry.signerPublicKey;
     void getSignatureStatus(params).then((status) => {

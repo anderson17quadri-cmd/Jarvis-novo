@@ -9,10 +9,12 @@
  *   - Chave privada:  PKCS#8, codificada em base64.
  *   - Assinatura:     64 bytes raw, codificada em base64.
  *
- * A assinatura cobre o JSON canónico do manifesto:
- * `JSON.stringify(manifesto, Object.keys(manifesto).sort())` — sem espaços
- * extra, com as chaves sempre na mesma ordem, para o mesmo manifesto produzir
- * sempre os mesmos bytes independentemente de quem o serializou.
+ * A assinatura cobre o manifesto canónico **e** o código do plugin:
+ * `canonicalManifestBytes(manifesto)` seguido do hash SHA-256 do `code` (UTF-8).
+ * O manifesto usa `JSON.stringify(manifesto, Object.keys(manifesto).sort())` —
+ * sem espaços extra, chaves sempre na mesma ordem. O código entra pelo hash em
+ * vez de em bruto, para não haver ambiguidade de fronteira nem depender de como
+ * `JSON.stringify` escapa caracteres entre engines.
  *
  * A lista de chaves revogadas vive em localStorage com uma chave fixa. É
  * simples e local, como pedido — nada de rede nem de CRL distribuída.
@@ -29,9 +31,11 @@ export type SignatureStatus =
   | 'assinatura-invalida'
   | 'chave-revogada';
 
-/** Um manifesto assinado pelo autor. */
-export interface SignedManifest {
+/** Um pacote assinado pelo autor — manifesto e código cobertos pela assinatura. */
+export interface SignedPluginPackage {
   readonly manifest: PluginManifest;
+  /** Código JavaScript do plugin, na forma exata em que é distribuído. */
+  readonly code: string;
   /** Assinatura Ed25519 (64 bytes raw) codificada em base64. */
   readonly signature: string;
   /** Chave pública do signatário (32 bytes raw) codificada em base64. */
@@ -82,42 +86,46 @@ export async function generateSigningKeyPair(): Promise<GeneratedKeyPair> {
 // ─── Assinar ────────────────────────────────────────────────────────────────
 
 /**
- * Assina um manifesto com a chave privada dada.
+ * Assina um plugin (manifesto + código) com a chave privada dada.
  *
- * A assinatura cobre a representação canónica do manifesto — `JSON.stringify`
- * com as chaves ordenadas, sem espaços extra. Isto garante que o mesmo
- * manifesto produz sempre a mesma assinatura, independentemente da ordem de
- * inserção das chaves em memória.
+ * A assinatura cobre a representação canónica do manifesto seguida do hash
+ * SHA-256 do código. Isto garante que o mesmo par (manifesto, código) produz
+ * sempre a mesma assinatura, e que trocar o código por outro JavaScript
+ * invalida a assinatura — o que a versão anterior (só manifesto) deixava
+ * passar.
  */
-export async function signManifest(
+export async function signPlugin(
   manifest: PluginManifest,
+  code: string,
   privateKeyBase64: string,
 ): Promise<string> {
   const privateKey = await importPrivateKey(privateKeyBase64);
-  const canonical = canonicalManifestBytes(manifest);
-  const signature = await crypto.subtle.sign({ name: 'Ed25519' }, privateKey, canonical);
+  const payload = await signedPayloadBytes(manifest, code);
+  const signature = await crypto.subtle.sign({ name: 'Ed25519' }, privateKey, payload);
   return arrayBufferToBase64(signature);
 }
 
 // ─── Verificar ──────────────────────────────────────────────────────────────
 
 /**
- * Verifica a assinatura de um manifesto contra a chave pública do signatário.
+ * Verifica a assinatura de um plugin (manifesto + código) contra a chave
+ * pública do signatário.
  *
  * Devolve `true` se a assinatura for matematicamente válida — **não** verifica
- * revogação. Usa `verifySignedManifest` para a verificação completa.
+ * revogação. Usa `verifySignedPluginPackage` para a verificação completa.
  */
-export async function verifyManifestSignature(
+export async function verifyPluginSignature(
   manifest: PluginManifest,
+  code: string,
   signatureBase64: string,
   publicKeyBase64: string,
 ): Promise<boolean> {
   try {
     const publicKey = await importPublicKey(publicKeyBase64);
-    const canonical = canonicalManifestBytes(manifest);
+    const payload = await signedPayloadBytes(manifest, code);
     const signature = base64ToArrayBuffer(signatureBase64);
 
-    return await crypto.subtle.verify({ name: 'Ed25519' }, publicKey, signature, canonical);
+    return await crypto.subtle.verify({ name: 'Ed25519' }, publicKey, signature, payload);
   } catch {
     // Chave mal formatada, assinatura com tamanho errado — não é válida.
     return false;
@@ -127,16 +135,17 @@ export async function verifyManifestSignature(
 /**
  * Verificação completa: assinatura + lista de revogação.
  *
- * Só devolve `assinado-valido` se a assinatura for matematicamente correta
- * **e** a chave não estiver na lista de revogação.
+ * Só devolve `assinado-valido` se a assinatura (sobre manifesto + código) for
+ * matematicamente correta **e** a chave não estiver na lista de revogação.
  */
-export async function verifySignedManifest(signed: SignedManifest): Promise<SignatureStatus> {
+export async function verifySignedPluginPackage(signed: SignedPluginPackage): Promise<SignatureStatus> {
   if (isKeyRevoked(signed.signerPublicKey)) {
     return 'chave-revogada';
   }
 
-  const valid = await verifyManifestSignature(
+  const valid = await verifyPluginSignature(
     signed.manifest,
+    signed.code,
     signed.signature,
     signed.signerPublicKey,
   );
@@ -154,6 +163,7 @@ export async function verifySignedManifest(signed: SignedManifest): Promise<Sign
  */
 export async function getSignatureStatus(entry: {
   readonly manifest: PluginManifest;
+  readonly code?: string;
   readonly signature?: string;
   readonly signerPublicKey?: string;
 }): Promise<SignatureStatus> {
@@ -161,8 +171,15 @@ export async function getSignatureStatus(entry: {
     return 'sem-assinatura';
   }
 
-  return verifySignedManifest({
+  // Assinatura presente mas sem código para a verificar: não se prova que o
+  // código está coberto, e aceitar seria voltar a confiar só no manifesto.
+  if (typeof entry.code !== 'string') {
+    return 'assinatura-invalida';
+  }
+
+  return verifySignedPluginPackage({
     manifest: entry.manifest,
+    code: entry.code,
     signature: entry.signature,
     signerPublicKey: entry.signerPublicKey,
   });
@@ -221,6 +238,29 @@ async function importPublicKey(base64: string): Promise<CryptoKey> {
 async function importPrivateKey(base64: string): Promise<CryptoKey> {
   const pkcs8 = base64ToArrayBuffer(base64);
   return crypto.subtle.importKey('pkcs8', pkcs8, { name: 'Ed25519' }, true, ['sign']);
+}
+
+/**
+ * O que se assina: o manifesto canónico seguido do hash SHA-256 do código.
+ *
+ * O código entra pelo hash (32 bytes fixos) e não em bruto: assim não há
+ * ambiguidade de fronteira entre as duas partes e a assinatura não depende de
+ * como um `JSON.stringify` qualquer escaparia o código — o hash é calculado
+ * sobre os bytes UTF-8 do `code` tal como ele é distribuído.
+ */
+async function signedPayloadBytes(manifest: PluginManifest, code: string): Promise<ArrayBuffer> {
+  const manifestBytes = new Uint8Array(canonicalManifestBytes(manifest));
+  const codeHash = await sha256(new TextEncoder().encode(code));
+  const combined = new Uint8Array(manifestBytes.length + codeHash.length);
+  combined.set(manifestBytes, 0);
+  combined.set(codeHash, manifestBytes.length);
+  return combined.buffer;
+}
+
+/** Hash SHA-256 dos bytes dados, via SubtleCrypto. */
+async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return new Uint8Array(digest);
 }
 
 /**

@@ -261,28 +261,30 @@ conteúdo de um plugin é sempre texto (JavaScript, HTML). O formato:
 }
 ```
 
-**A assinatura cobre só o `manifest`** — o `code` não entra na assinatura
-porque `JSON.stringify` pode escapar caracteres de forma diferente entre
-motores JavaScript, e porque o código corre num `<iframe sandbox>` e não
-pode fazer nada além do que as permissões do manifesto declaram. A
-assinatura do manifesto prova a identidade do autor; as permissões limitam
-o que o código pode fazer, independentemente do que ele contenha.
+**A assinatura cobre o `manifest` E o `code`** — desde 15/08/2026 (item 21
+da fila). O código entra pelo hash SHA-256 dos seus bytes UTF-8 (não em
+bruto, para não haver ambiguidade de fronteira nem depender de como
+`JSON.stringify` escaparia o código entre motores), colado a seguir ao
+manifesto canónico. Trocar o código por outro JavaScript qualquer invalida
+a assinatura — antes, a assinatura só cobria o manifesto e a interface dizia
+"Assinatura verificada" como se o plugin inteiro estivesse autenticado.
 
 **Como criar um `.jarvis-plugin` assinado:**
 
 ```typescript
-import { generateSigningKeyPair, signManifest } from './signature';
+import { generateSigningKeyPair, signPlugin } from './signature';
 
 const pair = await generateSigningKeyPair();
 const manifest = { id: 'meu-plugin', name: '...', ... };
-const signature = await signManifest(manifest, pair.privateKey);
+const code = 'window.addEventListener("message", ...);';
+const signature = await signPlugin(manifest, code, pair.privateKey);
 
 const pkg = {
   manifest,
   signature,
   signerPublicKey: pair.publicKey,
   signerName: 'O meu nome',
-  code: 'window.addEventListener("message", ...);',
+  code,
 };
 
 // Gravar como ficheiro .jarvis-plugin (JSON).
