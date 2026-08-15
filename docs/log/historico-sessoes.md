@@ -5815,3 +5815,179 @@ chaves sem as re-hidratar, deixando o restauro incompleto até reiniciar.
 Verificação: `tsc --noEmit` limpo. A única alteração é um comentário no
 `hydrate-all.ts` a documentar o que fica de fora e porquê (sem mudança de
 comportamento).
+
+## 2026-08-14 — Revisão a sério: o serviço de plugins (plugin-service.ts)
+
+Revisão adversarial de `src/services/plugin-service.ts` (ler/persistir o estado
+de plugins e as permissões recusadas), nunca revisto por ninguém de fora — a
+revisão da store de plugins (commit `c99becd`) cobriu as *ações*
+(`install`/`uninstall`/`setPermission`), não este serviço de fronteira.
+
+**Um bug real, corrigido: `load()` rebentava com armazenamento na forma
+errada.** O `load()` já tratava os dois formatos (lista antiga vs objeto novo),
+mas só conferia `Array.isArray(raw)` — um valor guardado na forma errada
+(`{}`, ou `{"installed": null}`, ou um objeto sem `deniedPermissions`) passava
+e rebentava de duas maneiras: `for (const entry of undefined)` no próprio
+`load()`, ou `deniedPermissions` devolvido `undefined` que o
+`selectPermissionDenied`/`setPermission` da store lia como `undefined[id]` e
+crashava. É a mesma classe de buraco já corrigida na sessão automática
+(commit `f120c82`) e no restauro de cópias (commit `d6bb7a8`): a fronteira
+aceitava uma forma que não devia. Agora `installed` não-lista cai em `[]` e
+`deniedPermissions` em falta cai em `{}`. 3 testes novos
+(`tests/services/plugin-service.test.ts`), confirmados a falhar contra o
+código antigo.
+
+O resto confirmado limpo: `getBuiltInState` repõe sempre os do sistema,
+plugins fora do catálogo (instalados de ficheiro) sobrevivem ao recarregar, e
+os dois formatos legítimos continuam a ler-se sem regressão.
+
+Verificação: `tsc --noEmit` limpo, `eslint .` 0 erros (11 avisos
+pré-existentes), `vitest run` 1744/1744 (3 novos).
+
+## 2026-08-14 — Voz natural, barge-in, sem "ponto", e fallback rápido do Ollama
+
+Quatro pedidos ao vivo, agora que a voz clonada já fala: ler "muito
+lento com pausas"; parar de falar e ouvir logo quando a pessoa fala por
+cima; deixar de ler a palavra "ponto"; e responder depressa (DeepSeek)
+quando o Ollama não está a funcionar.
+
+**Leitura lenta com pausas** eram duas coisas somadas. (1) O ritmo de
+base do XTTS-v2 é deliberado de mais — agora o `speakClonada` manda
+`velocidade` no `/falar`, e o `server.py` passa isso ao `speed` do
+modelo (constante `VELOCIDADE_FALA = 1.12`, colada a [0.5, 2.0] no
+servidor). (2) Cada frase pagava à vez a latência da síntese (5–9 s) —
+agora `prefetchClonada()` sintetiza a frase seguinte **enquanto** a
+atual toca, e o `speak` seguinte acha o áudio pronto em vez de refazer o
+pedido. A chave do prefetch é o texto já limpo, porque é esse que
+`speak()` entrega a `speakClonada` (a frase crua ainda traz o ponto).
+
+**Barge-in**: carregar no microfone a meio de uma resposta parava a fala
+(`stopSpeaking`) e ligava a escuta já — sem o guard de eco `'a-falar'`,
+que continua a valer só para o re-engate automático do modo conversa.
+Novos `isSpeaking` (sem o período de guarda) e `bargeIn()` no serviço; a
+fila esvazia-se antes, senão o `onEnd` da fala cortada avançava a frase
+seguinte por cima da escuta.
+
+**"Ponto" lido à letra**: o `limparParaSintese` só tirava o ponto final.
+O achado ao vivo alargou isso — todo o ponto vira vírgula (pausa
+mantida, sem risco de ser vocalizado), como já se fazia com o ponto e
+vírgula e as reticências. O teste `text-cleaning.test.ts` que guardava
+o ponto a meio foi atualizado para a decisão nova.
+
+**Fallback Ollama → DeepSeek**: o timeout do Ollama baixou de 60 s para
+20 s. Uma falha de rede do Ollama é imediata (o `fetch` recusa a
+ligação); quem chegava ao timeout era o Ollama *preso*, e ficar 60 s
+calado antes de cair para a DeepSeek era o sintoma de "não funciona e
+não diz nada".
+
+**Verificação**: `tsc` e `eslint` limpos; testes novos em
+`barge-in.test.ts` (4) e `prefetch.test.ts` (3); suites de voz (151) e
+assistente/fallback (44) verdes. A única mudança que exige reinício é o
+`voice-clone-service` (o `velocidade` só é lido pelo `server.py` novo);
+a app já o manda, inofensivo, até lá.
+
+## 2026-08-14 — As três perguntas pendentes, decididas pelo utilizador
+
+O utilizador delegou explicitamente ("tome a melhor decisão") as três
+perguntas em `docs/log/perguntas-para-o-utilizador.md`, escritas mais
+cedo por sessões que se recusaram, com razão, a decidir sozinhas. As
+decisões, com o raciocínio de cada uma, ficam registadas em
+`docs/estilo-de-codigo.md` §"Decisões éticas já assentes" (para não se
+voltar a discutir sem pedido explícito) e o trabalho correspondente
+entrou na fila (itens 21-24):
+
+1. **Assinatura de plugins**: passa a cobrir o `code`, não só o
+   `manifest`. A justificação antiga para não o fazer estava tecnicamente
+   errada (a revisão de 14/08 já o tinha assinalado); sem plugins
+   externos reais em circulação, o custo da mudança quebradora é baixo
+   agora e só cresce.
+2. **Wake word**: sim, mas só com um motor local — nunca por um serviço
+   de fala na nuvem. Um pedido pontual (carregar para falar) e escuta
+   contínua 24h/dia são categorias de exposição diferentes; a segunda só
+   é aceitável sem áudio a sair da máquina, a mesma disciplina que já
+   levou a construir o Whisper local para o reconhecimento manual.
+3. **Capacidades de plugin**: Executar Voz e Ler Memória autorizadas já
+   — mesma disciplina de permissão explícita das outras dez capacidades
+   do Core. Guardar Preferências fica condicionada a construir primeiro
+   o isolamento por plugin no armazenamento (hoje um plugin já podia, em
+   teoria, ler ou escrever por cima dos dados de outro) — sem isso, não
+   se autoriza.
+
+Nenhuma das quatro peças foi construída nesta entrada — só a decisão. O
+trabalho fica na fila, pela ordem de dependência (isolamento antes de
+Guardar Preferências).
+
+## 2026-08-14 — DeepSeek único, silêncio de 2s, e microfone sempre ativo
+
+Três afinações pedidas ao vivo. (1) Deixar só a DeepSeek como fornecedor
+por omissão. (2) Esperar o microfone ficar mudo antes de responder — o
+assistente cortava a meio das pausas de pensamento. (3) Microfone sempre
+ativo.
+
+**DeepSeek único**: a `DEFAULT_CHAIN_ORDER` era `deepseek → claude → ollama`
+e o sistema saltava entre provedores sem ninguém o pedir. Agora é só
+`['deepseek']`; o Ollama continua no catálogo — é para onde entra o Llama,
+mais tarde — mas só entra na cadeia se for acrescentado à mão em
+Personalização → Assistente.
+
+**Silêncio de 2s**: o `vigiarSilencio` cortava a gravação ao fim de 1,2s de
+silêncio, a meio de uma pausa para pensar. Subiu para 2s, e o limite de
+segurança de 12s para 20s, para não cortar frases longas. Só o caminho
+local (Whisper) usa esta deteção — é lá que o "responder antes de eu acabar"
+acontecia.
+
+**Microfone sempre ativo**: o modo conversa era só em memória — desligava ao
+fechar e era preciso carregar no botão a cada arranque. Agora a escolha
+grava-se (`micAlwaysOn` em `use-voice-settings-store`) e, ao arrancar, liga
+o modo conversa sozinho. O guard de "3 tentativas sem fala" mantém-se: uma
+pausa longa desliga o ciclo desta sessão, mas a preferência sobrevive ao
+reinício.
+
+**Verificação**: `tsc --noEmit` limpo; suites de voz (151) e as que tocam
+nas definições de voz verdes; o teste do modo conversa passou a repor
+`micAlwaysOn` no `beforeEach` (sem isso a preferência vazava entre testes).
+
+## 2026-08-14 — Ferramenta `abrir_navegador`: o assistente abre o browser visível
+
+Primeiro passo da internet sem API. Já existia `openWebPage` — lê o texto de
+uma página sem chave nenhuma — mas não havia forma de o assistente **abrir o
+browser à vista da pessoa** para ela navegar. Faltava o elo: a infraestrutura
+(`openExternal` no adaptador de plataforma) existia, mas não estava ligada ao
+catálogo de ferramentas.
+
+**O que se fez**: nova ferramenta `abrir_navegador` (risco livre) no
+catálogo, que chama `openExternalUrl` no executor. Na prática distingue dois
+verbos agora: `abrir_pagina` (lê a página silenciosamente, sem janela) e
+`abrir_navegador` (abre o endereço no navegador predefinido, numa janela que
+a pessoa vê e pode fechar). Ambas partilham a mesma porta — desligadas por
+omissão, ligam-se em Privacidade — e a mesma política de endereços (só
+`https:` e `mailto:`).
+
+**Verificação**: `tsc --noEmit` limpo; as 406 suites afetadas verdes,
+incluindo o teste de cobertura que exige que cada ferramenta do catálogo
+tenha execução real (`abrir_navegador` entrou no mapa de argumentos) e as
+asserções da cadeia de reserva, que passaram a contar com a omissão de um só
+degrau (`['deepseek']`).
+
+## 2026-08-15 — Controlo direto, Fase 3.2: o JARVIS abre apps/ficheiros no PC
+
+Pediram-me o controlo autónomo do PC ("mexer sozinho no meu PC"). A revisão
+de segurança de 13/08 já tinha mostrado que a Fase 3.1 (overlay + auditoria)
+estava construída mas **nunca ligada a nada**: o `ControlOverlay` nunca era
+montado e nada chamava `startSession`/`verify`/`executeStep` em produção.
+Comecei por aí — a sub-fase seguinte (3.2) é a que liga o primeiro elo a sério.
+
+**O que se fez**: comando nativo `open_path` em Rust (`open::that`, o abridor
+do sistema — duplo-clique, não shell), com validação de caminho testável;
+capacidade `directControl` nos quatro adapters e método `openPath` no
+`PlatformAdapter`; no serviço, `requestStep`/`confirm`/`cancel` — a porta de
+presença (ligado + sessão ativa) é verificada no **pedido**, e o passo pendente
+alimenta o `ControlOverlay`, agora montado num novo `DirectControlHost`. Na
+Privacidade, abrir sessão por palavra **escrita** (o caminho "escrita" da spec
+§6, via `verify`); a voz continua a ser o outro caminho, ainda por ligar.
+Nova ferramenta `abrir_aplicacao` (`caminho`, risco médio) no catálogo, com
+executor no `App.tsx` a passar o passo pela porta de presença.
+
+**Verificação**: `tsc --noEmit` limpo; 1758 testes verdes (135 ficheiros);
+`cargo test --lib` 24 verdes (3 novos em `commands::control`). Rato/teclado
+(3.4) e visão do ecrã (3.3/3.5) ficam para as sub-fases seguintes.

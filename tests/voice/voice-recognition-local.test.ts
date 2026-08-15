@@ -158,7 +158,7 @@ describe('VoiceService — reconhecimento local (POST /ouvir)', () => {
     await vi.advanceTimersByTimeAsync(500); // > minFalaMs (300ms)
 
     volumeAtual = 'silencio';
-    await vi.advanceTimersByTimeAsync(1_300); // > silencioMs (1200ms) — corta aqui, não aos 12s
+    await vi.advanceTimersByTimeAsync(2_100); // > silencioMs (2000ms) — corta aqui, não aos 20s
 
     expect(onTranscript).toHaveBeenCalledWith('liga o wifi');
   });

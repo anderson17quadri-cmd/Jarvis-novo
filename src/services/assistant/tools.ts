@@ -261,6 +261,28 @@ export const TOOLS: readonly ToolDefinition[] = [
     risk: 'livre',
     parameters: [text('url', 'Endereço https da página a abrir.')],
   },
+  {
+    name: 'abrir_navegador',
+    description:
+      'Abre um endereço no navegador predefinido do sistema, numa janela visível que a pessoa vê ' +
+      'e pode fechar. Usa isto quando a pessoa quer VER a página no browser. Para leres tu o ' +
+      'conteúdo da página sem abrir janela visível, usa abrir_pagina. Só funciona se a pessoa ' +
+      'ligou o navegador controlado pelo assistente em Privacidade.',
+    risk: 'livre',
+    parameters: [text('url', 'Endereço https a abrir no navegador.')],
+  },
+
+  // ── Controlo direto (Fase 3.2) ────────────────────────────────────────────
+  {
+    name: 'abrir_aplicacao',
+    description:
+      'Abre uma aplicação ou ficheiro do computador pelo caminho exato (ex.: "C:\\Program Files\\App\\app.exe"), ' +
+      'usando o abridor predefinido do sistema — o equivalente a um duplo-clique, não a executar comandos. ' +
+      'Só funciona com o controlo direto ligado e uma sessão ativa (Privacidade), e pede sempre confirmação ' +
+      'no ecrã antes de abrir. Usa para o que não é uma janela interna do JARVIS.',
+    risk: 'livre',
+    parameters: [text('caminho', 'Caminho exato da aplicação ou ficheiro a abrir.')],
+  },
 
   // ── Sistema ───────────────────────────────────────────────────────────────
   {

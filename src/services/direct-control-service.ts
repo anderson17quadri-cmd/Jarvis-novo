@@ -141,6 +141,51 @@ class DirectControlService {
     return this.steps;
   }
 
+  // ── Passo pendente (overlay de confirmação) ──────────────────────────
+
+  private pendingStep: ControlStep | null = null;
+
+  /** O passo à espera de confirmação no overlay — `null` quando não há nenhum. */
+  get pending(): ControlStep | null {
+    return this.pendingStep;
+  }
+
+  /**
+   * Põe um passo à espera de confirmação e devolve o que dizer a quem pediu
+   * (o modelo, a voz) — uma recusa se o controlo direto estiver desligado ou
+   * sem sessão ativa, ou o aviso de que ficou a aguardar confirmação.
+   *
+   * **A porta de presença é verificada aqui, no pedido** — antes de o passo
+   * sequer chegar ao overlay. Um passo recusado nunca aparece no ecrã, porque
+   * não havia presença para o autorizar.
+   */
+  requestStep(step: ControlStep): string {
+    if (!this.enabled) {
+      return 'O controlo direto está desligado — liga-o em Privacidade antes de eu poder mexer no computador.';
+    }
+    if (!this.sessionActive) {
+      return 'Não há uma sessão de controlo direto ativa — abre uma em Privacidade ou diz a palavra-passe.';
+    }
+
+    this.pendingStep = step;
+    this.emit();
+    return `Pedido de controlo direto: ${step.description}. A aguardar confirmação no ecrã.`;
+  }
+
+  /** Confirma o passo pendente — regista-o e executa (ou simula) via `executeStep`. */
+  confirm(): void {
+    const step = this.pendingStep;
+    this.pendingStep = null;
+    if (step) this.executeStep(step, true);
+  }
+
+  /** Recusa o passo pendente — fica registado como recusado, nada executa. */
+  cancel(): void {
+    const step = this.pendingStep;
+    this.pendingStep = null;
+    if (step) this.executeStep(step, false);
+  }
+
   /**
    * Regista um passo, executa se: confirmado, não simulado, ligado, e com
    * uma sessão de presença ativa.

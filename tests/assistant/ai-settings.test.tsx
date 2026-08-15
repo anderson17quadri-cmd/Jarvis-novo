@@ -341,6 +341,9 @@ describe('cadeia automática', () => {
 describe('ordem da cadeia', () => {
   it('reordenar pela interface troca os degraus e guarda', async () => {
     const user = userEvent.setup();
+    // A cadeia por omissão só tem o DeepSeek; para reordenar é preciso pôr
+    // os outros degraus lá primeiro (acrescentados à mão, como na interface).
+    useAiSettingsStore.getState().setProviderOrder(['deepseek', 'claude', 'ollama']);
     render(<AiSettings />);
 
     await user.click(screen.getByRole('button', { name: 'Descer DeepSeek' }));
@@ -387,10 +390,6 @@ describe('ordem da cadeia', () => {
 
     await useAiSettingsStore.getState().hydrate();
 
-    expect(useAiSettingsStore.getState().settings.providerOrder).toEqual([
-      'deepseek',
-      'claude',
-      'ollama',
-    ]);
+    expect(useAiSettingsStore.getState().settings.providerOrder).toEqual(['deepseek']);
   });
 });

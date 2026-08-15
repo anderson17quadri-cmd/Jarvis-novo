@@ -4,6 +4,14 @@ Decisões que não podem ser tomadas por um modelo sozinho — cada uma é uma
 pergunta concreta, com o contexto e as opções, para a pessoa decidir. Nada
 aqui foi construído; é só a pergunta.
 
+> **As três perguntas abaixo foram respondidas em 14/08/2026** — o
+> utilizador delegou explicitamente ("tome a melhor decisão"). As
+> decisões e a razão de cada uma estão em
+> `docs/estilo-de-codigo.md` §"Decisões éticas já assentes", como
+> precedente para não se voltar a discutir. O contexto de cada pergunta
+> fica aqui, para quem construir as três coisas saber o porquê. Trabalho
+> a fazer, com a decisão já tomada, em `docs/log/fila-de-trabalho.md`.
+
 ---
 
 ## 1. A assinatura de um plugin cobre o manifesto, não o código — queres alargá-la?

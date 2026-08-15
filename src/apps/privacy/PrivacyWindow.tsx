@@ -581,9 +581,15 @@ function ControlPanel(): React.JSX.Element {
     (onChange) => directControlService.subscribe(onChange),
     () => directControlService.history,
   );
+  const sessionActive = useSyncExternalStore(
+    (onChange) => directControlService.subscribe(onChange),
+    () => directControlService.sessionActive,
+  );
 
   const [phrase, setPhrase] = useState('');
   const [showPhrase, setShowPhrase] = useState(false);
+  const [sessionPhrase, setSessionPhrase] = useState('');
+  const [sessionError, setSessionError] = useState<string | null>(null);
 
   const handleSetPassword = useCallback(() => {
     const trimmed = phrase.trim();
@@ -592,6 +598,22 @@ function ControlPanel(): React.JSX.Element {
     setPhrase('');
     setShowPhrase(false);
   }, [phrase]);
+
+  // Abertura de sessão por palavra escrita — o caminho alternativo à voz
+  // (spec §6: "falada, escrita, ou as duas"). A mesma `verify` que a voz usaria.
+  const handleStartSession = useCallback(() => {
+    const trimmed = sessionPhrase.trim();
+    if (!trimmed) return;
+    void directControlService.verify(trimmed).then((ok) => {
+      if (ok) {
+        directControlService.startSession();
+        setSessionPhrase('');
+        setSessionError(null);
+      } else {
+        setSessionError('Palavra-passe errada.');
+      }
+    });
+  }, [sessionPhrase]);
 
   return (
     <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
@@ -683,6 +705,62 @@ function ControlPanel(): React.JSX.Element {
             Guardar
           </button>
         </div>
+      </section>
+
+      {/* Sessão — item 21 (abertura manual por palavra escrita) */}
+      <section className="rounded-input border border-line bg-tint/[.02] p-3">
+        <p className="t-label mb-1.5">Sessão de controlo direto</p>
+        <p className="mb-2 text-cap text-t3">
+          {sessionActive
+            ? 'Sessão ativa — as ações de controlo direto podem ser pedidas e confirmadas. Expira sozinha ao fim de 30 minutos.'
+            : hasPassword
+              ? 'Escreve a palavra-passe para abrir uma sessão de 30 minutos. (A voz abre-a do mesmo modo, quando configurada.)'
+              : 'Define primeiro a palavra-passe acima.'}
+        </p>
+
+        {sessionActive ? (
+          <button
+            type="button"
+            onClick={() => directControlService.endSession()}
+            className="flex items-center gap-1.5 rounded-btn border border-danger/40 px-3 py-2 text-[12px] font-medium text-danger transition-all duration-hover hover:bg-danger/[.08]"
+          >
+            <ShieldOff className="h-3.5 w-3.5" aria-hidden="true" />
+            Terminar sessão
+          </button>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              value={sessionPhrase}
+              onChange={(e) => {
+                setSessionPhrase(e.target.value);
+                setSessionError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleStartSession();
+              }}
+              type="password"
+              placeholder="Palavra-passe para abrir sessão"
+              aria-label="Palavra-passe de sessão"
+              disabled={!hasPassword}
+              className="w-full flex-1 rounded-input border border-line bg-tint/[.03] px-2.5 py-2 text-[12.5px] text-t1 outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45 disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={handleStartSession}
+              disabled={!hasPassword || sessionPhrase.trim().length === 0}
+              className={cn(
+                'rounded-btn border px-3 py-2 text-[12px] font-medium transition-all duration-hover',
+                hasPassword && sessionPhrase.trim().length > 0
+                  ? 'border-accent/50 bg-accent/[.1] text-accent hover:shadow-glow'
+                  : 'border-line bg-tint/[.03] text-t3',
+              )}
+            >
+              Abrir sessão
+            </button>
+          </div>
+        )}
+
+        {sessionError && <p className="mt-1.5 text-[11px] text-danger">{sessionError}</p>}
       </section>
 
       {/* Modo simulado — item 23 */}

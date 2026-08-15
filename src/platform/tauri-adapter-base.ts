@@ -177,6 +177,19 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     }
   }
 
+  // ── Controlo direto (Fase 3.2) ──────────────────────────────────────────
+
+  async openPath(path: string): Promise<boolean> {
+    if (!this.capabilities.directControl) return false;
+    try {
+      await invoke('open_path', { path });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "open_path" falhou:', error);
+      return false;
+    }
+  }
+
   // ── Cofre de segredos ────────────────────────────────────────────────────
 
   /**

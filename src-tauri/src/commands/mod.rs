@@ -3,6 +3,8 @@ pub mod battery;
 #[cfg(desktop)]
 pub mod browser;
 #[cfg(desktop)]
+pub mod control;
+#[cfg(desktop)]
 pub mod files;
 #[cfg(desktop)]
 pub mod mail;

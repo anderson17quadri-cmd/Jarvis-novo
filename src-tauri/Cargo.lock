@@ -2306,6 +2306,7 @@ dependencies = [
  "lettre",
  "native-tls",
  "notify",
+ "open",
  "portable-pty",
  "scraper",
  "serde",

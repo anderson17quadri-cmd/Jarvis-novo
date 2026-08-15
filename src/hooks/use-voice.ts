@@ -7,6 +7,7 @@ import { notificationService } from '@/services/notification-service';
 import { voiceService, type SpeechRecognitionErrorKind } from '@/services/voice-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useVoiceCorrectionStore } from '@/stores/use-voice-correction-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 import { runIntent } from '@/services/voice/executor';
 import { describeIntent, isCritical, parseSpeech } from '@/services/voice/intents';
 
@@ -67,6 +68,7 @@ export function useVoice(): {
   const isVisible = useIsVisible();
   const setMode = useAssistantStore((state) => state.setMode);
   const pulse = useAssistantStore((state) => state.pulse);
+  const micAlwaysOn = useVoiceSettingsStore((state) => state.micAlwaysOn);
 
   const isSupported = capabilities.voice && voiceService.isRecognitionSupported;
 
@@ -303,7 +305,17 @@ export function useVoice(): {
       return;
     }
 
-    voiceService.speak(next, { onStart: () => setMode('speaking'), onEnd: () => playNextQueuedRef.current() });
+    voiceService.speak(next, {
+      onStart: () => {
+        setMode('speaking');
+        // Enquanto esta frase toca, pré-sintetiza a seguinte (se já cá está)
+        // para a próxima não pagar a latência do serviço de voz local — é
+        // essa latência, frase a frase, que se ouvia como pausas.
+        const seguinte = speechQueueRef.current[0];
+        if (seguinte !== undefined) voiceService.prefetchClonada(seguinte);
+      },
+      onEnd: () => playNextQueuedRef.current(),
+    });
   }, [setMode, tentarReengatar]);
 
   useEffect(() => {
@@ -338,6 +350,16 @@ export function useVoice(): {
       return;
     }
 
+    // A falar: o clique é um barge-in — para a fala e ouve já, sem esperar
+    // pela resposta acabar. A fila esvazia-se primeiro, senão o `onEnd` da
+    // fala cortada avançava a fila e a frase seguinte falava por cima da
+    // escuta que está a começar.
+    if (voiceService.isSpeaking) {
+      limparFilaDeFala();
+      voiceService.bargeIn(makeListeningCallbacks());
+      return;
+    }
+
     // Clicar no microfone com o modo conversa ativo desliga-o.
     if (voiceService.isConversationMode) {
       voiceService.setConversationMode(false);
@@ -347,13 +369,16 @@ export function useVoice(): {
     }
 
     voiceService.toggleListening(makeListeningCallbacks());
-  }, [isSupported, pulse, setMode, limparReengate, makeListeningCallbacks]);
+  }, [isSupported, pulse, setMode, limparReengate, makeListeningCallbacks, limparFilaDeFala]);
 
   // ── Modo conversa ──────────────────────────────────────────────────────
 
   const toggleConversationMode = useCallback((): void => {
     const ativo = !voiceService.isConversationMode;
     voiceService.setConversationMode(ativo);
+    // Guardar a escolha: com isto, o microfone fica "sempre ativo" a atravessar
+    // reinícios, e não só até fechar a aplicação.
+    useVoiceSettingsStore.getState().setMicAlwaysOn(ativo);
 
     if (ativo) {
       if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem(CONVERSATION_WARN_KEY)) {
@@ -372,6 +397,20 @@ export function useVoice(): {
       limparReengate();
     }
   }, [limparReengate, tentarReengatar]);
+
+  // ── Microfone sempre ativo ─────────────────────────────────────────────
+
+  /**
+   * Se a preferência ficou guardada, liga o modo conversa sozinho no
+   * arranque. Só dispara quando `micAlwaysOn` passa a `true` — o que acontece
+   * depois do `hydrate`, nunca durante o render — por isso não arranca o
+   * microfone antes de se saber que o querem a ouvir.
+   */
+  useEffect(() => {
+    if (!micAlwaysOn || voiceService.isConversationMode) return;
+    voiceService.setConversationMode(true);
+    if (!voiceService.isListening) tentarReengatar();
+  }, [micAlwaysOn, tentarReengatar]);
 
   // ── Segundo plano ──────────────────────────────────────────────────────
 

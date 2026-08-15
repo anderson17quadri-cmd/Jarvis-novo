@@ -5,6 +5,7 @@ import { LoginScreen } from '@/components/auth/LoginScreen';
 import { BootSequence } from '@/components/boot/BootSequence';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { DesktopContextMenu } from '@/components/context-menu/DesktopContextMenu';
+import { DirectControlHost } from '@/components/DirectControlHost';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { AppShell } from '@/components/shell/AppShell';
@@ -46,7 +47,8 @@ import { notificationService } from '@/services/notification-service';
 import { musicService } from '@/services/music/music-service';
 import { obsidianService } from '@/services/knowledge/obsidian-service';
 import { webSearchService } from '@/services/web-search/web-search-service';
-import { openWebPage } from '@/services/knowledge/web-browser-service';
+import { openExternalUrl, openWebPage } from '@/services/knowledge/web-browser-service';
+import { directControlService, type ControlStep } from '@/services/direct-control-service';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
@@ -587,6 +589,20 @@ export function App(): React.JSX.Element {
       writeNote: (title, content) => obsidianService.write(title, content),
       searchWeb: (query) => webSearchService.search(query),
       openWebPage: (url) => openWebPage(url),
+      openExternalUrl: (url) => openExternalUrl(url),
+      // Controlo direto (Fase 3.2): o passo passa pela porta de presença do
+      // serviço (ligado + sessão ativa) e só executa depois de a pessoa
+      // confirmar no overlay. `execute` é assíncrono por fora, mas o serviço
+      // chama-o a sério — e a plataforma nunca lança, degrada para `false`.
+      openPath: (path) => {
+        const step: ControlStep = {
+          id: `abrir-aplicacao-${Date.now()}`,
+          description: `Abrir "${path}"`,
+          risk: 'medio',
+          execute: () => void getPlatformAdapter().openPath(path),
+        };
+        return directControlService.requestStep(step);
+      },
       music: (action) => {
         if (action === 'proxima') void musicService.next();
         else if (action === 'anterior') void musicService.previous();
@@ -726,6 +742,9 @@ export function App(): React.JSX.Element {
 
       <ToastViewport />
       <NotificationPanel />
+
+      {/* Overlay de controlo direto — só aparece quando há um passo a confirmar. */}
+      <DirectControlHost />
 
       {avatarFlight && (
         <FlyingAvatar

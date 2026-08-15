@@ -71,6 +71,11 @@ scraper = "0.20"
 # for (proteção contra SSRF: nunca deixar o modelo mandar o Rust pedir a
 # `localhost`, a um IP privado, ou ao endereço de metadados de nuvem).
 url = "2"
+# Controlo direto (Fase 3.2): abre um ficheiro/aplicação no abridor do
+# próprio sistema — o equivalente a um duplo-clique, não a um shell. É o
+# único crate de controlo direto desta sub-fase; o rato/teclado (3.4) virão
+# depois, com outra dependência.
+open = "5"
 
 # O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
 # (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o

@@ -50,6 +50,8 @@ export interface PlatformCapabilities {
   readonly obsidian: boolean;
   /** Navegador controlado pelo assistente — busca e extrai texto de uma página (Peça 19). */
   readonly webBrowsing: boolean;
+  /** Controlo direto do sistema — abrir apps/ficheiros, e (nas sub-fases seguintes) rato/teclado (Fase 3). */
+  readonly directControl: boolean;
 }
 
 /** Informação da plataforma, resolvida uma vez no arranque. */

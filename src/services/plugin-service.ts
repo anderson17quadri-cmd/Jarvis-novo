@@ -58,8 +58,8 @@ export class PluginService {
 
     // O formato antigo era só a lista. Ler os dois evita que quem já tinha
     // plugins instalados os perca ao atualizar.
-    const saved = Array.isArray(raw) ? raw : raw.installed;
-    const deniedPermissions = Array.isArray(raw) ? {} : raw.deniedPermissions;
+    const saved = Array.isArray(raw) ? raw : Array.isArray(raw.installed) ? raw.installed : [];
+    const deniedPermissions = Array.isArray(raw) ? {} : raw.deniedPermissions ?? {};
 
     const installed = this.getBuiltInState();
 

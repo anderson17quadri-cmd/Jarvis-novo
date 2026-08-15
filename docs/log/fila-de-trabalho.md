@@ -27,7 +27,7 @@
 
 Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
 
-### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador
+### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador — DeepSeek (14/08/2026)
 
 **Não é para diagnosticar por perguntas ao utilizador — já se tentou
 isso por várias voltas nesta sessão e ele está fartinho de ser posto a
@@ -93,29 +93,58 @@ Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente) já em
 "Feito" abaixo.
 
-## Precisa de decisão da pessoa — não construir sem perguntar
+## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
-### Wake word configurável (escuta contínua)
+Ver `docs/estilo-de-codigo.md` §"Decisões éticas já assentes" para a
+decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
+para o contexto completo de cada pergunta original. **Não voltar a
+perguntar** — a decisão já está tomada, falta construir.
 
-`SPEC.md` linha ~397: "Exige escuta contínua — decisão de privacidade por
-tomar." Liga o microfone sem a pessoa carregar em nada antes — mesma
-categoria de risco que o navegador controlado (Peça 19) ou o Controlo
-Direto (Fase 3.1), que só avançaram depois de a pessoa escolher o âmbito
-explicitamente. Se sobrar tempo, o trabalho certo é escrever as
-perguntas concretas num ficheiro `docs/log/perguntas-para-o-
-utilizador.md`, não escolher por conta própria.
+### 21. Assinatura de plugins passa a cobrir o `code` — `[livre]`
 
-→ Pergunta já escrita: `perguntas-para-o-utilizador.md` §2 (14/08/2026). A
-decisão continua da pessoa; não reescrever, só esperar a resposta.
+Decisão: opção (a). Estender a assinatura Ed25519 para cobrir
+`manifest` + `code` (ou um hash do `code`), não só o manifesto. Mudança
+quebradora no formato `.jarvis-plugin` — sem plugins externos reais em
+circulação, o custo é só atualizar a ferramenta que assina e os
+exemplos do catálogo. Corrigir também a mensagem da interface
+("Assinatura verificada") se, entretanto, ficar desatualizada.
+`src/plugins/plugin.ts`, `src/plugins/signature.ts`.
 
-### Executar Voz / Ler Memória / Guardar Preferências, capacidades de plugin
+### 22. Isolamento por plugin no armazenamento — pré-requisito do item 23 — `[livre]`
 
-`docs/spec/plugins-sandbox.md` §"O que ainda falta": mexem em microfone
-e dados guardados — exigem autorização explícita antes de se desenhar
-sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
+`storageService` guarda tudo num `jarvis.store.json` sem namespace por
+plugin — hoje já é um risco em teoria (um plugin podia ler/escrever por
+cima de outro), e fica pior assim que "Guardar Preferências" (item 23)
+abrir essa porta a plugins de terceiros. Desenhar e construir o
+isolamento (`plugins:<id>:` por chave, ou equivalente) antes do item 23
+avançar — este item tem de fechar primeiro.
 
-→ Pergunta já escrita: `perguntas-para-o-utilizador.md` §3 (14/08/2026). A
-decisão continua da pessoa; não reescrever, só esperar a resposta.
+### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — `[livre, depende do item 22 para a terceira]`
+
+Decisão: autorizar as três. **Executar Voz** e **Ler Memória** podem
+avançar já — mesma disciplina de permissão explícita por plugin
+(declarada no manifesto, não recusada em Privacidade) que as outras dez
+capacidades do Core já cumprem. **Guardar Preferências só depois do
+item 22 fechar** — sem isolamento, não se autoriza. Ver
+`jarvis-spec-completo.md:568` para a lista completa das 13 capacidades
+e o padrão (tipo de mensagem, permissão, exemplo a sério) já seguido
+pelas dez existentes.
+
+### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — `[livre, maior]`
+
+Decisão: opção (a) da pergunta original, com a opção (b) explicitamente
+recusada — nunca escuta contínua por um serviço de fala na nuvem
+(Web Speech API contínua manda áudio para fora 24h/dia; um pedido
+pontual é uma categoria de exposição completamente diferente). Um
+motor de deteção de palavra a correr só na máquina (candidatos a
+confirmar antes de se fixar um: Vosk, ou outro motor pequeno,
+offline, com um modelo em português) — só "acorda" a transcrição real
+depois de ouvir a palavra escolhida, sem nada a sair da máquina antes
+disso. Maior do que os outros três desta lista — vale a pena um desenho
+próprio (ficheiro em `docs/spec/`) antes de começar a construir, no
+mesmo formato que o Controlo Direto (Fase 3.1) ou o vault Obsidian já
+tiveram. Continua desligado por omissão, ativação explícita em
+Privacidade, mesma disciplina de sempre.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
@@ -238,6 +267,19 @@ erro único nunca faz `unwrap`; e o registo do terminal solta o lock antes de
 escrever ao PTY e tem `kill` idempotente. Detalhe em
 `docs/log/historico-sessoes.md` (14/08/2026, "Revisão a sério: auxiliares de
 desktop em Rust").
+
+### 15. O serviço de plugins (`src/services/plugin-service.ts`) — revisão adversarial — DeepSeek #2 — commit `03fd3a8`
+
+Revisão a sério do `load()`/`save()` de plugins e permissões recusadas, nunca
+revisto por ninguém de fora (a revisão `c99becd` cobriu as ações da store, não
+esta fronteira). **Um bug real, corrigido:** `load()` conferia só
+`Array.isArray(raw)` — um armazenamento na forma errada (`{}`, `installed:
+null`, objeto sem `deniedPermissions`) rebentava em `for...of undefined` ou
+devolvia `deniedPermissions` `undefined` que a store lia como `undefined[id]`.
+Mesma classe do `f120c82`/`d6bb7a8`. Agora não-lista cai em `[]` e
+`deniedPermissions` em falta cai em `{}`. 3 testes novos, confirmados a falhar
+contra o código antigo. Detalhe em `docs/log/historico-sessoes.md` (14/08/2026,
+"Revisão a sério: o serviço de plugins (plugin-service.ts)").
 
 ### 15. Varrimento final: ecrãs e orquestração de voz — DeepSeek — sem commit de código
 

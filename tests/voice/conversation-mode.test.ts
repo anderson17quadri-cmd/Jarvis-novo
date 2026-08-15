@@ -7,6 +7,7 @@ import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
 import { voiceService, type VoiceCallbacks } from '@/services/voice-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 
 /**
  * Modo conversa (revisão a sério, 14/08/2026): o ciclo de re-engate do
@@ -84,6 +85,10 @@ beforeEach(() => {
   visibilidade.atual = true;
   visibilidade.ouvintes.clear();
   voiceService.setConversationMode(false);
+  // O `toggleConversationMode` agora grava `micAlwaysOn`; sem repor, a
+  // preferência de um teste vazava para o seguinte e o efeito de "sempre
+  // ativo" ligava o modo conversa sozinho a meio de outro teste.
+  useVoiceSettingsStore.setState({ micAlwaysOn: false });
   useAssistantStore.getState().setMode('idle');
   logService.clear();
 

@@ -40,5 +40,8 @@ export class DesktopAdapter extends TauriAdapterBase {
     obsidian: true,
     // Busca e extração de texto de páginas https — ver commands/browser.rs.
     webBrowsing: true,
+    // Controlo direto — começa pela ação nativa de menor risco (open_path,
+    // commands/control.rs) e cresce para rato/teclado nas sub-fases seguintes.
+    directControl: true,
   };
 }

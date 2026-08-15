@@ -58,7 +58,7 @@ describe('limpeza do texto antes de sintetizar', () => {
     expect(env.utterances).toEqual(['Bom dia']);
   });
 
-  it('não mexe em pontos a meio da frase, que servem de pausa real entre orações', () => {
+  it('pontos a meio da frase viram vírgula — pausa mantida, sem risco de ler "ponto"', () => {
     const env = withFakeSynthesis();
     restore = env.restore;
 
@@ -68,7 +68,11 @@ describe('limpeza do texto antes de sintetizar', () => {
       { kind: 'sistema', voiceURI: 'qualquer' },
     );
 
-    expect(env.utterances).toEqual(['Bom dia. Todos os sistemas foram inicializados com sucesso']);
+    // Pedido ao vivo (14/08/2026): deixar de ler "ponto". A decisão antiga
+    // guardava o ponto a meio da frase como pausa entre orações — mas ele
+    // também arrisca ser vocalizado. Vira vírgula, que pausa a prosódia da
+    // mesma maneira sem nunca ser lida à letra.
+    expect(env.utterances).toEqual(['Bom dia, Todos os sistemas foram inicializados com sucesso']);
   });
 
   it('reticências (três pontos ou "…") viram vírgula — pausa, não a palavra "ponto"', () => {

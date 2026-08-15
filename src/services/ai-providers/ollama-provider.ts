@@ -36,7 +36,17 @@ import { buildMessages, collect, readStream, type StreamResult } from './deepsee
 
 export const DEFAULT_OLLAMA_BASE_URL = 'http://localhost:11434';
 
-const TIMEOUT_MS = 60_000;
+/**
+ * Quanto se espera pelo Ollama antes de desistir e cair para o provedor
+ * seguinte (DeepSeek, na cadeia típica). Reduzido de 60 s (14/08/2026): o
+ * Ollama é local, por isso uma falha de rede — o caso mais comum — é imediata
+ * (`fetch` recusa a ligação). Quem chega aqui é o Ollama *a correr mas preso*
+ * (modelo a carregar, ou a geração encravada), e nesse caso ficar 60 s calado
+ * antes de o fallback responder era o sintoma de "o Ollama não está a
+ * funcionar e a app não diz nada". 20 s dá-lhe uma hipótese justa sem fazer o
+ * utilizador esperar demasiado por uma resposta que já não vem dali.
+ */
+const TIMEOUT_MS = 20_000;
 
 /**
  * Distingue "modelo não instalado" do genérico de servidor. Confirmado ao
