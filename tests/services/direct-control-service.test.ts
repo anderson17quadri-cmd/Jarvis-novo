@@ -32,6 +32,9 @@ function makeStep(overrides: Partial<ControlStep> = {}): ControlStep & { readonl
 
 beforeEach(() => {
   directControlService.setEnabled(false);
+  // Limpa um passo pendente que um teste anterior tenha deixado a meio — sem
+  // isto, o overlay de um teste passado ficava a espreitar o seguinte.
+  directControlService.cancel();
   directControlService.setSimulated(true);
   directControlService.clearHistory();
   directControlService.endSession();
@@ -165,6 +168,69 @@ describe('executeStep — a porta de presença', () => {
     directControlService.executeStep(step, false);
 
     expect(directControlService.history).toHaveLength(1);
+    expect(directControlService.history[0]?.wasConfirmed).toBe(false);
+  });
+});
+
+describe('requestStep — o pedido que atravessa o overlay', () => {
+  it('com o controlo direto desligado, recusa e não põe nada no overlay', () => {
+    const step = makeStep();
+    const message = directControlService.requestStep(step);
+
+    expect(message).toMatch(/desligado/);
+    expect(directControlService.pending).toBeNull();
+    expect(step.calls).toBe(0);
+  });
+
+  it('ligado mas sem sessão ativa, recusa e não põe nada no overlay', () => {
+    directControlService.setEnabled(true);
+
+    const step = makeStep();
+    const message = directControlService.requestStep(step);
+
+    expect(message).toMatch(/sessão/);
+    expect(directControlService.pending).toBeNull();
+    expect(step.calls).toBe(0);
+  });
+
+  it('ligado e com sessão ativa, fica à espera de confirmação no overlay', () => {
+    directControlService.setEnabled(true);
+    directControlService.startSession();
+
+    const step = makeStep();
+    const message = directControlService.requestStep(step);
+
+    expect(message).toMatch(/confirmação/);
+    expect(directControlService.pending).toBe(step);
+    // Ainda não executou — só fica à espera.
+    expect(step.calls).toBe(0);
+  });
+
+  it('confirmar executa o passo e esvazia o overlay', () => {
+    directControlService.setEnabled(true);
+    directControlService.setSimulated(false);
+    directControlService.startSession();
+
+    const step = makeStep();
+    directControlService.requestStep(step);
+    directControlService.confirm();
+
+    expect(step.calls).toBe(1);
+    expect(directControlService.pending).toBeNull();
+    expect(directControlService.history[0]?.wasConfirmed).toBe(true);
+  });
+
+  it('recusar não executa nada, mas fica registado como recusado', () => {
+    directControlService.setEnabled(true);
+    directControlService.setSimulated(false);
+    directControlService.startSession();
+
+    const step = makeStep();
+    directControlService.requestStep(step);
+    directControlService.cancel();
+
+    expect(step.calls).toBe(0);
+    expect(directControlService.pending).toBeNull();
     expect(directControlService.history[0]?.wasConfirmed).toBe(false);
   });
 });

@@ -614,7 +614,7 @@ reavaliados: nenhum precisava de nativo. Ficam de fora, por dependerem de
 coisas ainda não validadas: execução de plugins, MCP, múltiplos desktops e
 layouts guardados.
 
-### Fase 3 — Controlo direto 🟡 (3.1 implementada, 3.2–3.5 só desenho)
+### Fase 3 — Controlo direto 🟡 (3.1 e 3.2 implementadas, 3.3–3.5 só desenho)
 
 Pedido à parte do resto da spec: o JARVIS a mexer no rato e no teclado como
 uma pessoa, com uma palavra-passe falada como portão de presença (sessão de
@@ -622,11 +622,12 @@ uma pessoa, com uma palavra-passe falada como portão de presença (sessão de
 Desenho completo — camadas de presença, perceção, ação e auditoria; travão
 de mão; classificação de risco; faseamento interno 3.1–3.5 — em
 [`docs/spec/fase-3-controlo-direto.md`](docs/spec/fase-3-controlo-direto.md).
-**Nenhuma linha de código nativo escrita.** Depende de dois pré-requisitos:
-a Fase 1 validada no PC real, e a ativação explícita e desligada por omissão
-na janela de Privacidade. A única sub-fase que não precisa do nativo (3.1 —
-overlay de confirmação e auditoria, com ações simuladas) pode começar antes
-disso.
+A sub-fase 3.1 (overlay de confirmação e auditoria, com ações simuladas) não
+precisa do nativo; a 3.2 (abrir aplicações e ficheiros por caminho) já precisa
+— um comando Rust (`open_path`, via `open::that`) que entrega o caminho ao
+abridor predefinido do sistema, o equivalente a um duplo-clique, não a
+execução arbitrária. Depende de dois pré-requisitos: a Fase 1 validada no PC
+real, e a ativação explícita e desligada por omissão na janela de Privacidade.
 
 **Revisão de segurança a sério, 13/08/2026 — dois achados na peça de maior
 risco do projeto, que nunca tinha tido revisão independente nem um teste
@@ -650,7 +651,15 @@ zero antes) — confirmei que os dois testes da porta de presença falham
 sem a correção e passam com ela. Ligar isto a um fluxo real de propósito
 fica para quando a sub-fase 3.2+ começar a sério, não decidido aqui.
 
----
+**Fase 3.2 implementada — 15/08/2026.** A lacuna da revisão de 13/08 foi
+fechada na sub-fase seguinte: o comando nativo `open_path` (Rust,
+`open::that` — o abridor do SO, não um shell), a capacidade `directControl`
+nos adapters, a porta de presença no próprio serviço
+(`requestStep`/`confirm`/`cancel`, com o passo pendente a alimentar o
+`ControlOverlay` agora montado no `DirectControlHost`), a abertura manual de
+sessão por palavra escrita na Privacidade (o caminho "escrita" da spec §6), e
+a ferramenta de assistente `abrir_aplicacao` (parâmetro `caminho`, risco
+médio). O rato/teclado (3.4) e a visão do ecrã (3.3/3.5) continuam por fazer.
 
 ## Divergências assumidas
 

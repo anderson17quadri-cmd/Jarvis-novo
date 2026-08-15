@@ -85,6 +85,10 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`abrir-navegador:${url}`);
       return `navegador aberto em ${url}`;
     },
+    openPath: (path) => {
+      calls.push(`abrir-aplicacao:${path}`);
+      return `pedido:${path}`;
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -644,6 +648,7 @@ describe('cobertura', () => {
       pesquisar_na_web: { termo: 'x' },
       abrir_pagina: { url: 'https://exemplo.pt' },
       abrir_navegador: { url: 'https://exemplo.pt' },
+      abrir_aplicacao: { caminho: 'C:\\Windows\\notepad.exe' },
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },

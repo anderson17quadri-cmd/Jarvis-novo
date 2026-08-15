@@ -5936,3 +5936,26 @@ incluindo o teste de cobertura que exige que cada ferramenta do catálogo
 tenha execução real (`abrir_navegador` entrou no mapa de argumentos) e as
 asserções da cadeia de reserva, que passaram a contar com a omissão de um só
 degrau (`['deepseek']`).
+
+## 2026-08-15 — Controlo direto, Fase 3.2: o JARVIS abre apps/ficheiros no PC
+
+Pediram-me o controlo autónomo do PC ("mexer sozinho no meu PC"). A revisão
+de segurança de 13/08 já tinha mostrado que a Fase 3.1 (overlay + auditoria)
+estava construída mas **nunca ligada a nada**: o `ControlOverlay` nunca era
+montado e nada chamava `startSession`/`verify`/`executeStep` em produção.
+Comecei por aí — a sub-fase seguinte (3.2) é a que liga o primeiro elo a sério.
+
+**O que se fez**: comando nativo `open_path` em Rust (`open::that`, o abridor
+do sistema — duplo-clique, não shell), com validação de caminho testável;
+capacidade `directControl` nos quatro adapters e método `openPath` no
+`PlatformAdapter`; no serviço, `requestStep`/`confirm`/`cancel` — a porta de
+presença (ligado + sessão ativa) é verificada no **pedido**, e o passo pendente
+alimenta o `ControlOverlay`, agora montado num novo `DirectControlHost`. Na
+Privacidade, abrir sessão por palavra **escrita** (o caminho "escrita" da spec
+§6, via `verify`); a voz continua a ser o outro caminho, ainda por ligar.
+Nova ferramenta `abrir_aplicacao` (`caminho`, risco médio) no catálogo, com
+executor no `App.tsx` a passar o passo pela porta de presença.
+
+**Verificação**: `tsc --noEmit` limpo; 1758 testes verdes (135 ficheiros);
+`cargo test --lib` 24 verdes (3 novos em `commands::control`). Rato/teclado
+(3.4) e visão do ecrã (3.3/3.5) ficam para as sub-fases seguintes.

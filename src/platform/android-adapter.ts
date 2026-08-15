@@ -45,6 +45,8 @@ export class AndroidAdapter extends TauriAdapterBase {
     obsidian: false,
     // `commands::browser::fetch_page_text` também é só do ramo desktop.
     webBrowsing: false,
+    // `commands::control::open_path` também é só do ramo desktop.
+    directControl: false,
   };
 
   /** Nem chega a tocar no IPC — não há nada para pedir. */

@@ -59,6 +59,14 @@ export interface PlatformAdapter {
    */
   openExternal(url: string): Promise<boolean>;
 
+  // ── Controlo direto (Fase 3.2) ──────────────────────────────────────────
+  /**
+   * Abre um ficheiro ou aplicação pelo caminho, no abridor predefinido do
+   * sistema — o equivalente a um duplo-clique, não a execução arbitrária.
+   * `false` se a plataforma não suportar ou o caminho não existir.
+   */
+  openPath(path: string): Promise<boolean>;
+
   // ── Cofre de segredos ────────────────────────────────────────────────────
   /** Guarda um segredo no chaveiro do sistema. `false` se não disponível. */
   secretSet(key: string, value: string): Promise<boolean>;

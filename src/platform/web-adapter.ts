@@ -48,6 +48,7 @@ export class WebAdapter implements PlatformAdapter {
     music: false,
     obsidian: false,
     webBrowsing: false,
+    directControl: false,
   };
 
   private resolvedInfo: PlatformInfo | null = null;
@@ -143,6 +144,11 @@ export class WebAdapter implements PlatformAdapter {
     } catch {
       return false;
     }
+  }
+
+  async openPath(): Promise<boolean> {
+    // Sem sistema operativo para abrir caminhos: recusa com elegância.
+    return false;
   }
 
   async minimizeWindow(): Promise<void> {
