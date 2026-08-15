@@ -6199,3 +6199,17 @@ runtime, palavra por omissão, se a transcrição pós-wake pode cair para a
 nuvem, sensibilidade e janela pós-acordar.
 
 Sem código. Falta construir (§4 e §5 do desenho).
+
+## 2026-08-15 — Voz clonada: auto-recuperação quando o serviço local falha
+
+Fechado o buraco de robustez da sub-fase 4.4 (voz clonada local): o arranque
+automático do `voice-clone-service/` só verificava se a porta 8090 respondia,
+por isso um serviço "a correr mas partido" — o erro `device-side assert` do
+CUDA envenena o contexto e faz todas as sínteses devolverem 500, sem que
+`/health` deixe de responder — nunca recuperava sozinho. Agora a síntese que
+falha pede o reinício: novo comando Rust `reiniciar_voz_clonada` (mata o filho
+gerido e qualquer órfão na porta, e volta a arrancar com um contexto CUDA
+fresco), exposto pelo `PlatformAdapter.restartVoiceService` e ligado por um
+callback `onCloneServiceNeedsRestart` no `voiceService` — a frase atual cai
+para a voz do sistema, e a seguinte já usa o serviço reiniciado, com um
+travão de 60 s para não entrar em ciclo.

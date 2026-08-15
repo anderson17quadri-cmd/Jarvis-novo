@@ -310,4 +310,11 @@ export class WebAdapter implements PlatformAdapter {
   async fetchPageText(): Promise<WebPageContent | null> {
     return null;
   }
+
+  // ── Voz clonada local ────────────────────────────────────────────────────
+
+  async restartVoiceService(): Promise<boolean> {
+    // Num browser não há processo de voz local para reiniciar.
+    return false;
+  }
 }
