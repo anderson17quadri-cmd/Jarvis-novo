@@ -141,6 +141,28 @@ export interface JarvisPluginSDK {
     add(id: string, titulo: string, texto: string): Promise<boolean>;
   };
 
+  voice: {
+    /**
+     * Manda o assistente falar um texto em voz alta. `plugins.voice`.
+     *
+     * Devolve `false` se a voz não estiver disponível neste dispositivo
+     * (não há síntese de fala) — a permissão foi concedida, mas não há
+     * voz para executar.
+     */
+    speak(texto: string): Promise<boolean>;
+  };
+
+  memory: {
+    /**
+     * Lê a memória que o assistente guardou sobre a pessoa — preferências
+     * ditas em voz alta e últimos pedidos. `plugins.memory`.
+     */
+    read(): Promise<{
+      readonly preferences: Readonly<Record<string, string>>;
+      readonly recentPrompts: readonly string[];
+    }>;
+  };
+
   shortcut: {
     /**
      * Regista um atalho de teclado. `plugins.shortcuts`.

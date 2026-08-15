@@ -6155,3 +6155,29 @@ pronto para o item 23 (Guardar Preferências).
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
 1783/1783.
+
+## 2026-08-15 — Item 23: Executar Voz e Ler Memória para plugins
+
+O item pedia três capacidades do original que faltavam para plugins:
+**Executar Voz**, **Ler Memória** e **Guardar Preferências**. Ao investigar,
+**Guardar Preferências já estava feita** — é o armazenamento isolado
+(`core.storage.*`, permissão `storage`, cuja etiqueta é literalmente "Guardar
+preferências") que o item 22 acabara de centralizar e provar, mais o
+`core.setting.register`. O que era genuinamente novo eram as outras duas.
+
+**O que mudou**: duas permissões novas no manifesto (`voice`, `memory`) com
+etiquetas em `PERMISSION_LABELS`; dois tipos novos no protocolo
+(`core.voice.speak`, `core.memory.read`) com validação de forma e permissão
+associada; dois casos novos em `plugin-bridge.ts` — `core.voice.speak` chama
+`voiceService.speak` (devolve `ok: false, reason: 'voz-indisponivel'` quando a
+síntese não existe) e `core.memory.read` devolve `memoryService.current`; o SDK
+expõe `core.voice.speak(texto)` e `core.memory.read()`; dois plugins de exemplo
+(`executa-voz`, `le-memoria`) e duas entradas no catálogo provam as portas.
+
+**Testes**: fronteira do protocolo aceita/recusa `core.voice.speak` (texto
+vazio recusado) e aceita `core.memory.read`; a ponte não fala sem a permissão,
+fala o texto certo quando autorizada, devolve `voz-indisponivel` sem síntese, e
+não devolve memória sem a permissão.
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
+1791/1791.

@@ -5,6 +5,8 @@ import criaServicoSource from '@/plugins/examples/cria-servico/plugin.js?raw';
 import criaWidgetSource from '@/plugins/examples/cria-widget/plugin.js?raw';
 import disparaAutomacaoSource from '@/plugins/examples/dispara-automacao/plugin.js?raw';
 import escutaEventosSource from '@/plugins/examples/escuta-eventos/plugin.js?raw';
+import executaVozSource from '@/plugins/examples/executa-voz/plugin.js?raw';
+import leMemoriaSource from '@/plugins/examples/le-memoria/plugin.js?raw';
 import guardaPreferenciasSource from '@/plugins/examples/guarda-preferencias/plugin.js?raw';
 import olaFicheiroSource from '@/plugins/examples/ola-ficheiro/plugin.js?raw';
 import olaNotificacaoSource from '@/plugins/examples/ola-notificacao/plugin.js?raw';
@@ -48,6 +50,8 @@ const builtInRuntimes: Readonly<Record<string, RuntimeEntry>> = {
   'regista-definicao': { source: registaDefinicaoSource, triggerLabel: 'Registar definição' },
   'cria-servico': { source: criaServicoSource, triggerLabel: 'Registar serviço' },
   'adiciona-painel': { source: adicionaPainelSource, triggerLabel: 'Adicionar painel' },
+  'executa-voz': { source: executaVozSource, triggerLabel: 'Falar' },
+  'le-memoria': { source: leMemoriaSource, triggerLabel: 'Ler memória' },
 };
 
 /**

@@ -1,6 +1,7 @@
 import {
   Bell,
   Bot,
+  Brain,
   Calendar,
   Cloud,
   Code,
@@ -17,6 +18,7 @@ import {
   Server,
   SlidersHorizontal,
   Terminal,
+  Volume2,
   Wifi,
   Zap,
   type LucideIcon,
@@ -147,6 +149,8 @@ const NO_PERMISSIONS: PluginPermissions = {
   settings: false,
   services: false,
   panels: false,
+  voice: false,
+  memory: false,
 };
 
 export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
@@ -521,6 +525,38 @@ export const PLUGIN_CATALOG: readonly CatalogEntry[] = [
     isBuiltIn: false,
     requires: [],
   },
+  {
+    id: 'executa-voz',
+    name: 'Executa voz',
+    tagline: 'Plugin de exemplo — manda o assistente falar.',
+    description:
+      'Décima quinta prova da sandbox: pede ao Core para o assistente dizer uma frase em voz alta, com `core.voice.speak`. A permissão `voice` controla se o pedido é cumprido ou recusado.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Volume2,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, voice: true, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
+  {
+    id: 'le-memoria',
+    name: 'Lê memória',
+    tagline: 'Plugin de exemplo — lê a memória do assistente.',
+    description:
+      'Décima sexta prova da sandbox: lê a memória que o assistente guardou sobre a pessoa (preferências ditas em voz alta e últimos pedidos), com `core.memory.read`. A permissão `memory` controla se a leitura é cumprida.',
+    author: 'Project ARC',
+    version: '0.1.0',
+    icon: Brain,
+    category: 'desenvolvimento',
+    permissions: { ...NO_PERMISSIONS, memory: true, notifications: true },
+    installs: 1,
+    rating: 5,
+    isBuiltIn: false,
+    requires: [],
+  },
 ];
 
 /** Etiquetas legíveis das permissões, para o cartão as explicar. */
@@ -540,6 +576,8 @@ export const PERMISSION_LABELS: Record<keyof PluginPermissions, string> = {
   settings: 'Adicionar definições',
   services: 'Correr em segundo plano',
   panels: 'Adicionar painéis',
+  voice: 'Executar voz',
+  memory: 'Ler memória',
 };
 
 /** As permissões pedidas, já em texto. */

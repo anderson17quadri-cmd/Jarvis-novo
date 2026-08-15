@@ -37,6 +37,10 @@ export interface PluginPermissions {
   readonly services: boolean;
   /** Adicionar um painel de texto expansível à sua própria entrada (12/08/2026). */
   readonly panels: boolean;
+  /** Mandar o assistente falar — `core.voice.speak` (15/08/2026). */
+  readonly voice: boolean;
+  /** Ler a memória que o assistente guardou sobre a pessoa — `core.memory.read` (15/08/2026). */
+  readonly memory: boolean;
 }
 
 export interface PluginManifest {
