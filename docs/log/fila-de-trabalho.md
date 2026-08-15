@@ -46,7 +46,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — `[livre]`
+### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — DeepSeek (15/08/2026)
 
 Decisão: autorizar as três. **Executar Voz** e **Ler Memória** podem
 avançar já — mesma disciplina de permissão explícita por plugin
