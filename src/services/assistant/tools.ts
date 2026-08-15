@@ -284,6 +284,52 @@ export const TOOLS: readonly ToolDefinition[] = [
     parameters: [text('caminho', 'Caminho exato da aplicação ou ficheiro a abrir.')],
   },
 
+  // ── Controlo direto — rato, teclado e visão (Fases 3.4–3.5) ──────────────
+  {
+    name: 'mover_rato',
+    description:
+      'Move o ponteiro do rato para as coordenadas dadas, em píxeis do ecrã principal ' +
+      '(0,0 é o canto superior esquerdo). Só funciona com o controlo direto ligado e uma ' +
+      'sessão ativa (Privacidade), e pede sempre confirmação no ecrã antes de executar. ' +
+      'Usa em conjunto com clicar_em para navegar numa aplicação externa.',
+    risk: 'livre',
+    parameters: [
+      { name: 'x', type: 'number', description: 'Coluna, em píxeis a contar da esquerda.', minimum: 0, required: true },
+      { name: 'y', type: 'number', description: 'Linha, em píxeis a contar do topo.', minimum: 0, required: true },
+    ],
+  },
+  {
+    name: 'clicar_em',
+    description:
+      'Move o rato até às coordenadas e clica com o botão esquerdo (píxeis do ecrã principal). ' +
+      'Só funciona com o controlo direto ligado e uma sessão ativa, e pede sempre confirmação ' +
+      'no ecrã. Usa depois de ver_ecra para perceber onde está o que a pessoa quer.',
+    risk: 'livre',
+    parameters: [
+      { name: 'x', type: 'number', description: 'Coluna, em píxeis a contar da esquerda.', minimum: 0, required: true },
+      { name: 'y', type: 'number', description: 'Linha, em píxeis a contar do topo.', minimum: 0, required: true },
+    ],
+  },
+  {
+    name: 'escrever_texto',
+    description:
+      'Escreve texto no campo que estiver focado, como se fosse dactilografado. Só funciona ' +
+      'com o controlo direto ligado e uma sessão ativa, e pede sempre confirmação no ecrã. ' +
+      'Usa depois de clicar_em ter posto o foco onde deve estar.',
+    risk: 'livre',
+    parameters: [text('texto', 'O que escrever.')],
+  },
+  {
+    name: 'ver_ecra',
+    description:
+      'Tira um print do ecrã (com as zonas sensíveis já tapadas), manda-o ao modelo de visão ' +
+      'e devolve a descrição do que está à frente. Usa quando a pessoa pede algo que só se faz ' +
+      'olhando para o ecrã, para perceberes onde estão os botões, campos e janelas. O print só ' +
+      'sai da máquina se a visão estiver configurada para o Claude (nuvem) — por omissão é local.',
+    risk: 'livre',
+    parameters: [],
+  },
+
   // ── Sistema ───────────────────────────────────────────────────────────────
   {
     name: 'notificar',

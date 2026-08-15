@@ -614,7 +614,7 @@ reavaliados: nenhum precisava de nativo. Ficam de fora, por dependerem de
 coisas ainda não validadas: execução de plugins, MCP, múltiplos desktops e
 layouts guardados.
 
-### Fase 3 — Controlo direto 🟡 (3.1 e 3.2 implementadas, 3.3–3.5 só desenho)
+### Fase 3 — Controlo direto 🟢 (3.1–3.5 implementadas)
 
 Pedido à parte do resto da spec: o JARVIS a mexer no rato e no teclado como
 uma pessoa, com uma palavra-passe falada como portão de presença (sessão de
@@ -659,7 +659,35 @@ nos adapters, a porta de presença no próprio serviço
 `ControlOverlay` agora montado no `DirectControlHost`), a abertura manual de
 sessão por palavra escrita na Privacidade (o caminho "escrita" da spec §6), e
 a ferramenta de assistente `abrir_aplicacao` (parâmetro `caminho`, risco
-médio). O rato/teclado (3.4) e a visão do ecrã (3.3/3.5) continuam por fazer.
+médio).
+
+**Fases 3.3–3.5 implementadas — 15/08/2026.** Fechadas as três sub-fases
+finais, por dentro do mesmo padrão de camadas (`Componente → Hook → Service →
+PlatformAdapter → invoke`):
+
+- **3.3 (perceção)** — comando Rust `capture_screen` que devolve um PNG (base64)
+  com as zonas sensíveis já tapadas antes de qualquer print sair da máquina;
+  a lista de zonas vive na `useSensitiveZonesStore` (persistida) e é editável na
+  janela de Privacidade. A própria captura só corre depois de o serviço de visão
+  aplicar as zonas.
+- **3.4 (ação)** — ferramentas `mover_rato` (x/y), `clicar_em` (x/y) e
+  `escrever_texto` (texto), cada uma a criar um `ControlStep` com `execute` a
+  chamar o nativo (`move_mouse_to`/`click_at`/`type_text`) e a passar pela porta
+  de presença (`requestStep` → overlay de confirmação por passo). **Travão de
+  mão** (`emergencyStop`): Esc Esc em menos de 500 ms cancela o passo pendente e
+  fecha a sessão, sempre montado no `DirectControlHost`, mesmo sem passo a
+  espreitar.
+- **3.5 (visão)** — abstração `VisionProvider` (imagem → texto) com dois
+  provedores, configurável na Privacidade (omissão local, §6.3): `OllamaVisionProvider`
+  (`/api/chat` local com o array `images` — o print não sai da máquina) e
+  `ClaudeVisionProvider` (nuvem, só com chave explícita). Ferramenta `ver_ecra`
+  devolve a descrição do modelo; zonas sensíveis aplicadas antes de qualquer
+  imagem ir ao provedor.
+
+O travão de mão, a porta de presença e a captura com zonas sensíveis têm testes
+dedicados (`direct-control-service.test.ts`, `vision-provider.test.ts`).
+Continua por fazer a validação ao vivo no PC real (o nativo está testado em
+Rust, mas a aplicação Tauri não chegou a arrancar nesta sessão).
 
 ## Divergências assumidas
 

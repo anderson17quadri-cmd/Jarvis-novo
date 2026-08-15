@@ -151,6 +151,23 @@ export class WebAdapter implements PlatformAdapter {
     return false;
   }
 
+  async captureScreen(): Promise<string | null> {
+    // Um browser não captura o ecrã de fora da página, e não o deve fazer.
+    return null;
+  }
+
+  async moveMouseTo(): Promise<boolean> {
+    return false;
+  }
+
+  async clickAt(): Promise<boolean> {
+    return false;
+  }
+
+  async typeText(): Promise<boolean> {
+    return false;
+  }
+
   async minimizeWindow(): Promise<void> {
     // Um separador do browser não se minimiza a si próprio.
   }

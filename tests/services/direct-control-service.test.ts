@@ -234,3 +234,35 @@ describe('requestStep — o pedido que atravessa o overlay', () => {
     expect(directControlService.history[0]?.wasConfirmed).toBe(false);
   });
 });
+
+describe('emergencyStop — o travão de mão (Esc Esc)', () => {
+  it('cancela o passo pendente e termina a sessão, sem executar nada', () => {
+    directControlService.setEnabled(true);
+    directControlService.startSession();
+
+    const step = makeStep();
+    directControlService.requestStep(step);
+    expect(directControlService.pending).toBe(step);
+
+    directControlService.emergencyStop();
+
+    expect(directControlService.pending).toBeNull();
+    expect(directControlService.sessionActive).toBe(false);
+    expect(step.calls).toBe(0);
+  });
+
+  it('termina a sessão mesmo sem passo pendente', () => {
+    directControlService.setEnabled(true);
+    directControlService.startSession();
+
+    directControlService.emergencyStop();
+
+    expect(directControlService.sessionActive).toBe(false);
+  });
+
+  it('sem sessão nem passo pendente, é um não-acontecimento — não rebenta', () => {
+    expect(() => directControlService.emergencyStop()).not.toThrow();
+    expect(directControlService.pending).toBeNull();
+    expect(directControlService.sessionActive).toBe(false);
+  });
+});

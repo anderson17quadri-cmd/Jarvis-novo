@@ -6029,3 +6029,28 @@ descrevia o que o interruptor realmente autoriza.
 capacidades — buscar texto, e abrir o navegador a sério — em vez de só
 a primeira. 14 testes existentes (`tests/diagnostics/privacy.test.tsx`)
 continuam a passar, nenhum dependia do texto exato antigo.
+
+## 2026-08-15 — Controlo direto, Fases 3.3–3.5: rato/teclado, captura de ecrã, visão do modelo
+
+Fechadas as três sub-fases finais do controlo direto, sempre por dentro do
+padrão de camadas (Componente → Hook → Service → PlatformAdapter → invoke) e
+com a privacidade como primeiro requisito. **3.3 (perceção)**: comando Rust
+`capture_screen` que devolve o ecrã em PNG já com as zonas sensíveis tapadas —
+a lista de zonas vive na `useSensitiveZonesStore` (persistida) e edita-se na
+Privacidade, e o serviço de visão aplica-as antes de qualquer print sair da
+máquina. **3.4 (ação)**: ferramentas `mover_rato`/`clicar_em`/`escrever_texto`,
+cada uma a criar um `ControlStep` que passa pela porta de presença já existente
+(`requestStep` → overlay de confirmação por passo) e chama o nativo
+`move_mouse_to`/`click_at`/`type_text`; travão de mão `emergencyStop` (Esc Esc
+em <500 ms) montado no `DirectControlHost`, ativo mesmo sem passo pendente.
+**3.5 (visão)**: abstração `VisionProvider` (imagem → texto) com dois provedores
+configuráveis na Privacidade (omissão local, §6.3) — `OllamaVisionProvider`
+(`/api/chat` local, o print não sai do PC) e `ClaudeVisionProvider` (nuvem, só
+com chave explícita) — e ferramenta `ver_ecra` no catálogo.
+
+**Verificação**: `tsc --noEmit` limpo; `eslint` 0 erros; 1772 testes verdes
+(1 pré-existente intermitente em `login-screen.test.tsx`, passa isolado);
+novos testes para o travão de mão (`direct-control-service.test.ts`) e para os
+dois provedores de visão (`vision-provider.test.ts`). Continua por fazer a
+validação ao vivo no PC real (nativo testado em Rust, app Tauri não arrancou
+nesta sessão).

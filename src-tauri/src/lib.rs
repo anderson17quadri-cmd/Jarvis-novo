@@ -106,6 +106,10 @@ pub fn run() {
             commands::obsidian::obsidian_write_note,
             commands::browser::fetch_page_text,
             commands::control::open_path,
+            commands::control::capture_screen,
+            commands::control::move_mouse_to,
+            commands::control::click_at,
+            commands::control::type_text,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

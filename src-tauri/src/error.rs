@@ -32,6 +32,10 @@ pub enum Error {
     #[error("erro no sistema de ficheiros: {0}")]
     Files(String),
 
+    #[cfg_attr(any(mobile, target_os = "android", target_os = "ios"), allow(dead_code))]
+    #[error("falha no controlo direto: {0}")]
+    Control(String),
+
     #[error("erro do Tauri: {0}")]
     Tauri(#[from] tauri::Error),
 }

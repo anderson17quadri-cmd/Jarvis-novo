@@ -72,10 +72,17 @@ scraper = "0.20"
 # `localhost`, a um IP privado, ou ao endereço de metadados de nuvem).
 url = "2"
 # Controlo direto (Fase 3.2): abre um ficheiro/aplicação no abridor do
-# próprio sistema — o equivalente a um duplo-clique, não a um shell. É o
-# único crate de controlo direto desta sub-fase; o rato/teclado (3.4) virão
-# depois, com outra dependência.
+# próprio sistema — o equivalente a um duplo-clique, não a um shell.
 open = "5"
+# Controlo direto (Fases 3.3–3.4): `xcap` captura o ecrã (o print é devolvido
+# para a interface decidir, nunca escrito em disco), `enigo` simula o rato e o
+# teclado ao nível do sistema operativo (nunca um comando de texto), e `base64`
+# codifica o PNG para viajar pelo IPC sem tocar no sistema de ficheiros. Todos
+# são cross-platform e só fazem sentido no desktop — por isso entram neste
+# grupo, ao lado do `open`, não no bloco comum do Android.
+enigo = "0.2"
+xcap = "0.9"
+base64 = "0.22"
 
 # O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
 # (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o

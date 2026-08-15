@@ -9,6 +9,7 @@ import {
   type AiSettings,
   type ChainProviderId,
   type DeepSeekModelId,
+  type VisionProviderId,
 } from '@/types/ai-provider-settings';
 
 /**
@@ -45,6 +46,8 @@ interface AiSettingsState {
   setOllamaModel: (model: string) => void;
   setOllamaBaseUrl: (baseUrl: string) => void;
   setProviderOrder: (providerOrder: readonly ChainProviderId[]) => void;
+  setVisionProvider: (visionProvider: VisionProviderId) => void;
+  setOllamaVisionModel: (model: string) => void;
   /** Esquece a chave e volta ao provedor local. */
   forgetKey: () => void;
   /** Esquece a chave da Claude e volta ao provedor local. */
@@ -150,6 +153,20 @@ export const useAiSettingsStore = create<AiSettingsState>((set, get) => ({
     set({ settings });
 
     logService.audit('Reordenar a cadeia de reserva de provedores', 'executado');
+    void get().persist();
+  },
+
+  setVisionProvider: (visionProvider) => {
+    const settings = { ...get().settings, visionProvider };
+    set({ settings });
+
+    logService.audit(`Passar a visão de ecrã ao provedor ${visionProvider}`, 'executado');
+    void get().persist();
+  },
+
+  setOllamaVisionModel: (model) => {
+    const settings = { ...get().settings, ollamaVisionModel: model.trim() };
+    set({ settings });
     void get().persist();
   },
 
