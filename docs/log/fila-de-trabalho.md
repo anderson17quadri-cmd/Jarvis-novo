@@ -46,16 +46,6 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 21. Assinatura de plugins passa a cobrir o `code` — DeepSeek (15/08/2026)
-
-Decisão: opção (a). Estender a assinatura Ed25519 para cobrir
-`manifest` + `code` (ou um hash do `code`), não só o manifesto. Mudança
-quebradora no formato `.jarvis-plugin` — sem plugins externos reais em
-circulação, o custo é só atualizar a ferramenta que assina e os
-exemplos do catálogo. Corrigir também a mensagem da interface
-("Assinatura verificada") se, entretanto, ficar desatualizada.
-`src/plugins/plugin.ts`, `src/plugins/signature.ts`.
-
 ### 22. Isolamento por plugin no armazenamento — pré-requisito do item 23 — `[livre]`
 
 `storageService` guarda tudo num `jarvis.store.json` sem namespace por
@@ -635,6 +625,17 @@ Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1758/1758, `cargo
 check` limpo, `cargo test --lib voice_clone` 5/5. Detalhe em
 `docs/log/historico-sessoes.md` (15/08/2026, "Item 19: a voz clonada não
 arrancava sozinha — órfão preso na 8090 a fingir que estava tudo bem").
+
+### 21. Assinatura de plugins passa a cobrir o `code` — DeepSeek — commit `8293517`
+
+Decisão "opção (a)" da pergunta 1. A assinatura Ed25519 passou a cobrir
+`manifest` + hash SHA-256 do `code`, não só o manifesto — trocar o código
+invalida a verificação. `signPlugin`/`verifyPluginSignature`/
+`verifySignedPluginPackage` substituem `signManifest`/`verifyManifestSignature`/
+`verifySignedManifest`; o fluxo de instalação entrega o `code` à verificação
+(sem código → `assinatura-invalida`). Mudança quebradora no `.jarvis-plugin`.
+Ver `docs/log/historico-sessoes.md` (15/08/2026, "Item 21: a assinatura de
+plugins passa a cobrir o código").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 
