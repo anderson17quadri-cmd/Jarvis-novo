@@ -46,7 +46,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 21. Assinatura de plugins passa a cobrir o `code` — `[livre]`
+### 21. Assinatura de plugins passa a cobrir o `code` — DeepSeek (15/08/2026)
 
 Decisão: opção (a). Estender a assinatura Ed25519 para cobrir
 `manifest` + `code` (ou um hash do `code`), não só o manifesto. Mudança
