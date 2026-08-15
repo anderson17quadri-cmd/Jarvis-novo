@@ -6181,3 +6181,21 @@ não devolve memória sem a permissão.
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
 1791/1791.
+
+## 2026-08-15 — Item 24 (desenho): wake word local, nunca por um serviço na nuvem
+
+O item 24 pede a wake word — e pede um desenho próprio antes de construir, por
+ser "maior". Este é esse desenho, em `docs/spec/wake-word-local.md`. A decisão
+de privacidade que travava a linha da spec (Parte 7.2, "exige escuta contínua —
+decisão por tomar") fica **tomada**: opção (a), motor local (Vosk + modelo em
+português), nunca escuta contínua por um serviço de fala na nuvem — a opção
+(b) está explicitamente recusada.
+
+O desenho define a wake word como **um portão, não um ouvido novo**: substitui
+o toque no botão do microfone, não o pipeline de transcrição a seguir. Três
+sub-fases (24.1 motor local, 24.2 ligação + interruptor na Privacidade, 24.3
+palavra configurável + auditoria), e cinco decisões em aberto (§6) — motor e
+runtime, palavra por omissão, se a transcrição pós-wake pode cair para a
+nuvem, sensibilidade e janela pós-acordar.
+
+Sem código. Falta construir (§4 e §5 do desenho).

@@ -60,7 +60,9 @@ disso. Maior do que os outros três desta lista — vale a pena um desenho
 próprio (ficheiro em `docs/spec/`) antes de começar a construir, no
 mesmo formato que o Controlo Direto (Fase 3.1) ou o vault Obsidian já
 tiveram. Continua desligado por omissão, ativação explícita em
-Privacidade, mesma disciplina de sempre.
+Privacidade, mesma disciplina de sempre. **Desenho feito 15/08/2026** —
+`docs/spec/wake-word-local.md`; falta construir (§4 e §5 do desenho: 24.1 motor
+local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
