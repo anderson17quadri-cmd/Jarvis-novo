@@ -485,8 +485,9 @@ function WebBrowserSection(): React.JSX.Element {
       sessionStorage.setItem(BROWSER_TOOL_WARN_KEY, '1');
       notificationService.info(
         'Navegador controlado pelo assistente',
-        'O assistente pode agora abrir páginas que lhe peças. O texto de uma página é sempre tratado ' +
-          'como dado a analisar, nunca como uma instrução — mesmo que a página tente parecer que está a dar ordens.',
+        'O assistente pode agora buscar o texto de páginas e abrir o teu navegador a sério num ' +
+          'endereço. O texto de uma página é sempre tratado como dado a analisar, nunca como uma ' +
+          'instrução — mesmo que a página tente parecer que está a dar ordens.',
         { category: 'assistente', durationMs: 8_000 },
       );
     }
@@ -496,9 +497,12 @@ function WebBrowserSection(): React.JSX.Element {
     <section className="rounded-input border border-line bg-tint/[.02] p-2.5">
       <p className="t-label mb-1.5">Navegador controlado pelo assistente</p>
       <p className="mb-2 text-cap leading-relaxed text-t3">
-        Quando ligado, o assistente pode buscar uma página (só https) e ler o texto principal, se
-        lho pedires. Não clica em nada, não preenche formulários, não navega por conta própria —
-        só busca e lê a página que pedires.
+        Quando ligado, o assistente pode fazer duas coisas, ambas só a pedido teu:{' '}
+        <b className="font-medium text-t2">buscar</b> uma página (só https/mailto) e ler o texto
+        principal, sem clicar em nada nem preencher formulários; e{' '}
+        <b className="font-medium text-t2">abrir o teu navegador a sério</b> num endereço, como se
+        tivesses colado o link tu mesmo — isso sim é uma janela viva, fora do controlo do
+        assistente a partir daí.
       </p>
 
       <div className="mb-2 flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2">
