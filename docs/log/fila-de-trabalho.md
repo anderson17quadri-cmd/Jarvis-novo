@@ -46,7 +46,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — `[livre, maior]`
+### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — DeepSeek (15/08/2026)
 
 Decisão: opção (a) da pergunta original, com a opção (b) explicitamente
 recusada — nunca escuta contínua por um serviço de fala na nuvem
