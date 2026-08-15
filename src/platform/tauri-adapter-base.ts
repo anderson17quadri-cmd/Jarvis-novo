@@ -9,6 +9,7 @@ import { arch as osArch, platform as osPlatform, version as osVersion } from '@t
 
 import type { PlatformAdapter } from './platform-adapter';
 import type { PlatformCapabilities, PlatformInfo, PlatformKind } from '@/types/platform';
+import type { ScreenRect } from '@/types/screen-zone';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
@@ -186,6 +187,48 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
       return true;
     } catch (error) {
       console.warn('[platform] o comando "open_path" falhou:', error);
+      return false;
+    }
+  }
+
+  // ── Controlo direto (Fases 3.3–3.4) ──────────────────────────────────────
+
+  async captureScreen(zones: readonly ScreenRect[]): Promise<string | null> {
+    if (!this.capabilities.directControl) return null;
+    // O Rust já tapa as zonas antes de devolver o PNG — a interface só vê a
+    // versão tapada, nunca o print por descoberto.
+    return this.tryInvoke<string>('capture_screen', null, { zones });
+  }
+
+  async moveMouseTo(x: number, y: number): Promise<boolean> {
+    if (!this.capabilities.directControl) return false;
+    try {
+      await invoke('move_mouse_to', { x, y });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "move_mouse_to" falhou:', error);
+      return false;
+    }
+  }
+
+  async clickAt(x: number, y: number): Promise<boolean> {
+    if (!this.capabilities.directControl) return false;
+    try {
+      await invoke('click_at', { x, y });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "click_at" falhou:', error);
+      return false;
+    }
+  }
+
+  async typeText(text: string): Promise<boolean> {
+    if (!this.capabilities.directControl) return false;
+    try {
+      await invoke('type_text', { text });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "type_text" falhou:', error);
       return false;
     }
   }

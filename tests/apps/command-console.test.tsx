@@ -77,6 +77,22 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`abrir-aplicacao:${path}`);
       return `pedido:${path}`;
     },
+    moveMouse: (x, y) => {
+      calls.push(`mover-rato:${x},${y}`);
+      return `pedido:${x},${y}`;
+    },
+    clickAt: (x, y) => {
+      calls.push(`clicar:${x},${y}`);
+      return `pedido:${x},${y}`;
+    },
+    typeText: (text) => {
+      calls.push(`escrever:${text}`);
+      return `pedido:${text}`;
+    },
+    seeScreen: async () => {
+      calls.push('ver-ecra');
+      return 'ecrã descrito';
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {

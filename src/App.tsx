@@ -49,6 +49,7 @@ import { obsidianService } from '@/services/knowledge/obsidian-service';
 import { webSearchService } from '@/services/web-search/web-search-service';
 import { openExternalUrl, openWebPage } from '@/services/knowledge/web-browser-service';
 import { directControlService, type ControlStep } from '@/services/direct-control-service';
+import { visionService } from '@/services/vision/vision-service';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { useWeatherStore } from '@/stores/use-weather-store';
 import { setToolExecutor } from '@/services/assistant/tool-runner';
@@ -603,6 +604,39 @@ export function App(): React.JSX.Element {
         };
         return directControlService.requestStep(step);
       },
+      // Rato/teclado (Fases 3.4): mesmo padrão do openPath — a ação passa pela
+      // porta de presença do serviço e só executa depois de confirmada no
+      // overlay. `execute` é assíncrono por fora, mas o serviço chama-o a sério.
+      moveMouse: (x, y) => {
+        const step: ControlStep = {
+          id: `mover-rato-${Date.now()}`,
+          description: `Mover o rato para (${x}, ${y})`,
+          risk: 'baixo',
+          execute: () => void getPlatformAdapter().moveMouseTo(x, y),
+        };
+        return directControlService.requestStep(step);
+      },
+      clickAt: (x, y) => {
+        const step: ControlStep = {
+          id: `clicar-${Date.now()}`,
+          description: `Clicar em (${x}, ${y})`,
+          risk: 'medio',
+          execute: () => void getPlatformAdapter().clickAt(x, y),
+        };
+        return directControlService.requestStep(step);
+      },
+      typeText: (text) => {
+        const step: ControlStep = {
+          id: `escrever-${Date.now()}`,
+          description: `Escrever "${text}"`,
+          risk: 'medio',
+          execute: () => void getPlatformAdapter().typeText(text),
+        };
+        return directControlService.requestStep(step);
+      },
+      // Visão (Fase 3.5): o print é capturado e interpretado pelo serviço — a
+      // confirmação por passo não se aplica a "olhar" (não mexe em nada).
+      seeScreen: () => visionService.describeScreen(),
       music: (action) => {
         if (action === 'proxima') void musicService.next();
         else if (action === 'anterior') void musicService.previous();

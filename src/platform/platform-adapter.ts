@@ -1,4 +1,5 @@
 import type { PlatformCapabilities, PlatformInfo } from '@/types/platform';
+import type { ScreenRect } from '@/types/screen-zone';
 import type { RealFileEntry, RealFilesRoot } from '@/types/real-file-entry';
 import type { ProcessInfo, StaticSystemInfo, SystemSnapshot } from '@/types/system';
 import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
@@ -66,6 +67,21 @@ export interface PlatformAdapter {
    * `false` se a plataforma não suportar ou o caminho não existir.
    */
   openPath(path: string): Promise<boolean>;
+
+  // ── Controlo direto (Fases 3.3–3.4) ──────────────────────────────────────
+  /**
+   * Tira um print do monitor principal, tapa as zonas sensíveis e devolve-o em
+   * base64 PNG. `null` se a plataforma não suportar ou a captura falhar — nunca
+   * lança. O print nunca é escrito em disco: vive só em memória o tempo da
+   * decisão.
+   */
+  captureScreen(zones: readonly ScreenRect[]): Promise<string | null>;
+  /** Move o cursor para coordenadas absolutas. `false` se recusado (fora do ecrã ou sem suporte). */
+  moveMouseTo(x: number, y: number): Promise<boolean>;
+  /** Clica com o botão esquerdo nas coordenadas dadas. `false` se recusado. */
+  clickAt(x: number, y: number): Promise<boolean>;
+  /** Escreve texto, tecla a tecla — nunca interpretado como comando. `false` se recusado. */
+  typeText(text: string): Promise<boolean>;
 
   // ── Cofre de segredos ────────────────────────────────────────────────────
   /** Guarda um segredo no chaveiro do sistema. `false` se não disponível. */

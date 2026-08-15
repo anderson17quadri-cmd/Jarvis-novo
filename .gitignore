@@ -45,3 +45,6 @@ venv/
 __pycache__/
 *.pyc
 logs/
+
+# Logs de execução — nunca para o repositório
+*.log

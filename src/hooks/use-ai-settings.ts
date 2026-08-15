@@ -7,6 +7,9 @@ import { DeepSeekProvider } from '@/services/ai-providers/deepseek-provider';
 import { chooseModel } from '@/services/ai-providers/model-choice';
 import { OllamaProvider } from '@/services/ai-providers/ollama-provider';
 import { type ChainMember } from '@/services/ai-providers/provider-chain';
+import { ClaudeVisionProvider } from '@/services/vision/claude-vision-provider';
+import { OllamaVisionProvider } from '@/services/vision/ollama-vision-provider';
+import { visionService } from '@/services/vision/vision-service';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
 import type { AiProviderId, AiSettings } from '@/types/ai-provider-settings';
 import type { AiProvider } from '@/types/assistant';
@@ -71,11 +74,42 @@ export function applyAiSettings(settings: AiSettings): void {
 }
 
 /**
+ * Converte as preferências de visão no provedor de visão em vigor.
+ *
+ * A mesma disciplina de `applyAiSettings`: sem configuração suficiente, o
+ * serviço fica sem provedor — e a ferramenta `ver_ecra` responde com o que
+ * falta, em vez de tentar um pedido que nunca poderia correr.
+ */
+export function applyVisionSettings(settings: AiSettings): void {
+  if (settings.visionProvider === 'claude') {
+    if (settings.claudeApiKey.trim().length === 0) {
+      visionService.setProvider(null);
+      return;
+    }
+    visionService.setProvider(
+      new ClaudeVisionProvider(settings.claudeApiKey, settings.claudeModel),
+    );
+    return;
+  }
+
+  // Omissão: local. O print nunca sai da máquina.
+  if (settings.ollamaVisionModel.trim().length === 0) {
+    visionService.setProvider(null);
+    return;
+  }
+  visionService.setProvider(
+    new OllamaVisionProvider(settings.ollamaVisionModel, settings.ollamaBaseUrl),
+  );
+}
+
+/**
  * Aplica as preferências de IA ao serviço sempre que mudam (Parte 7.1).
  *
  * A store gere o estado e a persistência; este hook é a peça que converte
  * essas preferências no provedor em vigor — assim a store não precisa de
- * saber que provedores existem nem de importar o `aiService`.
+ * saber que provedores existem nem de importar o `aiService`. A visão de ecrã
+ * (Fase 3.5) aplica-se aqui ao lado do texto: as mesmas preferências, o mesmo
+ * momento.
  *
  * Monta-se uma vez, no início da aplicação, e o efeito trata do resto.
  */
@@ -84,5 +118,6 @@ export function useAiSettings(): void {
 
   useEffect(() => {
     applyAiSettings(settings);
+    applyVisionSettings(settings);
   }, [settings]);
 }

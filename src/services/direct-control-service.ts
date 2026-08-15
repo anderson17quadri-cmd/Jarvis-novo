@@ -187,6 +187,29 @@ class DirectControlService {
   }
 
   /**
+   * Travão de mão (Fase 3.4) — acionado por `Esc Esc`.
+   *
+   * Pára tudo de imediato: cancela o passo pendente e termina a sessão, sem
+   * passar pelo registo por passo (o passo cancelado aqui nunca chegou a
+   * executar, por isso não há nada a "recusar" — simplesmente deixa de existir).
+   * É a diferença entre "não faças isto" (o botão Recusar) e "pára já, tudo"
+   * (o travão): este último também mata a sessão, para um segundo passo não
+   * vir logo a seguir a pedir confirmação outra vez.
+   */
+  emergencyStop(): void {
+    const hadPending = this.pendingStep !== null;
+    const hadSession = this.sessionActive;
+
+    this.pendingStep = null;
+    this.sessionExpiresAt = null;
+
+    if (hadPending || hadSession) {
+      logService.audit('Travão de mão acionado (Esc Esc) — controlo direto parado', 'executado');
+      this.emit();
+    }
+  }
+
+  /**
    * Regista um passo, executa se: confirmado, não simulado, ligado, e com
    * uma sessão de presença ativa.
    *

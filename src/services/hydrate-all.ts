@@ -12,6 +12,7 @@ import { useMusicSettingsStore } from '@/stores/use-music-settings-store';
 import { useNewsSettingsStore } from '@/stores/use-news-settings-store';
 import { useObsidianSettingsStore } from '@/stores/use-obsidian-settings-store';
 import { useNotificationStore } from '@/stores/use-notification-store';
+import { useSensitiveZonesStore } from '@/stores/use-sensitive-zones-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useSystemStateStore } from '@/stores/use-system-state-store';
 import { useTaskStore } from '@/stores/use-task-store';
@@ -65,6 +66,7 @@ export async function hydrateAll(): Promise<void> {
   await useObsidianSettingsStore.getState().hydrate();
   await useBrowserToolSettingsStore.getState().hydrate();
   await useWebSearchSettingsStore.getState().hydrate();
+  await useSensitiveZonesStore.getState().hydrate();
   await soundService.hydrate();
   await automationService.hydrate(seedAutomations());
   await useAssistantStore.getState().hydrate();

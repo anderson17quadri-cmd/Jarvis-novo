@@ -89,6 +89,22 @@ function makeExecutor(): ToolExecutor & { calls: string[] } {
       calls.push(`abrir-aplicacao:${path}`);
       return `pedido:${path}`;
     },
+    moveMouse: (x, y) => {
+      calls.push(`mover-rato:${x},${y}`);
+      return `pedido:${x},${y}`;
+    },
+    clickAt: (x, y) => {
+      calls.push(`clicar:${x},${y}`);
+      return `pedido:${x},${y}`;
+    },
+    typeText: (text) => {
+      calls.push(`escrever:${text}`);
+      return `pedido:${text}`;
+    },
+    seeScreen: async () => {
+      calls.push('ver-ecra');
+      return 'ecrã descrito';
+    },
     music: (action) => void calls.push(`musica:${action}`),
     speak: (text) => void calls.push(`falar:${text}`),
     setAutomationEnabled: (name, enabled) => {
@@ -649,6 +665,10 @@ describe('cobertura', () => {
       abrir_pagina: { url: 'https://exemplo.pt' },
       abrir_navegador: { url: 'https://exemplo.pt' },
       abrir_aplicacao: { caminho: 'C:\\Windows\\notepad.exe' },
+      mover_rato: { x: 100, y: 200 },
+      clicar_em: { x: 100, y: 200 },
+      escrever_texto: { texto: 'olá' },
+      ver_ecra: {},
       controlar_musica: { acao: 'tocar' },
       ler_em_voz_alta: { texto: 'olá' },
       ligar_automacao: { nome: 'x', ligada: true },
@@ -659,6 +679,27 @@ describe('cobertura', () => {
       const outcome = await runTool({ id: '1', name: tool.name, args: args[tool.name] ?? {} }, true);
       expect(outcome.status, tool.name).toBe('ok');
     }
+  });
+});
+
+describe('controlo direto — rato, teclado e visão (Fases 3.4–3.5)', () => {
+  it('mover_rato recusa coordenadas negativas', async () => {
+    const outcome = await runTool({ id: '1', name: 'mover_rato', args: { x: -1, y: 10 } });
+
+    expect(outcome.status).toBe('erro');
+  });
+
+  it('clicar_em recusa uma coordenada que não é inteira', async () => {
+    const outcome = await runTool({ id: '1', name: 'clicar_em', args: { x: 10.5, y: 10 } });
+
+    expect(outcome.status).toBe('erro');
+  });
+
+  it('ver_ecra devolve a descrição do ecrã', async () => {
+    const outcome = await runTool({ id: '1', name: 'ver_ecra', args: {} });
+
+    expect(outcome.status).toBe('ok');
+    expect(outcome.message).toBe('ecrã descrito');
   });
 });
 

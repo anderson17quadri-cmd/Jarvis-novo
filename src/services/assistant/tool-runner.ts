@@ -67,6 +67,14 @@ export interface ToolExecutor {
   readonly openExternalUrl: (url: string) => Promise<string>;
   /** Abre uma aplicação/ficheiro pelo caminho, através da porta de controlo direto. Devolve o que dizer ao modelo. */
   readonly openPath: (path: string) => string;
+  /** Move o rato para (x, y) através da porta de controlo direto. Devolve o que dizer ao modelo. */
+  readonly moveMouse: (x: number, y: number) => string;
+  /** Clica em (x, y) através da porta de controlo direto. Devolve o que dizer ao modelo. */
+  readonly clickAt: (x: number, y: number) => string;
+  /** Escreve texto no campo focado, através da porta de controlo direto. Devolve o que dizer ao modelo. */
+  readonly typeText: (text: string) => string;
+  /** Tira um print (mascarado) e descreve o ecrã via visão. Devolve a descrição. */
+  readonly seeScreen: () => Promise<string>;
   /** Pesquisa na web. Só devolve resultados estruturados — nunca abre páginas nem executa nada. */
   readonly searchWeb: (query: string) => Promise<SearchOutcome>;
   readonly music: (action: string) => void;
@@ -356,6 +364,18 @@ async function perform(
 
     case 'abrir_aplicacao':
       return run.openPath(text('caminho'));
+
+    case 'mover_rato':
+      return run.moveMouse(Number(args['x']), Number(args['y']));
+
+    case 'clicar_em':
+      return run.clickAt(Number(args['x']), Number(args['y']));
+
+    case 'escrever_texto':
+      return run.typeText(text('texto'));
+
+    case 'ver_ecra':
+      return run.seeScreen();
 
     case 'controlar_musica':
       run.music(text('acao'));

@@ -6,6 +6,7 @@ import {
   Info,
   KeyRound,
   MousePointer,
+  RectangleHorizontal,
   ShieldAlert,
   ShieldCheck,
   ShieldOff,
@@ -31,6 +32,9 @@ import {
 } from '@/services/webauthn-service';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useBrowserToolSettingsStore } from '@/stores/use-browser-tool-settings-store';
+import { useSensitiveZonesStore } from '@/stores/use-sensitive-zones-store';
+import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
+import { VISION_PROVIDER_INFO } from '@/types/ai-provider-settings';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
 import { USER_NAME } from '@/constants/user';
 import type { PluginPermissions } from '@/plugins/plugin';
@@ -798,6 +802,12 @@ function ControlPanel(): React.JSX.Element {
         </button>
       </section>
 
+      {/* Visão de ecrã — item 20 (Fase 3.5) */}
+      <VisionSection />
+
+      {/* Zonas sensíveis — item 19 (Fase 3.3) */}
+      <SensitiveZonesSection />
+
       {/* Histórico — item 22 */}
       <section className="rounded-input border border-line bg-tint/[.02] p-3">
         <div className="flex items-center justify-between">
@@ -840,5 +850,221 @@ function ControlPanel(): React.JSX.Element {
         )}
       </section>
     </div>
+  );
+}
+
+/**
+ * Visão de ecrã (Fase 3.5, item 20).
+ *
+ * A decisão de privacidade que a spec §6.3 reservava à pessoa: o print do ecrã
+ * sai ou não do PC? A omissão é o local (Ollama) — o print nunca sai da máquina.
+ * O remoto (Claude) é opt-in explícito, e reusa a chave/modelo do Claude de texto.
+ */
+function VisionSection(): React.JSX.Element {
+  const visionProvider = useAiSettingsStore((state) => state.settings.visionProvider);
+  const ollamaVisionModel = useAiSettingsStore((state) => state.settings.ollamaVisionModel);
+  const claudeApiKey = useAiSettingsStore((state) => state.settings.claudeApiKey);
+  const setVisionProvider = useAiSettingsStore((state) => state.setVisionProvider);
+  const setOllamaVisionModel = useAiSettingsStore((state) => state.setOllamaVisionModel);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-3">
+      <p className="flex items-center gap-2 text-[13px] font-medium">
+        <Eye className="h-4 w-4 flex-shrink-0 text-accent" aria-hidden="true" />
+        Visão de ecrã
+      </p>
+      <p className="mt-1 mb-2 text-cap leading-relaxed text-t3">
+        Quem interpreta o print quando o assistente precisa de olhar para o ecrã. A escolha é de
+        privacidade: <strong>local</strong> (o print nunca sai do PC) ou{' '}
+        <strong>nuvem</strong> (o print vai para a Anthropic).
+      </p>
+
+      <div
+        role="radiogroup"
+        aria-label="Provedor de visão de ecrã"
+        className="mb-2 flex flex-wrap gap-1"
+      >
+        {(Object.keys(VISION_PROVIDER_INFO) as (keyof typeof VISION_PROVIDER_INFO)[]).map((id) => {
+          const info = VISION_PROVIDER_INFO[id];
+
+          return (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={visionProvider === id}
+              onClick={() => setVisionProvider(id)}
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-[10.5px] transition-all duration-hover ease-out',
+                visionProvider === id
+                  ? 'border-accent bg-accent/[.1] text-accent'
+                  : 'border-line text-t3 hover:border-accent/35 hover:text-t2',
+              )}
+            >
+              {info.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {visionProvider === 'ollama' ? (
+        <input
+          value={ollamaVisionModel}
+          onChange={(e) => setOllamaVisionModel(e.target.value)}
+          placeholder="Modelo de visão (ex.: llava, qwen2.5-vl)"
+          aria-label="Modelo de visão local"
+          className="w-full rounded-input border border-line bg-tint/[.03] px-2.5 py-2 text-[12.5px] text-t1 outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+        />
+      ) : (
+        <p className="text-cap leading-relaxed text-t3">
+          {claudeApiKey.trim().length > 0
+            ? 'Usa a chave e o modelo do Claude já configurados em Personalização → Assistente.'
+            : 'Falta a chave do Claude — define-a em Personalização → Assistente para a visão de nuvem funcionar.'}
+        </p>
+      )}
+
+      <p className="mt-2 flex items-start gap-2 rounded-input border border-line bg-tint/[.02] p-2 text-cap text-t3">
+        <ShieldAlert className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+        <span>{VISION_PROVIDER_INFO[visionProvider].description}</span>
+      </p>
+    </section>
+  );
+}
+
+/**
+ * Zonas sensíveis do ecrã (Fase 3.3, item 19).
+ *
+ * Retângulos que a pessoa desenha aqui e que ficam sempre tapados a preto
+ * antes de um print sair da máquina. O tapar acontece no Rust — `capture_screen`
+ * recebe as zonas e devolve o PNG já tapado — por isso a interface só alguma vez
+ * vê a imagem mascarada, nunca o original.
+ *
+ * A entrada é por números (x, y, largura, altura em píxeis do ecrã primário):
+ * é grosseiro, mas honesto e testável sem um ecrã vivo à frente. Um desenho por
+ * arrasto sobre um print ficaria melhor — fica para depois, quando o fluxo de
+ * captura estiver assente.
+ */
+function SensitiveZonesSection(): React.JSX.Element {
+  const zones = useSensitiveZonesStore((state) => state.zones);
+  const add = useSensitiveZonesStore((state) => state.add);
+  const remove = useSensitiveZonesStore((state) => state.remove);
+  const clear = useSensitiveZonesStore((state) => state.clear);
+
+  const [rect, setRect] = useState({ x: '', y: '', width: '', height: '' });
+
+  const toInt = (value: string): number => {
+    const n = Number.parseInt(value, 10);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const fields = [rect.x, rect.y, rect.width, rect.height];
+  const canAdd = fields.every(
+    (value) => value.trim() !== '' && Number.isFinite(Number.parseInt(value, 10)),
+  );
+
+  const handleAdd = useCallback(() => {
+    add({
+      x: toInt(rect.x),
+      y: toInt(rect.y),
+      width: toInt(rect.width),
+      height: toInt(rect.height),
+    });
+    setRect({ x: '', y: '', width: '', height: '' });
+  }, [add, rect]);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-3">
+      <div className="flex items-center justify-between">
+        <p className="flex items-center gap-2 text-[13px] font-medium">
+          <RectangleHorizontal className="h-4 w-4 flex-shrink-0 text-accent" aria-hidden="true" />
+          Zonas sensíveis do ecrã
+        </p>
+        {zones.length > 0 && (
+          <button
+            type="button"
+            onClick={clear}
+            className="text-[11px] text-t3 transition-colors duration-hover hover:text-danger"
+          >
+            Limpar
+          </button>
+        )}
+      </div>
+
+      <p className="mt-1 mb-2 text-cap leading-relaxed text-t3">
+        Retângulos tapados a preto antes de qualquer print sair da máquina — a barra de senhas do
+        browser, uma app de banco. O tapar acontece no Rust, por isso nenhuma imagem sem mascarar
+        chega à interface nem ao modelo de visão.
+      </p>
+
+      {zones.length === 0 ? (
+        <p className="mb-2 text-cap text-t3">Nenhuma zona definida.</p>
+      ) : (
+        <ul className="mb-2 space-y-1">
+          {zones.map((zone) => (
+            <li
+              key={zone.id}
+              className="flex items-center gap-2 rounded-input border border-line bg-tint/[.03] px-2.5 py-1.5"
+            >
+              <span className="mono min-w-0 flex-1 truncate text-[11px] text-t2">
+                x {zone.x} · y {zone.y} · {zone.width}×{zone.height}
+              </span>
+              <button
+                type="button"
+                onClick={() => remove(zone.id)}
+                aria-label="Apagar zona"
+                className="rounded p-1 text-t3 transition-colors duration-hover hover:text-danger"
+              >
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-wrap items-end gap-1.5">
+        <RectField label="x" value={rect.x} onChange={(value) => setRect({ ...rect, x: value })} />
+        <RectField label="y" value={rect.y} onChange={(value) => setRect({ ...rect, y: value })} />
+        <RectField label="largura" value={rect.width} onChange={(value) => setRect({ ...rect, width: value })} />
+        <RectField label="altura" value={rect.height} onChange={(value) => setRect({ ...rect, height: value })} />
+        <button
+          type="button"
+          onClick={handleAdd}
+          disabled={!canAdd}
+          className={cn(
+            'rounded-btn border px-3 py-2 text-[12px] font-medium transition-all duration-hover',
+            canAdd
+              ? 'border-accent/50 bg-accent/[.1] text-accent hover:shadow-glow'
+              : 'border-line bg-tint/[.03] text-t3',
+          )}
+        >
+          Adicionar
+        </button>
+      </div>
+    </section>
+  );
+}
+
+/** Campo numérico pequeno para uma coordenada/largura de zona. */
+function RectField({
+  label,
+  value,
+  onChange,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
+}): React.JSX.Element {
+  return (
+    <label className="flex items-center gap-1.5">
+      <span className="text-[10.5px] text-t3">{label}</span>
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        inputMode="numeric"
+        placeholder="0"
+        aria-label={label}
+        className="w-16 rounded-input border border-line bg-tint/[.03] px-2 py-1.5 text-[12px] text-t1 outline-none transition-colors duration-hover placeholder:text-t3 focus:border-accent/45"
+      />
+    </label>
   );
 }

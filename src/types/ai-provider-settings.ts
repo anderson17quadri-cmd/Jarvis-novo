@@ -13,6 +13,17 @@
 
 export type AiProviderId = 'regras' | 'deepseek' | 'claude' | 'ollama';
 
+/**
+ * O modelo que interpreta o ecrã (Fase 3.5).
+ *
+ * É uma escolha à parte do provedor de texto porque é uma decisão de
+ * privacidade diferente: o que se escreve ao assistente já sai (DeepSeek/
+ * Claude), mas um print do ecrã é outra categoria de dado — pode mostrar
+ * senhas, contas, mensagens. Por isso a omissão é o **local** (Ollama), onde
+ * o print nunca sai da máquina, e o remoto (Claude) é opt-in explícito.
+ */
+export type VisionProviderId = 'ollama' | 'claude';
+
 /** Os provedores que entram na cadeia de reserva — o local (`regras`) é o abrigo final, não um degrau da cadeia. */
 export type ChainProviderId = Exclude<AiProviderId, 'regras'>;
 
@@ -78,6 +89,24 @@ export const AI_PROVIDERS: Readonly<Record<AiProviderId, AiProviderInfo>> = {
   },
 };
 
+/** As duas opções de visão, com o que as separa: onde o print vai parar. */
+export const VISION_PROVIDER_INFO: Readonly<
+  Record<VisionProviderId, { readonly name: string; readonly description: string; readonly isRemote: boolean }>
+> = {
+  ollama: {
+    name: 'Ollama (local)',
+    description:
+      'Um modelo de visão a correr no próprio dispositivo. O print nunca sai da máquina — não há chave, porque não há ninguém do outro lado.',
+    isRemote: false,
+  },
+  claude: {
+    name: 'Claude (nuvem)',
+    description:
+      'O print sai do dispositivo e vai para os servidores da Anthropic. Usa a chave e o modelo do Claude já configurados. Só por escolha explícita.',
+    isRemote: true,
+  },
+};
+
 /** Modelos da DeepSeek, com o que cada um serve. */
 export const DEEPSEEK_MODELS = [
   {
@@ -115,6 +144,10 @@ export interface AiSettings {
   readonly ollamaBaseUrl: string;
   /** Ordem de reserva da cadeia — a preferência guardada, não uma constante fixa. */
   readonly providerOrder: readonly ChainProviderId[];
+  /** Quem interpreta o ecrã (Fase 3.5). Local por omissão: o print não sai daqui. */
+  readonly visionProvider: VisionProviderId;
+  /** Modelo de visão instalado localmente — ex.: `llava`, `qwen2.5-vl`. Depende do `ollama pull`. */
+  readonly ollamaVisionModel: string;
 }
 
 export const DEFAULT_AI_SETTINGS: AiSettings = {
@@ -129,6 +162,8 @@ export const DEFAULT_AI_SETTINGS: AiSettings = {
   ollamaModel: '',
   ollamaBaseUrl: 'http://localhost:11434',
   providerOrder: DEFAULT_CHAIN_ORDER,
+  visionProvider: 'ollama',
+  ollamaVisionModel: '',
 };
 
 /**
