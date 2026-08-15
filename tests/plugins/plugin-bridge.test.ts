@@ -753,6 +753,48 @@ describe('handlePluginMessage — core.storage', () => {
 
     expect((leituraA.data as { valor: unknown }).valor).toBe('a');
   });
+
+  it('uma chave forjada não alcança as preferências do sistema', async () => {
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-12',
+      payload: { chave: 'ai-settings', valor: 'forjado' },
+    });
+
+    // Ficou no namespace do plugin — a chave real do sistema continua intocada.
+    expect(localStorage.getItem('jarvis.ai-settings')).toBeNull();
+    expect(localStorage.getItem('jarvis.plugins:guarda-preferencias:ai-settings')).toBe('"forjado"');
+  });
+
+  it('a chave forjada de um plugin não colide com a do outro', async () => {
+    seedExternalPlugin('outro-plugin', { storage: true });
+
+    // A tenta escrever na chave que *parece* ser do B.
+    await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.set',
+      requestId: 'st-13',
+      payload: { chave: 'outro-plugin:k', valor: 'a' },
+    });
+    await handlePluginMessage('outro-plugin', {
+      type: 'core.storage.set',
+      requestId: 'st-14',
+      payload: { chave: 'k', valor: 'b' },
+    });
+
+    const leituraB = await handlePluginMessage('outro-plugin', {
+      type: 'core.storage.get',
+      requestId: 'st-15',
+      payload: { chave: 'k' },
+    });
+    expect((leituraB.data as { valor: unknown }).valor).toBe('b');
+
+    const leituraA = await handlePluginMessage(STORAGE_PLUGIN_ID, {
+      type: 'core.storage.get',
+      requestId: 'st-16',
+      payload: { chave: 'outro-plugin:k' },
+    });
+    expect((leituraA.data as { valor: unknown }).valor).toBe('a');
+  });
 });
 
 describe('handlePluginMessage — core.shortcut.register', () => {

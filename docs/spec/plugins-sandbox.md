@@ -73,7 +73,7 @@ propósito em vez de escondida atrás de uma string.
 | `core.window.open` | `windows` | Abre uma janela do sistema (`useWindowStore`) |
 | `core.command.register` | `commands` | Regista um comando na Command Palette; executá-lo na paleta empurra `core.command.triggered` ao plugin (o `register` da SDK aceita um `callback`, como os menus e os atalhos) |
 | `core.event.subscribe` | `events` | Subscreve um evento do barramento (`eventBus`) — empurrado ao plugin via `sendToPlugin` |
-| `core.storage.set/get/remove` | `storage` | Armazenamento isolado, prefixo `plugins:<id>:` |
+| `core.storage.set/get/remove` | `storage` | Armazenamento isolado, prefixo `plugins:<id>:`, derivado num único sítio (`plugin-storage.ts`) — `chave` vazia recusada à entrada |
 | `core.shortcut.register` | `shortcuts` | Regista um atalho de teclado, recusa reservados do sistema |
 | `core.widget.create` | `widgets` | Cria/atualiza um widget simples — só título e texto, **nunca** código nem markup |
 | `core.menu.add` | `menus` | Adiciona um item ao menu de contexto do ambiente de trabalho |

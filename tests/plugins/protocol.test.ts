@@ -50,4 +50,24 @@ describe('isPluginToCoreMessage — a fronteira da forma', () => {
       }),
     ).toBe(true);
   });
+
+  it('recusa storage.set com chave vazia — a chave é o que isola cada plugin', () => {
+    expect(
+      isPluginToCoreMessage({
+        type: 'core.storage.set',
+        requestId: 'r-5',
+        payload: { chave: '', valor: 1 },
+      }),
+    ).toBe(false);
+  });
+
+  it('recusa setting.register com chave vazia', () => {
+    expect(
+      isPluginToCoreMessage({
+        type: 'core.setting.register',
+        requestId: 'r-6',
+        payload: { chave: '', rotulo: 'X', tipo: 'boolean', valorOmissao: true },
+      }),
+    ).toBe(false);
+  });
 });

@@ -6130,3 +6130,28 @@ invertido para provar o contrário.
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
 1779/1779.
+
+## 2026-08-15 — Item 22: isolamento por plugin no armazenamento, centralizado e provado
+
+O item pedia para "desenhar e construir" o isolamento `plugins:<id>:` antes do
+item 23. Ao investigar, o isolamento **já existia** (commit `5e982a4`,
+"armazenamento isolado") e já estava testado — o prefixo `plugins:<id>:` estava
+escrito à mão em seis sítios de `plugin-bridge.ts`, em todas as portas de
+armazenamento acessíveis a plugins (`core.storage.set/get/remove`,
+`core.setting.register`, `getPluginSettingValue`/`setPluginSettingValue`). O que
+faltava não era o isolamento, era torná-lo **impossível de esquecer** e prová-lo
+contra ataques.
+
+**O que mudou**: o prefixo passou a viver num único sítio,
+`plugins/runtime/plugin-storage.ts` (`pluginStorageKey(pluginId, chave)`), e os
+seis sítios passaram a chamá-lo. A fronteira do protocolo
+(`isPluginToCoreMessage`, em `protocol.ts`) passou a recusar `chave` vazia em
+`core.storage.*` e `core.setting.register` — uma chave vazia escreveria na
+chave nua `plugins:<id>:` sem isolar nada. Testes novos: um plugin não alcança
+as preferências do sistema por uma chave forjada (`chave: "ai-settings"` fica
+no próprio namespace), e a chave forjada de um plugin não colide com a do outro
+(`chave: "outro-plugin:k"` não alcança o namespace de `outro-plugin`). Fica
+pronto para o item 23 (Guardar Preferências).
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
+1783/1783.

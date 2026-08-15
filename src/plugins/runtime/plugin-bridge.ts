@@ -16,6 +16,7 @@ import {
   type CoreAckMessage,
   type PluginToCoreMessage,
 } from './protocol';
+import { pluginStorageKey } from './plugin-storage';
 
 // ─── Comandos registados por plugins ────────────────────────────────────────
 
@@ -222,7 +223,7 @@ export async function getPluginSettingValue<T extends boolean | string>(
   chave: string,
   fallback: T,
 ): Promise<T> {
-  return getPlatformAdapter().storageGet<T>(`plugins:${pluginId}:${chave}`, fallback);
+  return getPlatformAdapter().storageGet<T>(pluginStorageKey(pluginId, chave), fallback);
 }
 
 export async function setPluginSettingValue(
@@ -230,7 +231,7 @@ export async function setPluginSettingValue(
   chave: string,
   valor: boolean | string,
 ): Promise<void> {
-  await getPlatformAdapter().storageSet(`plugins:${pluginId}:${chave}`, valor);
+  await getPlatformAdapter().storageSet(pluginStorageKey(pluginId, chave), valor);
 }
 
 // ─── Serviços registados por plugins ─────────────────────────────────────────
@@ -467,20 +468,20 @@ export async function handlePluginMessage(
     }
 
     case 'core.storage.set': {
-      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      const prefixedKey = pluginStorageKey(pluginId, message.payload.chave);
       await getPlatformAdapter().storageSet(prefixedKey, message.payload.valor);
       logService.audit(`Plugin ${pluginId}: storage.set ${message.payload.chave}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: true };
     }
 
     case 'core.storage.get': {
-      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      const prefixedKey = pluginStorageKey(pluginId, message.payload.chave);
       const valor = await getPlatformAdapter().storageGet<unknown>(prefixedKey, message.payload.fallback ?? null);
       return { type: 'core.ack', requestId: message.requestId, ok: true, data: { valor } };
     }
 
     case 'core.storage.remove': {
-      const prefixedKey = `plugins:${pluginId}:${message.payload.chave}`;
+      const prefixedKey = pluginStorageKey(pluginId, message.payload.chave);
       await getPlatformAdapter().storageRemove(prefixedKey);
       logService.audit(`Plugin ${pluginId}: storage.remove ${message.payload.chave}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: true };
@@ -538,7 +539,7 @@ export async function handlePluginMessage(
       }
       // Só semeia o valor por omissão se ainda não houver nada guardado —
       // reabrir o plugin não pode apagar o que a pessoa já escolheu.
-      const prefixedKey = `plugins:${pluginId}:${chave}`;
+      const prefixedKey = pluginStorageKey(pluginId, chave);
       const jaTinhaValor = (await getPlatformAdapter().storageGet<unknown>(prefixedKey, null)) !== null;
       if (!jaTinhaValor) {
         await getPlatformAdapter().storageSet(prefixedKey, valorOmissao);

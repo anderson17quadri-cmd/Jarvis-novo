@@ -330,9 +330,8 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
       return typeof payload.evento === 'string';
     case 'core.storage.set':
     case 'core.storage.get':
-      return typeof payload.chave === 'string';
     case 'core.storage.remove':
-      return typeof payload.chave === 'string';
+      return typeof payload.chave === 'string' && payload.chave.length > 0;
     case 'core.shortcut.register':
       return typeof payload.id === 'string' && typeof payload.key === 'string';
     case 'core.widget.create':
@@ -346,6 +345,7 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
     case 'core.setting.register':
       return (
         typeof payload.chave === 'string' &&
+        payload.chave.length > 0 &&
         typeof payload.rotulo === 'string' &&
         (payload.tipo === 'boolean' || payload.tipo === 'texto') &&
         (typeof payload.valorOmissao === 'boolean' || typeof payload.valorOmissao === 'string')
