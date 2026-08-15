@@ -5783,3 +5783,35 @@ sessões) — 275 linhas no total. O `session.rs` do terminal tinha sido revisto
 
 Verificação: `cargo check` limpo (só o aviso de dependência `imap-proto`,
 alheio ao código). Sem código alterado.
+
+## 2026-08-14 — Revisão a sério: a hidratação do restauro (o que fica de fora e porquê)
+
+Revisão adversarial do contrato do `hydrateAll()` — a única lista que repõe o
+estado persistido, no arranque e depois de repor uma cópia — contra as cinco
+`STORAGE_KEYS` que ficam de fora (`windowLayout`, `newsMarks`, `booted`,
+`lastUser`, `reducedMotion`). A pergunta era se repor uma cópia gravava essas
+chaves sem as re-hidratar, deixando o restauro incompleto até reiniciar.
+
+**Nenhum bug funcional — confirmado, caso a caso:**
+
+- **`windowLayout`** é a única com comportamento realmente diferente: a
+  reposição grava `window-layout`, mas reabrir as janelas nas posições
+  guardadas é uma operação com efeitos (abre janelas a sério), feita pelo
+  `restoreSavedLayout` só no arranque (`App.tsx`), não pelo `hydrateAll`.
+  O layout reposto aplica-se no arranque seguinte — de propósito, porque
+  reabrir todas as janelas a meio de uma sessão (com o painel de cópia aberto)
+  seria pior do que a alternativa. Ficou documentado no próprio `hydrate-all.ts`
+  para não se re-derivar.
+- **`newsMarks`** lê-se à vontade em cada pedido de notícias
+  (`news-api-provider`), não no arranque — a reposição surte efeito no pedido
+  seguinte, sem reiniciar.
+- **`booted`** só é lida pelo `BootSequence` ao arrancar; repô-la a meio da
+  sessão é inócuo e só afeta o próximo arranque.
+- **`lastUser`** e **`reducedMotion`** são chaves mortas: nenhum leitor nem
+  escritor no código (`reducedMotion` real vem da media query
+  `prefers-reduced-motion`, não do armazenamento). Já estavam anotadas como
+  tal no `backup.ts`.
+
+Verificação: `tsc --noEmit` limpo. A única alteração é um comentário no
+`hydrate-all.ts` a documentar o que fica de fora e porquê (sem mudança de
+comportamento).

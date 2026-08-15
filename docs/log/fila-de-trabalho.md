@@ -83,18 +83,6 @@ falhar agora.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
-### 15. O restauro de cópias e a hidratação (`hydrate-all.ts` vs. as chaves persistidas lidas fora dele) — revisão adversarial — DeepSeek, 14:54
-
-`restoreBackup` promete devolver tudo o que a cópia traz, mas o
-`hydrate-all.ts` não cobre todas as `STORAGE_KEYS` — `windowLayout`,
-`newsMarks`, `booted`, `lastUser` e `reducedMotion` são lidos por fora
-(`use-window-store`, `news-api-provider`, `BootSequence`, sessão,
-`use-media-query`). Se repor uma cópia grava essas chaves no armazenamento
-mas não as re-hidrata em memória, o restauro fica incompleto até reiniciar.
-Conferir o fluxo real (quem chama `restoreSavedLayout`/lê essas chaves
-depois do restauro) antes de corrigir — pode ser leitura preguiçosa por
-desenho, ou uma falha real de cobertura.
-
 ### 15. Outra peça qualquer sem revisão independente — `[livre, repetível]`
 
 Para quando as catorze de cima estiverem fechadas. Só 5 das 73 entradas
@@ -130,6 +118,21 @@ sequer o protocolo. Mesma regra: escrever a pergunta, não decidir.
 decisão continua da pessoa; não reescrever, só esperar a resposta.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Restauro e hidratação (`hydrate-all.ts` vs. as chaves fora dele) — revisão adversarial — DeepSeek — sem commit de código
+
+Conferido o fluxo real de quem lê as cinco `STORAGE_KEYS` que o
+`hydrateAll` não cobre (`windowLayout`, `newsMarks`, `booted`, `lastUser`,
+`reducedMotion`). **Nenhum bug funcional.** `windowLayout` é o único com
+comportamento diferente de propósito: repor grava `window-layout`, mas a
+reabertura das janelas nas posições guardadas é uma operação com efeitos
+(`restoreSavedLayout`, só no arranque) — o layout reposto aplica-se no
+arranque seguinte, não a meio da sessão. `newsMarks` lê-se à vontade em
+cada pedido de notícias, `booted` só interessa ao arranque, e
+`lastUser`/`reducedMotion` são chaves mortas (anotadas em `backup.ts`).
+Única alteração: comentário no `hydrate-all.ts` a documentar isto, para
+não se re-derivar. Detalhe em `docs/log/historico-sessoes.md`
+(14/08/2026, "Revisão a sério: a hidratação do restauro").
 
 ### 15. A fronteira de permissões de plugins (`plugin-bridge.ts` + `install-from-file.ts`) — revisão adversarial — DeepSeek — commit `0d6055d`
 

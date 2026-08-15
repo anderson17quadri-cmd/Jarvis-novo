@@ -33,6 +33,16 @@ import { useWorkspaceStore } from '@/stores/use-workspace-store';
  *
  * A ordem importa num ponto: as definições de IA são as últimas, porque o
  * provedor que elas constroem precisa da memória já lida.
+ *
+ * O que fica de fora, de propósito (revisão 14/08/2026): `windowLayout`.
+ * Repor uma cópia grava `window-layout`, mas reabrir as janelas nas posições
+ * guardadas é uma operação com efeitos (abre janelas a sério), feita pelo
+ * `restoreSavedLayout` no arranque — não uma hidratação passiva como as outras.
+ * Reabrir tudo a meio de uma sessão (com o painel de cópia aberto) seria pior,
+ * por isso o layout restaurado só se aplica no arranque seguinte. As restantes
+ * chaves sem `hydrate()` estão seguras ou são mortas: `newsMarks` lê-se à
+ * vontade em cada pedido de notícias, `booted` só interessa ao arranque, e
+ * `lastUser`/`reducedMotion` não têm leitor (ver `backup.ts`).
  */
 export async function hydrateAll(): Promise<void> {
   await useThemeStore.getState().hydrate();
