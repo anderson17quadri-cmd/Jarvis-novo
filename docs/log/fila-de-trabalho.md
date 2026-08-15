@@ -25,61 +25,7 @@
 
 ## Reportado ao vivo pelo utilizador (14/08/2026) — prioridade sobre o resto
 
-Os itens 16, 17 e 18 estão fechados — ver "Feito" abaixo.
-
-### 19. Voz clonada não arranca sozinha na máquina do utilizador — URGENTE, mão na massa, não perguntar ao utilizador — DeepSeek (14/08/2026)
-
-**Não é para diagnosticar por perguntas ao utilizador — já se tentou
-isso por várias voltas nesta sessão e ele está fartinho de ser posto a
-correr comandos. É para abrir o terminal, olhar a sério, e resolver.**
-
-O código já existe e já foi confirmado a funcionar em 10/08/2026
-(`src-tauri/src/voice_clone.rs`, commit `33ef99a`): a app tenta arrancar
-`voice-clone-service` sozinha no arranque (`voice_clone::setup`, chamado
-de `lib.rs`), procura `.venv/Scripts/python.exe` em três candidatos
-relativos ao diretório de trabalho (`voice-clone-service`,
-`../voice-clone-service`, `../../voice-clone-service`), desiste em
-silêncio se não encontrar. Hoje (14/08/2026), ao vivo:
-1. Sem nada na porta 8090, a app devia ter arrancado o serviço sozinha —
-   não arrancou (voz ficou robótica, a do sistema — esse fallback é
-   comportamento correto de uma correção anterior desta mesma sessão
-   quando o serviço clonado não responde, mas o serviço clonado em si
-   nunca chegou a subir sozinho).
-2. Não há confirmação de qual das duas mensagens (`arrancado sozinho` ou
-   `não está configurado ... sem .venv`) apareceu na consola — o
-   utilizador mandou um print maior a mostrar só o arranque do Vite, sem
-   chegar às linhas do `[jarvis] voice-clone-service`, ou a informação
-   perdeu-se a meio da conversa.
-
-**O que fazer, na máquina real, sem intermediar pelo utilizador:**
-1. Confirmar se `voice-clone-service\.venv\Scripts\python.exe` existe a
-   sério no caminho onde o `npm run tauri dev` corre a partir de
-   (`C:\Dev\Projetos\Jarvis-novo`) — os três candidatos de
-   `encontrar_pasta_do_servico()` cobrem isso, mas confirmar contra o
-   diretório de trabalho real do processo `jarvis-ai-os.exe`, não
-   assumir.
-2. Matar qualquer `python.exe`/`uvicorn` órfão preso na porta 8090
-   (`Get-Process`, `netstat -ano | findstr 8090`, `taskkill /PID ... /F`
-   se preciso) antes de testar de novo — evita o falso "já está a
-   correr".
-3. Arrancar a app do zero, com a porta livre, e ler a sério a saída
-   `[jarvis] voice-clone-service ...` — não perguntar ao utilizador o
-   que apareceu, o Claude Code local já tem o terminal à frente.
-4. Se `arrancar()` falhar (erro do `spawn`), o `Err(err)` já é impresso
-   — ler o erro real (permissões, caminho, DLL em falta) em vez de
-   adivinhar.
-5. Confirmar ao vivo, com o assistente a responder, que a voz clonada
-   sai — não só que o processo arrancou.
-6. Se o problema for de desenho (por exemplo: o processo morre sozinho
-   ao fim de algum tempo, ou os candidatos de caminho não cobrem o
-   diretório de trabalho real do `tauri dev`), corrigir o código a
-   sério, com teste, não só o comportamento desta vez.
-
-Detalhe da conversa até agora em `docs/log/historico-sessoes.md`,
-entrada "O assistente estava mudo" (14/08/2026) — mas essa só cobre o
-fallback para a voz do sistema, não o arranque automático em si, que é
-uma peça mais antiga (10/08) nunca revista a sério e aparentemente a
-falhar agora.
+Os itens 16, 17, 18 e 19 estão fechados — ver "Feito" abaixo.
 
 ## Rever a sério (nunca construído de novo — ler o código como se fosse a primeira vez, sem confiar nos testes só porque passam)
 
@@ -668,6 +614,27 @@ hoje um interruptor "falar respostas" separado, e adicioná-lo saía fora deste
 item pequeno. 4 testes novos, confirmados a falhar contra o código antigo.
 Detalhe em `docs/log/historico-sessoes.md` (14/08/2026, "Item 18: a resposta
 na janela normal do assistente fala").
+
+### 19. Voz clonada não arranca sozinha — órfão preso na 8090 a fingir saúde — DeepSeek — commit `69ce5de`
+
+Reportado ao vivo pelo utilizador (URGENTE, mão na massa). A app tentava
+arrancar o `voice-clone-service` sozinha no arranque, mas um `uvicorn`
+órfão (deixado por uma sessão anterior, com o contexto CUDA envenenado
+pelo reset da GPU do item 20) continuava a ocupar a porta 8090. O
+"já está a correr" era um `TcpStream::connect_timeout` nu — aceitava a
+ligação e dava o órfão como bom. Pior: o `/health` do `server.py` devolve
+sempre `"ok": True` (hardcoded), por isso até a verificação de saúde só
+confirmava que a porta respondia — o órfão falhava o `/falar` com "CUDA
+error: device-side assert triggered" e a app nunca chegava a arrancar um
+serviço bom. Corrigido a sério: `servico_saudavel()` agora prova uma
+síntese mínima (`POST /falar`, voz pronta, cabeçalho `RIFF/WAVE` de
+volta); sem serviço saudável, `matar_servico_preso()` mata o órfão (pela
+linha de comando, não pela porta) antes de arrancar um novo. 5 testes
+Rust. Confirmado ao vivo com o `.venv` real: `/falar` devolve WAV válido.
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1758/1758, `cargo
+check` limpo, `cargo test --lib voice_clone` 5/5. Detalhe em
+`docs/log/historico-sessoes.md` (15/08/2026, "Item 19: a voz clonada não
+arrancava sozinha — órfão preso na 8090 a fingir que estava tudo bem").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 
