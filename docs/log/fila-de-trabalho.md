@@ -46,22 +46,13 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 22. Isolamento por plugin no armazenamento — pré-requisito do item 23 — DeepSeek (15/08/2026)
-
-`storageService` guarda tudo num `jarvis.store.json` sem namespace por
-plugin — hoje já é um risco em teoria (um plugin podia ler/escrever por
-cima de outro), e fica pior assim que "Guardar Preferências" (item 23)
-abrir essa porta a plugins de terceiros. Desenhar e construir o
-isolamento (`plugins:<id>:` por chave, ou equivalente) antes do item 23
-avançar — este item tem de fechar primeiro.
-
-### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — `[livre, depende do item 22 para a terceira]`
+### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — `[livre]`
 
 Decisão: autorizar as três. **Executar Voz** e **Ler Memória** podem
 avançar já — mesma disciplina de permissão explícita por plugin
 (declarada no manifesto, não recusada em Privacidade) que as outras dez
-capacidades do Core já cumprem. **Guardar Preferências só depois do
-item 22 fechar** — sem isolamento, não se autoriza. Ver
+capacidades do Core já cumprem. **Guardar Preferências** — o isolamento
+(item 22) fechou, já pode avançar. Ver
 `jarvis-spec-completo.md:568` para a lista completa das 13 capacidades
 e o padrão (tipo de mensagem, permissão, exemplo a sério) já seguido
 pelas dez existentes.
@@ -636,6 +627,18 @@ invalida a verificação. `signPlugin`/`verifyPluginSignature`/
 (sem código → `assinatura-invalida`). Mudança quebradora no `.jarvis-plugin`.
 Ver `docs/log/historico-sessoes.md` (15/08/2026, "Item 21: a assinatura de
 plugins passa a cobrir o código").
+
+### 22. Isolamento por plugin no armazenamento — centralizado e provado — DeepSeek — commit `06f1d87`
+
+O isolamento `plugins:<id>:` já existia (commit `5e982a4`) e já estava
+testado; o que faltava era torná-lo impossível de esquecer e prová-lo contra
+ataques. O prefixo passou a viver num único sítio
+(`plugins/runtime/plugin-storage.ts`, `pluginStorageKey`), os seis sítios de
+`plugin-bridge.ts` passaram a chamá-lo, e `protocol.ts` recusa `chave` vazia
+em `core.storage.*` e `core.setting.register`. Testes adversariais novos:
+chave forjada não alcança o sistema nem outro plugin. Ver
+`docs/log/historico-sessoes.md` (15/08/2026, "Item 22: isolamento por plugin
+no armazenamento, centralizado e provado").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 
