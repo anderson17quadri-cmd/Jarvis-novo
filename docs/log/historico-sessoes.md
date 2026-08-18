@@ -6155,3 +6155,46 @@ pronto para o item 23 (Guardar Preferências).
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
 1783/1783.
+
+## 2026-08-18 — Auditoria (Fases 3.3–3.5): `ver_ecra` via da porta de presença
+
+Verificação a sério do que a DeepSeek construiu para o Controlo Direto 3.3–3.5
+(`control.rs`: `capture_screen`, `move_mouse_to`, `click_at`, `type_text`, com
+`enigo`/`xcap`). O código nativo está correto — coordenadas sempre validadas
+contra o ecrã, texto sanitizado, zonas sensíveis tapadas antes de o PNG sair
+do Rust, print nunca escrito em disco. `mover_rato`/`clicar_em`/`escrever_texto`
+passam todos, sem exceção, por `directControlService.requestStep` — a mesma
+porta de presença já verificada noutras auditorias. `emergencyStop` (Esc Esc)
+está montado em `DirectControlHost`, ativo mesmo sem passo pendente, tal como
+a spec pede.
+
+**Um achado real**: `ver_ecra` (a ferramenta de visão) tirava e interpretava
+um print do ecrã **sem exigir o controlo direto ligado nem uma sessão de
+presença ativa** — ao contrário de todas as outras ferramentas desta secção,
+que dizem explicitamente "só funciona com o controlo direto ligado e uma
+sessão ativa". `visionService.describeScreen()` chamava `adapter.captureScreen`
+direto, e o adapter só verificava a capability estática da plataforma
+(`directControl: true` em qualquer desktop), nunca o interruptor de
+Privacidade nem a sessão de 30 minutos. A spec (`fase-3-controlo-direto.md`
+§1, §2, §3) é categórica: a Presença é a base de que tudo o resto depende —
+"sem isto, nada corre" — e o Controlo Direto começa sempre desligado. As zonas
+sensíveis só tapam o que a pessoa marcou; o resto do ecrã (senhas não
+marcadas, conversas, saldos) saía da máquina na mesma se a pessoa tivesse o
+provedor de visão configurado para o Claude (nuvem), mesmo com o Controlo
+Direto nunca ligado.
+
+**Corrigido**: `describeScreen()` recusa com a mesma frase de `requestStep`
+quando o interruptor está desligado ou não há sessão ativa, antes de tocar no
+adapter. "Olhar" continua sem pedir confirmação por passo (não mexe em nada —
+decisão já tomada, documentada no comentário do `App.tsx`), mas passa a exigir
+a mesma porta de entrada que todas as outras ações de controlo direto. Texto
+da ferramenta `ver_ecra` corrigido para descrever esta exigência, como as
+outras já faziam. Teste novo (`tests/services/vision-service.test.ts`)
+confirmado a falhar sem a correção (o print saía sem gate nenhum) e a passar
+depois.
+
+Verificação completa nesta sessão, incluindo `cargo test --lib` (36/36, exigiu
+instalar `libpipewire-0.3-dev`/`libgbm-dev`/`libxdo-dev` no sandbox Linux só
+para compilar os testes — não afeta o Windows, alvo real): `tsc` limpo,
+`eslint` 0 erros (11 avisos pré-existentes), `vitest` 1786/1786, `cargo check`
+limpo.

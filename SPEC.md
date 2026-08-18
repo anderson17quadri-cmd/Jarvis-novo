@@ -689,6 +689,17 @@ dedicados (`direct-control-service.test.ts`, `vision-provider.test.ts`).
 Continua por fazer a validação ao vivo no PC real (o nativo está testado em
 Rust, mas a aplicação Tauri não chegou a arrancar nesta sessão).
 
+**Revisão de segurança, 18/08/2026: `ver_ecra` sem porta de presença,
+corrigido.** Ao contrário de `abrir_aplicacao`/`mover_rato`/`clicar_em`/
+`escrever_texto`, a ferramenta `ver_ecra` capturava e interpretava o ecrã sem
+exigir o Controlo Direto ligado nem uma sessão de presença ativa — o adapter
+só verificava a capability estática da plataforma, nunca o interruptor de
+Privacidade. As zonas sensíveis só tapam o que a pessoa marcou; o resto do
+ecrã podia sair para um provedor de visão remoto mesmo com o Controlo Direto
+nunca ligado. `visionService.describeScreen()` passou a recusar com o mesmo
+gate de `requestStep` antes de tocar no adapter. Ver
+`docs/log/historico-sessoes.md`.
+
 ## Divergências assumidas
 
 Sete pontos em que o código não segue a spec à letra. Todos deliberados.

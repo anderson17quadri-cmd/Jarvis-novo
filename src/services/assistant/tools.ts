@@ -324,8 +324,11 @@ export const TOOLS: readonly ToolDefinition[] = [
     description:
       'Tira um print do ecrã (com as zonas sensíveis já tapadas), manda-o ao modelo de visão ' +
       'e devolve a descrição do que está à frente. Usa quando a pessoa pede algo que só se faz ' +
-      'olhando para o ecrã, para perceberes onde estão os botões, campos e janelas. O print só ' +
-      'sai da máquina se a visão estiver configurada para o Claude (nuvem) — por omissão é local.',
+      'olhando para o ecrã, para perceberes onde estão os botões, campos e janelas. Só funciona ' +
+      'com o controlo direto ligado e uma sessão ativa (Privacidade), como as outras ferramentas ' +
+      'desta secção — "olhar" não pede confirmação no ecrã, mas continua a exigir a mesma porta ' +
+      'de presença. O print só sai da máquina se a visão estiver configurada para o Claude ' +
+      '(nuvem) — por omissão é local.',
     risk: 'livre',
     parameters: [],
   },

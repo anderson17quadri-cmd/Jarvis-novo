@@ -1,4 +1,5 @@
 import { getPlatformAdapter } from '@/platform';
+import { directControlService } from '@/services/direct-control-service';
 import { useSensitiveZonesStore } from '@/stores/use-sensitive-zones-store';
 import type { ScreenRect } from '@/types/screen-zone';
 import { AiFailure } from '@/types/ai-failure';
@@ -14,6 +15,15 @@ import type { VisionProvider } from './vision-provider';
  * O print **nunca** passa por aqui por descoberto: o tapar acontece no Rust
  * (`capture_screen` recebe as zonas e devolve o PNG já tapado), e as zonas vêm
  * da store. A interface e este serviço só alguma vez veem a versão tapada.
+ *
+ * **A porta de presença (`docs/spec/fase-3-controlo-direto.md` §1, §2) vive
+ * aqui, não só nas ações.** As zonas sensíveis tapam só o que a pessoa marcou
+ * — o resto do ecrã continua a sair da máquina se o provedor for remoto.
+ * "Olhar" não pede confirmação por passo (não mexe em nada), mas continua a
+ * exigir o mesmo que abrir o Controlo Direto exige para tudo o resto: o
+ * interruptor ligado e uma sessão de presença ativa. Sem isto, um print do
+ * ecrã — senhas, conversas, saldos — podia viajar para a nuvem mesmo com o
+ * Controlo Direto desligado por omissão.
  *
  * Nunca lança: uma falha do provedor vira uma frase que o modelo pode dizer à
  * pessoa, não uma exceção a rebentar o pedido do assistente.
@@ -31,6 +41,12 @@ class VisionService {
   }
 
   async describeScreen(): Promise<string> {
+    if (!directControlService.isEnabled) {
+      return 'O controlo direto está desligado — liga-o em Privacidade antes de eu poder ver o ecrã.';
+    }
+    if (!directControlService.sessionActive) {
+      return 'Não há uma sessão de controlo direto ativa — abre uma em Privacidade ou diz a palavra-passe.';
+    }
     if (!this.provider) {
       return 'A visão de ecrã não está configurada — escolhe um modelo de visão em Privacidade → Controlo.';
     }
