@@ -6156,6 +6156,64 @@ pronto para o item 23 (Guardar Preferências).
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
 1783/1783.
 
+## 2026-08-15 — Item 23: Executar Voz e Ler Memória para plugins
+
+O item pedia três capacidades do original que faltavam para plugins:
+**Executar Voz**, **Ler Memória** e **Guardar Preferências**. Ao investigar,
+**Guardar Preferências já estava feita** — é o armazenamento isolado
+(`core.storage.*`, permissão `storage`, cuja etiqueta é literalmente "Guardar
+preferências") que o item 22 acabara de centralizar e provar, mais o
+`core.setting.register`. O que era genuinamente novo eram as outras duas.
+
+**O que mudou**: duas permissões novas no manifesto (`voice`, `memory`) com
+etiquetas em `PERMISSION_LABELS`; dois tipos novos no protocolo
+(`core.voice.speak`, `core.memory.read`) com validação de forma e permissão
+associada; dois casos novos em `plugin-bridge.ts` — `core.voice.speak` chama
+`voiceService.speak` (devolve `ok: false, reason: 'voz-indisponivel'` quando a
+síntese não existe) e `core.memory.read` devolve `memoryService.current`; o SDK
+expõe `core.voice.speak(texto)` e `core.memory.read()`; dois plugins de exemplo
+(`executa-voz`, `le-memoria`) e duas entradas no catálogo provam as portas.
+
+**Testes**: fronteira do protocolo aceita/recusa `core.voice.speak` (texto
+vazio recusado) e aceita `core.memory.read`; a ponte não fala sem a permissão,
+fala o texto certo quando autorizada, devolve `voz-indisponivel` sem síntese, e
+não devolve memória sem a permissão.
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes), `vitest`
+1791/1791.
+
+## 2026-08-15 — Item 24 (desenho): wake word local, nunca por um serviço na nuvem
+
+O item 24 pede a wake word — e pede um desenho próprio antes de construir, por
+ser "maior". Este é esse desenho, em `docs/spec/wake-word-local.md`. A decisão
+de privacidade que travava a linha da spec (Parte 7.2, "exige escuta contínua —
+decisão por tomar") fica **tomada**: opção (a), motor local (Vosk + modelo em
+português), nunca escuta contínua por um serviço de fala na nuvem — a opção
+(b) está explicitamente recusada.
+
+O desenho define a wake word como **um portão, não um ouvido novo**: substitui
+o toque no botão do microfone, não o pipeline de transcrição a seguir. Três
+sub-fases (24.1 motor local, 24.2 ligação + interruptor na Privacidade, 24.3
+palavra configurável + auditoria), e cinco decisões em aberto (§6) — motor e
+runtime, palavra por omissão, se a transcrição pós-wake pode cair para a
+nuvem, sensibilidade e janela pós-acordar.
+
+Sem código. Falta construir (§4 e §5 do desenho).
+
+## 2026-08-15 — Voz clonada: auto-recuperação quando o serviço local falha
+
+Fechado o buraco de robustez da sub-fase 4.4 (voz clonada local): o arranque
+automático do `voice-clone-service/` só verificava se a porta 8090 respondia,
+por isso um serviço "a correr mas partido" — o erro `device-side assert` do
+CUDA envenena o contexto e faz todas as sínteses devolverem 500, sem que
+`/health` deixe de responder — nunca recuperava sozinho. Agora a síntese que
+falha pede o reinício: novo comando Rust `reiniciar_voz_clonada` (mata o filho
+gerido e qualquer órfão na porta, e volta a arrancar com um contexto CUDA
+fresco), exposto pelo `PlatformAdapter.restartVoiceService` e ligado por um
+callback `onCloneServiceNeedsRestart` no `voiceService` — a frase atual cai
+para a voz do sistema, e a seguinte já usa o serviço reiniciado, com um
+travão de 60 s para não entrar em ciclo.
+
 ## 2026-08-18 — Auditoria (Fases 3.3–3.5): `ver_ecra` via da porta de presença
 
 Verificação a sério do que a DeepSeek construiu para o Controlo Direto 3.3–3.5

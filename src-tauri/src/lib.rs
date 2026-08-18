@@ -110,6 +110,7 @@ pub fn run() {
             commands::control::move_mouse_to,
             commands::control::click_at,
             commands::control::type_text,
+            voice_clone::reiniciar_voz_clonada,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;

@@ -2,10 +2,12 @@ import { APP_REGISTRY } from '@/apps/registry';
 import { PLUGIN_CATALOG } from '@/apps/plugin-manager/plugin-catalog';
 import { loadExternalPlugin } from '@/plugins/external-storage';
 import type { PluginPermissions } from '@/plugins/plugin';
+import { memoryService } from '@/services/assistant/memory-service';
 import { automationService } from '@/services/automation-service';
 import { ALL_EVENTS, eventBus, type SystemEventName } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
+import { voiceService } from '@/services/voice-service';
 import { getPlatformAdapter } from '@/platform';
 import { selectPermissionDenied, usePluginStore } from '@/stores/use-plugin-store';
 import { useWindowStore } from '@/stores/use-window-store';
@@ -582,6 +584,24 @@ export async function handlePluginMessage(
       }
       logService.audit(`Plugin ${pluginId}: adicionou o painel ${id}`, 'executado');
       return { type: 'core.ack', requestId: message.requestId, ok: true };
+    }
+
+    case 'core.voice.speak': {
+      const arrancou = voiceService.speak(message.payload.texto);
+      logService.audit(`Plugin ${pluginId}: ${message.type}`, arrancou ? 'executado' : 'recusado');
+      return arrancou
+        ? { type: 'core.ack', requestId: message.requestId, ok: true }
+        : { type: 'core.ack', requestId: message.requestId, ok: false, reason: 'voz-indisponivel' };
+    }
+
+    case 'core.memory.read': {
+      logService.audit(`Plugin ${pluginId}: ${message.type}`, 'executado');
+      return {
+        type: 'core.ack',
+        requestId: message.requestId,
+        ok: true,
+        data: { memoria: memoryService.current },
+      };
     }
   }
 

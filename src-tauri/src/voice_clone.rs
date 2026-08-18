@@ -202,6 +202,45 @@ pub fn cleanup(app: &AppHandle) {
     }
 }
 
+/// Reinicia o serviço local de voz — mata o que estiver a correr (o filho
+/// gerido e qualquer órfão preso na porta) e volta a arrancar, com um
+/// contexto CUDA fresco. É a recuperação em runtime da sub-fase 4.4: o
+/// `servico_saudavel()` do `setup` só corre no arranque, e um reset da GPU a
+/// meio da sessão envenena o contexto outra vez sem reiniciar a app — a
+/// síntese passa a devolver 500 enquanto `/health` continua a responder. Só
+/// um processo novo resolve.
+#[tauri::command]
+pub fn reiniciar_voz_clonada(app: AppHandle) -> Result<(), String> {
+    // 1. Mata o filho gerido, se ainda houver um.
+    if let Some(estado) = app.try_state::<VoiceCloneProcess>() {
+        let filho = estado.0.lock().expect("lock do processo de voz").take();
+        if let Some(mut child) = filho {
+            let _ = child.kill();
+        }
+    }
+
+    // 2. Mata qualquer órfão preso — pela linha de comando, como no `setup`,
+    // não pela porta (matar por porta podia levar um processo alheio à frente).
+    matar_servico_preso();
+
+    // 3. Arranca de novo.
+    let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+    let Some(pasta) = encontrar_pasta_do_servico(&base) else {
+        return Err("voice-clone-service não está configurado nesta máquina (sem .venv)".into());
+    };
+
+    match arrancar(&pasta) {
+        Ok(child) => {
+            eprintln!("[jarvis] voice-clone-service reiniciado (PID {}).", child.id());
+            if let Some(estado) = app.try_state::<VoiceCloneProcess>() {
+                *estado.0.lock().expect("lock do processo de voz") = Some(child);
+            }
+            Ok(())
+        }
+        Err(err) => Err(format!("não consegui arrancar o voice-clone-service de novo: {err}")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

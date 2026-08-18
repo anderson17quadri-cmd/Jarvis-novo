@@ -46,18 +46,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 23. Capacidades de plugin: Executar Voz, Ler Memória, Guardar Preferências — DeepSeek (15/08/2026)
-
-Decisão: autorizar as três. **Executar Voz** e **Ler Memória** podem
-avançar já — mesma disciplina de permissão explícita por plugin
-(declarada no manifesto, não recusada em Privacidade) que as outras dez
-capacidades do Core já cumprem. **Guardar Preferências** — o isolamento
-(item 22) fechou, já pode avançar. Ver
-`jarvis-spec-completo.md:568` para a lista completa das 13 capacidades
-e o padrão (tipo de mensagem, permissão, exemplo a sério) já seguido
-pelas dez existentes.
-
-### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — `[livre, maior]`
+### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — DeepSeek (15/08/2026)
 
 Decisão: opção (a) da pergunta original, com a opção (b) explicitamente
 recusada — nunca escuta contínua por um serviço de fala na nuvem
@@ -71,7 +60,9 @@ disso. Maior do que os outros três desta lista — vale a pena um desenho
 próprio (ficheiro em `docs/spec/`) antes de começar a construir, no
 mesmo formato que o Controlo Direto (Fase 3.1) ou o vault Obsidian já
 tiveram. Continua desligado por omissão, ativação explícita em
-Privacidade, mesma disciplina de sempre.
+Privacidade, mesma disciplina de sempre. **Desenho feito 15/08/2026** —
+`docs/spec/wake-word-local.md`; falta construir (§4 e §5 do desenho: 24.1 motor
+local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
@@ -639,6 +630,17 @@ em `core.storage.*` e `core.setting.register`. Testes adversariais novos:
 chave forjada não alcança o sistema nem outro plugin. Ver
 `docs/log/historico-sessoes.md` (15/08/2026, "Item 22: isolamento por plugin
 no armazenamento, centralizado e provado").
+
+### 23. Capacidades de plugin: Executar Voz e Ler Memória — DeepSeek — commit `541a2fe`
+
+Executar Voz (`core.voice.speak`, permissão `voice`) e Ler Memória
+(`core.memory.read`, permissão `memory`) — as duas últimas capacidades
+genuinamente em falta do original. Guardar Preferências já estava coberto
+pelo armazenamento isolado (`core.storage.*`, permissão `storage`) desde o
+item 22. Cada porta nova segue o padrão: tipo no protocolo, permissão no
+manifesto, caso na ponte, método no SDK, plugin de exemplo no catálogo
+(`executa-voz`, `le-memoria`). Ver `docs/log/historico-sessoes.md`
+(15/08/2026, "Item 23: Executar Voz e Ler Memória para plugins").
 
 ### 12. Voz clonada local — consentimento explícito — Claude local — commit `1b16ad5`
 

@@ -70,6 +70,14 @@ const CLONE_SERVICE_URL = 'http://127.0.0.1:8090';
  */
 const VELOCIDADE_FALA = 1.12;
 
+/**
+ * O tempo mínimo entre dois reinícios do serviço local de voz. Um reinício
+ * demora (é preciso carregar o XTTS-v2 outra vez), e uma falha de síntese que
+ * não seja culpa do serviço (um texto que o modelo não sabe ler) não pode
+ * disparar um ciclo de reinícios atrás do outro.
+ */
+const RESTART_COOLDOWN_MS = 60_000;
+
 /** Uma das vozes prontas do XTTS-v2 (ver `GET /vozes` no serviço local). */
 export interface CloneVoiceInfo {
   readonly nome: string;
@@ -714,9 +722,15 @@ export class VoiceService {
           ...(nome ? { voz: nome } : {}),
         }),
       });
-      if (!resposta.ok) return null;
+      if (!resposta.ok) throw new Error(`o serviço local devolveu ${resposta.status}`);
       return URL.createObjectURL(await resposta.blob());
     } catch {
+      // O serviço pode estar em baixo (erro de rede) OU "a correr mas
+      // partido" (o contexto CUDA envenenado devolve 500 a todas as sínteses,
+      // apesar de `/health` continuar a responder). Nos dois casos pede-se o
+      // reinício — a frase atual cai para a voz do sistema, e a frase
+      // seguinte já apanha o serviço com um contexto CUDA fresco.
+      this.pedirReinicioDoServico();
       return null;
     }
   }
@@ -1008,6 +1022,31 @@ export class VoiceService {
    * browser), e quem o liga à interface é o `useVoice`.
    */
   onCloneServiceUnavailable: (() => void) | null = null;
+
+  /**
+   * Reinício do serviço local, pedido de propósito quando a síntese falha.
+   *
+   * Outro callback em vez de uma importação, pela mesma razão do
+   * `onCloneServiceUnavailable` acima: este ficheiro não importa nada de
+   * propósito (é um serviço de fronteira com o browser), e quem o liga ao
+   * `PlatformAdapter` (que fala com o Rust) é o `useVoice`.
+   */
+  onCloneServiceNeedsRestart: (() => void) | null = null;
+
+  /** Quando foi pedido o último reinício — ver `RESTART_COOLDOWN_MS`. */
+  private lastRestartAttempt = 0;
+
+  private pedirReinicioDoServico(): void {
+    if (this.onCloneServiceNeedsRestart === null) return;
+
+    const agora = Date.now();
+    if (agora - this.lastRestartAttempt < RESTART_COOLDOWN_MS) return;
+    this.lastRestartAttempt = agora;
+
+    // Fogo e esquecimento: o reinício demora (recarregar o modelo), e a fala
+    // atual já caiu para a voz do sistema — não vale a pena esperar por ele.
+    void this.onCloneServiceNeedsRestart();
+  }
 
   /**
    * As vozes portuguesas que o sistema conhece.

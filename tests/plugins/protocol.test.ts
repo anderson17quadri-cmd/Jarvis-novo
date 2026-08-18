@@ -70,4 +70,34 @@ describe('isPluginToCoreMessage — a fronteira da forma', () => {
       }),
     ).toBe(false);
   });
+
+  it('aceita core.voice.speak com texto', () => {
+    expect(
+      isPluginToCoreMessage({
+        type: 'core.voice.speak',
+        requestId: 'r-7',
+        payload: { texto: 'Olá' },
+      }),
+    ).toBe(true);
+  });
+
+  it('recusa core.voice.speak sem texto — falar em vazio é ruído', () => {
+    expect(
+      isPluginToCoreMessage({
+        type: 'core.voice.speak',
+        requestId: 'r-8',
+        payload: { texto: '' },
+      }),
+    ).toBe(false);
+  });
+
+  it('aceita core.memory.read — não precisa de payload', () => {
+    expect(
+      isPluginToCoreMessage({
+        type: 'core.memory.read',
+        requestId: 'r-9',
+        payload: {},
+      }),
+    ).toBe(true);
+  });
 });

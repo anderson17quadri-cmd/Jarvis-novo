@@ -80,6 +80,8 @@ propósito em vez de escondida atrás de uma string.
 | `core.setting.register` | `settings` | Declara o *schema* de uma definição — o valor vive no armazenamento, editável na Loja |
 | `core.service.register` | `services` | Regista um "serviço": o Core empurra um `core.service.tick` a um intervalo (mínimo 5s) |
 | `core.panel.add` | `panels` | Adiciona um painel de texto expansível |
+| `core.voice.speak` | `voice` | Manda o assistente falar um texto (`voiceService.speak`) — voz sem a pessoa ter dito nada é uma intrusão, por isso a permissão é a barreira |
+| `core.memory.read` | `memory` | Lê a memória que o assistente guardou sobre a pessoa (`memoryService.current`) |
 
 `handlePluginMessage()` (`plugin-bridge.ts`) verifica a permissão — a
 mesma `selectPermissionDenied` que já protegia automações (`App.tsx`) e a
@@ -203,6 +205,8 @@ capacidade funciona de ponta a ponta.
 | `regista-definicao` | `core.setting.register` | `core.run` |
 | `cria-servico` | `core.service.register` (5s) — o "tick" chega via `pushToPlugin` | `core.run` |
 | `adiciona-painel` | `core.panel.add` | `core.run` |
+| `executa-voz` | `core.voice.speak` | `core.run` |
+| `le-memoria` | `core.memory.read` | `core.run` |
 
 Todos ficam à espera de `core.run` (o botão na Loja de plugins) em vez de
 disparar sozinhos ao carregar — o mesmo plugin corre várias vezes na mesma
@@ -229,13 +233,14 @@ domain).
   `src/plugins/install-from-file.ts`. Diálogo nativo, leitura via comando
   Rust, validação em três camadas, integração com a verificação Ed25519.
   Ver abaixo §Formato de ficheiro `.jarvis-plugin`.
-- **Três capacidades do original ficam por decisão, não por esquecimento.**
-  Executar Voz, Ler Memória e Guardar Preferências mexem em microfone e
-  dados guardados do utilizador — exigem autorização explícita antes de
-  se desenhar sequer o protocolo, não só antes de o construir. Das
-  restantes dez do original (`docs/spec/jarvis-spec-completo.md:568`),
-  todas têm agora um tipo de mensagem, uma permissão e pelo menos um
-  plugin de exemplo a sério (12/08/2026).
+- **As últimas três capacidades do original (Executar Voz, Ler Memória,
+  Guardar Preferências) — fechadas 15/08/2026 (item 23 da fila).** Executar
+  Voz (`core.voice.speak`, permissão `voice`) e Ler Memória
+  (`core.memory.read`, permissão `memory`) são novas, cada uma com exemplo a
+  sério (`executa-voz`, `le-memoria`); Guardar Preferências já estava coberto
+  pelo armazenamento isolado (`core.storage.*`, permissão `storage`) desde
+  11/08, e o item 22 da fila centralizou e provou o isolamento que o sustenta.
+  Com isto, as treze capacidades do original estão todas feitas.
 
 ## Formato de ficheiro `.jarvis-plugin`
 

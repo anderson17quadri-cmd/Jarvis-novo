@@ -569,6 +569,23 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     return this.tryInvoke<WebPageContent>('fetch_page_text', null, { url });
   }
 
+  // ── Voz clonada local ────────────────────────────────────────────────────
+
+  /**
+   * O comando `reiniciar_voz_clonada` só existe no desktop (o módulo
+   * `voice_clone` é `#[cfg(desktop)]`). No Android o `invoke` falha por o
+   * comando não existir, e cai aqui em `false` — a degradação de sempre.
+   */
+  async restartVoiceService(): Promise<boolean> {
+    try {
+      await invoke('reiniciar_voz_clonada');
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "reiniciar_voz_clonada" falhou:', error);
+      return false;
+    }
+  }
+
   // ── Auxiliar ─────────────────────────────────────────────────────────────
 
   /**

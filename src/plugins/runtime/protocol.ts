@@ -217,6 +217,25 @@ export interface PluginPanelAddRequest {
   };
 }
 
+// ─── Voz (mandar o assistente falar) — plugins.voice (15/08/2026) ────────
+
+export interface PluginVoiceSpeakRequest {
+  readonly type: 'core.voice.speak';
+  readonly requestId: string;
+  readonly payload: {
+    /** Texto que o assistente diz em voz alta. */
+    readonly texto: string;
+  };
+}
+
+// ─── Memória (ler o que o assistente guardou) — plugins.memory (15/08/2026)
+
+export interface PluginMemoryReadRequest {
+  readonly type: 'core.memory.read';
+  readonly requestId: string;
+  readonly payload: Record<string, never>;
+}
+
 // ─── União ────────────────────────────────────────────────────────────────
 
 export type PluginToCoreMessage =
@@ -237,7 +256,9 @@ export type PluginToCoreMessage =
   | PluginMenuAddRequest
   | PluginSettingRegisterRequest
   | PluginServiceRegisterRequest
-  | PluginPanelAddRequest;
+  | PluginPanelAddRequest
+  | PluginVoiceSpeakRequest
+  | PluginMemoryReadRequest;
 
 /** A permissão que cada tipo de pedido exige. */
 export const PERMISSION_BY_MESSAGE_TYPE: Record<
@@ -262,6 +283,8 @@ export const PERMISSION_BY_MESSAGE_TYPE: Record<
   'core.setting.register': 'settings',
   'core.service.register': 'services',
   'core.panel.add': 'panels',
+  'core.voice.speak': 'voice',
+  'core.memory.read': 'memory',
 };
 
 // ─── Resposta do Core ─────────────────────────────────────────────────────
@@ -296,6 +319,8 @@ const KNOWN_TYPES = new Set<PluginToCoreMessage['type']>([
   'core.setting.register',
   'core.service.register',
   'core.panel.add',
+  'core.voice.speak',
+  'core.memory.read',
 ]);
 
 /** Confirma que uma mensagem recebida por postMessage tem a forma esperada. */
@@ -358,6 +383,10 @@ export function isPluginToCoreMessage(data: unknown): data is PluginToCoreMessag
         typeof payload.titulo === 'string' &&
         typeof payload.texto === 'string'
       );
+    case 'core.voice.speak':
+      return typeof payload.texto === 'string' && payload.texto.length > 0;
+    case 'core.memory.read':
+      return true;
     default:
       return false;
   }

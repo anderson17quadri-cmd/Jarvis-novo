@@ -255,6 +255,7 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       'atalho-reservado': 'Este atalho pertence ao sistema.',
       'item-ja-registado': 'Este item de menu já foi registado.',
       'servico-ja-registado': 'Este serviço já foi registado.',
+      'voz-indisponivel': 'A voz não está disponível neste dispositivo.',
     };
     const chave = ack.reason?.split(':')[0] ?? '';
     return razoes[chave] ?? `Recusado: ${ack.reason ?? 'desconhecido'}.`;
@@ -297,6 +298,10 @@ function descricaoDoAck(type: PluginToCoreMessage['type'], ack: CoreAckMessage):
       return 'Serviço a correr em segundo plano.';
     case 'core.panel.add':
       return 'Painel adicionado.';
+    case 'core.voice.speak':
+      return 'Voz executada.';
+    case 'core.memory.read':
+      return 'Memória lida.';
     default:
       return 'Cumprido.';
   }

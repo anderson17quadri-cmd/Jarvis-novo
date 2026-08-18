@@ -24,8 +24,10 @@ import {
 } from '@/plugins/runtime/plugin-bridge';
 import { clearExternalPlugins, saveExternalPlugin } from '@/plugins/external-storage';
 import type { PluginPermissions } from '@/plugins/plugin';
+import { memoryService } from '@/services/assistant/memory-service';
 import { eventBus } from '@/services/event-bus';
 import { logService } from '@/services/log-service';
+import { voiceService } from '@/services/voice-service';
 import { useNotificationStore } from '@/stores/use-notification-store';
 import { usePluginStore } from '@/stores/use-plugin-store';
 import { useWindowStore } from '@/stores/use-window-store';
@@ -88,6 +90,8 @@ function perms(overrides: Partial<PluginPermissions>): PluginPermissions {
     settings: false,
     services: false,
     panels: false,
+    voice: false,
+    memory: false,
     ...overrides,
   };
 }
@@ -794,6 +798,96 @@ describe('handlePluginMessage — core.storage', () => {
       payload: { chave: 'outro-plugin:k' },
     });
     expect((leituraA.data as { valor: unknown }).valor).toBe('a');
+  });
+});
+
+describe('handlePluginMessage — core.voice.speak', () => {
+  const VOICE_PLUGIN_ID = 'executa-voz';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('permissão recusada: não fala', async () => {
+    const speak = vi.spyOn(voiceService, 'speak').mockReturnValue(true);
+    usePluginStore.getState().setPermission(VOICE_PLUGIN_ID, 'voice', false);
+
+    const ack = await handlePluginMessage(VOICE_PLUGIN_ID, {
+      type: 'core.voice.speak',
+      requestId: 'vz-1',
+      payload: { texto: 'Olá' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+    expect(speak).not.toHaveBeenCalled();
+  });
+
+  it('fala o texto dado', async () => {
+    const speak = vi.spyOn(voiceService, 'speak').mockReturnValue(true);
+
+    const ack = await handlePluginMessage(VOICE_PLUGIN_ID, {
+      type: 'core.voice.speak',
+      requestId: 'vz-2',
+      payload: { texto: 'Olá do plugin' },
+    });
+
+    expect(ack.ok).toBe(true);
+    expect(speak).toHaveBeenCalledWith('Olá do plugin');
+  });
+
+  it('sem síntese de fala: devolve voz-indisponivel', async () => {
+    vi.spyOn(voiceService, 'speak').mockReturnValue(false);
+
+    const ack = await handlePluginMessage(VOICE_PLUGIN_ID, {
+      type: 'core.voice.speak',
+      requestId: 'vz-3',
+      payload: { texto: 'Olá' },
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('voz-indisponivel');
+  });
+});
+
+describe('handlePluginMessage — core.memory.read', () => {
+  const MEMORY_PLUGIN_ID = 'le-memoria';
+
+  beforeEach(() => {
+    usePluginStore.setState({ deniedPermissions: {} });
+    memoryService.clear();
+  });
+
+  it('permissão recusada: não devolve a memória', async () => {
+    usePluginStore.getState().setPermission(MEMORY_PLUGIN_ID, 'memory', false);
+
+    const ack = await handlePluginMessage(MEMORY_PLUGIN_ID, {
+      type: 'core.memory.read',
+      requestId: 'mm-1',
+      payload: {},
+    });
+
+    expect(ack.ok).toBe(false);
+    expect(ack.reason).toBe('permissao-negada');
+    expect(ack.data).toBeUndefined();
+  });
+
+  it('devolve a memória que o assistente guardou', async () => {
+    memoryService.observe('moro no Porto');
+
+    const ack = await handlePluginMessage(MEMORY_PLUGIN_ID, {
+      type: 'core.memory.read',
+      requestId: 'mm-2',
+      payload: {},
+    });
+
+    expect(ack.ok).toBe(true);
+    const memoria = (ack.data as { memoria: { preferences: Record<string, string> } }).memoria;
+    expect(memoria.preferences.cidade).toBe('Porto');
   });
 });
 

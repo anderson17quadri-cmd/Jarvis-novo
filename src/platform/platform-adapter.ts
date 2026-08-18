@@ -243,4 +243,13 @@ export interface PlatformAdapter {
    * nunca lança, para o chamador tratar como "não consegui" sem exceção.
    */
   fetchPageText(url: string): Promise<WebPageContent | null>;
+
+  // ── Voz clonada local ─────────────────────────────────────────────────────
+  /**
+   * Reinicia o serviço local de voz (`voice-clone-service/`) — mata o que
+   * estiver na porta 8090 e arranca outro, com um contexto CUDA fresco.
+   * `false` onde a plataforma não tem serviço de voz local (web/Android) ou
+   * quando o reinício falha. Nunca lança.
+   */
+  restartVoiceService(): Promise<boolean>;
 }

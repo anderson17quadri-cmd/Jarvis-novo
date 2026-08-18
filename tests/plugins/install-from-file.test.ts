@@ -58,6 +58,8 @@ function testManifest(overrides?: Partial<PluginManifest>): PluginManifest {
       settings: false,
       services: false,
       panels: false,
+      voice: false,
+      memory: false,
     },
     platforms: ['desktop'],
     ...overrides,

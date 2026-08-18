@@ -305,6 +305,25 @@
       },
     },
 
+    /** Manda o assistente falar — `plugins.voice`. */
+    voice: {
+      speak: function (texto) {
+        return pedir('core.voice.speak', { texto: texto }).then(function (ack) {
+          return ack.ok;
+        });
+      },
+    },
+
+    /** Lê a memória que o assistente guardou sobre a pessoa — `plugins.memory`. */
+    memory: {
+      read: function () {
+        return pedir('core.memory.read', {}).then(function (ack) {
+          if (!ack.ok) throw new Error(ack.reason || 'memory.read falhou');
+          return ack.data.memoria;
+        });
+      },
+    },
+
     /** Atalhos de teclado — `plugins.shortcuts`. */
     shortcut: {
       /**

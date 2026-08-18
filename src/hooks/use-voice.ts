@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
+import { getPlatformAdapter } from '@/platform';
 import { useCapabilities } from '@/hooks/use-platform';
 import { useIsVisible } from '@/hooks/use-platform';
 import { logService } from '@/services/log-service';
@@ -94,8 +95,18 @@ export function useVoice(): {
       );
     };
 
+    // Auto-recuperação (sub-fase 4.4): quando a síntese falha por o serviço
+    // estar em baixo ou "partido" (CUDA envenenado), pede ao Rust para o
+    // reiniciar. A frase atual cai para a voz do sistema; a seguinte já usa
+    // o serviço fresco. Silencioso de propósito — o aviso acima já cobre o
+    // utilizador, e um reinício que demora não é um erro a gritar.
+    voiceService.onCloneServiceNeedsRestart = () => {
+      void getPlatformAdapter().restartVoiceService();
+    };
+
     return () => {
       voiceService.onCloneServiceUnavailable = null;
+      voiceService.onCloneServiceNeedsRestart = null;
     };
   }, []);
 
