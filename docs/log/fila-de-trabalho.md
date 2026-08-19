@@ -77,24 +77,6 @@ afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
 de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
 
-### 26. Os 11 avisos do eslint — Qwen (19/08/2026 18:04)
-
-Todos do mesmo tipo (`react-hooks/set-state-in-effect`: chamar `setState`
-diretamente no corpo de um efeito, que provoca renderizações em cascata),
-em 6 ficheiros: `CoreRings.tsx` (5 dos 11), `use-typewriter.ts`,
-`use-entrance-cascade.ts`, `CommandPalette.tsx` (2), `BootChecks.tsx` e
-`FilesWindow.tsx`.
-
-Corrigir de verdade, não silenciar: um `eslint-disable` não resolve
-nada, e nem sempre a correção é a mesma — às vezes o estado dá para
-derivar durante a renderização, às vezes o efeito é mesmo o sítio certo
-e o que muda é a forma de o escrever. **Se algum dos 11 for um falso
-positivo, dizer porquê no comentário em vez de o desligar em silêncio.**
-
-A suite inteira tem de continuar verde: estes ficheiros mexem no
-arranque, na paleta de comandos e no núcleo visual — um "arranjo" que
-mude o comportamento é pior do que o aviso.
-
 ## Feito (mover para aqui ao fechar, com o commit)
 
 ### 15. Restauro e hidratação (`hydrate-all.ts` vs. as chaves fora dele) — revisão adversarial — DeepSeek — sem commit de código
@@ -897,3 +879,17 @@ comentada no `PluginRuntime.tsx` fá-lo falhar, reposta fá-lo passar — os
 seis falharam sem a sua linha. Nada mudou no `PluginRuntime`. Detalhe em
 `docs/log/historico-sessoes.md` (19/08/2026, "Item 25: testes da limpeza ao
 desmontar um plugin").
+
+### 26. Os 11 avisos do eslint — Qwen — commit `ffb438f`
+
+Os 11 avisos das regras do React Compiler em seis ficheiros, corrigidos de
+verdade — nenhum `eslint-disable` novo, nenhum falso positivo. O estado que
+se consegue derivar no render (desativado, movimento reduzido, reabertura
+da paleta, lista encurtada, pasta pedida) deixou de ser sincronizado em
+efeitos; os efeitos ficaram só com temporizadores, subscrições, foco,
+leituras assíncronas e callbacks. No `CoreRings` (cujos cinco avisos eram
+da `react-hooks/refs`, não de setState), a fábrica de callbacks de ref por
+render deu lugar a uma ref direta por anel. Sem mudança no comportamento
+visível: `eslint` ficou 0 erros e 0 avisos, suite completa verde. Detalhe
+em `docs/log/historico-sessoes.md` (19/08/2026, "Item 26: os 11 avisos do
+eslint, corrigidos a sério").
