@@ -6427,3 +6427,24 @@ código: é validação ao vivo no PC (Controlo Direto inteiro, chave física re
 Windows Hello "verificado", vault Obsidian, provedor Claude) e três coisas
 bloqueadas por fora (build Android sem SDK, gatilhos de rede sem API do Windows,
 marketplace com fonte real fora de âmbito por decisão).
+
+## 2026-08-19 — Item 25: testes da limpeza ao desmontar um plugin (Qwen)
+
+O `PluginRuntime` limpa sete coisas quando um plugin deixa de correr, mas só
+os itens de menu tinham teste — por ter sido a única limpeza que a auditoria
+de 19/08 apanhou a falhar. As outras seis (subscrições de eventos, atalhos,
+widgets, definições, serviços, painéis) funcionavam, mas nada provava que
+continuassem a funcionar. Um teste por cada uma, em
+`tests/plugins/plugin-runtime.test.tsx`, no mesmo formato do dos itens de
+menu: montar, registar por `handlePluginMessage`, confirmar que ficou,
+`unmount()`, confirmar que desapareceu. O `clearPluginShortcuts` era o mais
+urgente — não aparecia em teste nenhum.
+
+Cada teste foi **provado a apanhar mesmo o bug**: comentei a linha de limpeza
+correspondente no `PluginRuntime.tsx`, vi o teste falhar, repus, vi passar.
+Os seis falharam sem a sua linha (subscrições, atalhos, widgets, definições,
+serviços e painéis), e todos passam com ela. Um teste que passa com e sem a
+correção não está a testar nada — nenhum dos seis é assim. Nada mudou no
+`PluginRuntime.tsx`: ficou provado que a limpeza que já lá está funciona.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1804/1804 (137 ficheiros).
