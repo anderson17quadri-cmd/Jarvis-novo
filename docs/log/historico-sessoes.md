@@ -6502,3 +6502,29 @@ verdade (temporizadores, subscrições, foco, leituras assíncronas,
 callbacks), e os `setState` síncronos saíram deles. Verificação: `tsc`
 limpo, `eslint` 0 erros **e 0 avisos** (eram 11), `vitest` 1804/1804
 (137 ficheiros).
+
+## 2026-08-19 — Verificação dos itens 25 e 26 da Qwen, e um acoplamento novo no CoreRings
+
+Verificados os dois itens em vez de acreditar no relatório, como manda a
+disciplina da casa. **Ambos passam, e o item 25 passa pela prova forte**:
+desliguei as sete linhas de limpeza do `PluginRuntime.tsx` de uma vez e
+falharam exatamente sete testes, um por cada limpeza; repostas, passam os dez.
+Os testes não são decorativos. O item 26 também está bem — `eslint` com **0
+avisos** (eram 11), nenhum silenciado com `eslint-disable`, e as correções são
+mesmo estado derivado no render em vez de sincronizado num efeito.
+
+**Um acoplamento novo, apanhado ao rever o `CoreRings`**: a correção trocou um
+array dinâmico de refs (`ringRefs.current[index]`) por cinco refs fixas. Hoje
+está certo — cinco velocidades em `RING_SPEEDS`, cinco `<g>` — mas quem
+acrescentasse uma sexta velocidade ficava com um anel que nunca anima, **sem
+erro de compilação e sem teste a falhar**: `rings[5]` seria `undefined` e o
+`continue` engolia-o em silêncio. É a mesma classe de falha que esta sessão
+passou o dia a apanhar — a que não dá sinal.
+
+Fechado pelo tipo, não por um comentário a pedir atenção: a lista de refs
+passou a declarar `length: (typeof RING_SPEEDS)['length']`, por isso os dois
+tuplos têm forçosamente o mesmo comprimento. Provado a funcionar —
+acrescentei uma sexta velocidade, o `tsc` recusou com
+`not assignable to ... { readonly length: 6 }`, e repus.
+
+Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1804/1804.

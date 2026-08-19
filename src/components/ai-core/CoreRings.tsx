@@ -59,7 +59,14 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
   useAnimationFrame(
     useCallback(
       (elapsed: number) => {
-        const rings = [ring0Ref, ring1Ref, ring2Ref, ring3Ref, ring4Ref];
+        // O tipo amarra esta lista ao `RING_SPEEDS`: é um tipo mapeado sobre
+        // o tuplo, por isso tem forçosamente o mesmo comprimento. Sem isto,
+        // acrescentar uma sexta velocidade dava um anel que nunca anima — sem
+        // erro de compilação e sem teste a falhar, porque `rings[5]` seria só
+        // `undefined` e o `continue` engolia-o em silêncio.
+        const rings: readonly React.RefObject<SVGGElement | null>[] & {
+          readonly length: (typeof RING_SPEEDS)['length'];
+        } = [ring0Ref, ring1Ref, ring2Ref, ring3Ref, ring4Ref];
         for (const [index, speed] of RING_SPEEDS.entries()) {
           const ring = rings[index]?.current;
           if (!ring) continue;
