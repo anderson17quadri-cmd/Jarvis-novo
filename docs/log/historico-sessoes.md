@@ -6427,3 +6427,31 @@ código: é validação ao vivo no PC (Controlo Direto inteiro, chave física re
 Windows Hello "verificado", vault Obsidian, provedor Claude) e três coisas
 bloqueadas por fora (build Android sem SDK, gatilhos de rede sem API do Windows,
 marketplace com fonte real fora de âmbito por decisão).
+
+## 2026-08-19 — Wake word: "Jarvis" não existe para o motor, e a decisão mudou
+
+A 24.1 começou e travou logo numa parede que a decisão de há poucas horas não
+previa: o `vosk-model-small-pt-0.3` tem **vocabulário fechado**, e "Jarvis" não
+está lá dentro. Confirmado por dois caminhos independentes pela sessão que
+construía — descodificação livre ouve "já vi", descodificação com gramática
+regista `Ignoring word missing in vocabulary: 'jarvis'`. Não é sensibilidade
+nem pronúncia: com este motor a palavra nunca poderia ser detetada. Palavras
+do vocabulário ("sentinela", "computador") são detetadas na mesma, por isso a
+arquitetura está certa — é só esta palavra que não existe para o motor.
+
+**Dois erros meus, ambos do mesmo tipo**: escrevi `vosk-model-small-pt-0.6` no
+desenho sem confirmar que a versão existia (só há a 0.3), e fixei a palavra
+por omissão sem confirmar que o motor a conseguia ouvir. Decidir sobre um
+componente sem verificar o que ele faz é a mesma falha que esta sessão passou
+o dia a apanhar no código dos outros.
+
+**Corrigido no `§6.2` do desenho**, por ordem: (a) provar o
+`vosk-model-pt-fb-v0.1.1-pruned` (1,6 GB, já descarregado, ficou por testar num
+erro de caminho) — se reconhecer "Jarvis", fica tudo como estava; (b) se não,
+a palavra por omissão passa a **"Sentinela"**, que está no vocabulário e quase
+nunca aparece em conversa normal, ao contrário de "computador"/"assistente",
+que seriam uma fábrica de falsos positivos. Fica também escrito o que **não**
+fazer: casar com o "já vi" que o motor ouve funcionaria tecnicamente e daria
+um assistente a acordar sozinho a meio de conversas. E fica a nota de
+verificar o `openWakeWord` antes de fixar (b) — existe para palavras
+arbitrárias e pode resolver isto sem os 1,6 GB.

@@ -206,7 +206,7 @@ O utilizador delegou estas decisões ("tome a melhor decisão", mesmo padrão de
 uma com a razão, para se poder discordar com fundamento em vez de as reabrir
 por hábito.
 
-1. **Motor e runtime: Vosk + `vosk-model-small-pt-0.6`, caminho A** (serviço
+1. **Motor e runtime: Vosk + `vosk-model-small-pt-0.3`, caminho A** (serviço
    Python à parte, irmão do `voice-clone-service`). Duas razões, e a segunda
    pesa mais do que parece: é o precedente já provado do projeto (o Rust já
    sabe arrancar, provar a saúde, matar o órfão e limpar ao fechar — tudo
@@ -217,11 +217,53 @@ por hábito.
    componente mais frágil do sistema. O caminho B fica documentado como
    alternativa, não como plano.
 
-2. **A palavra por omissão é "Jarvis"**, uma palavra só. É o nome do produto e
-   é o que a pessoa vai dizer naturalmente; impor "Olá Jarvis" por omissão
-   seria resolver um problema de sensibilidade (§6.4) com uma fricção que se
-   sente a cada uso. Quem for incomodado por falsos positivos muda a palavra
-   ou a frase na 24.3, que é onde a configuração entra.
+2. **A palavra por omissão — corrigida em 19/08/2026, depois de a construção
+   provar que a decisão original era impossível.**
+
+   A decisão dizia "Jarvis", pela razão óbvia de ser o nome do produto. A
+   sessão que começou a 24.1 descobriu que **o `vosk-model-small-pt-0.3` tem
+   vocabulário fechado e "Jarvis" não está lá dentro** — confirmado por dois
+   caminhos independentes: a descodificação livre ouve "já vi", e a
+   descodificação com gramática regista explicitamente `Ignoring word missing
+   in vocabulary: 'jarvis'`. Não é afinação de sensibilidade nem de pronúncia:
+   com este motor, a palavra **nunca** pode ser detetada. Palavras do
+   vocabulário ("sentinela", "computador", "assistente") são detetadas na
+   mesma — a arquitetura está certa, é só esta palavra que não existe para o
+   motor.
+
+   **De caminho, corrige-se um erro deste documento**: a versão `-0.6` escrita
+   na decisão 1 não existe; o único modelo pequeno de português é o `-0.3`.
+   Foi escrita sem se confirmar que existia.
+
+   **O que fazer, por esta ordem:**
+
+   a) **Primeiro, provar o modelo grande.** O `vosk-model-pt-fb-v0.1.1-pruned`
+      (1,6 GB) já está descarregado e ficou por testar num erro de caminho.
+      Se reconhecer "Jarvis", é ele — a palavra fica como estava e o custo é
+      só disco e RAM, que nesta máquina há. É o desfecho preferível e é
+      barato de verificar.
+
+   b) **Se o modelo grande também não a tiver**, a palavra por omissão passa a
+      **"Sentinela"**. Está no vocabulário (confirmado), e tem uma propriedade
+      que a torna melhor do que as outras candidatas para esta função:
+      quase nunca aparece em conversa normal. "Computador" e "assistente"
+      dizem-se a toda a hora — como palavra de acordar seriam uma fábrica de
+      falsos positivos. O nome do produto continua a ser JARVIS; a palavra de
+      acordar é outra coisa, e a 24.3 deixa quem quiser trocá-la.
+
+   **O que não fazer, e fica dito para ninguém tentar mais tarde:** aproveitar
+   o facto de o motor ouvir "já vi" quando se diz "Jarvis" e casar com *isso*.
+   Tecnicamente funcionaria; na prática "já vi" é uma frase comuníssima em
+   português, e o resultado seria o JARVIS a acordar sozinho a meio de
+   conversas. Trocar um falso negativo garantido por falsos positivos
+   constantes não é um negócio melhor.
+
+   **Uma alternativa que vale a pena verificar antes de fixar (b)**: o
+   `openWakeWord`, já listado no §4 como alternativa, existe precisamente para
+   palavras de acordar arbitrárias, e distribui modelos pré-treinados. Não
+   confirmo de memória se há um para "jarvis" — se houver, resolve isto por
+   inteiro e sem os 1,6 GB. Verificar custa minutos; se não houver, segue (b)
+   sem mais demora.
 
 3. **Ligar a wake word torna o serviço local de voz obrigatório.** Sem ele a
    correr, a wake word **recusa armar-se** e diz porquê — não arma e deixa a

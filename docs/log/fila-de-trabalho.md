@@ -68,7 +68,14 @@ Privacidade, mesma disciplina de sempre. **Desenho feito 15/08/2026** —
 `docs/spec/wake-word-local.md`; falta construir (§4 e §5 do desenho: 24.1 motor
 local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
 
-**As cinco decisões do §6 estão fechadas (19/08/2026) — não perguntar, ler o
+**A decisão da palavra por omissão foi corrigida a meio da 24.1** — o
+`vosk-model-small-pt-0.3` tem vocabulário fechado e "Jarvis" não está lá
+dentro (a versão `-0.6` do desenho não existia; era erro meu). Ler o §6.2
+corrigido: provar primeiro o modelo grande já descarregado, e só se ele
+também não a tiver é que a palavra passa a "Sentinela". Não casar com o "já
+vi" que o motor ouve — a razão está lá escrita.
+
+**As restantes decisões do §6 estão fechadas (19/08/2026) — não perguntar, ler o
 §6 e construir.** Em resumo: Vosk `small-pt-0.6` num serviço Python à parte
 (caminho A, irmão do `voice-clone-service`); palavra "Jarvis" por omissão;
 **ligar a wake word exige o serviço local de voz a correr — sem ele, recusa
