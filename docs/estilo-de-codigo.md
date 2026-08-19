@@ -143,8 +143,14 @@ pedido.
 
 ## Orquestração multi-modelo (trabalho noturno)
 
-Quando se pede para pôr várias IAs locais a trabalhar (Claude local,
-DeepSeek, Qwen, Kimi…) enquanto a pessoa dorme: **um só prompt**, colado
+**Quem trabalha, hoje: só o Claude** (19/08/2026, pedido explícito).
+A DeepSeek saiu da rotação; a Kimi e a Qwen já tinham saído em 14/08.
+Não atribuir itens a modelos externos sem pedido novo — havendo mais
+frentes do que uma sessão aguenta, abrem-se mais sessões de Claude Code
+em paralelo, com a mesma disciplina de reserva por `git push`.
+
+Quando se pede para pôr várias sessões a trabalhar em paralelo enquanto
+a pessoa dorme: **um só prompt**, colado
 diretamente na conversa (nunca guardado num ficheiro à parte — isso é
 ruído, o prompt é para o chat), para o Claude Code local, que é quem
 abre os terminais das outras sozinho e as comanda — nunca vários prompts

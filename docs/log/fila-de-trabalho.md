@@ -7,15 +7,15 @@
 > começar — se o `push` falhar porque outra sessão já reservou o mesmo
 > item, `git pull` e escolhe o seguinte.
 >
-> **Só DeepSeek, a partir de agora (14/08/2026, pedido explícito do
-> utilizador).** Kimi e Qwen ficam de fora — não atribuir mais nada a
-> nenhum dos dois, mesmo que apareçam livres. Se houver mais itens do
-> que instâncias de DeepSeek a correr, **abre mais terminais com
-> DeepSeek** (duas, três, o que for preciso) em vez de recorrer a Kimi
-> ou Qwen — várias instâncias de DeepSeek em paralelo, cada uma com o
-> seu próprio item reservado (mesma disciplina de reserva por
-> `git push`, para não pegarem no mesmo item). Só volta a Kimi/Qwen se
-> o utilizador pedir explicitamente outra vez.
+> **Só o Claude, a partir de agora (19/08/2026, pedido explícito do
+> utilizador).** A DeepSeek sai da rotação, e a Kimi e a Qwen continuam
+> de fora (saíram em 14/08). Não atribuir itens a nenhum modelo externo
+> — o Claude Code faz o trabalho ele próprio. Se houver mais frentes do
+> que uma sessão aguenta, abrem-se mais sessões de Claude Code em
+> paralelo, cada uma a reservar o seu item por `git push` antes de
+> começar (a disciplina de reserva mantém-se, é o que impede duas
+> sessões de pegarem no mesmo item). Só volta a haver modelos externos
+> se o utilizador pedir explicitamente.
 >
 > Cada item fechado ganha a sua entrada normal em
 > `docs/log/historico-sessoes.md` e a atualização correspondente no
