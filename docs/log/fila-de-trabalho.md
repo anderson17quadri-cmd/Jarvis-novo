@@ -77,27 +77,6 @@ afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
 de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
 
-### 25. Testes da limpeza ao desmontar um plugin — Qwen (19/08/2026 18:04)
-
-O `PluginRuntime` limpa sete coisas quando um plugin deixa de correr
-(subscrições, atalhos, widgets, definições, serviços, painéis, itens de
-menu). **Só a última tem teste** — e tem-no porque em 19/08/2026 se
-descobriu que era a única que *não* estava a ser limpa: ficava um item
-morto no menu do ambiente de trabalho, de um plugin já parado. As outras
-seis funcionam hoje, mas nada prova que continuem a funcionar amanhã.
-
-Escrever, em `tests/plugins/plugin-runtime.test.tsx`, um teste por cada
-uma das seis, no mesmo formato do que lá está para os itens de menu
-(`tira os itens de menu do plugin quando ele deixa de correr`): montar o
-`PluginRuntime`, registar a coisa por `handlePluginMessage`, confirmar
-que ficou registada, `unmount()`, confirmar que desapareceu. O
-`clearPluginShortcuts` é o mais urgente — não aparece em teste nenhum.
-
-Para cada teste, **provar que ele apanha mesmo o bug**: comentar a linha
-da limpeza correspondente no `PluginRuntime.tsx`, ver o teste falhar,
-repor, ver passar. Um teste que passa com e sem a correção não está a
-testar nada.
-
 ### 26. Os 11 avisos do eslint — Qwen (19/08/2026 18:04)
 
 Todos do mesmo tipo (`react-hooks/set-state-in-effect`: chamar `setState`
@@ -906,3 +885,15 @@ recusa com `dados-invalidos`; e `confirm` mostra erro em vez de ficar
 preso na confirmação. 5 testes novos. Detalhe em
 `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: restauro de
 cópias de segurança").
+
+### 25. Testes da limpeza ao desmontar um plugin — Qwen — commit `7177de4`
+
+Seis testes novos em `tests/plugins/plugin-runtime.test.tsx`, um por cada
+limpeza que o `PluginRuntime` faz ao desmontar e que ainda não tinha teste
+(subscrições de eventos, atalhos, widgets, definições, serviços, painéis) —
+só os itens de menu o tinham, desde que a auditoria de 19/08 encontrou esse
+bug. Cada teste foi provado a apanhar mesmo o bug: a sua linha de limpeza
+comentada no `PluginRuntime.tsx` fá-lo falhar, reposta fá-lo passar — os
+seis falharam sem a sua linha. Nada mudou no `PluginRuntime`. Detalhe em
+`docs/log/historico-sessoes.md` (19/08/2026, "Item 25: testes da limpeza ao
+desmontar um plugin").
