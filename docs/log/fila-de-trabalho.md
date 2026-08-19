@@ -77,7 +77,7 @@ afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
 de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
 
-### 25. Testes da limpeza ao desmontar um plugin — `[por reservar]`
+### 25. Testes da limpeza ao desmontar um plugin — Qwen (19/08/2026 18:04)
 
 O `PluginRuntime` limpa sete coisas quando um plugin deixa de correr
 (subscrições, atalhos, widgets, definições, serviços, painéis, itens de
@@ -98,7 +98,7 @@ da limpeza correspondente no `PluginRuntime.tsx`, ver o teste falhar,
 repor, ver passar. Um teste que passa com e sem a correção não está a
 testar nada.
 
-### 26. Os 11 avisos do eslint — `[por reservar]`
+### 26. Os 11 avisos do eslint — Qwen (19/08/2026 18:04)
 
 Todos do mesmo tipo (`react-hooks/set-state-in-effect`: chamar `setState`
 diretamente no corpo de um efeito, que provoca renderizações em cascata),
