@@ -84,6 +84,40 @@ afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
 de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
 
+### 27. O Ollama arranca com o JARVIS, como a voz clonada — `[por reservar]`
+
+O utilizador quer um modelo local a responder depressa **de dentro da app**,
+sem ter de abrir o Ollama à mão primeiro. Hoje o `OllamaProvider` já está
+completo (ferramentas incluídas — o modelo local já sabe chamar o
+`pesquisar_na_web`, confirmado com `qwen3:8b` em 13/08), mas só funciona se
+alguém já tiver o Ollama a correr.
+
+Copiar o padrão que o `src-tauri/src/voice_clone.rs` já provou, **incluindo as
+lições que custaram a aprender**:
+- arranque no `setup` do Tauri, sem janela de consola;
+- **health-check a sério, não só a porta aberta** (a lição do item 19: havia um
+  órfão preso na 8090 a responder ao TCP e ao `/health` com o contexto CUDA
+  morto). Aqui, provar com um pedido mínimo ao `/api/tags` ou equivalente que
+  o Ollama responde mesmo — e que o modelo escolhido existe na máquina;
+- matar o órfão identificando-o pela linha de comando, nunca só pela porta,
+  para não matar um processo alheio;
+- limpar o filho no `RunEvent::Exit`.
+
+**Diferença importante face à voz clonada**: o Ollama pode já estar a correr
+como serviço do próprio sistema, instalado pela pessoa. Nesse caso **não se
+arranca outro nem se mata o que está** — usa-se o que lá está. Só se arranca
+quando não há nada a responder.
+
+**Aviso de recursos a pôr na interface, não escondido**: a placa já tem o
+XTTS-v2 e o Whisper carregados para a voz clonada. Um modelo de 8B por cima
+disso aperta os 12 GB, e o item 20 mostrou que esta máquina já cai por reset
+do driver da NVIDIA. Se o modelo escolhido não couber, dizer isso à pessoa em
+vez de deixar a app engasgar — e sugerir um modelo mais pequeno da mesma
+família (`qwen3:4b`), que continua a saber pedir ferramentas.
+
+**Fora deste item**: a chave da Brave para a pesquisa web ser real em vez de
+simulada. Isso é do utilizador, em Personalização → Pesquisa web.
+
 ## Feito (mover para aqui ao fechar, com o commit)
 
 ### 15. Restauro e hidratação (`hydrate-all.ts` vs. as chaves fora dele) — revisão adversarial — DeepSeek — sem commit de código
