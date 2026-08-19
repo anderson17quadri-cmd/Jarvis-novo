@@ -43,19 +43,30 @@ export function CommandPalette({
   useEffect(() => useSearchStore.getState().hydrate(), []);
 
   // Cada abertura começa do zero — reabrir com a pesquisa anterior confunde.
-  // A exceção é quem a abriu já com um texto, como o comando de voz.
+  // A exceção é quem a abriu já com um texto, como o comando de voz. E uma
+  // pesquisa nova pode encurtar a lista abaixo do índice selecionado. São
+  // consequências diretas do que já se conhece no render: ajustam-se aqui,
+  // não num efeito a correr depois de pintar.
+  const [anterior, setAnterior] = useState({ isOpen, initialQuery, total: results.length });
+  if (
+    anterior.isOpen !== isOpen ||
+    anterior.initialQuery !== initialQuery ||
+    anterior.total !== results.length
+  ) {
+    const reabriu = isOpen && (anterior.isOpen !== isOpen || anterior.initialQuery !== initialQuery);
+    setAnterior({ isOpen, initialQuery, total: results.length });
+    if (reabriu) setSelectedIndex(0);
+    else if (anterior.total !== results.length) {
+      setSelectedIndex((index) => Math.min(index, Math.max(0, results.length - 1)));
+    }
+  }
+
   useEffect(() => {
     if (!isOpen) return;
     useSearchStore.getState().setQuery(initialQuery);
-    setSelectedIndex(0);
     const timer = setTimeout(() => inputRef.current?.focus(), 40);
     return () => clearTimeout(timer);
   }, [initialQuery, isOpen]);
-
-  // Uma pesquisa nova pode encurtar a lista abaixo do índice selecionado.
-  useEffect(() => {
-    setSelectedIndex((index) => Math.min(index, Math.max(0, results.length - 1)));
-  }, [results.length]);
 
   useEffect(() => {
     listRef.current

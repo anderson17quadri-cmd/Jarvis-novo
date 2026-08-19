@@ -23,16 +23,20 @@ export function useEntranceCascade(isActive: boolean): Record<CascadeStage, bool
   const reducedMotion = useReducedMotion();
   const [visible, setVisible] = useState<Record<CascadeStage, boolean>>(() => allStages(false));
 
-  useEffect(() => {
-    if (!isActive) {
-      setVisible(allStages(false));
-      return;
-    }
+  // Ajuste durante o render, não num efeito: esconder, mostrar tudo de uma
+  // vez (movimento reduzido) e recomeçar a cascata são consequências diretas
+  // das props. O estado interno serve só para a cascata com temporizadores.
+  const [anterior, setAnterior] = useState({ isActive, reducedMotion });
+  if (anterior.isActive !== isActive || anterior.reducedMotion !== reducedMotion) {
+    setAnterior({ isActive, reducedMotion });
+    if (!isActive) setVisible(allStages(false));
+    else if (reducedMotion) setVisible(allStages(true));
+    else if (anterior.isActive && anterior.reducedMotion) setVisible(allStages(true));
+    else setVisible(allStages(false));
+  }
 
-    if (reducedMotion) {
-      setVisible(allStages(true));
-      return;
-    }
+  useEffect(() => {
+    if (!isActive || reducedMotion) return;
 
     const timers = Object.entries(CASCADE_DELAYS).map(([stage, delay]) =>
       setTimeout(() => {
@@ -43,6 +47,8 @@ export function useEntranceCascade(isActive: boolean): Record<CascadeStage, bool
     return () => timers.forEach(clearTimeout);
   }, [isActive, reducedMotion]);
 
+  if (!isActive) return allStages(false);
+  if (reducedMotion) return allStages(true);
   return visible;
 }
 

@@ -40,7 +40,14 @@ interface CoreRingsProps {
 }
 
 export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: CoreRingsProps): React.JSX.Element {
-  const ringRefs = useRef<(SVGGElement | null)[]>([]);
+  // Uma ref por anel, em vez de uma fábrica de callbacks de ref criada a cada
+  // render — o callback criado no render conta como acesso a refs durante o
+  // render para o compilador, e a ref direta não.
+  const ring0Ref = useRef<SVGGElement>(null);
+  const ring1Ref = useRef<SVGGElement>(null);
+  const ring2Ref = useRef<SVGGElement>(null);
+  const ring3Ref = useRef<SVGGElement>(null);
+  const ring4Ref = useRef<SVGGElement>(null);
   const glowRef = useRef<SVGCircleElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const tiltRef = useRef({ x: 0, y: 0 });
@@ -52,8 +59,9 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
   useAnimationFrame(
     useCallback(
       (elapsed: number) => {
+        const rings = [ring0Ref, ring1Ref, ring2Ref, ring3Ref, ring4Ref];
         for (const [index, speed] of RING_SPEEDS.entries()) {
-          const ring = ringRefs.current[index];
+          const ring = rings[index]?.current;
           if (!ring) continue;
 
           // O quarto anel (índice 3) oscila além de rodar.
@@ -77,10 +85,6 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
       [config.glowPulse, config.spin, speedScale],
     ),
   );
-
-  const setRingRef = (index: number) => (element: SVGGElement | null) => {
-    ringRefs.current[index] = element;
-  };
 
   return (
     <svg
@@ -111,7 +115,7 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
       {ringsVisible && (
         <>
           {/* Halo exterior */}
-          <g ref={setRingRef(0)} style={{ transformOrigin: '200px 200px' }}>
+          <g ref={ring0Ref} style={{ transformOrigin: '200px 200px' }}>
             <circle
               cx="200"
               cy="200"
@@ -124,7 +128,7 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
           </g>
 
           {/* Anel principal, com marcas técnicas */}
-          <g ref={setRingRef(1)} style={{ transformOrigin: '200px 200px' }}>
+          <g ref={ring1Ref} style={{ transformOrigin: '200px 200px' }}>
             <circle cx="200" cy="200" r="176" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
             <circle
               cx="200"
@@ -150,7 +154,7 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
           </g>
 
           {/* Anel secundário, sentido inverso */}
-          <g ref={setRingRef(2)} style={{ transformOrigin: '200px 200px' }}>
+          <g ref={ring2Ref} style={{ transformOrigin: '200px 200px' }}>
             <circle
               cx="200"
               cy="200"
@@ -175,7 +179,7 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
           </g>
 
           {/* Anel interno irregular */}
-          <g ref={setRingRef(3)} style={{ transformOrigin: '200px 200px' }}>
+          <g ref={ring3Ref} style={{ transformOrigin: '200px 200px' }}>
             <circle
               cx="200"
               cy="200"
@@ -189,7 +193,7 @@ export function CoreRings({ mode, color, speedScale = 1, ringsVisible = true }: 
             <circle cx="200" cy="200" r="92" fill="none" stroke={color} strokeWidth="1" opacity=".3" />
           </g>
 
-          <g ref={setRingRef(4)} style={{ transformOrigin: '200px 200px' }}>
+          <g ref={ring4Ref} style={{ transformOrigin: '200px 200px' }}>
             <circle
               cx="200"
               cy="200"

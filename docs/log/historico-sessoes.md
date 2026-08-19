@@ -6448,3 +6448,29 @@ correção não está a testar nada — nenhum dos seis é assim. Nada mudou no
 `PluginRuntime.tsx`: ficou provado que a limpeza que já lá está funciona.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1804/1804 (137 ficheiros).
+
+## 2026-08-19 — Item 26: os 11 avisos do eslint, corrigidos a sério (Qwen)
+
+O eslint tinha 11 avisos em seis ficheiros, todos das regras do React
+Compiler. O enunciado dizia `set-state-in-effect`, mas os cinco do
+`CoreRings` eram da `react-hooks/refs` — na prática o tratamento foi o
+mesmo: corrigir a sério, nenhum silenciado com `eslint-disable`, e nenhum
+era falso positivo.
+
+A correção teve sempre a mesma forma: estado que se consegue derivar no
+render deixa de ser sincronizado num efeito. `use-typewriter` e
+`use-entrance-cascade` derivam os casos "desativado" e "movimento reduzido"
+no render, e os efeitos ficam só com temporizadores e callbacks;
+`BootChecks` deriva a lista concluída do movimento reduzido (o sinalizador
+de depuração lê-se uma vez só, como antes); `CommandPalette` repõe a
+seleção ao abrir e limita-a ao tamanho da lista, as duas coisas no render;
+`FilesWindow` repõe o indicador de leitura e o erro quando muda a pasta
+pedida, deixando no efeito só a leitura assíncrona; `CoreRings` troca a
+fábrica de callbacks de ref criada a cada render por uma ref direta por
+anel — o mesmo em funcionamento, aceite pelo compilador.
+
+Nada mudou no comportamento visível: os efeitos ficaram onde há efeitos de
+verdade (temporizadores, subscrições, foco, leituras assíncronas,
+callbacks), e os `setState` síncronos saíram deles. Verificação: `tsc`
+limpo, `eslint` 0 erros **e 0 avisos** (eram 11), `vitest` 1804/1804
+(137 ficheiros).
