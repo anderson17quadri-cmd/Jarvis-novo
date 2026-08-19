@@ -7,15 +7,19 @@
 > começar — se o `push` falhar porque outra sessão já reservou o mesmo
 > item, `git pull` e escolhe o seguinte.
 >
-> **Só o Claude, a partir de agora (19/08/2026, pedido explícito do
-> utilizador).** A DeepSeek sai da rotação, e a Kimi e a Qwen continuam
-> de fora (saíram em 14/08). Não atribuir itens a nenhum modelo externo
-> — o Claude Code faz o trabalho ele próprio. Se houver mais frentes do
-> que uma sessão aguenta, abrem-se mais sessões de Claude Code em
-> paralelo, cada uma a reservar o seu item por `git push` antes de
-> começar (a disciplina de reserva mantém-se, é o que impede duas
-> sessões de pegarem no mesmo item). Só volta a haver modelos externos
-> se o utilizador pedir explicitamente.
+> **Quem trabalha (19/08/2026).** O **Claude** leva o item 24 (wake
+> word) — é o trabalho de mais juízo que resta, sequencial, e com
+> nativo pelo meio. A **Qwen** volta à rotação só para trabalho
+> **contido e verificável pelo portão** (itens 25 e 26 abaixo): testes
+> e avisos de lint, onde um erro falha à vista e não há forma de partir
+> nada em silêncio. A DeepSeek e a Kimi ficam de fora. Reserva por
+> `git push` como sempre — é o que impede duas sessões de pegarem no
+> mesmo item.
+>
+> **Não atribuir à Qwen nada que toque em segurança, no nativo, ou na
+> fronteira de plugins/plataforma.** Não é desconfiança gratuita: a
+> auditoria de 19/08 encontrou bugs reais em código dado como acabado
+> por outro modelo, e essas áreas são as que falham em silêncio.
 >
 > Cada item fechado ganha a sua entrada normal em
 > `docs/log/historico-sessoes.md` e a atualização correspondente no
@@ -72,6 +76,45 @@ armar-se e diz porquê, nunca cai para a nuvem**; um valor de sensibilidade só,
 afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
 de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
+
+### 25. Testes da limpeza ao desmontar um plugin — `[por reservar]`
+
+O `PluginRuntime` limpa sete coisas quando um plugin deixa de correr
+(subscrições, atalhos, widgets, definições, serviços, painéis, itens de
+menu). **Só a última tem teste** — e tem-no porque em 19/08/2026 se
+descobriu que era a única que *não* estava a ser limpa: ficava um item
+morto no menu do ambiente de trabalho, de um plugin já parado. As outras
+seis funcionam hoje, mas nada prova que continuem a funcionar amanhã.
+
+Escrever, em `tests/plugins/plugin-runtime.test.tsx`, um teste por cada
+uma das seis, no mesmo formato do que lá está para os itens de menu
+(`tira os itens de menu do plugin quando ele deixa de correr`): montar o
+`PluginRuntime`, registar a coisa por `handlePluginMessage`, confirmar
+que ficou registada, `unmount()`, confirmar que desapareceu. O
+`clearPluginShortcuts` é o mais urgente — não aparece em teste nenhum.
+
+Para cada teste, **provar que ele apanha mesmo o bug**: comentar a linha
+da limpeza correspondente no `PluginRuntime.tsx`, ver o teste falhar,
+repor, ver passar. Um teste que passa com e sem a correção não está a
+testar nada.
+
+### 26. Os 11 avisos do eslint — `[por reservar]`
+
+Todos do mesmo tipo (`react-hooks/set-state-in-effect`: chamar `setState`
+diretamente no corpo de um efeito, que provoca renderizações em cascata),
+em 6 ficheiros: `CoreRings.tsx` (5 dos 11), `use-typewriter.ts`,
+`use-entrance-cascade.ts`, `CommandPalette.tsx` (2), `BootChecks.tsx` e
+`FilesWindow.tsx`.
+
+Corrigir de verdade, não silenciar: um `eslint-disable` não resolve
+nada, e nem sempre a correção é a mesma — às vezes o estado dá para
+derivar durante a renderização, às vezes o efeito é mesmo o sítio certo
+e o que muda é a forma de o escrever. **Se algum dos 11 for um falso
+positivo, dizer porquê no comentário em vez de o desligar em silêncio.**
+
+A suite inteira tem de continuar verde: estes ficheiros mexem no
+arranque, na paleta de comandos e no núcleo visual — um "arranjo" que
+mude o comportamento é pior do que o aviso.
 
 ## Feito (mover para aqui ao fechar, com o commit)
 
