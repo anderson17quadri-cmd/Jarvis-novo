@@ -70,10 +70,10 @@ local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
 
 **A decisão da palavra por omissão foi corrigida a meio da 24.1** — o
 `vosk-model-small-pt-0.3` tem vocabulário fechado e "Jarvis" não está lá
-dentro (a versão `-0.6` do desenho não existia; era erro meu). Ler o §6.2
-corrigido: provar primeiro o modelo grande já descarregado, e só se ele
-também não a tiver é que a palavra passa a "Sentinela". Não casar com o "já
-vi" que o motor ouve — a razão está lá escrita.
+dentro (a versão `-0.6` do desenho não existia; era erro meu). Duas sessões
+em paralelo chegaram ao mesmo achado; ver §6.2 do desenho e a entrada de
+24.1 abaixo para a resolução final (o modelo grande foi mesmo testado, e o
+utilizador decidiu).
 
 **As restantes decisões do §6 estão fechadas (19/08/2026) — não perguntar, ler o
 §6 e construir.** Em resumo: Vosk `small-pt-0.6` num serviço Python à parte
@@ -81,7 +81,15 @@ vi" que o motor ouve — a razão está lá escrita.
 **ligar a wake word exige o serviço local de voz a correr — sem ele, recusa
 armar-se e diz porquê, nunca cai para a nuvem**; um valor de sensibilidade só,
 afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
-de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
+de eco `isSpeakingOrGuarded`).
+
+**24.1 fechada (19/08/2026, Claude)** — `wake-word-service/`, testada com
+áudio real (`tests/test_deteccao.py`, 5/5). Achado: o modelo pequeno não
+reconhece "Jarvis" (vocabulário fechado); palavra por omissão passou a
+**"Sentinela"**, com o utilizador a confirmar manter o modelo pequeno em vez
+de trocar para um maior — ver `docs/log/historico-sessoes.md` e
+`docs/spec/wake-word-local.md` §6.1/§6.2 para os números. Falta 24.2 e 24.3.
+Construir pela ordem 24.1 → 24.2 → 24.3, com
 commit e entrada no histórico por sub-fase.
 
 ### 27. O Ollama arranca com o JARVIS, como a voz clonada — `[por reservar]`

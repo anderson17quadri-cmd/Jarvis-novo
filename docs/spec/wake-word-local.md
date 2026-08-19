@@ -8,8 +8,10 @@
 > "Wake word configurável" da Parte 7.2, que a spec deixou **por decidir**
 > por causa da escuta contínua.
 >
-> **Estado: só desenho. Nenhuma linha de código escrita.** A decisão de
-> privacidade que travava a linha já está tomada (ver §0) — falta construir.
+> **Estado: 24.1 construída e testada (19/08/2026)** — motor local (Vosk,
+> `wake-word-service/`), health-check a sério, testado com áudio real. Falta
+> 24.2 e 24.3 (§5). A decisão de privacidade que travava a linha está tomada
+> (ver §0). Ver §6.2 para um achado que mudou a palavra por omissão.
 
 ---
 
@@ -258,12 +260,24 @@ por hábito.
    conversas. Trocar um falso negativo garantido por falsos positivos
    constantes não é um negócio melhor.
 
-   **Uma alternativa que vale a pena verificar antes de fixar (b)**: o
-   `openWakeWord`, já listado no §4 como alternativa, existe precisamente para
-   palavras de acordar arbitrárias, e distribui modelos pré-treinados. Não
-   confirmo de memória se há um para "jarvis" — se houver, resolve isto por
-   inteiro e sem os 1,6 GB. Verificar custa minutos; se não houver, segue (b)
-   sem mais demora.
+   **Uma alternativa considerada e não seguida**: o `openWakeWord`, já
+   listado no §4, existe precisamente para palavras de acordar arbitrárias.
+   Não chegou a testar-se — o modelo grande já tinha resposta (abaixo) e o
+   utilizador decidiu antes de valer a pena verificar mais um caminho.
+
+   **Resolvido na 24.1 (19/08/2026)**: o `vosk-model-small-pt-0.3` tem
+   vocabulário fechado e **nunca reconhece "Jarvis"** — confirmado com o modo
+   de gramática do Vosk, que recusa a palavra com "missing in vocabulary", e
+   com a transcrição normal, que ouve sempre "já vi" em vez disso (testado
+   com várias sínteses de voz, não é um acidente de pronúncia). Testada uma
+   alternativa (`vosk-model-pt-fb-v0.1.1-pruned`, 1.6GB) que reconhece
+   "Jarvis" isolado corretamente — mas ~50× maior, mais lenta a carregar, e
+   ainda falha dentro de uma frase corrida. Apresentado ao utilizador o
+   conflito entre as duas metades desta decisão (motor pequeno vs. palavra
+   "Jarvis"); escolheu manter o motor pequeno e **trocar a palavra por
+   omissão para "Sentinela"** (confirmado no vocabulário, pouco comum em
+   conversa normal). "Jarvis" continua disponível como escolha em 24.3, com o
+   risco de não disparar.
 
 3. **Ligar a wake word torna o serviço local de voz obrigatório.** Sem ele a
    correr, a wake word **recusa armar-se** e diz porquê — não arma e deixa a

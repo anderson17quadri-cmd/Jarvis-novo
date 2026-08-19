@@ -1,0 +1,4 @@
+# Só para correr tests/ — pytest e o que os testes de deteção precisam para
+# gerar áudio de prova (`ffmpeg`, à parte, tem de estar no PATH).
+pytest
+httpx

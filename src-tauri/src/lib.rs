@@ -10,6 +10,8 @@ mod terminal;
 mod tray;
 #[cfg(desktop)]
 mod voice_clone;
+#[cfg(desktop)]
+mod wake_word;
 #[cfg(target_os = "windows")]
 mod windows_hello;
 
@@ -59,6 +61,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
+        .manage(wake_word::WakeWordProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
         .manage(commands::files::FileWatchers::new())
         .manage(commands::files::FilesRoot::new())
@@ -111,6 +114,8 @@ pub fn run() {
             commands::control::click_at,
             commands::control::type_text,
             voice_clone::reiniciar_voz_clonada,
+            wake_word::iniciar_wake_word,
+            wake_word::parar_wake_word,
         ])
         .setup(|app| {
             tray::setup(app.handle())?;
@@ -143,6 +148,7 @@ pub fn run() {
             #[cfg(desktop)]
             if let tauri::RunEvent::Exit = _event {
                 voice_clone::cleanup(_app_handle);
+                wake_word::cleanup(_app_handle);
             }
         }),
         Err(err) => eprintln!("[jarvis] a aplicação terminou com erro: {err}"),

@@ -6528,3 +6528,38 @@ acrescentei uma sexta velocidade, o `tsc` recusou com
 `not assignable to ... { readonly length: 6 }`, e repus.
 
 Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1804/1804.
+
+## 2026-08-19 — Wake word 24.1 fechada: o motor local, e a resolução do "Jarvis"
+
+Construída a 24.1 (`docs/spec/wake-word-local.md` §5): `wake-word-service/`,
+irmão do `voice-clone-service` — Vosk + `sounddevice`, FastAPI no
+`127.0.0.1:8091`, gerido pelo Rust (`wake_word.rs`: arranca, mata ao fechar).
+O health-check é a sério (lição do item 19): `Detector.start()` carrega o
+modelo Vosk e valida o microfone (`sd.check_input_settings`) de forma
+síncrona antes de armar — uma falha chega como erro claro (`POST /start`
+devolve 503 com o motivo), em vez de a thread morrer sozinha e só se
+descobrir minutos depois a ler `/health`. O Rust lê esse `detail` e mostra-o,
+em vez de "http status: 503".
+
+Retoma a entrada acima ("Jarvis" não existe para o motor) — duas sessões em
+paralelo chegaram ao mesmo achado pela mesma via. Faltava resolver: **testado
+o `vosk-model-pt-fb-v0.1.1-pruned` (1.6GB)**, que reconhece "Jarvis" isolado
+corretamente, mas ~50× maior e ainda falha dentro de uma frase corrida
+(continua a ouvir "de aves"). Apresentado ao utilizador o conflito entre as
+duas metades da decisão do §6 (motor pequeno vs. palavra "Jarvis") —
+escolheu manter o motor pequeno e trocar a palavra por omissão para
+**"Sentinela"**, como a entrada anterior já apontava.
+
+**O achado testado a sério, como pedido**: gerados cinco áudios reais (voz
+sintetizada pelo `voice-clone-service` já existente, mais silêncio e ruído
+branco por `ffmpeg`) e passados pelo motor de verdade (`tests/test_deteccao.py`,
+5/5 a passar). Com "Sentinela": silêncio e ruído branco não despertam; a
+frase sem a palavra não desperta; a palavra isolada desperta; a palavra
+dentro de outra frase **também** desperta (é o preço já aceite no desenho,
+§1.2/§6.4, de um motor pequeno sem segundo modo — fica documentado, não
+corrigido).
+
+Falta 24.2 (ligação ao `voiceService`, interruptor, indicador, serviço local
+de voz obrigatório) e 24.3 (persistência, auditoria). Verificação: `tsc`
+limpo, `eslint` 0 erros (12 avisos pré-existentes, nenhum novo), `vitest`
+1798/1798, `cargo check` limpo, `cargo test --lib` 39/39.
