@@ -109,6 +109,18 @@ coisa.
      armazenamento (`plugins:<id>:` ou equivalente) — sem isso, um
      plugin já podia ler ou escrever por cima dos dados de outro.
 
+- **A palavra-passe do login fica decorativa (19/08/2026, decisão
+  explícita do utilizador).** O `LoginScreen` aceita qualquer texto não
+  vazio e não guarda hash nenhum — é intencional, vem da Parte 5 da spec
+  original ("facial (simulado), digital (simulado)…") e está documentado
+  em `SPEC.md` §8. A auditoria de 19/08 apresentou a alternativa (uma
+  palavra-passe a sério, com hash, como a do Controlo Direto) e o
+  utilizador respondeu para deixar de fora. A razão contra mantém-se:
+  num sistema sem servidor não há recuperação, e esquecê-la seria ficar
+  trancado fora da própria máquina. **Não voltar a propor.** Quem quiser
+  um primeiro fator forte liga o 2FA (chave física, verificada
+  criptograficamente) ou entra pelo Windows Hello — os dois são reais.
+
 ## Git
 
 Mensagens de commit em português, focadas no **porquê**, não no que já se

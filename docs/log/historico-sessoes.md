@@ -6406,3 +6406,24 @@ janela, notificar, tema, falar) — nada de ficheiros, comandos ou rede.
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
 `vitest` 1798/1798, `cargo check` limpo, `cargo test --lib` 39/39.
+
+## 2026-08-19 — A palavra-passe do login fica como está (decisão do utilizador)
+
+A auditoria de hoje encontrou e documentou (`SPEC.md` §8) que o `LoginScreen`
+aceita qualquer palavra-passe não vazia — sem hash, sem comparação. Apresentada
+ao utilizador a alternativa de construir uma palavra-passe a sério, a resposta
+foi **deixar de fora**. Decisão fechada e registada em `docs/estilo-de-codigo.md`
+(§"Decisões éticas já assentes"), para nenhuma sessão futura voltar a propô-la.
+
+A razão que já pesava contra mantém-se: num sistema sem servidor não há
+recuperação de palavra-passe, e esquecê-la seria ficar trancado fora da própria
+máquina. Quem quiser um primeiro fator forte tem dois caminhos já construídos e
+reais: ligar o 2FA (exige a chave física, verificada criptograficamente) ou
+entrar pelo Windows Hello.
+
+Fica por construir, no projeto inteiro, só a **wake word** (item 24 — desenhada
+em `docs/spec/wake-word-local.md`, zero código). O resto do que falta não é
+código: é validação ao vivo no PC (Controlo Direto inteiro, chave física real,
+Windows Hello "verificado", vault Obsidian, provedor Claude) e três coisas
+bloqueadas por fora (build Android sem SDK, gatilhos de rede sem API do Windows,
+marketplace com fonte real fora de âmbito por decisão).

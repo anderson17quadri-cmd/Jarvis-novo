@@ -821,9 +821,12 @@ vez de ceder). O Windows Hello, quando existe na máquina, é o diálogo nativo
 a sério. A sessão automática só nasce de uma verificação real, nunca da
 palavra-passe.
 
-**Por decidir pelo utilizador**: se o primeiro fator deve passar a ser uma
-palavra-passe a sério (hash guardado, à maneira do que o Controlo Direto já
-faz em `direct-control-service.ts`). Não foi construído por iniciativa
-própria porque acrescenta um risco que hoje não existe — ficar trancado fora
-da própria máquina se a esquecer — e essa é uma decisão de quem usa, não de
-quem escreve o código.
+**Decidido pelo utilizador (19/08/2026): fica como está.** Foi-lhe
+apresentada a opção de o primeiro fator passar a ser uma palavra-passe a
+sério (hash guardado, à maneira do que o Controlo Direto já faz em
+`direct-control-service.ts`) e a resposta foi deixar de fora. A razão que
+pesava contra construí-la mantém-se: acrescentava o risco de ficar trancado
+fora da própria máquina ao esquecê-la, sem recuperação possível num sistema
+sem servidor. **Decisão fechada — não voltar a propor sem pedido explícito.**
+Quem quiser um primeiro fator forte tem-no já: liga o 2FA (exige a chave
+física, verificada a sério) ou entra pelo Windows Hello.
