@@ -6256,3 +6256,46 @@ instalar `libpipewire-0.3-dev`/`libgbm-dev`/`libxdo-dev` no sandbox Linux só
 para compilar os testes — não afeta o Windows, alvo real): `tsc` limpo,
 `eslint` 0 erros (11 avisos pré-existentes), `vitest` 1786/1786, `cargo check`
 limpo.
+
+## 2026-08-19 — Auditoria: a captura de ecrã podia apanhar o monitor errado
+
+Varrimento independente ao estado do projeto inteiro, a pedido do utilizador
+("ve oque esta errado e oque falta"). O portão está limpo (tsc 0, eslint 0
+erros, 1794 testes, `cargo check` limpo) e os varrimentos estruturais não
+encontraram órfãos: nenhum componente por importar, e os 30 comandos Rust
+estão todos no `generate_handler!` — incluindo os cinco do controlo direto.
+
+**Um achado real, e é de privacidade.** `capture_screen` escolhia o ecrã com
+`xcap::Monitor::all().next()` — o **primeiro** da lista. No Windows essa lista
+vem de `EnumDisplayMonitors`, cuja ordem de enumeração é **indefinida**: o
+primeiro não é necessariamente o principal. Num PC com mais do que um ecrã
+isso partia duas promessas ao mesmo tempo:
+
+1. **As zonas sensíveis tapavam o sítio errado, em silêncio.** As zonas são
+   medidas em píxeis do ecrã principal — é o que a janela de Privacidade diz à
+   pessoa ao pedir os números. Aplicadas ao print de *outro* ecrã, a barra de
+   senhas ou a app de banco que a pessoa marcou saía **por tapar** para o
+   modelo de visão (e, com o provedor Claude, para fora da máquina). A
+   funcionalidade falhava exatamente onde existe para proteger, sem dar sinal.
+2. **As coordenadas não batiam certo.** O `enigo` mede o ecrã com
+   `GetSystemMetrics(SM_CXSCREEN)`, que é sempre o principal — logo o modelo de
+   visão descrevia um ecrã e os cliques aterravam noutro.
+
+**Corrigido**: `pick_primary()` escolhe o monitor que se declara principal
+(`is_primary()`, que o `xcap` já expunha e não estava a ser usado), caindo no
+primeiro se nenhum se declarar. Genérica sobre o predicado para ser testável
+sem um ecrã vivo, como o `validate_coordinates` e o `mask_zones` ao lado. Três
+testes novos, um deles a codificar o bug diretamente (o principal a meio da
+lista, não à cabeça — o código antigo escolhia o índice 0 e falharia).
+
+**Verificado de caminho, e está bem**: não há bug de escala DPI. O `xcap`
+captura em píxeis físicos (`dmPelsWidth`) e o `tao` do Tauri põe o processo em
+`PER_MONITOR_AWARE_V2`, por isso o `GetSystemMetrics` do `enigo` também
+devolve físicos — os dois espaços de coordenadas concordam.
+
+**Código morto encontrado**: `src/hooks/use-data-service.ts` não é importado
+por ninguém, apesar de o comentário afirmar que é "um só hook para
+meteorologia, notícias, email e música". Não parte nada; fica anotado.
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
+`vitest` 1794/1794, `cargo check` limpo, `cargo test --lib` 39/39 (eram 36).

@@ -76,10 +76,10 @@ pub struct ScreenZone {
 /// `open_path`; aqui só se garante que há um ecrã para capturar.
 #[tauri::command]
 pub fn capture_screen(zones: Vec<ScreenZone>) -> Result<String> {
-    let monitor = xcap::Monitor::all()
-        .map_err(|e| Error::Control(format!("não consegui listar os ecrãs: {e}")))?
-        .into_iter()
-        .next()
+    let monitors = xcap::Monitor::all()
+        .map_err(|e| Error::Control(format!("não consegui listar os ecrãs: {e}")))?;
+
+    let monitor = pick_primary(monitors, |m| m.is_primary().unwrap_or(false))
         .ok_or_else(|| Error::Control("não há nenhum ecrã para capturar.".to_string()))?;
 
     let mut image = monitor
@@ -88,6 +88,30 @@ pub fn capture_screen(zones: Vec<ScreenZone>) -> Result<String> {
 
     mask_zones(&mut image, &zones);
     encode_png(&image)
+}
+
+/// Escolhe o ecrã **principal** de uma lista, caindo no primeiro se nenhum se
+/// declarar principal.
+///
+/// Não é um detalhe: `xcap::Monitor::all()` usa `EnumDisplayMonitors` no
+/// Windows, cuja ordem de enumeração é **indefinida** — o primeiro da lista
+/// não é necessariamente o principal. Apanhar o primeiro cegamente partia duas
+/// promessas ao mesmo tempo, num PC com mais do que um ecrã:
+///
+/// 1. **A privacidade, em silêncio.** As zonas sensíveis são medidas em píxeis
+///    do ecrã principal (é o que a Privacidade diz à pessoa). Aplicadas a um
+///    print de *outro* ecrã, tapam o sítio errado — a barra de senhas ou a app
+///    de banco que a pessoa marcou saía **por tapar** para o modelo de visão.
+///    A funcionalidade falhava exatamente onde existe para proteger.
+/// 2. **As coordenadas.** O `enigo` mede o ecrã com
+///    `GetSystemMetrics(SM_CXSCREEN)` — sempre o principal. O modelo de visão
+///    descrevia um ecrã e os cliques aterravam noutro.
+///
+/// Genérica sobre o predicado para ser testável sem um ecrã vivo à frente,
+/// como o `validate_coordinates` e o `mask_zones` aqui ao lado.
+fn pick_primary<T>(monitors: Vec<T>, is_primary: impl Fn(&T) -> bool) -> Option<T> {
+    let index = monitors.iter().position(&is_primary).unwrap_or(0);
+    monitors.into_iter().nth(index)
 }
 
 /// Tapa os retângulos `zones` a preto, sem nunca ultrapassar os limites da
@@ -266,6 +290,30 @@ mod tests {
 
         assert_eq!(image.get_pixel(9, 9), &xcap::image::Rgba([0, 0, 0, 255]));
         assert_eq!(image.get_pixel(7, 7), &xcap::image::Rgba([255, 255, 255, 255]));
+    }
+
+    #[test]
+    fn escolhe_o_ecra_principal_mesmo_que_nao_venha_primeiro() {
+        // `EnumDisplayMonitors` não garante ordem: o principal pode vir a meio.
+        let monitores = vec![("secundário", false), ("principal", true), ("terceiro", false)];
+
+        let escolhido = pick_primary(monitores, |(_, principal)| *principal);
+
+        assert_eq!(escolhido, Some(("principal", true)));
+    }
+
+    #[test]
+    fn sem_nenhum_principal_declarado_cai_no_primeiro() {
+        let monitores = vec![("a", false), ("b", false)];
+
+        assert_eq!(pick_primary(monitores, |(_, p)| *p), Some(("a", false)));
+    }
+
+    #[test]
+    fn sem_ecras_nenhuns_nao_escolhe_nada() {
+        let vazio: Vec<(&str, bool)> = Vec::new();
+
+        assert_eq!(pick_primary(vazio, |(_, p)| *p), None);
     }
 
     #[test]
