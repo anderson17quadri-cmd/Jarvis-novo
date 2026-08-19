@@ -6299,3 +6299,50 @@ meteorologia, notícias, email e música". Não parte nada; fica anotado.
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
 `vitest` 1794/1794, `cargo check` limpo, `cargo test --lib` 39/39 (eram 36).
+
+## 2026-08-19 — Item 22, o outro lado: o id do plugin também é namespace
+
+O utilizador perguntou se a verificação tinha sido mesmo a sério, "desde o
+início". Não tinha: na sessão anterior eu disse que ia verificar os itens 21 e
+22 e nunca cheguei a abrir `signature.ts` nem `plugin-storage.ts`. Aberta a
+dívida, foi paga — e o item 22 tinha um buraco.
+
+**O item 21 está correto.** A assinatura cobre `canonicalManifestBytes` seguido
+do hash SHA-256 do código, com fronteira inequívoca (o hash tem 32 bytes fixos)
+e `Object.create(null)` a impedir que um campo `__proto__` escapasse à forma
+canónica. A imposição também está no sítio: `verifyAndInstallPlugin` recusa
+plugin externo sem assinatura, assinatura sem código, e assinatura inválida.
+
+**O item 22 estava certo pelo lado da chave e aberto pelo lado do id.** A chave
+real é `plugins:<id>:<chave>` — texto simples, com `:` a separar. O teste que
+existia provava que uma *chave* forjada (`chave: "outro-plugin:k"`) não alcança
+o namespace alheio, e isso é verdade. Mas o espelho não estava coberto: o
+**id** também entra na chave, e não era validado — `validateManifest` só exigia
+"string não vazia". Assim, o plugin `notas` a guardar a chave `x:y` e o plugin
+`notas:x` a guardar a chave `y` produziam ambos `plugins:notas:x:y`. **O
+segundo lia e escrevia por cima dos dados privados do primeiro.** Reproduzido
+com um teste antes de corrigir: a leitura devolveu `segredo-do-notas`.
+
+Não alcança as preferências do sistema (o prefixo `plugins:` é fixo e o id não
+o escapa) — é isolamento entre plugins que caía. Precisa de um plugin externo
+malicioso instalado, e a assinatura não protege disto: prova integridade do
+ficheiro, não boa-fé do autor.
+
+**Corrigido em dois sítios**, como a disciplina da casa manda: `pluginStorageKey`
+passa o id por `encodeURIComponent` — `notas:x` vira `notas%3Ax` e deixa de
+colidir, pela estrutura e não pela confiança; e como `encodeURIComponent` é a
+identidade para um slug, nenhuma chave já guardada muda de sítio (sem migração).
+E `validateManifest` passa a exigir o formato de slug (`isValidPluginId`), para
+um id assim nem entrar pela porta. Todos os ids reais já eram slugs.
+
+**Também verificado nesta passagem, e está bem**: o terminal só é alcançável
+pela própria janela do Terminal (nem plugins nem o assistente lhe chegam — a
+regra mais antiga do projeto está inteira); o cofre de segredos idem; o
+programa do terminal é fixo, nunca escolhido pela interface; `files_read_dir`
+e `music_read_dir` não saem da raiz declarada (canonicalizam e comparam por
+componentes); a validação de certificados TLS está ligada em todo o lado
+(nenhum `danger_accept_invalid_*` no Rust); todos os `unwrap()` fora de testes
+são sobre `lock()`; e o Windows Hello falha para o lado seguro (`_ => Denied`).
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
+`vitest` 1797/1797 (eram 1794).

@@ -799,6 +799,30 @@ describe('handlePluginMessage — core.storage', () => {
     });
     expect((leituraA.data as { valor: unknown }).valor).toBe('a');
   });
+
+  it('um id forjado com dois pontos não alcança o namespace de outro plugin', async () => {
+    // O espelho do teste acima, pelo lado do *id* em vez do da chave. A chave
+    // real é `plugins:<id>:<chave>` — texto, com `:` a separar. Um plugin
+    // honesto com id `notas` e chave `x:y` produz `plugins:notas:x:y`; um
+    // plugin com o id `notas:x` e a chave `y` produz exatamente a mesma coisa.
+    // Sem validar o formato do id, o segundo lê e escreve por cima do primeiro.
+    seedExternalPlugin('notas', { storage: true });
+    seedExternalPlugin('notas:x', { storage: true });
+
+    await handlePluginMessage('notas', {
+      type: 'core.storage.set',
+      requestId: 'st-17',
+      payload: { chave: 'x:y', valor: 'segredo-do-notas' },
+    });
+
+    const espreitadela = await handlePluginMessage('notas:x', {
+      type: 'core.storage.get',
+      requestId: 'st-18',
+      payload: { chave: 'y' },
+    });
+
+    expect((espreitadela.data as { valor: unknown }).valor).toBeNull();
+  });
 });
 
 describe('handlePluginMessage — core.voice.speak', () => {

@@ -284,6 +284,19 @@ describe('validateManifest (campos obrigatórios)', () => {
     expect(validateManifest(testManifest({ id: '' }))).toMatch('identificador');
   });
 
+  it('manifesto com id fora do formato de slug: recusado', () => {
+    // O id é o namespace de armazenamento (`plugins:<id>:<chave>`): um `:` lá
+    // dentro deslocava a fronteira para cima dos dados de outro plugin.
+    expect(validateManifest(testManifest({ id: 'notas:x' }))).toMatch('identificador');
+    expect(validateManifest(testManifest({ id: 'com espaço' }))).toMatch('identificador');
+    expect(validateManifest(testManifest({ id: 'MAIUSCULAS' }))).toMatch('identificador');
+  });
+
+  it('manifesto com id em formato de slug: aceite', () => {
+    expect(validateManifest(testManifest({ id: 'guarda-preferencias' }))).toBeUndefined();
+    expect(validateManifest(testManifest({ id: 'plugin_2' }))).toBeUndefined();
+  });
+
   it('manifesto sem name: recusado', () => {
     expect(validateManifest(testManifest({ name: '' }))).toMatch('nome');
   });

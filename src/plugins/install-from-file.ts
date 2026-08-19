@@ -2,6 +2,7 @@ import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
 import type { PluginManifest, PluginPackage } from './plugin';
 import { getPluginRuntime, registerPluginRuntime } from './runtime/registry';
+import { isValidPluginId } from './runtime/plugin-storage';
 import { logService } from '@/services/log-service';
 import { notificationService } from '@/services/notification-service';
 import { verifyAndInstallPlugin } from '@/stores/use-plugin-store';
@@ -177,6 +178,14 @@ export function validatePackage(data: unknown): PluginPackage {
 export function validateManifest(manifest: PluginManifest): string | undefined {
   if (typeof manifest.id !== 'string' || manifest.id.length === 0) {
     return 'O manifesto não tem um identificador (id) válido.';
+  }
+
+  // O id é o namespace de armazenamento do plugin (`plugins:<id>:<chave>`), e
+  // um `:` lá dentro deslocava a fronteira para cima dos dados de outro plugin
+  // — ver `runtime/plugin-storage.ts`. A derivação da chave já o codifica; isto
+  // é a segunda fechadura, à porta, para um id assim nem chegar a entrar.
+  if (!isValidPluginId(manifest.id)) {
+    return 'O identificador (id) do plugin só pode ter letras minúsculas, dígitos, hífen e sublinhado.';
   }
 
   if (typeof manifest.name !== 'string' || manifest.name.length === 0) {
