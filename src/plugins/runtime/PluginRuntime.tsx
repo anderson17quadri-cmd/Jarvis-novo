@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/cn';
 import pluginSdkSource from '@/plugins/sdk/jarvis-plugin-sdk.js?raw';
 import {
+  clearPluginMenuItems,
   clearPluginPanels,
   clearPluginServices,
   clearPluginSettings,
@@ -118,6 +119,7 @@ export function PluginRuntime({
       clearPluginSettings(pluginId);
       clearPluginServices(pluginId);
       clearPluginPanels(pluginId);
+      clearPluginMenuItems(pluginId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshRegistrations depende só de pluginId, redeclará-la de propósito
   }, [pluginId]);

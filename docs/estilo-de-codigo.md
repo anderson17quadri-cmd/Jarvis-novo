@@ -57,6 +57,30 @@ framework. Só se valida na fronteira (entrada do utilizador, API externa).
 
 Nunca reportar sucesso sem ter corrido isto.
 
+## Fazer o que foi pedido, até ao fim (regra do utilizador, 19/08/2026)
+
+Quando o utilizador pede uma coisa, **faz-se essa coisa toda** — não uma
+parte, com o resto oferecido como "queres que continue?". Se o pedido é
+"verifica tudo", é tudo; se é grande, leva o tempo que levar, mas não se
+devolve o trabalho por acabar disfarçado de pergunta.
+
+Duas regras que saem daqui, e que já foram quebradas antes:
+
+1. **Não dizer que se verificou o que não se leu.** Correr o portão
+   (`tsc`/`eslint`/`vitest`/`cargo`) prova que compila e que os testes
+   passam — um teste só prova aquilo que testa. Ler o `SPEC.md` e o
+   histórico é ler o que *outro* disse; não conta como verificação. Se
+   se leram 15 ficheiros de 295, diz-se "li 15 de 295", não "verifiquei".
+2. **Uma dívida anunciada é uma dívida a pagar.** Dizer "a seguir vou
+   verificar X" e não o fazer é pior do que não ter dito nada — foi
+   assim que os itens 21 e 22 ficaram por rever durante uma sessão
+   inteira, e o 22 tinha mesmo um buraco (o `id` do plugin como
+   namespace, 19/08/2026).
+
+O utilizador já teve de pedir isto mais do que uma vez. Não é preferência
+de estilo: é a condição para os relatórios deste projeto valerem alguma
+coisa.
+
 ## Decisões éticas já assentes (não voltar a discutir sem pedido explícito)
 
 - **Voz clonada, só com consentimento explícito.** Nunca clonar

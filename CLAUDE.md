@@ -2,6 +2,14 @@
 
 Tauri v2 + React 19 + TypeScript strict.
 
+## A regra que está acima de todas as outras
+
+**O que o utilizador pedir, faz-se — até ao fim, não metade.** Se o pedido
+é "verifica tudo", é tudo; não se devolve trabalho por acabar disfarçado
+de "queres que continue?". E nunca se diz que se verificou o que não se
+leu: o portão a passar prova que compila, não que está certo. Detalhe e
+razão em `docs/estilo-de-codigo.md` §"Fazer o que foi pedido, até ao fim".
+
 ## Antes de começar
 
 Lê **`docs/estilo-de-codigo.md`** primeiro — é a "inteligência já

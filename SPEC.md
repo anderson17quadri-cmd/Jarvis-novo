@@ -797,3 +797,33 @@ palco (A · estado numa linha, B · a caixa encolhe com o núcleo, C · estado a
 lado), com medidas reais lado a lado com "como está hoje". **O utilizador
 escolheu manter como está.** `AICore.tsx`, `CoreRings.tsx`, `core-size.ts` e
 `Stage.tsx` continuam sem alteração — decisão fechada, não fica em aberto.
+
+### 8. A palavra-passe do login não é verificada — só a presença de texto
+
+**Encontrado na auditoria de 19/08/2026**, ao ler o `LoginScreen.tsx` a
+sério. `submit()` concede acesso a **qualquer palavra-passe não vazia**: não
+há hash guardado, não há comparação. O mesmo vale para os botões de rosto e
+impressão digital quando a máquina não tem Windows Hello — caem num
+`onSimulate` que anima e concede acesso.
+
+Isto **é intencional** e vem da spec original (Parte 5: "facial (simulado),
+digital (simulado), Windows Hello (simulado), chave física (simulada)"), e
+está codificado num teste com esse nome (`entra com qualquer palavra-passe
+não vazia`). O que faltava era estar dito **aqui** — porque a secção da
+Parte 14 descreve o 2FA, o WebAuthn e o Windows Hello com muito detalhe e
+todos eles são reais, o que deixa a impressão de que o primeiro fator
+também é. Não é.
+
+**O que continua a ser real, e não muda com isto**: com o 2FA ligado, a
+palavra-passe sozinha não entra — exige a chave física, verificada
+criptograficamente (e, se o 2FA estiver ligado sem chave registada, nega em
+vez de ceder). O Windows Hello, quando existe na máquina, é o diálogo nativo
+a sério. A sessão automática só nasce de uma verificação real, nunca da
+palavra-passe.
+
+**Por decidir pelo utilizador**: se o primeiro fator deve passar a ser uma
+palavra-passe a sério (hash guardado, à maneira do que o Controlo Direto já
+faz em `direct-control-service.ts`). Não foi construído por iniciativa
+própria porque acrescenta um risco que hoje não existe — ficar trancado fora
+da própria máquina se a esquecer — e essa é uma decisão de quem usa, não de
+quem escreve o código.

@@ -6346,3 +6346,63 @@ são sobre `lock()`; e o Windows Hello falha para o lado seguro (`_ => Denied`).
 
 Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
 `vitest` 1797/1797 (eram 1794).
+
+## 2026-08-19 — Auditoria de todo o código, e a regra de a fazer até ao fim
+
+O utilizador reparou que eu tinha parado a meio e devolvido o resto como
+"queres que continue?", e mandou fazer tudo. A regra ficou escrita nos dois
+sítios onde uma sessão nova a lê de certeza: `CLAUDE.md` (no topo, acima de
+tudo o resto) e `docs/estilo-de-codigo.md` (§"Fazer o que foi pedido, até ao
+fim", com as duas regras que saem dela — não dizer que se verificou o que não
+se leu, e pagar as dívidas anunciadas).
+
+**Um bug real encontrado e corrigido**: os itens de menu de contexto que um
+plugin regista (`core.menu.add`) nunca eram removidos. Todas as outras coisas
+que um plugin regista — widgets, painéis, atalhos, serviços, subscrições — são
+limpas no `return` do efeito do `PluginRuntime`; os itens de menu não estavam
+lá. O `clearPluginMenuItems` existia, tinha no comentário "chamado ao
+desmontar", e só era chamado por um teste. O resultado era um item morto no
+menu do ambiente de trabalho, de um plugin que já não corre, que ao ser
+clicado não faz nada (o `pushToPlugin` não encontra ninguém). O comentário do
+`DesktopContextMenu` ("a lista muda conforme plugins correm ou deixam de
+correr") também descrevia algo que não acontecia. Teste novo confirmado a
+falhar antes e a passar depois.
+
+**Uma divergência que faltava estar dita** (agora `SPEC.md` §8): o
+`LoginScreen` aceita **qualquer palavra-passe não vazia** — não há hash nem
+comparação — e os botões de rosto/impressão digital simulam e concedem acesso
+quando a máquina não tem Windows Hello. É intencional (vem da Parte 5 da spec
+original, onde estes métodos estão marcados "simulado", e há um teste com esse
+nome), mas não estava escrito no `SPEC.md`, que descreve o 2FA e o WebAuthn
+reais em grande detalhe e deixava a impressão de que o primeiro fator também
+era. Fica documentado, com o que continua a ser real ao lado, e a decisão de
+pôr uma palavra-passe a sério fica para o utilizador — construí-la por
+iniciativa própria acrescentava o risco de ele ficar trancado fora da própria
+máquina.
+
+**Coberto nesta passagem, e sem achados**: todo o Rust (3.900 linhas, ficheiro
+a ficheiro); toda a superfície de plugins (assinatura, instalação, ponte,
+protocolo, sandbox, armazenamento); toda a camada de plataforma e as
+capacidades por plataforma; autenticação (WebAuthn com verificação
+criptográfica e anti-repetição a sério, sessão automática, Windows Hello);
+o executor de ferramentas do assistente (ferramentas destrutivas pedem
+confirmação, `default` que lança em vez de fingir); a cópia de segurança (tira
+as chaves de API e a palavra-passe do correio); e o serviço de automações.
+
+**Varrimentos ao código inteiro** (não amostragem): zero `eval`/`new
+Function`/`innerHTML`; zero `invoke()` fora de `src/platform` — a fronteira do
+IPC é respeitada em todo o lado; CSP com `script-src 'self'` e `connect-src`
+como lista fechada dos anfitriões usados; zero TLS com validação desligada no
+Rust; todos os `unwrap()` fora de testes são sobre `lock()`; nenhum
+`setInterval`/`addEventListener` sem limpeza (os dois candidatos eram falsos
+positivos); nenhuma store com `hydrate()` por chamar; nenhum componente órfão.
+
+**Vias de escalada verificadas e fechadas**: o terminal só é alcançável pela
+própria janela do Terminal (nem plugins nem o assistente lhe chegam); o cofre
+de segredos idem; um plugin externo não pode declarar raiz de ficheiros nem
+domínios de rede (`resolveDeclaration` devolve `undefined` para os dois); e as
+automações que um plugin pode disparar só fazem operações de interface (abrir
+janela, notificar, tema, falar) — nada de ficheiros, comandos ou rede.
+
+Verificação: `tsc` limpo, `eslint` 0 erros (11 avisos pré-existentes),
+`vitest` 1798/1798, `cargo check` limpo, `cargo test --lib` 39/39.
