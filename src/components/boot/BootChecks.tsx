@@ -34,21 +34,14 @@ export function BootChecks({ onComplete }: BootChecksProps): React.JSX.Element {
     BOOT_STEPS.map(() => ({ entered: false, done: false, failed: false, durationMs: 0 })),
   );
 
-  useEffect(() => {
-    // Modo de depuração: `sessionStorage.setItem('jarvis-debug.bootFailAt', '3')`
-    // faz a verificação de índice 3 falhar. Só se lê uma vez, antes de a
-    // sequência começar — mudar o valor a meio não teria efeito nenhum.
-    const failAt = readDebugFailFlag();
+  // Modo de depuração: `sessionStorage.setItem('jarvis-debug.bootFailAt', '3')`
+  // faz a verificação de índice 3 falhar. Só se lê uma vez, antes de a
+  // sequência começar — mudar o valor a meio não teria efeito nenhum.
+  const [failAt] = useState(() => readDebugFailFlag());
 
+  useEffect(() => {
+    // Com movimento reduzido não há sequência — só se avisa que terminou.
     if (reducedMotion) {
-      setStates(
-        BOOT_STEPS.map((_, i) => ({
-          entered: true,
-          done: true,
-          failed: failAt.has(i),
-          durationMs: 0,
-        })),
-      );
       onComplete();
       return;
     }
@@ -89,10 +82,16 @@ export function BootChecks({ onComplete }: BootChecksProps): React.JSX.Element {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reducedMotion]);
 
+  // Com movimento reduzido mostra-se tudo já concluído, sem sincronizar nada
+  // num efeito — o estado interno só existe para a sequência animada.
+  const displayedStates: readonly CheckState[] = reducedMotion
+    ? BOOT_STEPS.map((_, i) => ({ entered: true, done: true, failed: failAt.has(i), durationMs: 0 }))
+    : states;
+
   return (
     <ul className="flex w-[min(460px,92vw)] flex-col gap-[9px]" aria-label="Verificações de arranque">
       {BOOT_STEPS.map((step, index) => {
-        const state = states[index] ?? { entered: false, done: false, failed: false, durationMs: 0 };
+        const state = displayedStates[index] ?? { entered: false, done: false, failed: false, durationMs: 0 };
 
         return (
           <li

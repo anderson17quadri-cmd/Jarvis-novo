@@ -6455,3 +6455,50 @@ fazer: casar com o "já vi" que o motor ouve funcionaria tecnicamente e daria
 um assistente a acordar sozinho a meio de conversas. E fica a nota de
 verificar o `openWakeWord` antes de fixar (b) — existe para palavras
 arbitrárias e pode resolver isto sem os 1,6 GB.
+
+## 2026-08-19 — Item 25: testes da limpeza ao desmontar um plugin (Qwen)
+
+O `PluginRuntime` limpa sete coisas quando um plugin deixa de correr, mas só
+os itens de menu tinham teste — por ter sido a única limpeza que a auditoria
+de 19/08 apanhou a falhar. As outras seis (subscrições de eventos, atalhos,
+widgets, definições, serviços, painéis) funcionavam, mas nada provava que
+continuassem a funcionar. Um teste por cada uma, em
+`tests/plugins/plugin-runtime.test.tsx`, no mesmo formato do dos itens de
+menu: montar, registar por `handlePluginMessage`, confirmar que ficou,
+`unmount()`, confirmar que desapareceu. O `clearPluginShortcuts` era o mais
+urgente — não aparecia em teste nenhum.
+
+Cada teste foi **provado a apanhar mesmo o bug**: comentei a linha de limpeza
+correspondente no `PluginRuntime.tsx`, vi o teste falhar, repus, vi passar.
+Os seis falharam sem a sua linha (subscrições, atalhos, widgets, definições,
+serviços e painéis), e todos passam com ela. Um teste que passa com e sem a
+correção não está a testar nada — nenhum dos seis é assim. Nada mudou no
+`PluginRuntime.tsx`: ficou provado que a limpeza que já lá está funciona.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1804/1804 (137 ficheiros).
+
+## 2026-08-19 — Item 26: os 11 avisos do eslint, corrigidos a sério (Qwen)
+
+O eslint tinha 11 avisos em seis ficheiros, todos das regras do React
+Compiler. O enunciado dizia `set-state-in-effect`, mas os cinco do
+`CoreRings` eram da `react-hooks/refs` — na prática o tratamento foi o
+mesmo: corrigir a sério, nenhum silenciado com `eslint-disable`, e nenhum
+era falso positivo.
+
+A correção teve sempre a mesma forma: estado que se consegue derivar no
+render deixa de ser sincronizado num efeito. `use-typewriter` e
+`use-entrance-cascade` derivam os casos "desativado" e "movimento reduzido"
+no render, e os efeitos ficam só com temporizadores e callbacks;
+`BootChecks` deriva a lista concluída do movimento reduzido (o sinalizador
+de depuração lê-se uma vez só, como antes); `CommandPalette` repõe a
+seleção ao abrir e limita-a ao tamanho da lista, as duas coisas no render;
+`FilesWindow` repõe o indicador de leitura e o erro quando muda a pasta
+pedida, deixando no efeito só a leitura assíncrona; `CoreRings` troca a
+fábrica de callbacks de ref criada a cada render por uma ref direta por
+anel — o mesmo em funcionamento, aceite pelo compilador.
+
+Nada mudou no comportamento visível: os efeitos ficaram onde há efeitos de
+verdade (temporizadores, subscrições, foco, leituras assíncronas,
+callbacks), e os `setState` síncronos saíram deles. Verificação: `tsc`
+limpo, `eslint` 0 erros **e 0 avisos** (eram 11), `vitest` 1804/1804
+(137 ficheiros).

@@ -133,13 +133,23 @@ export default function FilesWindow(): React.JSX.Element {
 
   const currentRealPath = realCrumbs.at(-1)?.path ?? null;
 
+  // O indicador de leitura e o erro pertencem ao caminho pedido: mudando o
+  // pedido, repõem-se logo no render, sem um frame com as linhas antigas.
+  // O efeito trata só da leitura assíncrona em si.
+  const [pedidoAnterior, setPedidoAnterior] = useState({ isReal, caminho: currentRealPath });
+  if (pedidoAnterior.isReal !== isReal || pedidoAnterior.caminho !== currentRealPath) {
+    setPedidoAnterior({ isReal, caminho: currentRealPath });
+    if (isReal && currentRealPath !== null) {
+      setRealLoading(true);
+      setRealError(null);
+    }
+  }
+
   // Carrega a pasta real atual sempre que o caminho muda.
   useEffect(() => {
     if (!isReal || currentRealPath === null) return;
 
     let cancelled = false;
-    setRealLoading(true);
-    setRealError(null);
 
     async function load(): Promise<void> {
       const entries = await getPlatformAdapter().filesReadDir(currentRealPath);
