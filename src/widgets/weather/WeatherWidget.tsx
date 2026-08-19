@@ -14,7 +14,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-import { WidgetSkeleton } from '@/components/widgets/WidgetStates';
+import { WidgetError, WidgetSkeleton } from '@/components/widgets/WidgetStates';
 import { useIsVisible } from '@/hooks/use-platform';
 import { formatTime } from '@/lib/format';
 import { weatherService } from '@/services/weather/weather-service';
@@ -45,6 +45,8 @@ const WEEKDAY = new Intl.DateTimeFormat('pt-PT', { weekday: 'short' });
 export default function WeatherWidget(): React.JSX.Element {
   const snapshot = useWeatherStore((s) => s.snapshot);
   const isLoading = useWeatherStore((s) => s.isLoading);
+  const error = useWeatherStore((s) => s.error);
+  const refresh = useWeatherStore((s) => s.refresh);
   const isVisible = useIsVisible();
 
   /** Liga a subscrição ao serviço enquanto o widget está montado. */
@@ -58,6 +60,9 @@ export default function WeatherWidget(): React.JSX.Element {
     weatherService.setPaused(!isVisible);
   }, [isVisible]);
 
+  if (!snapshot && error) {
+    return <WidgetError message="Não consegui obter o clima." onRetry={() => void refresh()} />;
+  }
   if (isLoading || !snapshot) return <WidgetSkeleton />;
 
   const { now, forecast, location } = snapshot;
@@ -118,6 +123,11 @@ export default function WeatherWidget(): React.JSX.Element {
         })}
       </ul>
 
+      {error && (
+        <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-danger">
+          Não consegui atualizar — a mostrar os últimos dados.
+        </p>
+      )}
       {snapshot.isSimulated && (
         <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Dados simulados</p>
       )}

@@ -8,6 +8,12 @@ interface WeatherState {
   readonly snapshot: WeatherSnapshot | null;
   /** `true` até chegar a primeira leitura. */
   readonly isLoading: boolean;
+  /**
+   * A última leitura falhou (rede em baixo, chave inválida, etc.) — o widget
+   * mostra isto em vez de fingir que os dados continuam frescos. `null`
+   * quando a última leitura correu bem.
+   */
+  readonly error: string | null;
   /** Força uma leitura avulsa. */
   readonly refresh: () => Promise<void>;
   /**
@@ -21,6 +27,7 @@ interface WeatherState {
 export const useWeatherStore = create<WeatherState>((set, get) => ({
   snapshot: weatherService.current,
   isLoading: weatherService.current === null,
+  error: null,
 
   refresh: async () => {
     const snapshot = await weatherService.refresh();
@@ -33,8 +40,16 @@ export const useWeatherStore = create<WeatherState>((set, get) => ({
       set({ snapshot: weatherService.current, isLoading: false });
     }
 
-    return weatherService.subscribe((snapshot) => {
+    const unsubData = weatherService.subscribe((snapshot) => {
       set({ snapshot, isLoading: false });
     });
+    const unsubError = weatherService.subscribeError((error) => {
+      set(error !== null ? { error, isLoading: false } : { error });
+    });
+
+    return () => {
+      unsubData();
+      unsubError();
+    };
   },
 }));

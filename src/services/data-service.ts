@@ -23,9 +23,11 @@ export interface DataServiceOptions {
 
 export abstract class PollingDataService<T> {
   private readonly listeners = new Set<DataListener<T>>();
+  private readonly errorListeners = new Set<DataListener<string | null>>();
   private timer: ReturnType<typeof setInterval> | null = null;
   private paused = false;
   private inFlight: Promise<T | null> | null = null;
+  private lastError: string | null = null;
 
   protected latest: T | null = null;
 
@@ -34,6 +36,11 @@ export abstract class PollingDataService<T> {
   /** Última leitura conhecida, sem esperar pela próxima sondagem. */
   get current(): T | null {
     return this.latest;
+  }
+
+  /** A mensagem da última falha, ou `null` se a última leitura correu bem. */
+  get error(): string | null {
+    return this.lastError;
   }
 
   /**
@@ -48,6 +55,20 @@ export abstract class PollingDataService<T> {
     return () => {
       this.listeners.delete(listener);
       if (this.listeners.size === 0) this.stop();
+    };
+  }
+
+  /**
+   * Subscreve as falhas — para o widget poder dizer "não consegui atualizar"
+   * em vez de mostrar dados antigos como se fossem frescos, em silêncio. Um
+   * `fetch()` que devolve `null` (sem provedor configurado) não é falha; só
+   * uma exceção conta.
+   */
+  subscribeError(listener: DataListener<string | null>): () => void {
+    this.errorListeners.add(listener);
+    listener(this.lastError);
+    return () => {
+      this.errorListeners.delete(listener);
     };
   }
 
@@ -74,6 +95,7 @@ export abstract class PollingDataService<T> {
   private async runFetch(): Promise<T | null> {
     try {
       const value = await this.fetch();
+      this.setError(null);
       if (value !== null) {
         this.latest = value;
         this.emit(value);
@@ -81,10 +103,17 @@ export abstract class PollingDataService<T> {
       return value;
     } catch (error) {
       console.warn(`[${this.constructor.name}] a leitura falhou:`, error);
+      this.setError(error instanceof Error ? error.message : 'falha desconhecida');
       return null;
     } finally {
       this.inFlight = null;
     }
+  }
+
+  private setError(error: string | null): void {
+    if (this.lastError === error) return;
+    this.lastError = error;
+    for (const listener of this.errorListeners) listener(error);
   }
 
   /** Atualiza o valor sem passar pelo `fetch` — para mutações locais. */

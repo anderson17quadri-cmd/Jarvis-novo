@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { newsService } from '@/services/news/news-service';
+import { notificationService } from '@/services/notification-service';
 import type { NewsFeed } from '@/types/news';
 
 interface NewsState {
@@ -8,6 +9,8 @@ interface NewsState {
   readonly snapshot: NewsFeed | null;
   /** `true` até chegar a primeira leitura. */
   readonly isLoading: boolean;
+  /** A última leitura falhou — `null` quando correu bem. */
+  readonly error: string | null;
   /** Força uma leitura avulsa. */
   readonly refresh: () => Promise<void>;
   /**
@@ -24,6 +27,7 @@ interface NewsState {
 export const useNewsStore = create<NewsState>((set, get) => ({
   snapshot: newsService.current,
   isLoading: newsService.current === null,
+  error: null,
 
   refresh: async () => {
     const snapshot = await newsService.refresh();
@@ -35,20 +39,36 @@ export const useNewsStore = create<NewsState>((set, get) => ({
       set({ snapshot: newsService.current, isLoading: false });
     }
 
-    return newsService.subscribe((snapshot) => {
+    const unsubData = newsService.subscribe((snapshot) => {
       set({ snapshot, isLoading: false });
     });
+    const unsubError = newsService.subscribeError((error) => {
+      set(error !== null ? { error, isLoading: false } : { error });
+    });
+
+    return () => {
+      unsubData();
+      unsubError();
+    };
   },
 
   markRead: async (articleId, isRead = true) => {
-    await newsService.markRead(articleId, isRead);
-    const snapshot = newsService.current;
-    if (snapshot) set({ snapshot });
+    try {
+      await newsService.markRead(articleId, isRead);
+      const snapshot = newsService.current;
+      if (snapshot) set({ snapshot });
+    } catch {
+      notificationService.error('Não consegui marcar a notícia', 'Tenta outra vez daqui a pouco.');
+    }
   },
 
   toggleFavorite: async (articleId) => {
-    await newsService.toggleFavorite(articleId);
-    const snapshot = newsService.current;
-    if (snapshot) set({ snapshot });
+    try {
+      await newsService.toggleFavorite(articleId);
+      const snapshot = newsService.current;
+      if (snapshot) set({ snapshot });
+    } catch {
+      notificationService.error('Não consegui guardar o favorito', 'Tenta outra vez daqui a pouco.');
+    }
   },
 }));

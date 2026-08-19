@@ -8,6 +8,8 @@ interface CalendarState {
   readonly snapshot: CalendarSnapshot | null;
   /** `true` até chegar a primeira leitura. */
   readonly isLoading: boolean;
+  /** A última leitura falhou — `null` quando correu bem. */
+  readonly error: string | null;
   /** Força uma leitura avulsa. */
   readonly refresh: () => Promise<void>;
   /**
@@ -21,6 +23,7 @@ interface CalendarState {
 export const useCalendarStore = create<CalendarState>((set, get) => ({
   snapshot: calendarService.current,
   isLoading: calendarService.current === null,
+  error: null,
 
   refresh: async () => {
     const snapshot = await calendarService.refresh();
@@ -32,8 +35,16 @@ export const useCalendarStore = create<CalendarState>((set, get) => ({
       set({ snapshot: calendarService.current, isLoading: false });
     }
 
-    return calendarService.subscribe((snapshot) => {
+    const unsubData = calendarService.subscribe((snapshot) => {
       set({ snapshot, isLoading: false });
     });
+    const unsubError = calendarService.subscribeError((error) => {
+      set(error !== null ? { error, isLoading: false } : { error });
+    });
+
+    return () => {
+      unsubData();
+      unsubError();
+    };
   },
 }));

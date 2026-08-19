@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { mailService } from '@/services/mail/mail-service';
+import { notificationService } from '@/services/notification-service';
 import type { MailboxSnapshot, OutgoingMessage } from '@/types/mail';
 
 interface MailState {
@@ -8,6 +9,8 @@ interface MailState {
   readonly snapshot: MailboxSnapshot | null;
   /** `true` até chegar a primeira leitura. */
   readonly isLoading: boolean;
+  /** A última leitura falhou — `null` quando correu bem. */
+  readonly error: string | null;
   /** Nome do provedor ativo, para o rodapé da janela. */
   readonly providerName: string;
   /** Força uma leitura avulsa. */
@@ -29,6 +32,7 @@ interface MailState {
 export const useMailStore = create<MailState>((set, get) => ({
   snapshot: mailService.current,
   isLoading: mailService.current === null,
+  error: null,
   providerName: mailService.providerName,
 
   refresh: async () => {
@@ -41,21 +45,37 @@ export const useMailStore = create<MailState>((set, get) => ({
       set({ snapshot: mailService.current, isLoading: false });
     }
 
-    return mailService.subscribe((snapshot) => {
+    const unsubData = mailService.subscribe((snapshot) => {
       set({ snapshot, isLoading: false });
     });
+    const unsubError = mailService.subscribeError((error) => {
+      set(error !== null ? { error, isLoading: false } : { error });
+    });
+
+    return () => {
+      unsubData();
+      unsubError();
+    };
   },
 
   markRead: async (messageId, isRead = true) => {
-    await mailService.markRead(messageId, isRead);
-    const snapshot = mailService.current;
-    if (snapshot) set({ snapshot });
+    try {
+      await mailService.markRead(messageId, isRead);
+      const snapshot = mailService.current;
+      if (snapshot) set({ snapshot });
+    } catch {
+      notificationService.error('Não consegui marcar a mensagem', 'Tenta outra vez daqui a pouco.');
+    }
   },
 
   toggleStar: async (messageId) => {
-    await mailService.toggleStar(messageId);
-    const snapshot = mailService.current;
-    if (snapshot) set({ snapshot });
+    try {
+      await mailService.toggleStar(messageId);
+      const snapshot = mailService.current;
+      if (snapshot) set({ snapshot });
+    } catch {
+      notificationService.error('Não consegui marcar a mensagem', 'Tenta outra vez daqui a pouco.');
+    }
   },
 
   send: async (message) => {

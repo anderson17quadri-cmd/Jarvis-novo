@@ -78,6 +78,30 @@ describe('PollingDataService', () => {
     expect(service.current).toBe(good);
   });
 
+  it('um erro no fetch não fica silencioso — quem subscrever fica a saber', async () => {
+    const service = new CounterService();
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const errors: (string | null)[] = [];
+    service.subscribeError((error) => errors.push(error));
+
+    await service.refresh();
+    expect(service.error).toBeNull();
+
+    service.shouldFail = true;
+    await service.refresh();
+
+    expect(service.error).not.toBeNull();
+    expect(errors.at(-1)).not.toBeNull();
+
+    // Recupera: a leitura seguinte que corre bem limpa o erro.
+    service.shouldFail = false;
+    await service.refresh();
+
+    expect(service.error).toBeNull();
+    expect(errors.at(-1)).toBeNull();
+  });
+
   it('cancelar a última subscrição pára a sondagem', async () => {
     const service = new CounterService(20);
     const unsubscribe = service.subscribe(() => undefined);

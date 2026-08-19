@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Star } from 'lucide-react';
 
-import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
+import { WidgetEmpty, WidgetError, WidgetSkeleton } from '@/components/widgets/WidgetStates';
 import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { getPlatformAdapter } from '@/platform';
@@ -32,6 +32,8 @@ function relativeTime(timestamp: number): string {
 export default function NewsWidget(): React.JSX.Element {
   const snapshot = useNewsStore((s) => s.snapshot);
   const isLoadingStore = useNewsStore((s) => s.isLoading);
+  const error = useNewsStore((s) => s.error);
+  const refresh = useNewsStore((s) => s.refresh);
   const markRead = useNewsStore((s) => s.markRead);
   const toggleFavorite = useNewsStore((s) => s.toggleFavorite);
   const [filter, setFilter] = useState<Filter>('todas');
@@ -46,6 +48,9 @@ export default function NewsWidget(): React.JSX.Element {
     newsService.setPaused(!isVisible);
   }, [isVisible]);
 
+  if (!snapshot && error) {
+    return <WidgetError message="Não consegui obter as notícias." onRetry={() => void refresh()} />;
+  }
   if (isLoadingStore || !snapshot) return <WidgetSkeleton />;
 
   const articles =
@@ -131,6 +136,11 @@ export default function NewsWidget(): React.JSX.Element {
         </ul>
       )}
 
+      {error && (
+        <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-danger">
+          Não consegui atualizar — a mostrar as últimas notícias.
+        </p>
+      )}
       {snapshot.isSimulated && (
         <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Notícias simuladas</p>
       )}

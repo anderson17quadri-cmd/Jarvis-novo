@@ -6617,3 +6617,80 @@ microfone físico, que esta sessão não conseguiu fazer (sem forma de gravar
 
 Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1809/1809,
 `cargo check` limpo.
+
+## 2026-08-20 — Item 15: revisão adversarial de `src/widgets/` — falhas de rede em silêncio
+
+Primeira revisão independente da pasta de widgets inteira (~1560 linhas:
+Clima, Notícias, Email, Música, Calendário e o que os alimenta por trás) —
+a única área grande do projeto ainda sem nenhuma passagem de fora. Lida como
+se fosse a primeira vez, sem confiar nos testes existentes só por passarem.
+
+**O achado, e é sistémico**: os cinco serviços (`WeatherService`,
+`NewsService`, `MailService`, `MusicService`, `CalendarService`) partilham
+`PollingDataService` (`services/data-service.ts`) — e essa base, ao apanhar
+uma exceção do `fetch()`, só fazia `console.warn` e devolvia `null`.
+Nenhum widget tinha forma nenhuma de saber que uma leitura tinha falhado:
+com dados antigos já mostrados, o widget continuava a exibi-los como se
+fossem frescos, silenciosamente, sondagem após sondagem; sem nenhuma
+leitura boa ainda (app acabada de abrir, rede em baixo), o widget ficava
+preso no esqueleto de carregamento **para sempre** — não é só falta de
+aviso, é um estado que nunca resolve. Mais revelador: `WidgetError`
+(`components/widgets/WidgetStates.tsx`) já existia, escrito de propósito
+para isto — o comentário do ficheiro cita a Parte 6.2, "três estados
+obrigatórios" — mas nenhum dos treze widgets do `registry.ts` alguma vez o
+importava. O componente certo, construído e nunca ligado a nada — a mesma
+classe de bug do menu de plugins de ontem, só que desta vez em cinco sítios
+ao mesmo tempo.
+
+**Corrigido na base, uma vez, para os cinco**: `PollingDataService` ganha
+`subscribeError`/`error` — limpo sempre que uma leitura corre bem (mesmo
+que devolva `null` por falta de configuração, que não é erro), preenchido
+só quando o `fetch()` lança a sério. As cinco stores (`use-weather-store`,
+`use-news-store`, `use-mail-store`, `use-music-store`, `use-calendar-store`)
+subscrevem-no e cancelam a subscrição ao par da dos dados. Os cinco widgets:
+sem nenhum dado ainda e com erro, mostram `WidgetError` com "tentar
+novamente" (chama `refresh`); com dados antigos e um erro novo, um aviso
+discreto ("não consegui atualizar…") ao lado deles, sem os esconder.
+
+**Achado secundário, na mesma família**: `NewsWidget.toggleFavorite`/
+`markRead` e `MailWidget.markRead` chamavam o provedor com `void`, sem
+apanhar nada — uma rejeição (o `ImapMailProvider` fala a sério com um
+servidor, pode falhar; o `NewsApiProvider` escreve no storage, também pode)
+virava uma promessa rejeitada sem ninguém a ver, e o clique parecia não
+ter feito nada. Corrigido com `try`/`catch` + `notificationService.error`,
+o mesmo tratamento que o `AiWidget` já dava a uma sugestão falhada — não
+inventado, replicado do que já existia.
+
+**Confirmado limpo, sem achado**: nenhuma subscrição fica por desligar ao
+desmontar — todo o `useEffect` de hidratação devolve a função de
+cancelamento, e o `PollingDataService.subscribe`/`subscribeError` já
+tratavam bem o último subscritor a sair; `openExternal` (usado pelas
+notícias) já tinha dupla barreira de esquemas (`https:`/`mailto:` na
+interface, capability do Tauri a repetir do lado Rust) — um artigo com um
+`url` malicioso não passa; as cores da capa da música (`local-music-provider`
+`artworkFor`) são gradientes `hsl()` gerados por hash do nome do ficheiro,
+sem superfície de injeção de CSS; o `local-music-provider` degrada em
+silêncio quando a pasta desaparece **de propósito e por escrito** (não é o
+mesmo bug — está documentado no próprio ficheiro, e o widget já mostra
+"Nenhuma faixa em reprodução" em vez de fingir).
+
+Onze testes novos (`tests/services/data-service.test.ts` +1,
+`tests/widgets/weather-widget.test.tsx`, `news-widget.test.tsx`,
+`mail-widget.test.tsx`, `music-widget.test.tsx`,
+`calendar-widget-error.test.tsx`), cada achado **provado a apanhar o bug** —
+comentada a correção, visto o teste falhar, reposta, visto passar, um por
+um, não em bloco.
+
+**De caminho, um teste instável apanhado ao correr a suite inteira** (fora
+de `src/widgets/`, mas a bloquear o portão): `tests/assistant/assistant-window.test.tsx`,
+"só a última resposta oferece gerar outra", falhava sempre que a suite
+completa corria (143 ficheiros), mas nunca isolado — confirmado com a
+mesma suite sem estas mudanças (limpa) e com elas (falhava sempre, duas
+vezes seguidas). O `expect(screen.getByLabelText(...))` a seguir a um
+`await findByText` assumia que os dois apareciam no mesmo commit; sob
+carga (mais ficheiros a correr em paralelo) nem sempre. Trocado por
+`findByLabelText` (espera, não falha de propósito) — sem tocar no
+`AssistantWindow` nem no que o teste prova.
+
+Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1818/1818,
+`cargo check` limpo (nada de Rust tocado nesta revisão).

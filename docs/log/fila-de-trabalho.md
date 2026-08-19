@@ -40,8 +40,8 @@ do histórico mencionam uma "revisão independente" alheia — sobra sempre
 mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
-plugins, Sandbox de execução de plugins, Memória do assistente) já em
-"Feito" abaixo.
+plugins, Sandbox de execução de plugins, Memória do assistente, `src/widgets/`
+inteira — Música/Notícias/Calendário/Clima/Email) já em "Feito" abaixo.
 
 ## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
@@ -831,6 +831,31 @@ limpo: remetente por `event.source`, `sandbox="allow-scripts"`, isolamento
 `plugins:<id>:` do armazenamento, exemplos pedem o que usam. Detalhe em
 `docs/log/historico-sessoes.md` (13/08/2026, "Revisão a sério: fronteira
 do sandbox de execução de plugins").
+
+### 15. `src/widgets/` inteira (Clima, Notícias, Email, Música, Calendário) — Claude — commit ver `historico-sessoes.md`
+
+Primeira revisão adversarial da pasta de widgets (~1560 linhas) — nunca
+revista por ninguém de fora. **Um achado real, sistémico nos cinco**: uma
+falha na sondagem de fundo (`PollingDataService`, base partilhada pelos
+cinco serviços) só ia para `console.warn` — nenhum widget alguma vez dizia
+"não consegui atualizar", e uma falha na primeira leitura prendia o widget
+no esqueleto de carregamento para sempre, sem pista nenhuma. O componente
+`WidgetError` já existia (Parte 6.2, os três estados obrigatórios) mas
+nenhum dos treze widgets do registo alguma vez o usava. Corrigido: o serviço
+base passa a expor `subscribeError`, as cinco stores propagam-no, e os cinco
+widgets mostram `WidgetError` (com "tentar novamente") sem dados nenhuns, ou
+um aviso discreto ao lado dos dados antigos quando já havia alguma coisa.
+**Achado secundário**: `markRead`/`toggleFavorite` (Notícias) e
+`markRead`/`toggleStar` (Email) chamavam o provedor sem apanhar falhas —
+uma rejeição (IMAP a sério pode falhar) ficava por apanhar, o clique
+parecia não ter feito nada. Agora avisam por `notificationService.error`.
+Confirmado limpo no resto: `openExternal` das notícias já tinha dupla
+barreira de esquemas (não é preciso mexer); nenhuma subscrição ficava por
+desligar ao desmontar (todos os `useEffect` devolvem a função de
+cancelamento); cores da capa da música são geradas por hash em `hsl()`, sem
+superfície de injeção. Onze testes novos, cada achado provado a apanhar o
+bug (comentada a correção, visto falhar, reposta, visto passar). Detalhe em
+`docs/log/historico-sessoes.md` (20/08/2026).
 
 - **Notificações nativas isoladas (Peça 14, Lote 4)** — revisto (Claude
   local, 13/08/2026): portão por estado do sistema confirmado correto

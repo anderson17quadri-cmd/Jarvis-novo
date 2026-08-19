@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-import { WidgetEmpty } from '@/components/widgets/WidgetStates';
+import { WidgetEmpty, WidgetError } from '@/components/widgets/WidgetStates';
 import { useClock } from '@/hooks/use-clock';
 import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
@@ -19,6 +19,8 @@ export default function CalendarWidget(): React.JSX.Element {
   const now = useClock();
   const snapshot = useCalendarStore((s) => s.snapshot);
   const isLoading = useCalendarStore((s) => s.isLoading);
+  const error = useCalendarStore((s) => s.error);
+  const refresh = useCalendarStore((s) => s.refresh);
   const isVisible = useIsVisible();
 
   useEffect(() => {
@@ -30,6 +32,9 @@ export default function CalendarWidget(): React.JSX.Element {
     calendarService.setPaused(!isVisible);
   }, [isVisible]);
 
+  if (!snapshot && error) {
+    return <WidgetError message="Não consegui ler a agenda." onRetry={() => void refresh()} />;
+  }
   if (isLoading || !snapshot) return <WidgetEmpty message="A ler a agenda…" />;
 
   const entries = snapshot.entries;
@@ -89,6 +94,11 @@ export default function CalendarWidget(): React.JSX.Element {
         })}
       </ul>
 
+      {error && (
+        <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-danger">
+          Não consegui atualizar — a mostrar a última agenda lida.
+        </p>
+      )}
       {snapshot.isSimulated && (
         <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">Agenda simulada</p>
       )}

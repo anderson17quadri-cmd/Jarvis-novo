@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Pause, Play, Repeat, Shuffle, SkipBack, SkipForward } from 'lucide-react';
 
-import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
+import { WidgetEmpty, WidgetError, WidgetSkeleton } from '@/components/widgets/WidgetStates';
 import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { musicService } from '@/services/music/music-service';
@@ -24,6 +24,8 @@ function formatDuration(totalSeconds: number): string {
 export default function MusicWidget(): React.JSX.Element {
   const snapshot = useMusicStore((s) => s.snapshot);
   const isLoadingStore = useMusicStore((s) => s.isLoading);
+  const error = useMusicStore((s) => s.error);
+  const refresh = useMusicStore((s) => s.refresh);
   const togglePlay = useMusicStore((s) => s.togglePlay);
   const next = useMusicStore((s) => s.next);
   const previous = useMusicStore((s) => s.previous);
@@ -41,6 +43,9 @@ export default function MusicWidget(): React.JSX.Element {
     musicService.setPaused(!isVisible);
   }, [isVisible]);
 
+  if (!snapshot && error) {
+    return <WidgetError message="Não consegui ler o estado da música." onRetry={() => void refresh()} />;
+  }
   if (isLoadingStore || !snapshot) return <WidgetSkeleton />;
   if (!snapshot.track) return <WidgetEmpty message="Nenhuma faixa em reprodução." />;
 
@@ -124,6 +129,11 @@ export default function MusicWidget(): React.JSX.Element {
         </ControlButton>
       </div>
 
+      {error && (
+        <p className="mt-1 flex-shrink-0 text-center text-[9.5px] text-danger">
+          Não consegui atualizar o estado da reprodução.
+        </p>
+      )}
       {snapshot.isSimulated && (
         <p className="mt-1 flex-shrink-0 text-center text-[9.5px] text-t3">
           Sem áudio — reprodução simulada

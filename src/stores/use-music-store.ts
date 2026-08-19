@@ -8,6 +8,8 @@ interface MusicState {
   readonly snapshot: PlaybackState | null;
   /** `true` até chegar a primeira leitura. */
   readonly isLoading: boolean;
+  /** A última leitura falhou — `null` quando correu bem. */
+  readonly error: string | null;
   /** Força uma leitura avulsa. */
   readonly refresh: () => Promise<void>;
   /**
@@ -29,6 +31,7 @@ interface MusicState {
 export const useMusicStore = create<MusicState>((set, get) => ({
   snapshot: musicService.current,
   isLoading: musicService.current === null,
+  error: null,
 
   refresh: async () => {
     const snapshot = await musicService.refresh();
@@ -40,9 +43,17 @@ export const useMusicStore = create<MusicState>((set, get) => ({
       set({ snapshot: musicService.current, isLoading: false });
     }
 
-    return musicService.subscribe((snapshot) => {
+    const unsubData = musicService.subscribe((snapshot) => {
       set({ snapshot, isLoading: false });
     });
+    const unsubError = musicService.subscribeError((error) => {
+      set(error !== null ? { error, isLoading: false } : { error });
+    });
+
+    return () => {
+      unsubData();
+      unsubError();
+    };
   },
 
   togglePlay: async () => {

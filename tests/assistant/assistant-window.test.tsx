@@ -165,8 +165,10 @@ describe('favoritas e regenerar', () => {
     render(<AssistantWindow />);
     await screen.findByText(/Bom dia/);
 
-    // Uma resposta sozinha é a última — o botão existe.
-    expect(screen.getByLabelText('Gerar outra resposta')).toBeInTheDocument();
+    // Uma resposta sozinha é a última — o botão existe. `findBy` (não
+    // `getBy`) de propósito: sob carga (suite inteira em paralelo) o
+    // `canRegenerate` pode assentar num commit a seguir ao da saudação.
+    expect(await screen.findByLabelText('Gerar outra resposta')).toBeInTheDocument();
 
     act(() => {
       useAssistantStore.getState().addMessage('user', 'e agora');

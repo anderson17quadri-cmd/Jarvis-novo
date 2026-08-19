@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Paperclip, Star } from 'lucide-react';
 
-import { WidgetEmpty, WidgetSkeleton } from '@/components/widgets/WidgetStates';
+import { WidgetEmpty, WidgetError, WidgetSkeleton } from '@/components/widgets/WidgetStates';
 import { useIsVisible } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { formatTime } from '@/lib/format';
@@ -19,6 +19,8 @@ import { MAIL_PRIORITY_LABELS } from '@/types/mail';
 export default function MailWidget(): React.JSX.Element {
   const snapshot = useMailStore((s) => s.snapshot);
   const isLoadingStore = useMailStore((s) => s.isLoading);
+  const error = useMailStore((s) => s.error);
+  const refresh = useMailStore((s) => s.refresh);
   const markRead = useMailStore((s) => s.markRead);
   const isVisible = useIsVisible();
 
@@ -33,6 +35,9 @@ export default function MailWidget(): React.JSX.Element {
 
   const data = snapshot;
 
+  if (!data && error) {
+    return <WidgetError message="Não consegui ler o correio." onRetry={() => void refresh()} />;
+  }
   if (isLoadingStore || !data) return <WidgetSkeleton />;
   if (data.messages.length === 0) {
     return <WidgetEmpty message="A caixa de entrada está vazia." />;
@@ -106,6 +111,11 @@ export default function MailWidget(): React.JSX.Element {
         ))}
       </ul>
 
+      {error && (
+        <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-danger">
+          Não consegui atualizar — a mostrar as últimas mensagens.
+        </p>
+      )}
       <p className="mt-1.5 flex-shrink-0 text-[9.5px] text-t3">
         {data.isSimulated ? 'Caixa simulada · ' : ''}
         {MAIL_PRIORITY_LABELS.acao} a amarelo
