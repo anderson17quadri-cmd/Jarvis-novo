@@ -317,4 +317,10 @@ export class WebAdapter implements PlatformAdapter {
     // Num browser não há processo de voz local para reiniciar.
     return false;
   }
+
+  async startWakeWord(): Promise<boolean> {
+    return false;
+  }
+
+  async stopWakeWord(): Promise<void> {}
 }

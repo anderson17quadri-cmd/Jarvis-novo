@@ -586,6 +586,24 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     }
   }
 
+  async startWakeWord(word: string): Promise<boolean> {
+    try {
+      await invoke('iniciar_wake_word', { palavra: word });
+      return true;
+    } catch (error) {
+      console.warn('[platform] o comando "iniciar_wake_word" falhou:', error);
+      return false;
+    }
+  }
+
+  async stopWakeWord(): Promise<void> {
+    try {
+      await invoke('parar_wake_word');
+    } catch (error) {
+      console.warn('[platform] o comando "parar_wake_word" falhou:', error);
+    }
+  }
+
   // ── Auxiliar ─────────────────────────────────────────────────────────────
 
   /**

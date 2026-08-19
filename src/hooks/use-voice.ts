@@ -44,6 +44,7 @@ const MAX_NO_SPEECH_ATTEMPTS = 3;
 const REENGAGE_DELAY_MS = 1_100;
 const CONVERSATION_WARN_KEY = 'jarvis.conversation-warned';
 const CLONE_WARN_KEY = 'jarvis.clone-voice-warned';
+const WAKE_WORD_URL = 'http://127.0.0.1:8091';
 
 /**
  * Liga a voz ao núcleo e ao assistente.
@@ -70,6 +71,8 @@ export function useVoice(): {
   const setMode = useAssistantStore((state) => state.setMode);
   const pulse = useAssistantStore((state) => state.pulse);
   const micAlwaysOn = useVoiceSettingsStore((state) => state.micAlwaysOn);
+  const wakeWordEnabled = useVoiceSettingsStore((state) => state.wakeWordEnabled);
+  const wakeWord = useVoiceSettingsStore((state) => state.wakeWord);
 
   const isSupported = capabilities.voice && voiceService.isRecognitionSupported;
 
@@ -422,6 +425,64 @@ export function useVoice(): {
     voiceService.setConversationMode(true);
     if (!voiceService.isListening) tentarReengatar();
   }, [micAlwaysOn, tentarReengatar]);
+
+  useEffect(() => {
+    if (!wakeWordEnabled) {
+      void getPlatformAdapter().stopWakeWord();
+      return;
+    }
+
+    let cancelled = false;
+    let lastEventId = 0;
+    const activate = async (): Promise<void> => {
+      // A wake word acorda o reconhecimento real — sem o serviço local de voz
+      // a correr, esse reconhecimento cairia para o nativo (nuvem) à calada,
+      // exatamente o que a decisão do §6.3 do desenho recusa. Por isso recusa
+      // armar-se aqui, antes sequer de arrancar o motor de deteção.
+      const servicoLocalDeVozOk = await voiceService.localSttReachable();
+      if (!servicoLocalDeVozOk) {
+        if (!cancelled) {
+          notificationService.warn(
+            'Wake word não ligada',
+            'Precisa do serviço local de voz a correr (voice-clone-service) — sem ele, o comando a seguir à palavra cairia para a nuvem. Arranca-o e tenta outra vez.',
+            { category: 'assistente' },
+          );
+          useVoiceSettingsStore.getState().setWakeWordEnabled(false);
+        }
+        return;
+      }
+
+      const started = await getPlatformAdapter().startWakeWord(wakeWord);
+      if (!started && !cancelled) {
+        notificationService.warn(
+          'Wake word indisponível',
+          'Prepara primeiro o motor local com wake-word-service/setup.ps1.',
+          { category: 'assistente' },
+        );
+        useVoiceSettingsStore.getState().setWakeWordEnabled(false);
+      }
+    };
+    const check = async (): Promise<void> => {
+      try {
+        const response = await fetch(`${WAKE_WORD_URL}/health`);
+        const status = (await response.json()) as { event_id?: number };
+        const eventId = status.event_id ?? 0;
+        if (eventId > lastEventId && !voiceService.isListening && !voiceService.isSpeaking) {
+          voiceService.toggleListening(makeListeningCallbacks());
+          logService.log('info', 'voz', 'Wake word ouvida', `"${wakeWord}" — a acordar o reconhecimento`);
+        }
+        lastEventId = eventId;
+      } catch {}
+    };
+
+    void activate();
+    const timer = setInterval(() => void check(), 500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      void getPlatformAdapter().stopWakeWord();
+    };
+  }, [makeListeningCallbacks, wakeWord, wakeWordEnabled]);
 
   // ── Segundo plano ──────────────────────────────────────────────────────
 

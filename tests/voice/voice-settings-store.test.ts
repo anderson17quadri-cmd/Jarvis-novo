@@ -41,4 +41,24 @@ describe('useVoiceSettingsStore', () => {
 
     expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'clonada', nome: 'Ana Florence' });
   });
+
+  it('a wake word (palavra e interruptor) sobrevive a recarregar — 24.3', async () => {
+    useVoiceSettingsStore.getState().setWakeWord('Computador');
+    useVoiceSettingsStore.getState().setWakeWordEnabled(true);
+    await useVoiceSettingsStore.getState().persist();
+
+    useVoiceSettingsStore.setState({ wakeWord: 'Sentinela', wakeWordEnabled: false });
+
+    await useVoiceSettingsStore.getState().hydrate();
+
+    expect(useVoiceSettingsStore.getState().wakeWord).toBe('Computador');
+    expect(useVoiceSettingsStore.getState().wakeWordEnabled).toBe(true);
+  });
+
+  it('sem nada gravado, hidrata a wake word por omissão: desligada, "Sentinela"', async () => {
+    await useVoiceSettingsStore.getState().hydrate();
+
+    expect(useVoiceSettingsStore.getState().wakeWord).toBe('Sentinela');
+    expect(useVoiceSettingsStore.getState().wakeWordEnabled).toBe(false);
+  });
 });

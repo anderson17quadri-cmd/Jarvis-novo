@@ -6563,3 +6563,57 @@ Falta 24.2 (ligação ao `voiceService`, interruptor, indicador, serviço local
 de voz obrigatório) e 24.3 (persistência, auditoria). Verificação: `tsc`
 limpo, `eslint` 0 erros (12 avisos pré-existentes, nenhum novo), `vitest`
 1798/1798, `cargo check` limpo, `cargo test --lib` 39/39.
+
+## 2026-08-19 — Wake word 24.2: ligada ao voiceService, serviço local obrigatório
+
+Interruptor na Privacidade (`WakeWordSection`, desligado por omissão),
+indicador permanente no header (`Radio` a pulsar, "A ouvir", só visível
+enquanto a wake word estiver mesmo ligada) e a ligação a sério ao
+`voiceService`: `useVoice` passa a arrancar/parar o motor local
+(`platformAdapter.startWakeWord`/`stopWakeWord`) consoante o interruptor, e
+sondar `GET /health` a cada 500ms — quando o `event_id` sobe, dispara o mesmo
+`toggleListening` que o botão do microfone já usa. O guard de eco existente
+(`isSpeakingOrGuarded`, via `!voiceService.isSpeaking`) trava a deteção
+enquanto o JARVIS fala, sem duplicar nada.
+
+**A decisão menos negociável do §6 (a #3), implementada**: ligar a wake word
+**exige** o serviço local de voz a correr — `voiceService.localSttReachable()`
+(tornado público, já existia para decidir entre local e nativo) é chamado
+antes de sequer arrancar o motor de deteção. Se não responder, recusa
+armar-se, avisa com uma notificação a dizer porquê, e desliga o interruptor
+sozinho — nunca fica um indicador aceso a mentir que está a ouvir. Provado a
+sério (`tests/voice/wake-word.test.ts`): comentada a condição do guard, o
+teste que confirma a recusa falhou (o motor arrancava sem o serviço local);
+reposta, passa. Sem o guard, um comando dito a seguir à palavra cairia para o
+reconhecimento nativo (nuvem) sem aviso nenhum — exatamente o que a §0 recusa.
+
+Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos (nos ficheiros do
+projeto — o aviso do `matplotlib` vendored continua por resolver, fora de
+âmbito), `vitest` 1806/1806, `cargo check` limpo. Confirmação visual na app a
+sério não foi possível nesta sessão (o ecrã tinha outras janelas em primeiro
+plano, incluindo outra sessão a trabalhar); a verificação assentou no `tsc`,
+`eslint`, `vitest` e nos registos de HMR do `vite` a recarregar o
+`Header.tsx` sem erro.
+
+## 2026-08-19 — Wake word 24.3: persistência confirmada, cada acordar no logService
+
+A persistência da palavra e do interruptor já estava feita de facto pela
+`use-voice-settings-store.ts` construída na 24.2 (`persist`/`hydrate` cobriam
+`wakeWord`/`wakeWordEnabled` desde o início) — faltava só confirmar com um
+teste a sério, feito agora (`tests/voice/voice-settings-store.test.ts`): grava
+"Computador" e ligado, troca o estado em memória, hidrata, e volta a
+"Computador"/ligado; sem nada gravado, hidrata para "Sentinela"/desligado.
+
+**Novo nesta sub-fase**: cada deteção da wake word regista uma entrada em
+`logService` (`nível info, fonte 'voz'`), com a palavra e "a acordar o
+reconhecimento" — o mesmo tratamento que um comando de voz normal já tem.
+Provado a apanhar a falta do registo: comentada a linha do `logService.log`
+em `use-voice.ts`, o teste que confirma o registo falhou; reposta, passa.
+
+Com isto, o item 24 (wake word) está fechado — as três sub-fases (24.1, 24.2,
+24.3) construídas, testadas e verificadas. Falta só a confirmação ao vivo com
+microfone físico, que esta sessão não conseguiu fazer (sem forma de gravar
+áudio real nem tirar print da janela nativa) — fica anotado no `SPEC.md`.
+
+Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1809/1809,
+`cargo check` limpo.

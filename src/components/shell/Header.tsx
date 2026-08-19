@@ -1,4 +1,4 @@
-import { Bell, Menu, MessagesSquare, Mic, Search } from 'lucide-react';
+import { Bell, Menu, MessagesSquare, Mic, Radio, Search } from 'lucide-react';
 
 import { useClock } from '@/hooks/use-clock';
 import { useIsCompact, useIsTight } from '@/hooks/use-media-query';
@@ -7,6 +7,7 @@ import { cn } from '@/lib/cn';
 import { formatPercent, formatShortDate, formatTime } from '@/lib/format';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { selectUnreadCount, useNotificationStore } from '@/stores/use-notification-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 import { USER_NAME } from '@/constants/user';
 import { DesktopSwitcher } from './DesktopSwitcher';
 
@@ -36,6 +37,7 @@ export function Header({
   const mode = useAssistantStore((state) => state.mode);
   const { snapshot } = useSystemMetrics();
   const unreadCount = useNotificationStore(selectUnreadCount);
+  const wakeWordEnabled = useVoiceSettingsStore((state) => state.wakeWordEnabled);
 
   const isListening = mode === 'listening';
 
@@ -118,6 +120,19 @@ export function Header({
               <Stat value={formatPercent(snapshot.cpu.usagePercent)} label="Carga IA" mono />
             )}
           </>
+        )}
+
+        {wakeWordEnabled && (
+          <span
+            className={cn(
+              'flex h-[38px] flex-shrink-0 items-center gap-1.5 rounded-input border border-accent/30',
+              'bg-accent/10 px-2.5 text-[11px] font-medium text-accent',
+            )}
+            title="A ouvir a wake word — nunca sai da máquina"
+          >
+            <Radio className="h-[15px] w-[15px] motion-safe:animate-pulse" aria-hidden="true" />
+            {!isCompact && <span>A ouvir</span>}
+          </span>
         )}
 
         <IconButton

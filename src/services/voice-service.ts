@@ -446,8 +446,13 @@ export class VoiceService {
    * tem o modelo de reconhecimento carregado. Timeout curto de propósito —
    * se não responder depressa, é porque não está lá, e o botão do
    * microfone não deve ficar à espera disso.
+   *
+   * Público também para a wake word (`use-voice.ts`): ligar a wake word sem
+   * o serviço local a correr deixaria o comando pós-acordar cair para o
+   * reconhecimento nativo (nuvem) à calada — a wake word exige este serviço
+   * antes de se armar, precisamente para isso nunca acontecer.
    */
-  private async localSttReachable(): Promise<boolean> {
+  async localSttReachable(): Promise<boolean> {
     try {
       const resposta = await fetch(`${CLONE_SERVICE_URL}/health`, { signal: AbortSignal.timeout(700) });
       if (!resposta.ok) return false;

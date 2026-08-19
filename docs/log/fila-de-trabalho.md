@@ -50,48 +50,6 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — DeepSeek (15/08/2026)
-
-Decisão: opção (a) da pergunta original, com a opção (b) explicitamente
-recusada — nunca escuta contínua por um serviço de fala na nuvem
-(Web Speech API contínua manda áudio para fora 24h/dia; um pedido
-pontual é uma categoria de exposição completamente diferente). Um
-motor de deteção de palavra a correr só na máquina (candidatos a
-confirmar antes de se fixar um: Vosk, ou outro motor pequeno,
-offline, com um modelo em português) — só "acorda" a transcrição real
-depois de ouvir a palavra escolhida, sem nada a sair da máquina antes
-disso. Maior do que os outros três desta lista — vale a pena um desenho
-próprio (ficheiro em `docs/spec/`) antes de começar a construir, no
-mesmo formato que o Controlo Direto (Fase 3.1) ou o vault Obsidian já
-tiveram. Continua desligado por omissão, ativação explícita em
-Privacidade, mesma disciplina de sempre. **Desenho feito 15/08/2026** —
-`docs/spec/wake-word-local.md`; falta construir (§4 e §5 do desenho: 24.1 motor
-local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
-
-**A decisão da palavra por omissão foi corrigida a meio da 24.1** — o
-`vosk-model-small-pt-0.3` tem vocabulário fechado e "Jarvis" não está lá
-dentro (a versão `-0.6` do desenho não existia; era erro meu). Duas sessões
-em paralelo chegaram ao mesmo achado; ver §6.2 do desenho e a entrada de
-24.1 abaixo para a resolução final (o modelo grande foi mesmo testado, e o
-utilizador decidiu).
-
-**As restantes decisões do §6 estão fechadas (19/08/2026) — não perguntar, ler o
-§6 e construir.** Em resumo: Vosk `small-pt-0.6` num serviço Python à parte
-(caminho A, irmão do `voice-clone-service`); palavra "Jarvis" por omissão;
-**ligar a wake word exige o serviço local de voz a correr — sem ele, recusa
-armar-se e diz porquê, nunca cai para a nuvem**; um valor de sensibilidade só,
-afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
-de eco `isSpeakingOrGuarded`).
-
-**24.1 fechada (19/08/2026, Claude)** — `wake-word-service/`, testada com
-áudio real (`tests/test_deteccao.py`, 5/5). Achado: o modelo pequeno não
-reconhece "Jarvis" (vocabulário fechado); palavra por omissão passou a
-**"Sentinela"**, com o utilizador a confirmar manter o modelo pequeno em vez
-de trocar para um maior — ver `docs/log/historico-sessoes.md` e
-`docs/spec/wake-word-local.md` §6.1/§6.2 para os números. Falta 24.2 e 24.3.
-Construir pela ordem 24.1 → 24.2 → 24.3, com
-commit e entrada no histórico por sub-fase.
-
 ### 27. O Ollama arranca com o JARVIS, como a voz clonada — `[por reservar]`
 
 O utilizador quer um modelo local a responder depressa **de dentro da app**,
@@ -163,6 +121,19 @@ Python). O item pode, no fim, sugerir na interface como o pôr a correr quando
 não responde — a mesma cortesia que o Ollama merece no item 27.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — Claude (19/08/2026)
+
+Desenho (15/08/2026) + as cinco decisões do §6 (19/08/2026) + construção
+inteira (24.1 → 24.3, 19/08/2026) — `docs/spec/wake-word-local.md`. Motor
+Vosk local num serviço Python à parte (`wake-word-service/`), health-check a
+sério, ligado ao `voiceService` (interruptor na Privacidade, indicador no
+header, serviço local de voz obrigatório para armar), palavra configurável
+com persistência, cada acordar no `logService`. Achado a meio: o modelo
+pequeno decidido não reconhece "Jarvis" (vocabulário fechado) — palavra por
+omissão passou a "Sentinela", com o utilizador a decidir entre isso e um
+modelo maior. Detalhe e números de teste em
+`docs/log/historico-sessoes.md` (quatro entradas, 19/08/2026).
 
 ### 15. Restauro e hidratação (`hydrate-all.ts` vs. as chaves fora dele) — revisão adversarial — DeepSeek — sem commit de código
 

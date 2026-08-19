@@ -252,4 +252,7 @@ export interface PlatformAdapter {
    * quando o reinício falha. Nunca lança.
    */
   restartVoiceService(): Promise<boolean>;
+
+  startWakeWord(word: string): Promise<boolean>;
+  stopWakeWord(): Promise<void>;
 }

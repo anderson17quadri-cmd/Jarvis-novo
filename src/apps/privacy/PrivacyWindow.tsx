@@ -6,6 +6,7 @@ import {
   Info,
   KeyRound,
   MousePointer,
+  Radio,
   RectangleHorizontal,
   ShieldAlert,
   ShieldCheck,
@@ -34,6 +35,7 @@ import { usePluginStore } from '@/stores/use-plugin-store';
 import { useBrowserToolSettingsStore } from '@/stores/use-browser-tool-settings-store';
 import { useSensitiveZonesStore } from '@/stores/use-sensitive-zones-store';
 import { useAiSettingsStore } from '@/stores/use-ai-settings-store';
+import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 import { VISION_PROVIDER_INFO } from '@/types/ai-provider-settings';
 import { CAPABILITY_PRIVACY } from '@/types/privacy';
 import { USER_NAME } from '@/constants/user';
@@ -802,6 +804,8 @@ function ControlPanel(): React.JSX.Element {
         </button>
       </section>
 
+      <WakeWordSection />
+
       {/* Visão de ecrã — item 20 (Fase 3.5) */}
       <VisionSection />
 
@@ -850,6 +854,49 @@ function ControlPanel(): React.JSX.Element {
         )}
       </section>
     </div>
+  );
+}
+
+function WakeWordSection(): React.JSX.Element {
+  const enabled = useVoiceSettingsStore((state) => state.wakeWordEnabled);
+  const word = useVoiceSettingsStore((state) => state.wakeWord);
+  const setEnabled = useVoiceSettingsStore((state) => state.setWakeWordEnabled);
+  const setWord = useVoiceSettingsStore((state) => state.setWakeWord);
+
+  return (
+    <section className="rounded-input border border-line bg-tint/[.02] p-3">
+      <p className="flex items-center gap-2 text-[13px] font-medium">
+        <Radio className="h-4 w-4 flex-shrink-0 text-accent" aria-hidden="true" />
+        Wake word local
+      </p>
+      <p className="mt-1 text-cap text-t3">
+        Ouve só nesta máquina pela palavra escolhida. Não grava áudio nem usa serviços na nuvem.
+      </p>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={word}
+          onChange={(event) => setWord(event.target.value)}
+          aria-label="Palavra de ativação"
+          disabled={enabled}
+          className="min-w-0 flex-1 rounded-input border border-line bg-tint/[.03] px-2.5 py-2 text-[12.5px] text-t1 outline-none focus:border-accent/45 disabled:opacity-50"
+        />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          onClick={() => setEnabled(!enabled)}
+          className={cn(
+            'rounded-btn border px-3 py-2 text-[12px] font-medium transition-all duration-hover',
+            enabled ? 'border-ok/45 bg-ok/[.08] text-ok' : 'border-line text-t2 hover:border-accent/35',
+          )}
+        >
+          {enabled ? 'A ouvir' : 'Desligado'}
+        </button>
+      </div>
+      <p className="mt-1.5 text-[11px] text-t3">
+        Na primeira utilização, corre <code>wake-word-service/setup.ps1</code> na pasta do projeto.
+      </p>
+    </section>
   );
 }
 
