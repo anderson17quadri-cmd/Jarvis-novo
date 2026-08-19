@@ -199,23 +199,50 @@ distinguir a palavra do ruído, não há feature que valha.
 
 ---
 
-## 6. Decisões que ainda faltam, e que não são minhas para tomar sozinho
+## 6. Decisões — tomadas em 19/08/2026
 
-1. **Motor e runtime.** Vosk é o candidato; falta fixar o modelo exato
-   (`vosk-model-small-pt` vs. o `-0.6` mais recente, e o tamanho) e o caminho
-   A vs. B de §4. Confirma-se na fase 24.1, não antes.
-2. **A palavra por omissão** — "Jarvis" é a proposta óbvia, mas é escolha de
-   quem usa; e se há uma frase mínima ("Olá Jarvis") para cortar os falsos
-   positivos de uma palavra curta.
-3. **Transcrição pós-wake nunca cair para a nuvem.** Tratar a wake word como
-   "o serviço local de voz é obrigatório", ou manter o fallback pré-existente
-   com aviso? O §0 obriga a deteção a ser local; a transcrição a seguir é o
-   pipeline de sempre, e esta é a única fronteira que lhe toca.
-4. **Sensibilidade.** O limiar de deteção do Vosk (quantos "acertos" por
-   segundo confirmam a palavra) — a troca entre falsos positivos e falsos
-   negativos de §1.2. Uma configuração avançada, ou um valor só?
-5. **Janela pós-acordar.** Quanto tempo a escuta contínua fica suspensa depois
-   de um comando (ou se simplesmente retoma quando a fala do JARVIS acaba) —
-   liga-se ao modo conversa já existente, não se inventa um terceiro modo.
+O utilizador delegou estas decisões ("tome a melhor decisão", mesmo padrão de
+14/08/2026). **Não voltar a perguntar — está decidido, falta construir.** Cada
+uma com a razão, para se poder discordar com fundamento em vez de as reabrir
+por hábito.
 
-Estas ficam para quando cada sub-fase começar a sério, não antes.
+1. **Motor e runtime: Vosk + `vosk-model-small-pt-0.6`, caminho A** (serviço
+   Python à parte, irmão do `voice-clone-service`). Duas razões, e a segunda
+   pesa mais do que parece: é o precedente já provado do projeto (o Rust já
+   sabe arrancar, provar a saúde, matar o órfão e limpar ao fechar — tudo
+   escrito em `voice_clone.rs`), e **mantém o loop contínuo do microfone fora
+   do processo da app**. O processo da app é precisamente o que tem morrido
+   sozinho (item 20: TDR do driver NVIDIA a derrubar o WebView2); pôr lá
+   dentro uma thread que não pode deixar cair áudio seria acoplar a escuta ao
+   componente mais frágil do sistema. O caminho B fica documentado como
+   alternativa, não como plano.
+
+2. **A palavra por omissão é "Jarvis"**, uma palavra só. É o nome do produto e
+   é o que a pessoa vai dizer naturalmente; impor "Olá Jarvis" por omissão
+   seria resolver um problema de sensibilidade (§6.4) com uma fricção que se
+   sente a cada uso. Quem for incomodado por falsos positivos muda a palavra
+   ou a frase na 24.3, que é onde a configuração entra.
+
+3. **Ligar a wake word torna o serviço local de voz obrigatório.** Sem ele a
+   correr, a wake word **recusa armar-se** e diz porquê — não arma e deixa a
+   transcrição cair para a nuvem à calada. Esta é a decisão menos negociável
+   das cinco: a §0 recusou escuta contínua por um serviço de nuvem, e uma wake
+   word que acorda e depois manda o comando para fora entrega exatamente aquilo
+   que a §0 recusou, só com um passo pelo meio. Seria também a repetição de uma
+   falha que este projeto já cometeu duas vezes — um texto de consentimento a
+   descrever menos do que o interruptor faz (ver `historico-sessoes.md`,
+   14 e 15/08). O aviso ao ligar tem de dizer isto por palavras.
+
+4. **Um valor de sensibilidade só, afinado na 24.1** — sem configuração
+   avançada para já. A regra de design do projeto é não acrescentar o que não
+   foi pedido, e um cursor de sensibilidade antes de alguém ter sentido o
+   problema é adivinhação com interface. A 24.1 exige falsos positivos testados
+   a sério (silêncio, ruído, a palavra dentro de outra frase); se desse teste
+   sair que nenhum valor único serve, então — e só então — a configuração entra.
+
+5. **Não se inventa um terceiro modo de escuta.** Depois da palavra ouvida, o
+   fluxo é exatamente o do botão do microfone a ser premido, e o guard de eco
+   que já existe (`isSpeakingOrGuarded`) é o que suspende a deteção enquanto o
+   JARVIS fala. Quando ele acaba, a deteção retoma. Sem temporizador novo, sem
+   janela nova: o modo conversa já resolveu este problema e a wake word é um
+   portão para ele, não um concorrente.

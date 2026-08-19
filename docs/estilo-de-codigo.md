@@ -121,6 +121,19 @@ coisa.
   um primeiro fator forte liga o 2FA (chave física, verificada
   criptograficamente) ou entra pelo Windows Hello — os dois são reais.
 
+- **Wake word: ligá-la torna o serviço local de voz obrigatório
+  (19/08/2026).** As cinco decisões em aberto do desenho
+  (`docs/spec/wake-word-local.md` §6) foram fechadas ao delegar. A que
+  manda é esta: sem o serviço local de transcrição a correr, a wake word
+  **recusa armar-se** em vez de acordar e mandar o comando para a nuvem.
+  Acordar localmente e transcrever na nuvem entregaria exatamente o que a
+  decisão de 14/08 recusou, só com um passo pelo meio. As outras quatro:
+  Vosk `small-pt-0.6` num serviço à parte (mantém o loop do microfone fora
+  do processo que tem morrido sozinho), palavra "Jarvis" por omissão,
+  um valor de sensibilidade só até a 24.1 provar o contrário, e nenhum
+  modo de escuta novo (a wake word é um portão para o modo conversa que
+  já existe).
+
 ## Git
 
 Mensagens de commit em português, focadas no **porquê**, não no que já se

@@ -64,6 +64,15 @@ Privacidade, mesma disciplina de sempre. **Desenho feito 15/08/2026** —
 `docs/spec/wake-word-local.md`; falta construir (§4 e §5 do desenho: 24.1 motor
 local, 24.2 ligação + interruptor, 24.3 palavra configurável + auditoria).
 
+**As cinco decisões do §6 estão fechadas (19/08/2026) — não perguntar, ler o
+§6 e construir.** Em resumo: Vosk `small-pt-0.6` num serviço Python à parte
+(caminho A, irmão do `voice-clone-service`); palavra "Jarvis" por omissão;
+**ligar a wake word exige o serviço local de voz a correr — sem ele, recusa
+armar-se e diz porquê, nunca cai para a nuvem**; um valor de sensibilidade só,
+afinado na 24.1; e nenhum modo de escuta novo (reusa o modo conversa e o guard
+de eco `isSpeakingOrGuarded`). Construir pela ordem 24.1 → 24.2 → 24.3, com
+commit e entrada no histórico por sub-fase.
+
 ## Feito (mover para aqui ao fechar, com o commit)
 
 ### 15. Restauro e hidratação (`hydrate-all.ts` vs. as chaves fora dele) — revisão adversarial — DeepSeek — sem commit de código
