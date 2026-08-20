@@ -42,7 +42,8 @@ itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente, `src/widgets/`
 inteira — Música/Notícias/Calendário/Clima/Email, o navegador controlado
-pelo assistente, o Explorador real) já em "Feito" abaixo.
+pelo assistente, o Explorador real, os monitores de USB e bateria) já em
+"Feito" abaixo.
 
 ## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
@@ -52,6 +53,18 @@ para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Monitores nativos de USB e bateria (`commands/usb.rs` + `commands/battery.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nenhum dos dois tinha um teste sequer. **Um achado real, na bateria**: uma
+leitura falhada do gestor de energia (engasgo transitório, não falta de
+bateria) apagava o último estado bom guardado — a leitura seguinte, mesmo
+idêntica à de antes da falha, era lida como "mudança" e disparava um
+evento a mais. Corrigido preservando o estado através da falha
+(`current.or(last)`). No USB, sem bug — só a mesma dívida de cobertura,
+fechada. Lógica de diferença de ambos extraída para funções puras
+testáveis sem hardware nenhum — 10 testes novos, o da bateria confirmado a
+apanhar o achado. Detalhe em `docs/log/historico-sessoes.md` (20/08/2026).
 
 ### 15. O Explorador real (`commands/files.rs` + `apps/files/FilesWindow.tsx`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
 

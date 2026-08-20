@@ -6888,3 +6888,39 @@ escrita no próprio ficheiro.
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836 (confirmado
 duas vezes seguidas), `cargo check` limpo, `cargo test --lib` 48/48 (eram
 43).
+
+## 2026-08-20 — Revisão a sério: monitores de USB e bateria (item 15)
+
+Mais uma instância do item 15 — os dois gatilhos nativos de automação por
+estado do sistema (`commands/usb.rs`, `commands/battery.rs`), a peça que
+faltava dos "Gatilhos do sistema" (a revisão de 13/08 tinha corrigido uma
+fuga no observador de ficheiros e o cruzamento de limiar do lado do
+`automationService`, nunca o lado nativo destes dois). Nenhum dos dois
+ficheiros tinha um teste sequer.
+
+**Um achado real, na bateria**: `BatteryMonitor` guardava a última leitura
+(`last`) para só emitir `automation://battery-changed` quando algo mudasse
+de verdade — mas uma leitura falhada (`battery::Manager` a devolver `None`
+num ciclo, um engasgo transitório do driver, não falta de bateria — essa
+já falha mais cedo, em `start()`) fazia `last = current` apagar o último
+estado bom com `None`. No ciclo seguinte, mesmo que a bateria estivesse
+exatamente na mesma percentagem de antes da falha, a comparação
+`(None, Some(cur))` dava sempre `true` — um evento a mais, sem nada ter
+mudado, capaz de disparar uma automação por engano. Corrigido: a lógica de
+decisão passou para uma função pura (`BatteryMonitor::diff`), que devolve o
+próximo `last` como `current.or(last)` — preserva o último estado bom
+através de uma falha transitória, só o substitui quando há mesmo uma
+leitura nova. 5 testes novos, um deles confirmado a apanhar o achado
+(reposto `last = current`, o teste falha; corrigido, passa).
+
+**No USB, sem bug — só a mesma dívida de cobertura**: a lógica de
+diferença (`quem ligou, quem desligou`) já estava certa. Extraída para
+`diff_devices`, uma função pura sobre `Vec<String>`, testável sem
+hardware USB nenhum ligado (o resto do ficheiro — `SetupDiGetClassDevsW`,
+`unsafe` — não se presta a teste automatizado, a mesma nota que o Terminal
+já tinha sobre o PTY real). 5 testes novos, incluindo o caso de uma troca
+simultânea (um dispositivo sai, outro entra no mesmo ciclo) a apanhar os
+dois lados.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836, `cargo
+check` limpo, `cargo test --lib` 58/58 (eram 48).

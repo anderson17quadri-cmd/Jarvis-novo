@@ -11,7 +11,7 @@ use crate::error::Result;
 const POLL_INTERVAL: Duration = Duration::from_secs(30);
 
 /// O que a interface recebe quando o nível da bateria muda.
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, PartialEq, Debug)]
 pub struct BatteryEvent {
     percent: u8,
     #[serde(rename = "isCharging")]
@@ -48,26 +48,15 @@ impl BatteryMonitor {
 
             while !flag.load(Ordering::Relaxed) {
                 let current = Self::read(&manager);
+                let (changed, next) = Self::diff(last, current);
 
-                // Só emite se alguma coisa mudou — evita spam de eventos
-                // idênticos a cada 30s.
-                let changed = match (&last, &current) {
-                    (None, Some(_)) => true,
-                    (Some(prev), Some(cur)) => {
-                        prev.percent != cur.percent
-                            || prev.is_charging != cur.is_charging
-                            || prev.is_plugged != cur.is_plugged
-                    }
-                    _ => false,
-                };
-
-                if let Some(ref event) = current {
-                    if changed {
+                if changed {
+                    if let Some(ref event) = next {
                         let _ = app.emit("automation://battery-changed", event.clone());
                     }
                 }
 
-                last = current;
+                last = next;
                 thread::sleep(POLL_INTERVAL);
             }
         });
@@ -87,6 +76,29 @@ impl BatteryMonitor {
             is_charging: battery.state() == battery::State::Charging,
             is_plugged: battery.state() != battery::State::Discharging,
         })
+    }
+
+    /// Decide se há mudança a anunciar, e o que `last` passa a ser no ciclo
+    /// seguinte. Uma leitura falhada (`current: None` — driver com um
+    /// engasgo momentâneo, não falta de bateria, que já falha mais cedo em
+    /// `start()`) nunca apaga o último estado bom: `next` guarda-o com
+    /// `current.or(last)`, para a leitura seguinte comparar contra o último
+    /// valor real, não contra `None`. Sem isto, uma falha transitória fazia
+    /// `last` esquecer-se, e a leitura seguinte — mesmo que idêntica à de
+    /// antes da falha — parecia "nova" outra vez, emitindo um evento que
+    /// nada tinha mudado para justificar. Separado da thread para ser
+    /// testável sem bateria nenhuma a sério.
+    fn diff(
+        last: Option<BatteryEvent>,
+        current: Option<BatteryEvent>,
+    ) -> (bool, Option<BatteryEvent>) {
+        let changed = match (&last, &current) {
+            (None, Some(_)) => true,
+            (Some(prev), Some(cur)) => prev != cur,
+            _ => false,
+        };
+        let next = current.or(last);
+        (changed, next)
     }
 }
 
@@ -123,4 +135,57 @@ pub fn get_battery_status() -> Result<Option<BatteryEvent>> {
         is_charging: battery.state() == battery::State::Charging,
         is_plugged: battery.state() != battery::State::Discharging,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn event(percent: u8) -> BatteryEvent {
+        BatteryEvent { percent, is_charging: false, is_plugged: false }
+    }
+
+    #[test]
+    fn a_primeira_leitura_boa_conta_como_mudanca() {
+        let (changed, next) = BatteryMonitor::diff(None, Some(event(80)));
+        assert!(changed);
+        assert_eq!(next, Some(event(80)));
+    }
+
+    #[test]
+    fn a_mesma_leitura_outra_vez_nao_e_mudanca() {
+        let (changed, next) = BatteryMonitor::diff(Some(event(80)), Some(event(80)));
+        assert!(!changed);
+        assert_eq!(next, Some(event(80)));
+    }
+
+    #[test]
+    fn uma_leitura_diferente_e_mudanca() {
+        let (changed, next) = BatteryMonitor::diff(Some(event(80)), Some(event(79)));
+        assert!(changed);
+        assert_eq!(next, Some(event(79)));
+    }
+
+    /// O achado desta revisão (item 15, 20/08/2026): uma leitura falhada
+    /// (o gestor de bateria devolveu `None` num ciclo, sem ser falta de
+    /// bateria) não podia apagar o último estado bom — sem isto, a leitura
+    /// seguinte, mesmo idêntica à de antes da falha, parecia "nova".
+    #[test]
+    fn uma_leitura_falhada_nao_apaga_o_ultimo_estado_bom() {
+        let (changed_na_falha, next) = BatteryMonitor::diff(Some(event(80)), None);
+        assert!(!changed_na_falha);
+        assert_eq!(next, Some(event(80)));
+
+        // O ciclo seguinte, com a mesma leitura de antes da falha, não é
+        // tratado como mudança — porque `next` preservou o estado bom.
+        let (changed_depois, _) = BatteryMonitor::diff(next, Some(event(80)));
+        assert!(!changed_depois);
+    }
+
+    #[test]
+    fn duas_leituras_falhadas_seguidas_continuam_sem_mudanca() {
+        let (changed, next) = BatteryMonitor::diff(None, None);
+        assert!(!changed);
+        assert_eq!(next, None);
+    }
 }

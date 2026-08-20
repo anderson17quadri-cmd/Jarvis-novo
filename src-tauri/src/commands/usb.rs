@@ -54,28 +54,20 @@ impl UsbMonitor {
                     guard.known = current;
                     guard.first = false;
                 } else {
-                    for dev in &current {
-                        if !guard.known.contains(dev) {
-                            let _ = app.emit(
-                                "automation://usb-changed",
-                                UsbEvent {
-                                    action: "ligado".to_owned(),
-                                    device_name: Some(dev.clone()),
-                                },
-                            );
-                        }
+                    let (connected, disconnected) = diff_devices(&guard.known, &current);
+
+                    for dev in connected {
+                        let _ = app.emit(
+                            "automation://usb-changed",
+                            UsbEvent { action: "ligado".to_owned(), device_name: Some(dev) },
+                        );
                     }
 
-                    for dev in &guard.known {
-                        if !current.contains(dev) {
-                            let _ = app.emit(
-                                "automation://usb-changed",
-                                UsbEvent {
-                                    action: "desligado".to_owned(),
-                                    device_name: Some(dev.clone()),
-                                },
-                            );
-                        }
+                    for dev in disconnected {
+                        let _ = app.emit(
+                            "automation://usb-changed",
+                            UsbEvent { action: "desligado".to_owned(), device_name: Some(dev) },
+                        );
                     }
 
                     guard.known = current;
@@ -94,6 +86,25 @@ impl Drop for UsbMonitor {
     fn drop(&mut self) {
         self.flag.store(true, Ordering::Relaxed);
     }
+}
+
+/// Compara a lista conhecida com a atual e devolve quem ligou e quem
+/// desligou. Separada da thread (que fala com `SetupDiGetClassDevsW`, sem
+/// se prestar a teste automatizado sem hardware a sério) para a lógica de
+/// diferença — a parte que pode ter um bug — ser testável com listas
+/// simples, sem USB nenhum ligado.
+fn diff_devices(known: &[String], current: &[String]) -> (Vec<String>, Vec<String>) {
+    let connected = current
+        .iter()
+        .filter(|dev| !known.contains(dev))
+        .cloned()
+        .collect();
+    let disconnected = known
+        .iter()
+        .filter(|dev| !current.contains(dev))
+        .cloned()
+        .collect();
+    (connected, disconnected)
 }
 
 /// Enumera dispositivos USB atualmente ligados pelo seu "device instance ID".
@@ -163,4 +174,60 @@ fn list_usb_devices() -> Vec<String> {
     }
 
     devices
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn strings(items: &[&str]) -> Vec<String> {
+        items.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn nenhuma_mudanca_quando_as_listas_sao_iguais() {
+        let known = strings(&["A", "B"]);
+        let current = strings(&["A", "B"]);
+
+        let (connected, disconnected) = diff_devices(&known, &current);
+        assert!(connected.is_empty());
+        assert!(disconnected.is_empty());
+    }
+
+    #[test]
+    fn um_dispositivo_novo_conta_como_ligado() {
+        let known = strings(&["A"]);
+        let current = strings(&["A", "B"]);
+
+        let (connected, disconnected) = diff_devices(&known, &current);
+        assert_eq!(connected, strings(&["B"]));
+        assert!(disconnected.is_empty());
+    }
+
+    #[test]
+    fn um_dispositivo_que_desapareceu_conta_como_desligado() {
+        let known = strings(&["A", "B"]);
+        let current = strings(&["A"]);
+
+        let (connected, disconnected) = diff_devices(&known, &current);
+        assert!(connected.is_empty());
+        assert_eq!(disconnected, strings(&["B"]));
+    }
+
+    #[test]
+    fn troca_simultanea_apanha_os_dois_lados() {
+        let known = strings(&["A", "B"]);
+        let current = strings(&["A", "C"]);
+
+        let (connected, disconnected) = diff_devices(&known, &current);
+        assert_eq!(connected, strings(&["C"]));
+        assert_eq!(disconnected, strings(&["B"]));
+    }
+
+    #[test]
+    fn duas_listas_vazias_nao_dao_evento_nenhum() {
+        let (connected, disconnected) = diff_devices(&[], &[]);
+        assert!(connected.is_empty());
+        assert!(disconnected.is_empty());
+    }
 }
