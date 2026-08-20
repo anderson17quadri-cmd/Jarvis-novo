@@ -50,7 +50,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 27. O Ollama arranca com o JARVIS, como a voz clonada — `[por reservar]`
+### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude (20/08/2026, reservado)
 
 O utilizador quer um modelo local a responder depressa **de dentro da app**,
 sem ter de abrir o Ollama à mão primeiro. Hoje o `OllamaProvider` já está
