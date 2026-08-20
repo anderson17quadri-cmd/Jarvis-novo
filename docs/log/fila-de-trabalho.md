@@ -50,7 +50,7 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 28. Pesquisa web sem chave — SearXNG local — `[por reservar]`
+### 28. Pesquisa web sem chave — SearXNG local — Claude (20/08/2026, reservado)
 
 O utilizador quer pesquisa na web **sem chave de API**, com tudo o que for
 possível a correr no PC. Hoje só há dois caminhos: a Brave (exige chave) ou o
