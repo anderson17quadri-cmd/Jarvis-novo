@@ -29,7 +29,10 @@ describe('LoginScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Identidade confirmada.')).toBeInTheDocument());
     await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce(), { timeout: 5_000 });
-  }, 15_000);
+    // 30s, não 15s: já documentado como instável sob carga (revisão do
+    // Terminal, 13/08/2026, e de novo em 20/08/2026) — a suite inteira em
+    // paralelo com outras sessões aperta o `userEvent.type()` simulado.
+  }, 30_000);
 
   // As mensagens da IA entram com efeito de digitação, por isso o texto só está
   // completo passados alguns frames — daí `findByText` em vez de `getByText`.

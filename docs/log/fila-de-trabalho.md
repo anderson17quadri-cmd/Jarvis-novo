@@ -42,7 +42,7 @@ itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente, `src/widgets/`
 inteira — Música/Notícias/Calendário/Clima/Email, o navegador controlado
-pelo assistente) já em "Feito" abaixo.
+pelo assistente, o Explorador real) já em "Feito" abaixo.
 
 ## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
@@ -52,6 +52,22 @@ para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O Explorador real (`commands/files.rs` + `apps/files/FilesWindow.tsx`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nunca tinha tido revisão própria — só confirmado a olho numa auditoria mais
+larga (19/08). **Sem bug real encontrado** — a fronteira de raiz já estava
+certa (canonicaliza antes de comparar, `Path::starts_with` por componentes,
+não strings). Três fios seguidos e fechados sem achado: link simbólico
+interno a apontar para fora (a interface não deixa "abrir" ficheiro nenhum,
+por isso não há caminho a tentar); `abrir_ficheiro` do assistente só conhece
+a árvore simulada; `watch_folder` sem fronteira de raiz mas também sem
+alcance do assistente. **Dívida de cobertura fechada**: `files_read_dir`
+nunca tinha um teste próprio — extraída a lógica de fronteira
+(`resolve_within_root`) e 6 testes novos, confirmados a apanhar uma
+regressão. De caminho, um teste instável sob carga real (várias sessões em
+paralelo) corrigido (`login-screen.test.tsx`, 15s → 30s). Detalhe em
+`docs/log/historico-sessoes.md` (20/08/2026).
 
 ### 15. O navegador controlado pelo assistente (`web-browser-service.ts` + `commands/browser.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
 

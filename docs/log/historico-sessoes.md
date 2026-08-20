@@ -6833,3 +6833,58 @@ achado antes da correção (comentada, visto falhar, reposta, visto passar).
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836, `cargo
 check` limpo, `cargo test --lib` 43/43 (eram 41).
+
+## 2026-08-20 — Revisão a sério: o Explorador real (`files.rs` + `FilesWindow.tsx`), item 15
+
+Mais uma instância do item 15 — o Explorador de ficheiros (`files_set_root`/
+`files_read_dir`, Parte 6.1) nunca tinha tido revisão própria; só um bullet
+na grande auditoria de 19/08 ("`files_read_dir` e `music_read_dir` não saem
+da raiz declarada"), confirmado a olho, não por leitura linha a linha nem
+por teste. O `SPEC.md` já dizia por escrito que a fuga de raiz estava "coberta
+pelo desenho, não por um teste ao vivo" — dívida antiga, paga agora.
+
+**Sem bug real encontrado** — a fronteira já estava certa: `files_read_dir`
+canonicaliza o alvo (resolve `..`, links simbólicos) antes de comparar com
+`Path::starts_with(&declared_root)`, que compara componentes de caminho, não
+strings (por isso `raiz-vizinha-2` nunca passa por dentro de `raiz-vizinha`,
+um erro que uma comparação ingénua cometeria). Segui três fios que pareciam
+promissores e nenhum deu em nada: (1) um link simbólico dentro da raiz a
+apontar para fora — `DirEntry::metadata()` não segue o link, por isso aparece
+como "ficheiro", nunca "pasta", e a interface desativa o clique em qualquer
+linha que não seja pasta ("Um ficheiro não abre: não há aplicação para o
+abrir") — não há sequer um caminho para o tentar abrir; mesmo que houvesse,
+`files_read_dir` voltaria a canonicalizar e recusar no acesso seguinte. (2) o
+caminho pendente do assistente (`abrir_ficheiro`) — confirmado que só conhece
+a árvore *simulada* (`seedFiles`/`searchFiles`), nunca toca em
+`files_read_dir` nem no disco a sério; o comentário no topo do ficheiro que
+afirma isto bate certo com o código. (3) `watch_folder` (gatilhos de
+automação) não impõe fronteira de raiz nenhuma — mas confirmado que não está
+ligado a nenhuma ferramenta do assistente, só a `App.tsx`, onde a própria
+pessoa escolhe a pasta a observar; a ausência de fronteira aqui é o mesmo
+padrão de confiança que a Música e o Obsidian já usam para a raiz que a
+pessoa escolhe à mão.
+
+**A dívida de cobertura, fechada**: `files_read_dir` nunca tinha um teste
+próprio — só `FileWatchers` (registo/remoção do observador) estava coberto
+neste ficheiro. Extraída a lógica de fronteira para `resolve_within_root`
+(função pura, testável sem `State` do Tauri — o mesmo padrão do
+`resolveWithinRoot` do Obsidian), com 6 testes novos: lê a própria raiz
+quando o caminho é omitido, lê uma subpasta legítima, recusa `..`, recusa um
+caminho absoluto completamente fora, recusa uma pasta-irmã cujo nome começa
+pela string da raiz (o caso que apanha uma comparação de strings em vez de
+componentes — `Path::starts_with` já estava certo, agora está provado), e
+recusa um link simbólico a apontar para fora (só em Unix — criar um link no
+Windows por omissão exige um privilégio que a maioria das contas não tem,
+mesma nota do `obsidian.rs`). Confirmados os cinco testáveis em Windows a
+falhar com a verificação de fronteira desligada e a passar com ela religada.
+
+**De caminho, um teste instável apanhado sob carga real** (várias sessões de
+Claude Code a correr em paralelo nesta máquina): `tests/auth/login-screen.test.tsx`,
+"entra com qualquer palavra-passe não vazia" — falhava só na suite inteira,
+nunca isolado (mesma classe da flakiness já documentada na revisão do
+Terminal, 13/08/2026). O teto do teste passou de 15s para 30s, com a razão
+escrita no próprio ficheiro.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836 (confirmado
+duas vezes seguidas), `cargo check` limpo, `cargo test --lib` 48/48 (eram
+43).
