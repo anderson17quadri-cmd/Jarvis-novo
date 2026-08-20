@@ -111,6 +111,20 @@ por palavras de que a pergunta sai da máquina na mesma — o que muda é não
 haver chave, conta nem intermediário comercial. `tsc` limpo, `eslint` 0
 erros, `vitest` 1835/1835, `cargo check` limpo.
 
+### 15. O descarregamento automático do Llama (`ollama.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Revisão independente ao código do aditamento ao item 27, construído nesta
+mesma sessão. **Um achado real, corrigido**: `executar_pull` assumia
+sucesso sempre que o streaming do `/api/pull` acabava sem um
+`{"error":...}` explícito, sem exigir a confirmação real
+(`{"status":"success"}`) que o Ollama manda no fim — uma ligação cortada
+de forma limpa a meio passava por "pronto" na mesma, podendo ativar o
+Ollama como provedor com um modelo que nunca ficou instalado. Corrigido
+com `resultado_do_pull`, uma função pura testável, confirmada a apanhar o
+achado (repondo o `Ok(())` incondicional de antes, o teste falha; com a
+correção, passa). Resto do ficheiro confirmado limpo. `cargo check`
+limpo, `cargo test --lib` 66/66 (eram 62).
+
 ### 27 (aditamento). O Llama descarrega-se sozinho quando não há nenhum modelo — Claude — commit ver `historico-sessoes.md`
 
 Pedido do utilizador (20/08/2026): "quero o Llama... sem precisar de abrir

@@ -6966,3 +6966,35 @@ passam.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1845/1845, `cargo
 check` limpo, `cargo test --lib` 62/62 (eram 58).
+
+## 20/08/2026 — Revisão a sério: o descarregamento automático do Llama (item 15, `ollama.rs`)
+
+Primeira revisão independente ao código escrito nesta mesma sessão (item
+27, aditamento). **Achado real, corrigido**: `executar_pull` só tratava
+como falha uma linha `{"error":...}` explícita — mas assumia sucesso
+sempre que o streaming do `POST /api/pull` acabava sem ver nenhuma, em
+vez de exigir a confirmação real que o Ollama manda no fim
+(`{"status":"success"}`). Uma ligação fechada de forma limpa a meio (o
+Ollama crasha, um corte de rede que não chega a rebentar a leitura HTTP)
+passava por sucesso na mesma — a interface chegava a mostrar "JARVIS está
+pronto", e nos ajustes por omissão ainda por configurar, a ativar Ollama
+como provedor, com um modelo que nunca ficou instalado.
+
+Corrigido extraindo a decisão para uma função pura testável
+(`resultado_do_pull`, sobre uma classificação por linha em
+`interpretar_linha` — o mesmo padrão de extração usado a noite toda):
+só conta como concluído ao ver `LinhaPull::Sucesso` explícito, nunca só
+por o stream ter terminado sem erro. Confirmado a apanhar o achado a
+sério: com a verificação de sucesso removida (repondo o `Ok(())`
+incondicional de antes), o teste novo falha com um diff claro (`left:
+Ok(()), right: Err("o Ollama fechou a ligação sem confirmar que o
+modelo ficou pronto")`); reposta a correção, os 4 testes novos passam.
+Resto do ficheiro confirmado limpo: a fronteira de "nunca matar um
+Ollama que já estava a correr" (`cleanup()` só mata o filho que o
+próprio JARVIS arrancou), o health-check a sério (`GET /api/tags` com
+forma do corpo, não só o código 200), e o cálculo de percentagem
+(`progresso_de`) já cobertos por testes de antes.
+
+Verificação: `cargo check` limpo, `cargo test --lib` 66/66 (eram 62).
+Só o lado Rust mudou — sem tocar em TS, `tsc`/`eslint`/`vitest` mantêm-se
+os últimos valores confirmados.

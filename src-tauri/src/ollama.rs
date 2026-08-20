@@ -225,6 +225,7 @@ fn executar_pull(app: &AppHandle, modelo: &str) -> std::result::Result<(), Strin
 
     let leitor = BufReader::new(resposta.into_reader());
     let mut ultimo_percent: Option<u8> = None;
+    let mut linhas = Vec::new();
 
     for linha in leitor.lines() {
         let linha = linha.map_err(|e| e.to_string())?;
@@ -236,11 +237,8 @@ fn executar_pull(app: &AppHandle, modelo: &str) -> std::result::Result<(), Strin
             continue;
         };
 
-        if let Some(erro) = valor.get("error").and_then(|e| e.as_str()) {
-            return Err(erro.to_string());
-        }
-
-        if let Some(percent) = progresso_de(&valor) {
+        let interpretada = interpretar_linha(&valor);
+        if let LinhaPull::Progresso(percent) = interpretada {
             if ultimo_percent != Some(percent) {
                 ultimo_percent = Some(percent);
                 let _ = app.emit(
@@ -249,9 +247,53 @@ fn executar_pull(app: &AppHandle, modelo: &str) -> std::result::Result<(), Strin
                 );
             }
         }
+        linhas.push(interpretada);
     }
 
-    Ok(())
+    resultado_do_pull(&linhas)
+}
+
+/// O que uma linha do streaming de `/api/pull` diz — separado do pedido em
+/// si para ser testável sem rede nenhuma.
+enum LinhaPull {
+    Erro(String),
+    Progresso(u8),
+    Sucesso,
+    Ignorar,
+}
+
+fn interpretar_linha(valor: &serde_json::Value) -> LinhaPull {
+    if let Some(erro) = valor.get("error").and_then(|e| e.as_str()) {
+        return LinhaPull::Erro(erro.to_string());
+    }
+    if valor.get("status").and_then(|s| s.as_str()) == Some("success") {
+        return LinhaPull::Sucesso;
+    }
+    match progresso_de(valor) {
+        Some(percent) => LinhaPull::Progresso(percent),
+        None => LinhaPull::Ignorar,
+    }
+}
+
+/// Decide o resultado final de um pull a partir das linhas já interpretadas
+/// — só conta como concluído quando viu `{"status":"success"}` explícito,
+/// **nunca só porque o stream acabou sem `{"error":...}`**. Sem esta
+/// confirmação, uma ligação fechada limpa a meio (o Ollama crasha, um proxy
+/// corta a ligação sem quebrar o HTTP a meio de um `chunk`) passava por
+/// sucesso na mesma — a interface chegava a mostrar "JARVIS está pronto"
+/// com um modelo que nunca ficou instalado. Separado do pedido para ser
+/// testável sem rede nenhuma.
+fn resultado_do_pull(linhas: &[LinhaPull]) -> std::result::Result<(), String> {
+    for linha in linhas {
+        if let LinhaPull::Erro(erro) = linha {
+            return Err(erro.clone());
+        }
+    }
+    if linhas.iter().any(|linha| matches!(linha, LinhaPull::Sucesso)) {
+        Ok(())
+    } else {
+        Err("o Ollama fechou a ligação sem confirmar que o modelo ficou pronto".to_string())
+    }
 }
 
 /// Calcula a percentagem de uma linha de progresso do `/api/pull`
@@ -326,5 +368,47 @@ mod tests {
     fn total_zero_nao_divide_por_zero() {
         let linha = serde_json::json!({ "total": 0, "completed": 0 });
         assert_eq!(progresso_de(&linha), None);
+    }
+
+    #[test]
+    fn interpreta_cada_forma_de_linha_do_pull() {
+        let erro = serde_json::json!({ "error": "modelo desconhecido" });
+        assert!(matches!(interpretar_linha(&erro), LinhaPull::Erro(e) if e == "modelo desconhecido"));
+
+        let sucesso = serde_json::json!({ "status": "success" });
+        assert!(matches!(interpretar_linha(&sucesso), LinhaPull::Sucesso));
+
+        let progresso = serde_json::json!({ "total": 100, "completed": 50 });
+        assert!(matches!(interpretar_linha(&progresso), LinhaPull::Progresso(50)));
+
+        let estado_sem_numeros = serde_json::json!({ "status": "pulling manifest" });
+        assert!(matches!(interpretar_linha(&estado_sem_numeros), LinhaPull::Ignorar));
+    }
+
+    #[test]
+    fn um_stream_que_acaba_sem_confirmar_sucesso_e_uma_falha() {
+        // O caso que passava por "pronto" antes desta correção: o stream
+        // fecha (sem exceção de leitura, sem `{"error":...}`) mas nunca
+        // chegou a mandar `{"status":"success"}` — uma ligação cortada a
+        // meio do descarregamento, por exemplo.
+        let linhas = vec![LinhaPull::Progresso(10), LinhaPull::Progresso(50)];
+        assert_eq!(
+            resultado_do_pull(&linhas),
+            Err("o Ollama fechou a ligação sem confirmar que o modelo ficou pronto".to_string())
+        );
+    }
+
+    #[test]
+    fn um_stream_com_a_confirmacao_de_sucesso_e_um_sucesso() {
+        let linhas = vec![LinhaPull::Progresso(10), LinhaPull::Progresso(100), LinhaPull::Sucesso];
+        assert_eq!(resultado_do_pull(&linhas), Ok(()));
+    }
+
+    #[test]
+    fn um_erro_a_meio_do_stream_conta_mesmo_com_sucesso_a_seguir() {
+        // Não deve acontecer na prática (o Ollama não manda mais nada depois
+        // de um erro), mas a decisão não deve depender dessa suposição.
+        let linhas = vec![LinhaPull::Erro("sem espaço em disco".to_string()), LinhaPull::Sucesso];
+        assert_eq!(resultado_do_pull(&linhas), Err("sem espaço em disco".to_string()));
     }
 }
