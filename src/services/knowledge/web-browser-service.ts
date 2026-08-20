@@ -1,5 +1,6 @@
 import { getPlatformAdapter } from '@/platform';
 import { logService } from '../log-service';
+import { wrapUntrustedContent } from '@/lib/untrusted-content';
 import { useBrowserToolSettingsStore } from '@/stores/use-browser-tool-settings-store';
 import type { WebPageContent } from '@/types/web-page';
 
@@ -46,28 +47,8 @@ export async function openExternalUrl(url: string): Promise<string> {
     : `Não consegui abrir "${url}" — confirma o endereço (só https) ou tenta mais tarde.`;
 }
 
-/**
- * Tira do texto qualquer sequência de três ou mais hífens — a forma exata do
- * delimitador abaixo. Sem isto, uma página podia incluir literalmente
- * "--- FIM DO CONTEÚDO EXTERNO ---" a meio do seu próprio texto, seguido do
- * que quisesse fazer passar por uma instrução nova; um modelo mais fraco
- * (nem todos seguem tão bem a fronteira de papel `tool`/`user`) podia lê-lo
- * como se a barreira tivesse mesmo terminado ali. Sequências destas são
- * raras em prosa normal — trocadas por um único travessão, que não fecha o
- * padrão que o delimitador procura.
- */
-function neutralizeDelimiterLookalikes(text: string): string {
-  return text.replace(/-{3,}/g, '—');
-}
-
 /** Embrulha o texto extraído num delimitador claro, para nunca passar por uma instrução. */
 function formatPageContent(url: string, page: WebPageContent): string {
-  const title = neutralizeDelimiterLookalikes(page.title);
-  const text = neutralizeDelimiterLookalikes(page.text);
   const truncatedNote = page.truncated ? ' (texto cortado por ser demasiado longo)' : '';
-  return (
-    `--- CONTEÚDO EXTERNO, NÃO CONFIÁVEL (página "${title}", ${url})${truncatedNote} ---\n` +
-    `${text}\n` +
-    `--- FIM DO CONTEÚDO EXTERNO ---`
-  );
+  return wrapUntrustedContent(`página "${page.title}", ${url}${truncatedNote}`, page.text);
 }

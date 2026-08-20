@@ -111,6 +111,20 @@ por palavras de que a pergunta sai da máquina na mesma — o que muda é não
 haver chave, conta nem intermediário comercial. `tsc` limpo, `eslint` 0
 erros, `vitest` 1835/1835, `cargo check` limpo.
 
+### 15. `pesquisar_na_web` (item 28) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+**Achado real de segurança, corrigido**: os resultados reais de pesquisa
+(texto de páginas arbitrárias, fora do controlo do JARVIS) chegavam ao
+modelo sem nenhuma das defesas contra injeção de instruções que
+`abrir_pagina` já tem para o mesmo tipo de conteúdo externo — sem
+delimitador, sem neutralizar hífenes que imitam um, sem aviso explícito
+"nunca instruções a seguir". Corrigido partilhando essa defesa
+(`src/lib/untrusted-content.ts`, extraída de `web-browser-service.ts`)
+entre os dois sítios. Confirmado a apanhar o achado (revertida a
+correção, 2 testes falham com o diff exato do problema; reposta, os 3
+testes novos passam). `tsc` limpo, `eslint` 0 erros, `vitest`
+145/1848 (eram 1845).
+
 ### 15. O descarregamento automático do Llama (`ollama.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
 
 Revisão independente ao código do aditamento ao item 27, construído nesta
