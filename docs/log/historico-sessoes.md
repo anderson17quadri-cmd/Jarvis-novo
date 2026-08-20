@@ -6694,3 +6694,40 @@ carga (mais ficheiros a correr em paralelo) nem sempre. Trocado por
 
 Verificação: `tsc` limpo, `eslint` 0 erros e 0 avisos, `vitest` 1818/1818,
 `cargo check` limpo (nada de Rust tocado nesta revisão).
+
+## 2026-08-20 — Item 27: o Ollama arranca com o JARVIS
+
+`src-tauri/src/ollama.rs`, seguindo o padrão já provado de `voice_clone.rs`
+— arranque no `setup` do Tauri, sem janela de consola, limpeza no
+`RunEvent::Exit` — mas com a diferença que o item deixava explícita: o
+Ollama pode ser um serviço do próprio sistema, instalado à parte pela
+pessoa (a app de bandeja do Ollama arranca-o sozinha no login). Por isso
+**esta versão nunca mata nada** — ao contrário da voz clonada, que mata
+qualquer órfão preso na porta antes de arrancar o seu. Aqui só se arranca
+`ollama serve` quando a porta 11434 está mesmo livre, e ao sair só se mata
+o processo que o próprio JARVIS arrancou (o estado gerido só fica
+preenchido nesse caso).
+
+Health-check a sério, a mesma lição do item 19: `GET /api/tags` (o
+endpoint do próprio Ollama para listar modelos) e confirma-se a forma do
+corpo — um campo `models`, mesmo vazio — não só o código 200, que um
+processo qualquer a ocupar a porta também podia devolver.
+
+**Confirmado ao vivo nesta máquina**, não só por teste: o registo do
+arranque mostra `[jarvis] Ollama já está a correr — não arranco outro.` —
+o Ollama já corria por fora (instalado à parte), e o JARVIS reconheceu-o e
+não lhe tocou. O caminho "arrancar sozinho" (quando não há nada na porta)
+fica confirmado só pelos testes de unidade — não se parou o Ollama a
+sério desta máquina só para testar o arranque, porque é o serviço real da
+pessoa.
+
+Também acrescentado, em Personalização → Assistente: um aviso de recursos
+sobre a mesma placa gráfica já ter o XTTS-v2 e o Whisper carregados, e um
+modelo grande (8B+) poder não caber — sugere `qwen3:4b`. É um aviso
+**estático**, não uma medição real de VRAM disponível: o projeto não tem
+nenhuma deteção de memória de GPU para reaproveitar, e construir uma de
+raiz (provavelmente por `nvidia-smi`, específico da placa e do sistema)
+seria um item à parte, maior do que "o Ollama arranca com o JARVIS" pedia.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1819/1819, `cargo
+check` limpo, `cargo test --lib` 41/41 (eram 39).

@@ -50,40 +50,6 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude (20/08/2026, reservado)
-
-O utilizador quer um modelo local a responder depressa **de dentro da app**,
-sem ter de abrir o Ollama à mão primeiro. Hoje o `OllamaProvider` já está
-completo (ferramentas incluídas — o modelo local já sabe chamar o
-`pesquisar_na_web`, confirmado com `qwen3:8b` em 13/08), mas só funciona se
-alguém já tiver o Ollama a correr.
-
-Copiar o padrão que o `src-tauri/src/voice_clone.rs` já provou, **incluindo as
-lições que custaram a aprender**:
-- arranque no `setup` do Tauri, sem janela de consola;
-- **health-check a sério, não só a porta aberta** (a lição do item 19: havia um
-  órfão preso na 8090 a responder ao TCP e ao `/health` com o contexto CUDA
-  morto). Aqui, provar com um pedido mínimo ao `/api/tags` ou equivalente que
-  o Ollama responde mesmo — e que o modelo escolhido existe na máquina;
-- matar o órfão identificando-o pela linha de comando, nunca só pela porta,
-  para não matar um processo alheio;
-- limpar o filho no `RunEvent::Exit`.
-
-**Diferença importante face à voz clonada**: o Ollama pode já estar a correr
-como serviço do próprio sistema, instalado pela pessoa. Nesse caso **não se
-arranca outro nem se mata o que está** — usa-se o que lá está. Só se arranca
-quando não há nada a responder.
-
-**Aviso de recursos a pôr na interface, não escondido**: a placa já tem o
-XTTS-v2 e o Whisper carregados para a voz clonada. Um modelo de 8B por cima
-disso aperta os 12 GB, e o item 20 mostrou que esta máquina já cai por reset
-do driver da NVIDIA. Se o modelo escolhido não couber, dizer isso à pessoa em
-vez de deixar a app engasgar — e sugerir um modelo mais pequeno da mesma
-família (`qwen3:4b`), que continua a saber pedir ferramentas.
-
-**Fora deste item**: a chave da Brave para a pesquisa web ser real em vez de
-simulada. Isso é do utilizador, em Personalização → Pesquisa web.
-
 ### 28. Pesquisa web sem chave — SearXNG local — `[por reservar]`
 
 O utilizador quer pesquisa na web **sem chave de API**, com tudo o que for
@@ -121,6 +87,22 @@ Python). O item pode, no fim, sugerir na interface como o pôr a correr quando
 não responde — a mesma cortesia que o Ollama merece no item 27.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude — commit ver `historico-sessoes.md`
+
+`src-tauri/src/ollama.rs`, no padrão de `voice_clone.rs`, com a diferença
+que o item pedia: **nunca mata nada** — o Ollama pode ser um serviço do
+próprio sistema, instalado à parte. Health-check a sério (`GET /api/tags`,
+confirma a forma do corpo, não só o código 200 — a lição do item 19), e só
+arranca `ollama serve` quando a porta está mesmo livre. Confirmado ao vivo
+nesta máquina: o registo mostra `"Ollama já está a correr — não arranco
+outro."` — o Ollama já corria por fora, e o JARVIS não lhe tocou. O caminho
+"arrancar sozinho" fica só testado por unidade (o real não foi parado só
+para testar — é o Ollama a sério da pessoa). Aviso de recursos (modelos
+grandes vs. XTTS-v2/Whisper na mesma placa) acrescentado em Personalização
+→ Assistente, estático em vez de medir VRAM a sério (fora de âmbito deste
+item — não há deteção de VRAM no projeto para reaproveitar). `tsc` limpo,
+`eslint` 0 erros, `cargo check`/`cargo test --lib` limpos (41/41).
 
 ### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — Claude (19/08/2026)
 

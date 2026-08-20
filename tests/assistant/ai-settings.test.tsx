@@ -243,6 +243,14 @@ describe('Ollama', () => {
     expect(screen.getByText(/Nada sai do dispositivo/)).toBeInTheDocument();
   });
 
+  it('avisa que um modelo grande pode não caber ao lado da voz clonada e do Whisper (item 27)', async () => {
+    const user = userEvent.setup();
+    render(<AiSettings />);
+    await user.click(screen.getByRole('radio', { name: /^Ollama/ }));
+
+    expect(screen.getByText(/pode não caber/)).toBeInTheDocument();
+  });
+
   describe('detetar modelos instalados', () => {
     const originalFetch = global.fetch;
 
