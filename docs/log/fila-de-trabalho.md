@@ -50,43 +50,20 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 28. Pesquisa web sem chave — SearXNG local — Claude (20/08/2026, reservado)
-
-O utilizador quer pesquisa na web **sem chave de API**, com tudo o que for
-possível a correr no PC. Hoje só há dois caminhos: a Brave (exige chave) ou o
-`MockWebSearchProvider` (resultados de exemplo, e diz que são).
-
-**A honestidade primeiro, porque é o que a interface tem de dizer**: pesquisar
-na internet exige a internet — a pergunta sai da máquina, obrigatoriamente. O
-que o SearXNG tira é a **chave, a conta e o intermediário comercial**: uma
-instância local recebe a pergunta, consulta vários motores públicos e junta os
-resultados. Sai a pergunta, não sai a identidade. **O texto da Privacidade tem
-de dizer isto por palavras** — dizer "tudo local" seria a mesma classe de
-mentira que esta sessão já corrigiu duas vezes (SPEC.md a prometer a mais,
-14/08; o aviso do navegador desatualizado, 15/08).
-
-**O que construir**: um `SearxngSearchProvider` ao lado do `BraveSearchProvider`
-(mesma interface `WebSearchProvider`, mesmo contrato: título, resumo e
-endereço por resultado, nunca HTML). Endereço configurável em Personalização →
-Pesquisa web, com `http://localhost:8888` por omissão. Escolha do provedor:
-Simulado / SearXNG / Brave.
-
-**Duas armadilhas concretas, para não se perderem horas nelas:**
-
-1. **A CSP é uma lista fechada.** O `connect-src` no `tauri.conf.json` não tem
-   o SearXNG — sem o acrescentar (como já lá está o `http://localhost:11434`
-   do Ollama), o pedido é bloqueado pelo browser e o erro não é óbvio.
-2. **Não passar isto pelo `fetch_page_text` do Rust.** Esse comando tem um
-   bloqueio de SSRF que recusa `localhost` e redes privadas de propósito
-   (corrigido em 13/08) — mandar-lhe uma instância local seria recusado, e
-   *desligar* o bloqueio para isto funcionar seria reabrir a falha. A pesquisa
-   vai pelo `fetch` da interface, como a Brave já vai.
-
-**Fora deste item**: instalar e correr o SearXNG é do utilizador (Docker ou
-Python). O item pode, no fim, sugerir na interface como o pôr a correr quando
-não responde — a mesma cortesia que o Ollama merece no item 27.
-
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 28. Pesquisa web sem chave — SearXNG local — Claude — commit ver `historico-sessoes.md`
+
+`SearxngSearchProvider` ao lado do `BraveSearchProvider` (mesma interface
+`WebSearchProvider`). Escolha explícita do provedor (Simulado / SearXNG /
+Brave — deixou de ser implícita pela presença da chave, porque com duas
+opções sem chave nenhuma isso passou a ser ambíguo) em Personalização →
+Pesquisa web, endereço do SearXNG configurável, `http://localhost:8888`
+por omissão. CSP atualizada, e a pesquisa vai pelo `fetch` da interface,
+nunca pelo `fetch_page_text` do Rust (bloqueio de SSRF de propósito). Aviso
+por palavras de que a pergunta sai da máquina na mesma — o que muda é não
+haver chave, conta nem intermediário comercial. `tsc` limpo, `eslint` 0
+erros, `vitest` 1835/1835, `cargo check` limpo.
 
 ### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude — commit ver `historico-sessoes.md`
 

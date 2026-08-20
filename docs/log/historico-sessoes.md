@@ -6731,3 +6731,53 @@ seria um item à parte, maior do que "o Ollama arranca com o JARVIS" pedia.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1819/1819, `cargo
 check` limpo, `cargo test --lib` 41/41 (eram 39).
+
+## 2026-08-20 — Item 28: pesquisa web sem chave, por SearXNG local
+
+`SearxngSearchProvider` (`src/services/web-search/providers/`), ao lado do
+`BraveSearchProvider` já existente — mesma interface `WebSearchProvider`,
+mesmo contrato (título, resumo, endereço; nunca HTML). O nome do campo de
+resumo na API do SearXNG é `content`, não `description`/`snippet` como na
+Brave — confirmado a ler a documentação da API, não hipotético.
+
+**A escolha do provedor deixou de ser implícita.** Até aqui, "há chave
+guardada" decidia sozinho entre Simulado e Brave. Com o SearXNG a entrar,
+essa implicitude partia-se: nem o Simulado nem o SearXNG pedem chave
+nenhuma, e um endereço de SearXNG por omissão sempre presente não dizia se
+a pessoa queria mesmo usá-lo. `WebSearchSettings` ganhou um campo
+`provider` explícito (`'mock' | 'searxng' | 'brave'`), com compatibilidade
+para quem já tinha uma chave guardada no formato antigo (sem `provider`
+gravado, mas com chave, hidrata como `'brave'` — não se perde a escolha de
+ninguém).
+
+**Um bug apanhado a meio, antes de existir a sério**: a função `persist()`
+antiga, com o cofre disponível, gravava sempre `DEFAULT_WEB_SEARCH_SETTINGS`
+no storage normal (só para não deixar lá a chave) — com o `provider` e o
+`searxngBaseUrl` agora a viverem no mesmo objeto, isso teria apagado a
+escolha de SearXNG e o endereço configurado a cada `persist()`. Corrigido
+para gravar `{ ...settings, apiKey: '' }` — tudo menos a chave, em vez de
+tudo menos o que a pessoa configurou.
+
+**As duas armadilhas do enunciado, tratadas**: CSP (`connect-src`) ganhou
+`http://localhost:8888`, e a pesquisa vai pelo `fetch` da própria interface
+— nunca pelo `fetch_page_text` do Rust, que tem o bloqueio de SSRF contra
+`localhost` de propósito (corrigido em 13/08/2026); mandar-lhe isto seria
+recusado, e desligar o bloqueio para o SearXNG funcionar reabriria
+exatamente a falha que ele existe para fechar.
+
+**A honestidade pedida, por palavras**: a janela de Pesquisa web (Personalização)
+diz agora, para o SearXNG, que o termo de cada pesquisa "sai deste
+dispositivo na mesma" — para a instância local, que depois pergunta a
+vários motores públicos — e que o que muda em relação à Brave não é "nada
+sai", é não haver chave, conta nem intermediário comercial a ver quem
+perguntou.
+
+19 testes novos (`tests/services/searxng-search-provider.test.ts`,
+`tests/web-search/web-search-settings.test.tsx` revisto e alargado).
+Confirmado ao vivo que o resto da app continua a funcionar depois da
+mudança de CSP (recompilação completa do Rust, disparada pela alteração ao
+`tauri.conf.json`) — o registo de arranque mostra a app a responder
+normalmente e o Ollama a ser reconhecido como já a correr.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1835/1835, `cargo
+check` limpo.

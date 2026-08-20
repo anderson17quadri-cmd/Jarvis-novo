@@ -1,19 +1,30 @@
 /**
- * Escolha do provedor de pesquisa web (Peça 18).
+ * Escolha do provedor de pesquisa web (Peça 18; SearXNG no item 28, 20/08/2026).
  *
- * A Brave Search precisa de chave — por isso o padrão é o da IA e das notícias:
- * a chave vai para o cofre do sistema, nunca para o storage normal. A presença
- * da chave é a própria configuração: sem chave, mantém-se o simulado; com
- * chave, passa a real. Não há interruptor separado.
+ * Três provedores, escolha explícita — ao contrário do padrão antigo (a
+ * presença da chave da Brave decidia sozinha), duas opções sem chave
+ * nenhuma (Simulado e SearXNG) tornam essa implicitude ambígua: um endereço
+ * de SearXNG por omissão sempre presente não dizia se a pessoa queria
+ * mesmo usá-lo. `provider` é a fonte da verdade agora; a chave e o
+ * endereço só interessam quando o provedor correspondente está escolhido.
  */
 
+export type WebSearchProviderChoice = 'mock' | 'searxng' | 'brave';
+
+export const DEFAULT_SEARXNG_BASE_URL = 'http://localhost:8888';
+
 export interface WebSearchSettings {
+  readonly provider: WebSearchProviderChoice;
   /** Chave da Brave Search — vive no cofre, não no storage (ver a store). */
   readonly apiKey: string;
+  /** Endereço da instância local de SearXNG. Só a porta 8888 está na CSP. */
+  readonly searxngBaseUrl: string;
 }
 
 export const DEFAULT_WEB_SEARCH_SETTINGS: WebSearchSettings = {
+  provider: 'mock',
   apiKey: '',
+  searxngBaseUrl: DEFAULT_SEARXNG_BASE_URL,
 };
 
 /**

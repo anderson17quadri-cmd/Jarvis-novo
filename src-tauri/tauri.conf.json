@@ -35,7 +35,7 @@
         "style-src": "'self' 'unsafe-inline'",
         "font-src": "'self'",
         "media-src": "'self' blob: asset: http://asset.localhost",
-        "connect-src": "'self' ipc: http://ipc.localhost https://api.deepseek.com https://api.anthropic.com http://localhost:11434 http://127.0.0.1:8090 http://127.0.0.1:8091 https://api.open-meteo.com https://geocoding-api.open-meteo.com https://newsapi.org https://api.search.brave.com",
+        "connect-src": "'self' ipc: http://ipc.localhost https://api.deepseek.com https://api.anthropic.com http://localhost:11434 http://127.0.0.1:8090 http://127.0.0.1:8091 http://localhost:8888 https://api.open-meteo.com https://geocoding-api.open-meteo.com https://newsapi.org https://api.search.brave.com",
         "script-src": "'self'"
       },
       "assetProtocol": {
