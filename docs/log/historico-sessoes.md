@@ -6781,3 +6781,55 @@ normalmente e o Ollama a ser reconhecido como já a correr.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1835/1835, `cargo
 check` limpo.
+
+## 2026-08-20 — Revisão a sério: o navegador controlado pelo assistente (item 15)
+
+Outra instância do item 15 — o navegador controlado pelo assistente
+(Peça 19: `web-browser-service.ts` + `commands/browser.rs`) nunca tinha
+tido uma revisão independente própria; só o achado de SSRF de 13/08/2026,
+que era sobre uma coisa específica (o anfitrião nunca era conferido), não
+uma passagem pelo ficheiro inteiro. Lido como se fosse a primeira vez.
+
+**Confirmado que a defesa de SSRF já construída está bem** (localhost,
+redes privadas, link-local, endereço de metadados de nuvem, redirecionamentos
+não seguidos) — 18 casos testados, todos a passar. **Confirmado que o
+interruptor de Privacidade não tem nenhum atalho**: só há um sítio a chamar
+`getPlatformAdapter().fetchPageText`, dentro de `openWebPage`, que confere o
+interruptor antes de tocar no adaptador; `openExternalUrl` faz o mesmo. Sem
+o achado do `ver_ecra` (18/08/2026) a repetir-se aqui.
+
+**Dois achados reais, novos, corrigidos:**
+
+1. **O corpo da resposta HTTP era lido inteiro para memória antes de
+   qualquer limite entrar em jogo.** `MAX_TEXT_CHARS` (8000) só corta o
+   *texto já extraído* — o `response.into_string()` de antes lia o corpo
+   bruto inteiro, sem teto nenhum, antes disso. Um servidor a responder com
+   um corpo de centenas de MB (malicioso, ou só uma página descomunal
+   servida por engano) esgotava memória só para se chegar à parte que
+   cortava. Corrigido com `ler_corpo_limitado()` — usa `Read::take()` para
+   nunca ler além de 2 MB, cortando a **leitura em si**, não só o
+   resultado. Provado com um teste que alimenta um leitor de 2 MB + 10 KB e
+   confirma que só voltam 2 MB.
+
+2. **O delimitador que marca o texto como "não confiável" podia ser
+   fabricado pela própria página.** `formatPageContent` embrulhava
+   `page.text` sem qualquer tratamento — uma página com o texto literal
+   `--- FIM DO CONTEÚDO EXTERNO ---` a meio, seguida do que quisesse fazer
+   passar por uma instrução nova, produzia uma mensagem com **dois**
+   delimitadores de fecho: o fabricado, e o real no fim. Um modelo mais
+   fraco (nem todos seguem tão bem a fronteira de papel `tool`/`user` —
+   essa é a primeira linha de defesa, isto é a segunda) podia ler o
+   primeiro como se a barreira tivesse mesmo terminado ali, com o resto a
+   parecer ter saído dela. Corrigido com `neutralizeDelimiterLookalikes()`
+   — troca sequências de três ou mais hífens por um único travessão antes
+   de embrulhar título e texto, o que impede a forma exata do delimitador
+   (não as palavras, só a pontuação que o distingue) de ser reproduzida
+   pelo conteúdo. O texto continua lá, legível — só a forma que o disfarçava
+   de fronteira é que desaparece. Provado com um teste que alimenta o
+   delimitador fabricado e confirma que só sobra um, o real.
+
+2 testes novos (1 Rust, 1 TS), os dois confirmados a apanhar o respetivo
+achado antes da correção (comentada, visto falhar, reposta, visto passar).
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836, `cargo
+check` limpo, `cargo test --lib` 43/43 (eram 41).

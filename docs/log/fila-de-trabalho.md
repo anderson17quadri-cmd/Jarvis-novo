@@ -41,7 +41,8 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente, `src/widgets/`
-inteira — Música/Notícias/Calendário/Clima/Email) já em "Feito" abaixo.
+inteira — Música/Notícias/Calendário/Clima/Email, o navegador controlado
+pelo assistente) já em "Feito" abaixo.
 
 ## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
@@ -51,6 +52,22 @@ para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. O navegador controlado pelo assistente (`web-browser-service.ts` + `commands/browser.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nunca tinha tido revisão própria — só o achado de SSRF de 13/08/2026, que
+era sobre uma coisa específica (o anfitrião nunca era conferido). **Dois
+achados reais, corrigidos**: (1) o corpo da resposta HTTP era lido inteiro
+para memória antes de `MAX_TEXT_CHARS` cortar coisa nenhuma — um corpo
+enorme esgotava memória antes de qualquer limite entrar em jogo; corrigido
+com `ler_corpo_limitado()`, que corta a leitura em si a 2 MB. (2) o
+delimitador que marca o texto como "não confiável" podia ser fabricado pela
+própria página, incluindo-o literalmente no seu texto; corrigido com
+`neutralizeDelimiterLookalikes()`, que troca sequências de três ou mais
+hífens por um travessão antes de embrulhar o conteúdo. Confirmado limpo: a
+defesa de SSRF já construída (18 casos), e o interruptor de Privacidade sem
+nenhum atalho a saltá-lo. 2 testes novos, ambos provados a apanhar o
+respetivo achado. Detalhe em `docs/log/historico-sessoes.md` (20/08/2026).
 
 ### 28. Pesquisa web sem chave — SearXNG local — Claude — commit ver `historico-sessoes.md`
 

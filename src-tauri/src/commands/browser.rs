@@ -1,3 +1,5 @@
+use std::io::Read;
+
 use scraper::{Html, Selector};
 use serde::Serialize;
 use url::{Host, Url};
@@ -10,6 +12,14 @@ const MAX_TEXT_CHARS: usize = 8_000;
 
 /// Tempo máximo de espera pela resposta, antes de desistir.
 const REQUEST_TIMEOUT_SECS: u64 = 15;
+
+/// Tamanho máximo do corpo bruto lido de uma página, antes de qualquer
+/// extração de texto. `MAX_TEXT_CHARS` só limita o que *sai* depois de
+/// extraído — sem isto, uma página (ou um servidor comprometido) que
+/// respondesse com um corpo enorme era lida inteira para memória antes de
+/// se chegar a cortar coisa nenhuma. 2 MB de HTML bruto chega bem para
+/// qualquer artigo real; nenhuma página que se peça para ler precisa de mais.
+const MAX_RESPONSE_BYTES: u64 = 2 * 1024 * 1024;
 
 /// O que uma página deu, já limpa — nunca o HTML bruto, nunca nada que corra.
 #[derive(Clone, Serialize)]
@@ -73,11 +83,20 @@ pub fn fetch_page_text(url: String) -> Result<PageContent> {
         )));
     }
 
-    let html = response
-        .into_string()
+    let html = ler_corpo_limitado(response.into_reader())
         .map_err(|e| Error::Files(format!("não consegui ler o corpo de '{url}': {e}")))?;
 
     Ok(extract_text(&html))
+}
+
+/// Lê o corpo da resposta até `MAX_RESPONSE_BYTES`, nunca mais — `take()`
+/// corta a leitura em si, não só o resultado, por isso um corpo maior nunca
+/// chega a ser alocado inteiro. Separado do pedido para ser testável sem
+/// rede nenhuma, com um leitor qualquer.
+fn ler_corpo_limitado(leitor: impl Read) -> std::io::Result<String> {
+    let mut bytes = Vec::new();
+    leitor.take(MAX_RESPONSE_BYTES).read_to_end(&mut bytes)?;
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// `true` quando o anfitrião do endereço é a própria máquina, uma rede
@@ -190,6 +209,30 @@ fn extract_text(html: &str) -> PageContent {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
+
+    /// Achado numa revisão de segurança a sério (20/08/2026, item 15): o
+    /// corpo da resposta era lido inteiro para memória (`into_string()`) antes
+    /// de `MAX_TEXT_CHARS` cortar coisa nenhuma — um corpo enorme (de um
+    /// servidor malicioso, ou só uma página descomunal) era alocado por
+    /// inteiro primeiro. Este teste prova que `ler_corpo_limitado` nunca lê
+    /// além de `MAX_RESPONSE_BYTES`, com um leitor em memória, sem precisar de
+    /// rede nenhuma nem de esgotar memória a sério para provar o ponto.
+    #[test]
+    fn corpo_maior_que_o_limite_e_cortado_na_leitura_em_si() {
+        let enorme = vec![b'a'; (MAX_RESPONSE_BYTES as usize) + 10_000];
+        let lido = ler_corpo_limitado(Cursor::new(enorme)).unwrap();
+
+        assert_eq!(lido.len() as u64, MAX_RESPONSE_BYTES);
+    }
+
+    #[test]
+    fn corpo_dentro_do_limite_fica_intacto() {
+        let pequeno = b"Texto normal de uma pagina real.".to_vec();
+        let lido = ler_corpo_limitado(Cursor::new(pequeno.clone())).unwrap();
+
+        assert_eq!(lido.as_bytes(), pequeno.as_slice());
+    }
 
     #[test]
     fn extrai_titulo_e_texto_simples() {
