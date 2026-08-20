@@ -6,6 +6,7 @@ import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
 import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type { WebPageContent } from '@/types/web-page';
+import type { OllamaPullEvent } from '@/types/ollama-pull';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -255,4 +256,14 @@ export interface PlatformAdapter {
 
   startWakeWord(word: string): Promise<boolean>;
   stopWakeWord(): Promise<void>;
+
+  // ── Ollama ──────────────────────────────────────────────────────────────
+  /**
+   * Progresso do descarregamento automático do modelo por omissão, quando o
+   * Ollama arranca sem nenhum modelo instalado (o JARVIS puxa-o sozinho —
+   * "sem precisar de adicionar mais nada"). Devolve a função de cancelamento.
+   * Nunca dispara nada nas plataformas sem Ollama nativo (web/Android) — o
+   * `unlisten` devolvido aí é só um no-op.
+   */
+  onOllamaPull(handler: (event: OllamaPullEvent) => void): Promise<() => void>;
 }

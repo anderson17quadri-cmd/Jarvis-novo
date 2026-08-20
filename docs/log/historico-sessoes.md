@@ -6924,3 +6924,45 @@ dois lados.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1836/1836, `cargo
 check` limpo, `cargo test --lib` 58/58 (eram 48).
+
+## 20/08/2026 — o Llama descarrega-se sozinho (aditamento ao item 27)
+
+Pedido do utilizador: "vamos inserir o lhama dentro dela... que fique
+inteligente sem precisar adicionar mais nada" — e depois, mais concreto,
+"quero que o jarvis inicie ela, não que eu precise abrir outro app".
+Escolhida a opção "descarregar um modelo Llama sozinho" (entre três
+apresentadas), porque as outras — trocar o provedor por omissão sem
+modelo nenhum instalado, ou só confirmar um já existente — não resolviam
+o "sem precisar adicionar mais nada" para quem nunca tinha usado o
+Ollama.
+
+Construído em `src-tauri/src/ollama.rs`: depois do `setup()` do item 27
+confirmar o serviço saudável (arrancado agora ou já a correr), se
+`GET /api/tags` devolver `"models": []`, arranca uma tarefa a puxar
+`llama3.2:3b` (`POST /api/pull`, streaming NDJSON de progresso) numa
+thread à parte — nunca bloqueia o arranque da app à espera de um
+descarregamento de vários GB. `3b`, não `8b`+, de propósito: a mesma
+placa já tem o XTTS-v2 e o Whisper carregados, e é um dos modelos já
+reconhecidos como capaz de usar ferramentas (`TOOL_CAPABLE_PREFIXES`).
+Progresso emitido como eventos `ollama://pull` (`started` / `progress` /
+`done` / `failed`), recebidos no lado da interface por um novo método do
+`PlatformAdapter` (`onOllamaPull`), no mesmo padrão de `onFileChanged` /
+`onUsbChanged` / `onBatteryChanged`.
+
+A decisão de "o que fazer quando acaba" foi extraída para
+`src/services/ollama-auto-setup.ts` (`handleOllamaPullEvent`), separada
+do `useEffect` em `App.tsx` para ser testável sem montar a app inteira —
+o mesmo padrão de extração usado a noite toda para o lado Rust
+(`resolve_within_root`, `diff_devices`, `BatteryMonitor::diff`). A regra
+de segurança: só troca o provedor ativo para Ollama sozinho quando as
+definições de IA ainda estão tal e qual vieram por omissão (`provider
+=== 'regras'`, sem chaves, sem `ollamaModel`) — nunca por cima de uma
+escolha que a pessoa já tenha feito (DeepSeek, Claude, ou um Ollama com
+outro modelo à mão). Verificado a apanhar isso a sério: com a guarda
+temporariamente desligada, os dois testes que provam essa fronteira
+falham com diffs claros (`expected 'ollama' to be 'deepseek'` e
+`expected 'llama3.2:3b' to be 'qwen3:8b'`); repostos, os 6 testes novos
+passam.
+
+Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 1845/1845, `cargo
+check` limpo, `cargo test --lib` 62/62 (eram 58).

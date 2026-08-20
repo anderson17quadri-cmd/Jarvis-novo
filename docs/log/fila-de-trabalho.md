@@ -111,6 +111,22 @@ por palavras de que a pergunta sai da máquina na mesma — o que muda é não
 haver chave, conta nem intermediário comercial. `tsc` limpo, `eslint` 0
 erros, `vitest` 1835/1835, `cargo check` limpo.
 
+### 27 (aditamento). O Llama descarrega-se sozinho quando não há nenhum modelo — Claude — commit ver `historico-sessoes.md`
+
+Pedido do utilizador (20/08/2026): "quero o Llama... sem precisar de abrir
+outro app". Quando o `setup()` do item 27 confirma o Ollama saudável mas
+sem nenhum modelo instalado (`GET /api/tags` com `"models": []`), puxa
+`llama3.2:3b` sozinho via `POST /api/pull` (streaming NDJSON), emitindo
+`ollama://pull` (`started`/`progress`/`failed`/`done`) para a interface
+mostrar como notificação. `3b`, não `8b`+, de propósito — a mesma placa já
+tem o XTTS-v2 e o Whisper carregados. Ao terminar, só troca o provedor
+ativo para Ollama sozinho se as definições de IA ainda estiverem tal e
+qual vieram por omissão (`handleOllamaPullEvent`, extraída para
+`ollama-auto-setup.ts` — testável sem montar a app) — nunca por cima de
+uma escolha já feita (DeepSeek, Claude, ou outro modelo Ollama). `tsc`
+limpo, `eslint` 0 erros, `vitest` 1845/1845, `cargo check`/`cargo test
+--lib` limpos (62/62).
+
 ### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude — commit ver `historico-sessoes.md`
 
 `src-tauri/src/ollama.rs`, no padrão de `voice_clone.rs`, com a diferença

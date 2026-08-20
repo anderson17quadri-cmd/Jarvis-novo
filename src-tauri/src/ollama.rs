@@ -1,19 +1,49 @@
 use std::env;
+use std::io::{BufRead, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
+use std::thread;
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager};
+use serde::Serialize;
+use tauri::{AppHandle, Emitter, Manager};
 
 /// A porta por omissão do Ollama — a mesma que `OllamaProvider` já usa do
 /// lado da interface (`DEFAULT_OLLAMA_BASE_URL`).
 const PORT: u16 = 11434;
 
+/// O modelo puxado sozinho quando não há nenhum instalado ainda — pedido
+/// explícito do utilizador (20/08/2026): "quero o Llama, sem precisar de
+/// abrir outro programa". `3b` (não `8b`+) de propósito: a mesma máquina já
+/// tem o XTTS-v2 e o Whisper carregados (ver o aviso em `AiSettings.tsx`,
+/// item 27) — um modelo pequeno cabe ao lado deles sem apertar a placa, e a
+/// família Llama 3.2 já está na lista de modelos capazes de pedir
+/// ferramentas (`TOOL_CAPABLE_PREFIXES`, `ollama-provider.ts`).
+const DEFAULT_MODEL: &str = "llama3.2:3b";
+
+/// Um descarregamento de poucos GB pode demorar minutos numa ligação lenta —
+/// generoso de propósito, mas não infinito: uma ligação real e sem resposta
+/// nenhuma durante meia hora já não é "lenta", é presa.
+const PULL_TIMEOUT: Duration = Duration::from_secs(30 * 60);
+
 /// Guarda o processo filho, só quando é o JARVIS a arrancá-lo. `None` quando
 /// o Ollama já estava a correr por fora — nesse caso não há nada nosso para
 /// matar ao sair.
 pub struct OllamaProcess(pub Mutex<Option<Child>>);
+
+/// O que a interface recebe sobre o descarregamento automático do modelo por
+/// omissão — uma só vez por arranque, quando não havia nenhum modelo.
+#[derive(Clone, Serialize)]
+#[serde(tag = "phase", rename_all = "lowercase")]
+enum PullEvent {
+    Started { model: String },
+    Progress { model: String, percent: u8 },
+    Done { model: String },
+    Failed { model: String, error: String },
+}
+
+const PULL_EVENT_NAME: &str = "ollama://pull";
 
 /// Há um Ollama a responder, saudável, na porta de sempre. `GET /api/tags` é
 /// o endpoint do próprio Ollama para listar modelos — específico dele, não
@@ -35,6 +65,15 @@ fn servico_saudavel() -> bool {
 fn e_o_ollama(corpo: &str) -> bool {
     serde_json::from_str::<serde_json::Value>(corpo)
         .map(|v| v.get("models").is_some())
+        .unwrap_or(false)
+}
+
+/// `true` se `GET /api/tags` disser que já há pelo menos um modelo
+/// instalado. Separado do pedido para ser testável com um corpo qualquer.
+fn ja_tem_algum_modelo(corpo: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(corpo)
+        .ok()
+        .and_then(|v| v.get("models")?.as_array().map(|a| !a.is_empty()))
         .unwrap_or(false)
 }
 
@@ -82,6 +121,18 @@ fn arrancar() -> std::io::Result<Child> {
         .unwrap_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "ollama não encontrado")))
 }
 
+/// Espera até `/api/tags` responder (arrancar o processo não o torna pronto
+/// no mesmo instante) antes de perguntar por modelos.
+fn esperar_servico() -> bool {
+    for _ in 0..40 {
+        if servico_saudavel() {
+            return true;
+        }
+        thread::sleep(Duration::from_millis(250));
+    }
+    false
+}
+
 /// Arranca o Ollama sozinho, se não houver já ninguém a responder.
 ///
 /// **Diferença de propósito face à voz clonada** (`voice_clone.rs`): o
@@ -93,6 +144,7 @@ fn arrancar() -> std::io::Result<Child> {
 pub fn setup(app: &AppHandle) {
     if servico_saudavel() {
         eprintln!("[jarvis] Ollama já está a correr — não arranco outro.");
+        pull_modelo_por_omissao_se_faltar(app);
         return;
     }
 
@@ -102,6 +154,9 @@ pub fn setup(app: &AppHandle) {
             if let Some(estado) = app.try_state::<OllamaProcess>() {
                 *estado.0.lock().expect("lock do processo do Ollama") = Some(child);
             }
+            if esperar_servico() {
+                pull_modelo_por_omissao_se_faltar(app);
+            }
         }
         Err(err) => {
             eprintln!(
@@ -110,6 +165,106 @@ pub fn setup(app: &AppHandle) {
             );
         }
     }
+}
+
+/// Se o Ollama não tiver nenhum modelo instalado, descarrega o de omissão
+/// sozinho — pedido explícito do utilizador para o JARVIS ficar "inteligente
+/// sem precisar de adicionar mais nada". Corre numa thread à parte: um
+/// descarregamento de vários GB não pode bloquear o arranque da app, nem a
+/// pergunta "já tens modelos" atrasar a app por si só.
+fn pull_modelo_por_omissao_se_faltar(app: &AppHandle) {
+    let ja_tem = match ureq::get(&format!("http://127.0.0.1:{PORT}/api/tags"))
+        .timeout(Duration::from_secs(3))
+        .call()
+    {
+        Ok(resposta) if resposta.status() == 200 => {
+            ja_tem_algum_modelo(&resposta.into_string().unwrap_or_default())
+        }
+        // Sem resposta clara — não se arrisca um descarregamento às cegas.
+        _ => return,
+    };
+
+    if ja_tem {
+        return;
+    }
+
+    let app = app.clone();
+    thread::spawn(move || puxar_modelo(&app, DEFAULT_MODEL));
+}
+
+/// O descarregamento em si — `POST /api/pull` do Ollama, em streaming: cada
+/// linha do corpo é um objeto JSON com o progresso (`total`/`completed` em
+/// bytes) até `{"status":"success"}` no fim. Emite `ollama://pull` à
+/// interface em cada fase, para a pessoa ver que está a acontecer e não achar
+/// que a app ficou presa.
+fn puxar_modelo(app: &AppHandle, modelo: &str) {
+    let _ = app.emit(PULL_EVENT_NAME, PullEvent::Started { model: modelo.to_string() });
+
+    match executar_pull(app, modelo) {
+        Ok(()) => {
+            eprintln!("[jarvis] modelo Ollama '{modelo}' pronto.");
+            let _ = app.emit(PULL_EVENT_NAME, PullEvent::Done { model: modelo.to_string() });
+        }
+        Err(erro) => {
+            eprintln!("[jarvis] não consegui descarregar o modelo Ollama '{modelo}': {erro}");
+            let _ = app.emit(
+                PULL_EVENT_NAME,
+                PullEvent::Failed { model: modelo.to_string(), error: erro },
+            );
+        }
+    }
+}
+
+fn executar_pull(app: &AppHandle, modelo: &str) -> std::result::Result<(), String> {
+    let corpo = serde_json::json!({ "model": modelo, "stream": true }).to_string();
+    let resposta = ureq::post(&format!("http://127.0.0.1:{PORT}/api/pull"))
+        .set("Content-Type", "application/json")
+        .timeout(PULL_TIMEOUT)
+        .send_string(&corpo)
+        .map_err(|e| e.to_string())?;
+
+    let leitor = BufReader::new(resposta.into_reader());
+    let mut ultimo_percent: Option<u8> = None;
+
+    for linha in leitor.lines() {
+        let linha = linha.map_err(|e| e.to_string())?;
+        if linha.trim().is_empty() {
+            continue;
+        }
+
+        let Ok(valor) = serde_json::from_str::<serde_json::Value>(&linha) else {
+            continue;
+        };
+
+        if let Some(erro) = valor.get("error").and_then(|e| e.as_str()) {
+            return Err(erro.to_string());
+        }
+
+        if let Some(percent) = progresso_de(&valor) {
+            if ultimo_percent != Some(percent) {
+                ultimo_percent = Some(percent);
+                let _ = app.emit(
+                    PULL_EVENT_NAME,
+                    PullEvent::Progress { model: modelo.to_string(), percent },
+                );
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Calcula a percentagem de uma linha de progresso do `/api/pull`
+/// (`{"total": N, "completed": M}`, em bytes). `None` quando a linha não traz
+/// os dois campos (mensagens de estado sem números, ex.: "pulling manifest").
+/// Separado do pedido para ser testável sem rede nenhuma.
+fn progresso_de(valor: &serde_json::Value) -> Option<u8> {
+    let total = valor.get("total")?.as_u64()?;
+    let completed = valor.get("completed")?.as_u64()?;
+    if total == 0 {
+        return None;
+    }
+    Some(((completed.saturating_mul(100)) / total).min(100) as u8)
 }
 
 /// Mata só o processo que o JARVIS arrancou — nunca um Ollama que já
@@ -139,5 +294,37 @@ mod tests {
     #[test]
     fn o_primeiro_candidato_e_sempre_o_path() {
         assert_eq!(candidatos_executavel()[0], PathBuf::from("ollama"));
+    }
+
+    #[test]
+    fn deteta_se_ja_ha_modelo_instalado() {
+        assert!(!ja_tem_algum_modelo(r#"{"models":[]}"#));
+        assert!(ja_tem_algum_modelo(r#"{"models":[{"name":"llama3.2:3b"}]}"#));
+        // Corpo ilegível — não se arrisca a assumir que já tem, mas
+        // `pull_modelo_por_omissao_se_faltar` só chega aqui depois de um
+        // 200 a sério, por isso este caso é só defesa extra.
+        assert!(!ja_tem_algum_modelo("não é json"));
+        assert!(!ja_tem_algum_modelo(""));
+    }
+
+    #[test]
+    fn calcula_a_percentagem_do_progresso() {
+        let linha = serde_json::json!({ "status": "downloading", "total": 200, "completed": 50 });
+        assert_eq!(progresso_de(&linha), Some(25));
+
+        let completo = serde_json::json!({ "total": 100, "completed": 100 });
+        assert_eq!(progresso_de(&completo), Some(100));
+    }
+
+    #[test]
+    fn uma_linha_de_estado_sem_numeros_nao_da_percentagem() {
+        let linha = serde_json::json!({ "status": "pulling manifest" });
+        assert_eq!(progresso_de(&linha), None);
+    }
+
+    #[test]
+    fn total_zero_nao_divide_por_zero() {
+        let linha = serde_json::json!({ "total": 0, "completed": 0 });
+        assert_eq!(progresso_de(&linha), None);
     }
 }

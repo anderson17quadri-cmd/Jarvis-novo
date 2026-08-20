@@ -16,6 +16,7 @@ import type { TerminalExitEvent, TerminalOutputEvent } from '@/types/terminal';
 import type { MusicFileEntry } from '@/types/music';
 import type { ObsidianNote, RealObsidianRoot } from '@/types/obsidian';
 import type { WebPageContent } from '@/types/web-page';
+import type { OllamaPullEvent } from '@/types/ollama-pull';
 import type {
   ImapMessageDto,
   MailFetchParams,
@@ -39,6 +40,9 @@ const GLOBAL_INVOKE_EVENT = 'jarvis://global-invoke';
 const BATTERY_EVENT = 'automation://battery-changed';
 const USB_EVENT = 'automation://usb-changed';
 const FILE_EVENT = 'automation://file-changed';
+
+/** Progresso do descarregamento automático do modelo Ollama por omissão. */
+const OLLAMA_PULL_EVENT = 'ollama://pull';
 
 /**
  * O que o desktop e o Android têm em comum: ambos correm dentro do Tauri e
@@ -601,6 +605,17 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
       await invoke('parar_wake_word');
     } catch (error) {
       console.warn('[platform] o comando "parar_wake_word" falhou:', error);
+    }
+  }
+
+  async onOllamaPull(handler: (event: OllamaPullEvent) => void): Promise<() => void> {
+    try {
+      const unlisten = await listen<OllamaPullEvent>(OLLAMA_PULL_EVENT, (event) =>
+        handler(event.payload),
+      );
+      return unlisten;
+    } catch {
+      return () => undefined;
     }
   }
 
