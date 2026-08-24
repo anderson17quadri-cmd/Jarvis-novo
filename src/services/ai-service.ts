@@ -56,6 +56,18 @@ export class AIService {
   private controller: AbortController | null = null;
   private chain: readonly ChainMember[] = [];
 
+  /**
+   * Os pedidos de ferramenta que ficaram mesmo à espera de confirmação.
+   *
+   * A porta do `confirmTool` vive aqui, e não na memória de quem chama: o
+   * método corre uma ferramenta com o sinalizador de "já confirmado" ligado,
+   * que é o que salta a pergunta das de risco `perde`. Um `id` que nunca
+   * passou por aqui não é uma confirmação — é uma chamada fabricada. É a
+   * mesma lição do `directControlService.executeStep` (13/08): a fronteira
+   * vive na função.
+   */
+  private readonly aguardamConfirmacao = new Set<string>();
+
   constructor(private provider: AiProvider = new RuleProvider()) {}
 
   get providerName(): string {
@@ -349,6 +361,7 @@ export class AIService {
 
         if (outcome.status === 'confirmar') {
           pending.push({ call, question: outcome.message });
+          this.aguardamConfirmacao.add(call.id);
         }
 
         messages.push({
@@ -545,11 +558,26 @@ export class AIService {
   /**
    * Executa uma ferramenta que estava à espera de confirmação.
    *
-   * Só a interface chama isto, e só depois de a pessoa ter dito que sim.
+   * Recusa qualquer `call` que não tenha saído de uma confirmação pendente
+   * a sério — ver `aguardamConfirmacao`. E consome-a ao usar: um duplo
+   * clique, ou um reenvio da mesma confirmação, não apaga duas vezes.
    */
   async confirmTool(call: ToolCall): Promise<void> {
+    if (!this.aguardamConfirmacao.delete(call.id)) {
+      logService.audit(
+        `Confirmação recusada para ${call.name}: não havia pedido pendente com este id`,
+        'recusado',
+      );
+      return;
+    }
+
     const outcome = await runTool(call, true);
     useAssistantStore.getState().addMessage('assistant', outcome.message);
+  }
+
+  /** Esquece uma confirmação que a pessoa recusou — não fica a valer para depois. */
+  cancelTool(call: ToolCall): void {
+    this.aguardamConfirmacao.delete(call.id);
   }
 
   /**

@@ -111,3 +111,92 @@ describe('wake word — cada acordar liga o reconhecimento e fica no registo', (
     vi.unstubAllGlobals();
   });
 });
+
+describe('wake word — o serviço morrer não pode ficar em silêncio', () => {
+  /**
+   * O ciclo de sondagem (`/health` de 500 em 500 ms) tinha um `catch {}` nu.
+   * Se o serviço da wake word morresse — processo morto, sem memória, a
+   * fechar — cada sondagem falhava e era engolida: o indicador do header
+   * continuava a dizer "a ouvir", o interruptor continuava ligado, e a
+   * palavra deixava de funcionar sem nada dizer porquê.
+   *
+   * É a mesma classe de falha silenciosa já corrigida duas vezes: a voz
+   * clonada muda (15/08) e as falhas de rede dos widgets (20/08).
+   */
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useVoiceSettingsStore.setState({ wakeWordEnabled: false, wakeWord: 'Sentinela' });
+    vi.spyOn(getPlatformAdapter(), 'startWakeWord').mockResolvedValue(true);
+    vi.spyOn(getPlatformAdapter(), 'stopWakeWord').mockResolvedValue(undefined);
+    vi.spyOn(voiceService, 'localSttReachable').mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('avisa e desliga o interruptor quando o serviço deixa de responder', async () => {
+    const warn = vi.spyOn(notificationService, 'warn').mockImplementation(() => 'id');
+    let vivo = true;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() =>
+        vivo
+          ? Promise.resolve({ json: () => Promise.resolve({ event_id: 0 }) })
+          : Promise.reject(new TypeError('Failed to fetch')),
+      ),
+    );
+
+    renderHook(() => useVoice());
+    await act(async () => {
+      useVoiceSettingsStore.getState().setWakeWordEnabled(true);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(useVoiceSettingsStore.getState().wakeWordEnabled).toBe(true);
+
+    // O serviço morre. Várias sondagens seguidas falham.
+    vivo = false;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('Wake word'),
+      expect.any(String),
+      expect.anything(),
+    );
+    expect(useVoiceSettingsStore.getState().wakeWordEnabled).toBe(false);
+  });
+
+  it('uma falha passageira não desliga nada', async () => {
+    const warn = vi.spyOn(notificationService, 'warn').mockImplementation(() => 'id');
+    let falhas = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(() => {
+        falhas += 1;
+        // Só a primeira sondagem falha; as seguintes respondem bem.
+        return falhas === 1
+          ? Promise.reject(new TypeError('Failed to fetch'))
+          : Promise.resolve({ json: () => Promise.resolve({ event_id: 0 }) });
+      }),
+    );
+
+    renderHook(() => useVoice());
+    await act(async () => {
+      useVoiceSettingsStore.getState().setWakeWordEnabled(true);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000);
+    });
+
+    expect(warn).not.toHaveBeenCalled();
+    expect(useVoiceSettingsStore.getState().wakeWordEnabled).toBe(true);
+  });
+});

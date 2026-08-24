@@ -462,17 +462,38 @@ export function useVoice(): {
         useVoiceSettingsStore.getState().setWakeWordEnabled(false);
       }
     };
+    // Uma sondagem falhada é normal (o serviço a reiniciar, um soluço). Muitas
+    // seguidas não são: o serviço morreu. Sem isto, o `catch` engolia tudo — o
+    // indicador continuava a dizer "a ouvir", o interruptor ligado, e a
+    // palavra deixava de funcionar sem nada explicar porquê. É a mesma falha
+    // silenciosa da voz clonada muda (15/08) e das falhas de rede dos widgets
+    // (20/08).
+    let falhasSeguidas = 0;
+    const MAX_FALHAS_SEGUIDAS = 6; // ~3 segundos ao ritmo de 500 ms
+
     const check = async (): Promise<void> => {
       try {
         const response = await fetch(`${WAKE_WORD_URL}/health`);
         const status = (await response.json()) as { event_id?: number };
+        falhasSeguidas = 0;
         const eventId = status.event_id ?? 0;
         if (eventId > lastEventId && !voiceService.isListening && !voiceService.isSpeaking) {
           voiceService.toggleListening(makeListeningCallbacks());
           logService.log('info', 'voz', 'Wake word ouvida', `"${wakeWord}" — a acordar o reconhecimento`);
         }
         lastEventId = eventId;
-      } catch {}
+      } catch {
+        falhasSeguidas += 1;
+        if (falhasSeguidas < MAX_FALHAS_SEGUIDAS || cancelled) return;
+
+        logService.log('erro', 'voz', 'A wake word deixou de responder', 'serviço local sem resposta');
+        notificationService.warn(
+          'Wake word desligada',
+          'O serviço local de deteção deixou de responder. Volta a ligá-la em Privacidade quando estiver de pé.',
+          { category: 'assistente' },
+        );
+        useVoiceSettingsStore.getState().setWakeWordEnabled(false);
+      }
     };
 
     void activate();

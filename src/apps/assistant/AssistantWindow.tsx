@@ -220,9 +220,12 @@ export default function AssistantWindow(): React.JSX.Element {
                     void aiService.confirmTool(entry.call);
                     setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id));
                   }}
-                  onCancel={() =>
-                    setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id))
-                  }
+                  onCancel={() => {
+                    // Esquecer também no serviço: uma confirmação recusada não
+                    // pode ficar válida para uma chamada posterior.
+                    aiService.cancelTool(entry.call);
+                    setPending((rest) => rest.filter((item) => item.call.id !== entry.call.id));
+                  }}
                 />
               ))}
             </div>

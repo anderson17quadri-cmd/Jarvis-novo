@@ -481,3 +481,55 @@ describe('gatilhos nativos (checkNativeTriggers)', () => {
     expect(executor.calls).toEqual([]);
   });
 });
+
+describe('gatilho por intervalo — sobrevive a reiniciar a app', () => {
+  /**
+   * As marcas do último disparo (`lastFired`) vivem só em memória. Ao
+   * reabrir o JARVIS, um gatilho "de N em N minutos" via o `Map` vazio,
+   * concluía que nunca tinha corrido, e disparava logo no primeiro `tick()`
+   * — que corre de propósito ao arrancar. Abrir e fechar a app cinco vezes
+   * numa hora disparava uma regra de 6 em 6 horas cinco vezes.
+   *
+   * O `lastRunAt` persistido tem exatamente a informação necessária; o
+   * `firedRecently` é que não olhava para lá.
+   */
+  it('uma regra que correu há pouco não repete ao reabrir a app', async () => {
+    const service2 = new AutomationService();
+    const executor2 = makeExecutor();
+    const agora = Date.now();
+
+    await service2.hydrate([
+      makeAutomation({
+        id: 'intervalo-1',
+        trigger: { kind: 'intervalo', everyMinutes: 360 },
+        // Correu há um minuto, muito dentro das 6 horas do intervalo.
+        lastRunAt: agora - 60_000,
+      }),
+    ]);
+
+    service2.start(executor2, () => ({ now: new Date(agora), systemState: 'normal' }));
+    service2.stop();
+
+    expect(executor2.calls).toEqual([]);
+  });
+
+  it('uma regra cujo intervalo já passou corre ao reabrir', async () => {
+    const service3 = new AutomationService();
+    const executor3 = makeExecutor();
+    const agora = Date.now();
+
+    await service3.hydrate([
+      makeAutomation({
+        id: 'intervalo-2',
+        trigger: { kind: 'intervalo', everyMinutes: 60 },
+        // Correu há duas horas — o intervalo de uma hora já passou.
+        lastRunAt: agora - 2 * 3_600_000,
+      }),
+    ]);
+
+    service3.start(executor3, () => ({ now: new Date(agora), systemState: 'normal' }));
+    service3.stop();
+
+    expect(executor3.calls).toEqual(['aviso:Olá']);
+  });
+});

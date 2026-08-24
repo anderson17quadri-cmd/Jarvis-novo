@@ -58,9 +58,13 @@ novo (um plugin, uma automação, um atalho de voz) que chame `confirmTool`
 diretamente executa uma ferramenta destrutiva sem confirmação nenhuma, e nada
 o impede.
 
-**Correção proposta**: o serviço guarda as confirmações que emitiu e
-`confirmTool` recusa um `call.id` que não esteja lá (consumindo-o ao usar, para
-não servir duas vezes).
+**✅ Corrigido (20/08)**: o serviço guarda num `Set` os `call.id` que emitiu
+como pendentes; `confirmTool` recusa (e regista na auditoria) qualquer id que
+não esteja lá, e consome-o ao usar — um duplo clique não apaga duas vezes. O
+botão de recusar passa a chamar `cancelTool`, para uma confirmação recusada não
+ficar válida para depois. Três testes em
+`tests/assistant/confirm-tool-gate.test.ts`, pelo fluxo real (`sendWithTools`
+com um provedor falso a pedir `apagar_tarefas_concluidas`), sem API só-para-testes.
 
 ### A2 — Automações por intervalo disparam outra vez a cada arranque da app — **MÉDIO**
 
@@ -94,8 +98,11 @@ para lá.
 Afeta também `hora`, embora bem menos: reiniciar dentro do mesmo minuto do
 gatilho volta a disparar (a janela de 90s também vive só no `lastFired`).
 
-**Correção proposta**: `firedRecently` cai para o `lastRunAt` persistido quando
-não há marca em memória.
+**✅ Corrigido (20/08)**: `firedRecently` passa a usar o mais recente entre a
+marca em memória e o `lastRunAt` persistido — numa sessão longa manda o de
+memória, logo a seguir a um arranque só existe o persistido. Dois testes em
+`tests/automation/automation-service.test.ts`, confirmados a falhar sem a
+correção.
 
 ### A3 — "Mostra os widgets" **escondia** os widgets todos — **MÉDIO** ✅ CORRIGIDO
 
@@ -336,8 +343,8 @@ sem trazer o coringa: bastam as duas entradas concretas
 
 | # | Achado | Gravidade | Estado |
 |---|---|---|---|
-| A1 | `confirmTool` confia em quem chama | MÉDIO | por corrigir |
-| A2 | Automações por intervalo repetem-se a cada arranque | MÉDIO | por corrigir |
+| A1 | `confirmTool` confia em quem chama | MÉDIO | ✅ corrigido |
+| A2 | Automações por intervalo repetem-se a cada arranque | MÉDIO | ✅ corrigido |
 | A3 | "Mostra os widgets" escondia-os todos | MÉDIO | ✅ corrigido |
 | A4 | Apagar na interface nunca confirma | BAIXO | observação |
 | A5 | Descarregamento do modelo não se trava | BAIXO | observação |
@@ -359,4 +366,34 @@ spec original contra o código.
 foi assim que apareceram A6, A7 e A8, que nenhuma leitura de código sozinha
 encontraria (o código está correto naquilo que faz; o que falta é o que não
 faz).
+
+
+---
+
+## Achados da segunda passagem
+
+### A12 — A wake word ficava "a ouvir" para sempre depois de o serviço morrer — **MÉDIO** ✅ CORRIGIDO
+
+`src/hooks/use-voice.ts:475` (antes da correção)
+
+O ciclo de sondagem (`GET /health` de 500 em 500 ms) acabava num `catch {}`
+nu. Se o serviço da wake word morresse — processo morto, sem memória, a
+fechar sozinho — **cada** sondagem falhava e era engolida em silêncio:
+
+- o indicador no header continuava a dizer que estava a ouvir;
+- o interruptor em Privacidade continuava ligado;
+- e a palavra deixava de funcionar, sem nada explicar porquê.
+
+A pessoa fica a dizer "Sentinela" para um serviço morto, com a interface a
+garantir-lhe que está a ouvir.
+
+É a terceira vez que esta classe aparece neste projeto — a voz clonada muda
+(15/08, `speakClonada` a engolir a falha), as falhas de rede dos widgets
+(20/08, `PollingDataService` a engolir tudo em `console.warn`), e agora esta.
+
+**Corrigido**: conta falhas seguidas; uma isolada é normal (o serviço a
+reiniciar) e não faz nada, mas seis seguidas (~3 s) avisam, registam no
+`logService` e desligam o interruptor — o mesmo tratamento que o `activate()`
+já dava quando não conseguia armar. Dois testes: o serviço a morrer avisa e
+desliga; uma falha passageira não mexe em nada.
 

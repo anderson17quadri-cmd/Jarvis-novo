@@ -364,9 +364,25 @@ export class AutomationService {
     });
   }
 
+  /**
+   * Já disparou dentro desta janela de tempo?
+   *
+   * O `lastFired` vive só em memória e desaparece quando a app fecha. Sem o
+   * `lastRunAt` persistido como recurso, um gatilho por intervalo via o mapa
+   * vazio ao arrancar, concluía que nunca tinha corrido, e disparava logo no
+   * primeiro `tick()` — que corre de propósito ao arrancar. Abrir e fechar o
+   * JARVIS cinco vezes numa hora disparava uma regra de 6 em 6 horas cinco
+   * vezes. O `lastRunAt` já era guardado pelo `record()`; só faltava olhar
+   * para ele.
+   */
   private firedRecently(id: string, withinMs: number): boolean {
-    const last = this.lastFired.get(id);
-    return last !== undefined && Date.now() - last < withinMs;
+    const emMemoria = this.lastFired.get(id);
+    const persistido = this.automations.find((candidate) => candidate.id === id)?.lastRunAt ?? null;
+
+    // O mais recente dos dois manda: numa sessão longa o de memória está à
+    // frente, e logo a seguir a um arranque só existe o persistido.
+    const last = Math.max(emMemoria ?? 0, persistido ?? 0);
+    return last > 0 && Date.now() - last < withinMs;
   }
 
   private runByTrigger(predicate: (automation: Automation) => boolean): void {
