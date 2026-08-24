@@ -357,6 +357,7 @@ sem trazer o coringa: bastam as duas entradas concretas
 | A12 | Wake word ficava "a ouvir" depois de o serviço morrer | MÉDIO | ✅ corrigido |
 | A13 | Privacidade mandava dizer a palavra-passe em voz alta (não há voz) | MÉDIO | ✅ corrigido |
 | A14 | Modo simulado não travava o print do ecrã | **ALTO** | ✅ corrigido |
+| A15 | Assistente dava ficheiros de exemplo por reais | MÉDIO | ✅ corrigido |
 
 **Áreas varridas nesta passagem**: `src/services/` (ai-service, automation,
 memory, intents, executor, data-service, searxng, ollama-auto-setup),
@@ -463,4 +464,37 @@ sua forma mais cara: não é o texto que está desatualizado em relação ao có
 que já lá estava (a captura no caminho normal) passou a desligar o modo
 simulado explicitamente — antes passava por acidente, já que o modo simulado é
 ligado por omissão e a captura acontecia na mesma.
+
+### A15 — O assistente procurava ficheiros numa árvore de exemplo e dava-os por reais — **MÉDIO** ✅ CORRIGIDO
+
+`src/App.tsx:599`, `src/services/assistant/tool-runner.ts:294`
+
+O `procurar_ficheiro` e o `abrir_ficheiro` percorrem `seedFiles()` — a árvore
+**simulada** (`src/data/files.ts`: "Árvore de ficheiros simulada. **Não toca no
+disco.**"). Nomes como `proposta-barbearia-silva.pdf` são inventados.
+
+Ao mesmo tempo, o Explorador de Ficheiros **lê o disco a sério** desde 12/08
+(`capabilities.realFilesystem`, `files_set_root`/`files_read_dir`, com a pasta
+escolhida guardada em `files.real-root-path`).
+
+Os dois caminhos nunca se encontram. Resultado: a pessoa escolhe a sua pasta no
+Explorador, vê os seus ficheiros, e a seguir pergunta ao assistente "procura o
+relatório" — e ele responde com ficheiros **fictícios**, com a confiança de
+quem leu o disco. Nem a descrição da ferramenta nem a resposta diziam que era
+uma árvore de exemplo.
+
+O `SPEC.md` (linha 492) diz "ligado a sério em `App.tsx` (`seedFiles`/`searchFiles`)"
+— tecnicamente verdade (está ligado), mas "a sério" ali lê-se como "ao disco a
+sério", que não é o caso.
+
+**Corrigido, pela via honesta**: a resposta da ferramenta passa a dizer
+"(árvore de exemplo — a pesquisa no disco a sério ainda não está ligada a esta
+ferramenta)", e a descrição no catálogo avisa o modelo em maiúsculas que **não
+é o disco real** e que deve dizê-lo. É o mesmo tratamento que a pesquisa web
+simulada já tinha.
+
+**Não corrigi ligando ao disco real** — isso é funcionalidade nova (o
+`files_read_dir` lê um nível de cada vez; procurar por nome exige descer a
+árvore toda, com as decisões de profundidade e desempenho que isso traz). Fica
+para a fila.
 

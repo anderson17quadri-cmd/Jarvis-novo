@@ -193,8 +193,10 @@ export const TOOLS: readonly ToolDefinition[] = [
   {
     name: 'procurar_ficheiro',
     description:
-      'Procura ficheiros e pastas pelo nome (parcial, sem acentos) na árvore de ficheiros. ' +
-      'Devolve o que encontrar, com a pasta onde está cada um — não abre nada.',
+      'Procura ficheiros e pastas pelo nome (parcial, sem acentos) numa árvore de ficheiros ' +
+      'de exemplo — NÃO é o disco real da pessoa, mesmo que ela tenha escolhido uma pasta no ' +
+      'Explorador. Devolve o que encontrar, com a pasta onde está cada um; não abre nada. ' +
+      'Diz sempre que os resultados são de uma árvore de exemplo, para não os dares por reais.',
     risk: 'livre',
     parameters: [text('nome', 'Nome ou parte do nome a procurar.')],
   },

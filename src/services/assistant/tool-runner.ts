@@ -294,7 +294,16 @@ async function perform(
 
     case 'procurar_ficheiro': {
       const results = run.searchFiles(text('nome'));
-      if (results.length === 0) return `Não encontrei nada com "${text('nome')}" no nome.`;
+      // A árvore que estas ferramentas percorrem é a de exemplo (`seedFiles`),
+      // nunca o disco a sério — mesmo quando o Explorador tem uma pasta real
+      // escolhida, que ele lê por outro caminho. Sem o dizer, o assistente
+      // respondia sobre ficheiros inventados como se fossem os da pessoa. É a
+      // mesma disciplina que a pesquisa web simulada já segue: dizer que é
+      // exemplo, em vez de deixar passar por real.
+      const aviso = '(árvore de exemplo — a pesquisa no disco a sério ainda não está ligada a esta ferramenta)';
+      if (results.length === 0) {
+        return `Não encontrei nada com "${text('nome')}" no nome ${aviso}.`;
+      }
 
       const lista = results
         .map((result) =>
@@ -304,7 +313,7 @@ async function perform(
         )
         .join(', ');
 
-      return `Encontrei ${results.length} ${results.length === 1 ? 'resultado' : 'resultados'}: ${lista}.`;
+      return `Encontrei ${results.length} ${results.length === 1 ? 'resultado' : 'resultados'} ${aviso}: ${lista}.`;
     }
 
     case 'abrir_ficheiro':
