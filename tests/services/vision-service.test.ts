@@ -64,12 +64,39 @@ describe('visionService.describeScreen — a porta de presença', () => {
     expect(result).toMatch(/sessão/);
   });
 
+  it('com o modo simulado ligado, não tira print nenhum', async () => {
+    // A Privacidade promete, por palavras: "com o modo simulado ligado, as
+    // ações de controlo direto aparecem no overlay de confirmação mas **nunca
+    // executam a sério** — é para testar o fluxo sem risco". O `ver_ecra` não
+    // passa pelo `executeStep`, por isso escapava a essa promessa: uma pessoa
+    // a testar o fluxo "sem risco" mandava um print real do ecrã para a nuvem.
+    const { visionService } = await import('@/services/vision/vision-service');
+    const { directControlService } = await import('@/services/direct-control-service');
+
+    directControlService.setEnabled(true);
+    directControlService.startSession();
+    directControlService.setSimulated(true);
+    visionService.setProvider({
+      id: 'claude',
+      name: 'Claude',
+      isConfigured: () => true,
+      isRemote: true,
+      describe: async () => 'descrição',
+    });
+
+    const result = await visionService.describeScreen();
+
+    expect(captureScreen).not.toHaveBeenCalled();
+    expect(result).toMatch(/simulado/i);
+  });
+
   it('captura o ecrã com o controlo direto ligado e sessão ativa', async () => {
     const { visionService } = await import('@/services/vision/vision-service');
     const { directControlService } = await import('@/services/direct-control-service');
 
     directControlService.setEnabled(true);
     directControlService.startSession();
+    directControlService.setSimulated(false);
     visionService.setProvider({
       id: 'claude',
       name: 'Claude',

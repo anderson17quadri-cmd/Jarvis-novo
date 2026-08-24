@@ -354,6 +354,9 @@ sem trazer o coringa: bastam as duas entradas concretas
 | A9 | Requisitos da Parte 14 ausentes e não assinalados | MÉDIO | ✅ documentado |
 | A10 | SPEC.md diz que o gatilho de rede é impossível (não é) | MÉDIO | ✅ corrigido no SPEC.md |
 | A11 | Provedores em falta; três já existem no repo irmão | BAIXO | documentado |
+| A12 | Wake word ficava "a ouvir" depois de o serviço morrer | MÉDIO | ✅ corrigido |
+| A13 | Privacidade mandava dizer a palavra-passe em voz alta (não há voz) | MÉDIO | ✅ corrigido |
+| A14 | Modo simulado não travava o print do ecrã | **ALTO** | ✅ corrigido |
 
 **Áreas varridas nesta passagem**: `src/services/` (ai-service, automation,
 memory, intents, executor, data-service, searxng, ollama-auto-setup),
@@ -396,4 +399,68 @@ reiniciar) e não faz nada, mas seis seguidas (~3 s) avisam, registam no
 `logService` e desligam o interruptor — o mesmo tratamento que o `activate()`
 já dava quando não conseguia armar. Dois testes: o serviço a morrer avisa e
 desliga; uma falha passageira não mexe em nada.
+
+### A13 — A Privacidade mandava "dizer a frase em voz alta", e não há caminho de voz — **MÉDIO** ✅ CORRIGIDO
+
+`src/apps/privacy/PrivacyWindow.tsx:680-681` (antes da correção)
+
+O texto por cima do campo da palavra-passe do Controlo Direto dizia:
+
+> "Palavra-passe guardada (hash, nunca em texto simples). **Diz a frase em voz
+> alta** para abrir uma sessão de controlo direto."
+>
+> "Define uma frase que só tu sabes. **Dita por voz**, abre uma sessão de
+> controlo direto de 30 minutos."
+
+**Não existe caminho de voz nenhum.** O `directControlService.verify` é chamado
+de **um único sítio** — o campo escrito da própria janela de Privacidade
+(`PrivacyWindow.tsx:617`). O `use-voice.ts`, o `intents.ts` e o `executor.ts`
+não têm uma única referência à palavra-passe.
+
+Quem lê aquilo diz a frase em voz alta, não acontece nada, e não tem como
+saber porquê — a interface acabou de lhe garantir que era assim que funciona.
+Pior: é a **porta de presença**, a camada de que as outras três do Controlo
+Direto dependem.
+
+Curiosamente o `SPEC.md` está certo (linha 660: "abertura manual de sessão por
+**palavra escrita** na Privacidade — o caminho 'escrita' da spec §6"). O
+comentário no próprio código também ("o caminho alternativo à voz"). Só o
+texto que a pessoa lê é que ficou a descrever o plano original da spec §1.1
+("Dita por voz, através do reconhecimento que já existe") em vez do que foi
+construído.
+
+**Corrigido**: o texto passa a dizer que se escreve no campo, e nomeia
+explicitamente que a abertura por voz ainda não está construída — em vez de a
+prometer. 14 testes existentes continuam a passar (nenhum dependia do texto).
+
+### A14 — O modo simulado prometia "nunca executam a sério", e o `ver_ecra` tirava prints reais — **ALTO** ✅ CORRIGIDO
+
+`src/services/vision/vision-service.ts` · texto em `PrivacyWindow.tsx:779-782`
+
+A Privacidade promete, por palavras:
+
+> Com o modo simulado ligado, as ações de controlo direto aparecem no overlay
+> de confirmação mas **nunca executam a sério** — é para testar o fluxo **sem
+> risco**.
+
+A promessa é cumprida por `executeStep`
+(`wouldExecute = confirmed && !this.simulatedMode`) — mas o **`ver_ecra` não
+passa por lá**. `visionService.describeScreen()` verificava o interruptor e a
+sessão (correção de 19/08) e capturava, **sem nunca olhar para o modo
+simulado**.
+
+O que isto significava: alguém liga o Controlo Direto, liga o modo simulado
+precisamente "para testar sem risco", abre uma sessão, e o assistente tira um
+**print real do ecrã** — que, com o provedor de visão configurado para o
+Claude, **sai da máquina**. A única coisa que a pessoa fez para se proteger foi
+a coisa que a expôs.
+
+É a classe de lacuna de honestidade que mais aparece neste projeto, agora na
+sua forma mais cara: não é o texto que está desatualizado em relação ao código,
+é um caminho que escapou à barreira que o texto descreve.
+
+**Corrigido**: `describeScreen()` recusa em modo simulado e diz porquê. O teste
+que já lá estava (a captura no caminho normal) passou a desligar o modo
+simulado explicitamente — antes passava por acidente, já que o modo simulado é
+ligado por omissão e a captura acontecia na mesma.
 

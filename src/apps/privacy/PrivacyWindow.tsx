@@ -677,8 +677,8 @@ function ControlPanel(): React.JSX.Element {
         <p className="t-label mb-1.5">Palavra-passe de sessão</p>
         <p className="mb-2 text-cap text-t3">
           {hasPassword
-            ? 'Palavra-passe guardada (hash, nunca em texto simples). Diz a frase em voz alta para abrir uma sessão de controlo direto.'
-            : 'Define uma frase que só tu sabes. Dita por voz, abre uma sessão de controlo direto de 30 minutos. Guardada como hash — nunca visível depois de escrita.'}
+            ? 'Palavra-passe guardada (hash, nunca em texto simples). Escreve-a no campo abaixo para abrir uma sessão de controlo direto de 30 minutos.'
+            : 'Define uma frase que só tu sabes. Escrita aqui, abre uma sessão de controlo direto de 30 minutos. Guardada como hash — nunca visível depois de escrita. (A abertura por voz, que a spec §1.1 propunha, ainda não está construída.)'}
         </p>
 
         <div className="flex gap-2">

@@ -47,6 +47,15 @@ class VisionService {
     if (!directControlService.sessionActive) {
       return 'Não há uma sessão de controlo direto ativa — abre uma em Privacidade ou diz a palavra-passe.';
     }
+    // O modo simulado promete, por palavras na Privacidade, que as ações
+    // "nunca executam a sério — é para testar o fluxo sem risco". Olhar para o
+    // ecrã não passa pelo `executeStep`, por isso escapava a essa promessa: em
+    // modo simulado, um print real do ecrã seguia à mesma para o modelo (e,
+    // com o provedor Claude, para fora da máquina). Testar o fluxo não pode
+    // ser a coisa que expõe o ecrã.
+    if (directControlService.isSimulated) {
+      return 'O controlo direto está em modo simulado — não tiro prints do ecrã a sério. Desliga o modo simulado em Privacidade para eu poder olhar.';
+    }
     if (!this.provider) {
       return 'A visão de ecrã não está configurada — escolhe um modelo de visão em Privacidade → Controlo.';
     }
