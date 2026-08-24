@@ -149,3 +149,109 @@ Fica registado porque a assimetria é curiosa: o assistente **tem** de pedir
 confirmação para `esquecer_memoria`, e o botão "Esquecer tudo" ao lado faz o
 mesmo sem perguntar nada.
 
+### A5 — O descarregamento automático do modelo não se consegue travar — **BAIXO** (observação)
+
+`src-tauri/src/ollama.rs:170-192`, `src/services/ollama-auto-setup.ts`
+
+No arranque, se o Ollama não tiver nenhum modelo, o JARVIS descarrega o
+`llama3.2:3b` (~2 GB) **sozinho**. Foi pedido explicitamente pelo utilizador
+("quero o Llama, sem precisar de adicionar mais nada"), por isso não é um
+comportamento inesperado — mas tem duas arestas:
+
+1. **Não há como cancelar.** A notificação diz que começou; não há botão para
+   parar. Numa ligação limitada (partilha de dados do telemóvel), são 2 GB que
+   se vão sem se poder travar.
+2. **Avisa depois de começar, não antes.** É a única coisa em todo o projeto
+   que gasta recursos externos sem perguntar primeiro — todo o resto (rede,
+   voz, controlo direto) está desligado por omissão com interruptor explícito.
+
+Não corrijo por iniciativa própria: foi pedido assim, e mudar para "pergunta
+primeiro" contraria o "sem precisar de adicionar mais nada". Fica registado
+para o utilizador decidir se quer um botão de cancelar.
+
+### A6 — A sessão de Controlo Direto sobrevivia ao bloqueio por inatividade — **ALTO** ✅ CORRIGIDO
+
+`src/stores/use-session-store.ts:38` · requisito de
+`docs/spec/fase-3-controlo-direto.md` §1.1
+
+A spec do Controlo Direto é explícita, e o requisito não estava implementado:
+
+> **Liga-se ao bloqueio por inatividade que já existe** (Parte 14): se o ecrã
+> bloquear por inatividade a meio dos 30 minutos, a sessão de controlo fecha
+> imediatamente também, sem esperar pelo temporizador próprio — **cobre o caso
+> de teres saído do sítio**.
+
+O `useIdleLock` chamava `logout()`, que só limpava a sessão automática do
+Windows Hello e voltava ao ecrã de login. O `directControlService.endSession()`
+só era chamado de dois sítios — o botão em Privacidade e o travão de mão
+(Esc Esc) — **nenhum deles ligado ao bloqueio**. E o `sessionActive` só olha
+para o relógio (`Date.now() < sessionExpiresAt`), sem saber nada da fase da
+aplicação.
+
+**O que isto significava na prática**: abrir uma sessão de Controlo Direto (30
+minutos), levantar-se, o ecrã bloquear ao fim de 5 minutos de inatividade — e
+a sessão de controlo continuava **viva os restantes 25 minutos**, por trás do
+ecrã de bloqueio. É exatamente o cenário que a spec nomeia ("cobre o caso de
+teres saído do sítio"), e é a camada de Presença, a base de que as outras três
+dependem.
+
+**Corrigido** no `logout()`, que é o ponto único por onde a sessão acaba — o
+bloqueio por inatividade e o sair à mão passam os dois por lá. Pô-lo em quem
+chama seria repetir o erro do `executeStep` (corrigido em 13/08): a fronteira
+vive na função, não na memória de quem a invoca.
+
+Teste em `tests/auth/logout-encerra-controlo-direto.test.ts`, confirmado a
+falhar sem a correção e a passar com ela.
+
+### A7 — Não há indicador permanente de sessão de Controlo Direto ativa — **ALTO** (por construir)
+
+`src/components/shell/Header.tsx` · requisito de
+`docs/spec/fase-3-controlo-direto.md` §1.1 e §1.2
+
+A spec pede duas vezes, com ênfase:
+
+> §1.1 — Indicador **sempre visível** enquanto a sessão está ativa — por
+> exemplo "Controlo direto ativo · 18 min" no header, **nunca escondido**.
+>
+> §1.2 — **Indicador permanente enquanto ativo** — uma borda visível à volta
+> do ecrã, **não um ícone escondido numa barra**.
+
+O header **não mostra nada** sobre o Controlo Direto. Mostra a wake word
+(`Header.tsx:125`), que é a funcionalidade *menos* perigosa das duas — o padrão
+existe e está aplicado ao sítio errado.
+
+Isto não é cosmético: o princípio fundador da Fase 3 (§0) é que a segurança
+"não pode viver numa lista de comandos permitidos — tem de viver em **como e
+quando** a ação acontece: **sempre visível**, sempre confirmável". A
+confirmação por passo está feita (nada corre invisível), mas a metade "sempre
+visível" não: uma sessão pode estar armada 30 minutos sem qualquer sinal
+persistente de que está.
+
+**Não construí por iniciativa própria** porque é interface, e a regra da casa
+(`docs/estilo-de-codigo.md` §Verificação) diz que mudanças de interface se
+confirmam na app a sério, não só nos testes — e esta sessão não tem ecrã.
+Fica como item para a fila.
+
+### A8 — Não há consentimento por sessão antes do primeiro print — **MÉDIO** (por construir)
+
+`src/services/vision/vision-service.ts` · requisito de
+`docs/spec/fase-3-controlo-direto.md` §1.2
+
+> **Consentimento por sessão**, não por sempre: a primeira vez que o controlo
+> direto corre depois de reiniciar o JARVIS, pede confirmação explícita antes
+> do primeiro print.
+
+Não existe. O `describeScreen()` verifica a porta de presença (correção de
+19/08) e captura — sem nunca pedir a confirmação explícita do primeiro print
+da sessão. A porta de presença cobre a maior parte do risco, mas não é a mesma
+coisa: a spec quer que a primeira captura de cada arranque seja consciente.
+
+### Nota sobre o `SPEC.md`
+
+O `SPEC.md` marca as Fases 3.3–3.5 como implementadas (linha 664 e seguintes) e
+descreve o que foi feito com rigor — mas **não menciona** que o indicador
+permanente (A7) e o consentimento do primeiro print (A8) ficaram por fazer. É a
+mesma classe de lacuna de honestidade já corrigida duas vezes nesta auditoria
+(SPEC.md a prometer a mais em 14/08, o aviso do navegador em 15/08): o registo
+diz "implementada" e a pessoa que o lê não fica a saber o que falta.
+

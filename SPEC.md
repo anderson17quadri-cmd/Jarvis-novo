@@ -684,6 +684,19 @@ PlatformAdapter → invoke`):
   devolve a descrição do modelo; zonas sensíveis aplicadas antes de qualquer
   imagem ir ao provedor.
 
+**Três requisitos da spec ficaram por cumprir, apesar de as sub-fases estarem
+dadas como implementadas** (auditoria de 20/08/2026, `docs/log/auditoria-completa.md`):
+
+1. ~~A sessão de controlo sobrevivia ao bloqueio por inatividade~~ — **corrigido
+   em 20/08** no `logout()`, que é o ponto único por onde a sessão acaba (§1.1
+   exige-o explicitamente: "cobre o caso de teres saído do sítio").
+2. **Não há indicador permanente** de sessão ativa no header (§1.1 e §1.2
+   pedem-no duas vezes, "nunca escondido"). A wake word tem-no; o Controlo
+   Direto, que é mais perigoso, não. **Por construir.**
+3. **Não há consentimento explícito antes do primeiro print** de cada arranque
+   (§1.2). A porta de presença cobre a maior parte do risco, mas não é o mesmo.
+   **Por construir.**
+
 O travão de mão, a porta de presença e a captura com zonas sensíveis têm testes
 dedicados (`direct-control-service.test.ts`, `vision-provider.test.ts`).
 Continua por fazer a validação ao vivo no PC real (o nativo está testado em

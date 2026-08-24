@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import { clearAutoLoginSession } from '@/services/auto-login-service';
+import { directControlService } from '@/services/direct-control-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
 /** Fases por que a aplicação passa desde que abre. */
@@ -19,6 +20,15 @@ interface SessionState {
    * termina a sessão vê o login e não os dez passos outra vez. Também apaga
    * a sessão automática do Windows Hello — sem isto, sair "a sério" cairia
    * logo de volta ao desktop sozinho na vez seguinte.
+   *
+   * **E fecha a sessão de Controlo Direto**, que a spec
+   * (`docs/spec/fase-3-controlo-direto.md` §1.1) manda fechar junto com o
+   * bloqueio: "se o ecrã bloquear por inatividade a meio dos 30 minutos, a
+   * sessão de controlo fecha imediatamente também — cobre o caso de teres
+   * saído do sítio". Fica aqui, e não em quem chama, porque este é o ponto
+   * único por onde a sessão acaba (o bloqueio por inatividade e o sair à mão
+   * passam os dois por cá) — deixá-lo ao critério do chamador é exatamente o
+   * que deixou o `executeStep` sem porta até 13/08.
    */
   logout: () => void;
   /**
@@ -37,6 +47,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   authenticate: () => set({ phase: 'desktop' }),
   logout: () => {
     void clearAutoLoginSession();
+    directControlService.endSession();
     set({ phase: 'login' });
   },
 
