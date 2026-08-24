@@ -252,6 +252,32 @@ pub fn files_set_root(root: State<'_, FilesRoot>, path: String) -> Result<RealFi
     })
 }
 
+/// Resolve `path` (ou a própria raiz, se omitido) e confirma que fica dentro
+/// de `declared_root`. Recusa qualquer caminho fora dela, mesmo que pareça
+/// válido (um `..` no caminho, um link simbólico a sair para fora) — a
+/// canonicalização resolve os dois antes da comparação. É a única fronteira
+/// que interessa: "nunca o disco todo" cumpre-se aqui, não na interface, que
+/// só pode pedir educadamente. Separado do comando para ser testável sem um
+/// `State` do Tauri, o mesmo padrão do `resolveWithinRoot` do Obsidian.
+fn resolve_within_root(declared_root: &std::path::Path, path: Option<String>) -> Result<PathBuf> {
+    let target = match path {
+        Some(p) => PathBuf::from(p),
+        None => declared_root.to_path_buf(),
+    };
+
+    let canonical_target = target.canonicalize().map_err(|e| {
+        crate::error::Error::Files(format!("a pasta não existe ou não se pode ler: {e}"))
+    })?;
+
+    if !canonical_target.starts_with(declared_root) {
+        return Err(crate::error::Error::Files(
+            "fora da pasta-raiz escolhida — recusado.".to_string(),
+        ));
+    }
+
+    Ok(canonical_target)
+}
+
 /// Lê um nível de uma pasta real — a raiz declarada, se `path` for omitido.
 ///
 /// Recusa qualquer caminho fora da raiz declarada, mesmo que pareça válido
@@ -270,20 +296,7 @@ pub fn files_read_dir(
         })?
     };
 
-    let target = match path {
-        Some(p) => PathBuf::from(p),
-        None => declared_root.clone(),
-    };
-
-    let canonical_target = target.canonicalize().map_err(|e| {
-        crate::error::Error::Files(format!("a pasta não existe ou não se pode ler: {e}"))
-    })?;
-
-    if !canonical_target.starts_with(&declared_root) {
-        return Err(crate::error::Error::Files(
-            "fora da pasta-raiz escolhida — recusado.".to_string(),
-        ));
-    }
+    let canonical_target = resolve_within_root(&declared_root, path)?;
 
     let read_dir = fs::read_dir(&canonical_target).map_err(|e| {
         crate::error::Error::Files(format!("não consegui ler a pasta: {e}"))
@@ -324,6 +337,99 @@ pub fn files_read_dir(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Uma pasta temporária a sério, apagada sozinha ao sair de âmbito —
+    /// mesmo padrão do `TempDir` de `voice_clone.rs`/`obsidian.rs`.
+    struct TempDir(PathBuf);
+
+    impl TempDir {
+        fn new(nome: &str) -> Self {
+            let path =
+                std::env::temp_dir().join(format!("jarvis-files-teste-{nome}-{}", std::process::id()));
+            let _ = fs::remove_dir_all(&path);
+            fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        fn path(&self) -> PathBuf {
+            self.0.canonicalize().unwrap()
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    /// A fronteira que `files_read_dir` existe para impor — nunca tinha tido
+    /// um teste (revisão a sério, item 15, 20/08/2026): só `FileWatchers`
+    /// estava coberto neste ficheiro.
+    #[test]
+    fn le_a_propria_raiz_quando_o_caminho_e_omitido() {
+        let raiz = TempDir::new("raiz-omitida");
+        assert_eq!(resolve_within_root(&raiz.path(), None).unwrap(), raiz.path());
+    }
+
+    #[test]
+    fn le_uma_subpasta_dentro_da_raiz() {
+        let raiz = TempDir::new("subpasta");
+        let sub = raiz.path().join("documentos");
+        fs::create_dir(&sub).unwrap();
+
+        let resolvido = resolve_within_root(&raiz.path(), Some(sub.to_string_lossy().into_owned()));
+        assert_eq!(resolvido.unwrap(), sub.canonicalize().unwrap());
+    }
+
+    #[test]
+    fn recusa_ponto_ponto_a_sair_da_raiz() {
+        let raiz = TempDir::new("dotdot");
+        let fora = raiz.path().join("..");
+
+        assert!(resolve_within_root(&raiz.path(), Some(fora.to_string_lossy().into_owned())).is_err());
+    }
+
+    #[test]
+    fn recusa_um_caminho_absoluto_completamente_fora_da_raiz() {
+        let raiz = TempDir::new("raiz-absoluta");
+        let outra = TempDir::new("outra-pasta");
+
+        let resultado =
+            resolve_within_root(&raiz.path(), Some(outra.path().to_string_lossy().into_owned()));
+        assert!(resultado.is_err());
+    }
+
+    #[test]
+    fn recusa_uma_pasta_irma_cujo_nome_comeca_pelo_da_raiz() {
+        // O caso que uma comparação de strings (em vez de componentes de
+        // caminho) apanharia mal: "raiz-vizinha-2" começa pela string
+        // "raiz-vizinha", mas não é uma subpasta dela. `Path::starts_with`
+        // compara componentes, não seria enganado por isto — confirma-se.
+        let raiz = TempDir::new("raiz-vizinha");
+        let vizinha = TempDir::new("raiz-vizinha-2");
+
+        let resultado =
+            resolve_within_root(&raiz.path(), Some(vizinha.path().to_string_lossy().into_owned()));
+        assert!(resultado.is_err());
+    }
+
+    /// Só em Unix — criar um link simbólico no Windows por omissão pede um
+    /// privilégio que a maioria das contas não tem, e a lógica corrigida
+    /// (canonicalizar antes de comparar) é a mesma nos dois SOs. Mesmo
+    /// padrão do `obsidian.rs`.
+    #[cfg(unix)]
+    #[test]
+    fn recusa_link_simbolico_a_apontar_para_fora_da_raiz() {
+        use std::os::unix::fs::symlink;
+
+        let raiz = TempDir::new("symlink-raiz");
+        let fora = TempDir::new("symlink-alvo");
+        symlink(fora.path(), raiz.path().join("atalho")).unwrap();
+
+        let alvo = raiz.path().join("atalho");
+        let resultado = resolve_within_root(&raiz.path(), Some(alvo.to_string_lossy().into_owned()));
+        assert!(resultado.is_err());
+    }
 
     #[test]
     fn remove_para_a_thread_do_observador() {

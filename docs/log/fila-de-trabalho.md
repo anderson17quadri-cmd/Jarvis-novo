@@ -41,7 +41,9 @@ mais por escolher em `docs/log/historico-sessoes.md`. Todos os catorze
 itens acima estão fechados — repetível; instâncias fechadas (2FA,
 Notificações nativas isoladas, Meteorologia/Notícias, Marketplace de
 plugins, Sandbox de execução de plugins, Memória do assistente, `src/widgets/`
-inteira — Música/Notícias/Calendário/Clima/Email) já em "Feito" abaixo.
+inteira — Música/Notícias/Calendário/Clima/Email, o navegador controlado
+pelo assistente, o Explorador real, os monitores de USB e bateria) já em
+"Feito" abaixo.
 
 ## Decididas pelo utilizador em 14/08/2026 ("tome a melhor decisão") — construir pela ordem
 
@@ -50,77 +52,124 @@ decisão e a razão de cada uma; `docs/log/perguntas-para-o-utilizador.md`
 para o contexto completo de cada pergunta original. **Não voltar a
 perguntar** — a decisão já está tomada, falta construir.
 
-### 27. O Ollama arranca com o JARVIS, como a voz clonada — `[por reservar]`
-
-O utilizador quer um modelo local a responder depressa **de dentro da app**,
-sem ter de abrir o Ollama à mão primeiro. Hoje o `OllamaProvider` já está
-completo (ferramentas incluídas — o modelo local já sabe chamar o
-`pesquisar_na_web`, confirmado com `qwen3:8b` em 13/08), mas só funciona se
-alguém já tiver o Ollama a correr.
-
-Copiar o padrão que o `src-tauri/src/voice_clone.rs` já provou, **incluindo as
-lições que custaram a aprender**:
-- arranque no `setup` do Tauri, sem janela de consola;
-- **health-check a sério, não só a porta aberta** (a lição do item 19: havia um
-  órfão preso na 8090 a responder ao TCP e ao `/health` com o contexto CUDA
-  morto). Aqui, provar com um pedido mínimo ao `/api/tags` ou equivalente que
-  o Ollama responde mesmo — e que o modelo escolhido existe na máquina;
-- matar o órfão identificando-o pela linha de comando, nunca só pela porta,
-  para não matar um processo alheio;
-- limpar o filho no `RunEvent::Exit`.
-
-**Diferença importante face à voz clonada**: o Ollama pode já estar a correr
-como serviço do próprio sistema, instalado pela pessoa. Nesse caso **não se
-arranca outro nem se mata o que está** — usa-se o que lá está. Só se arranca
-quando não há nada a responder.
-
-**Aviso de recursos a pôr na interface, não escondido**: a placa já tem o
-XTTS-v2 e o Whisper carregados para a voz clonada. Um modelo de 8B por cima
-disso aperta os 12 GB, e o item 20 mostrou que esta máquina já cai por reset
-do driver da NVIDIA. Se o modelo escolhido não couber, dizer isso à pessoa em
-vez de deixar a app engasgar — e sugerir um modelo mais pequeno da mesma
-família (`qwen3:4b`), que continua a saber pedir ferramentas.
-
-**Fora deste item**: a chave da Brave para a pesquisa web ser real em vez de
-simulada. Isso é do utilizador, em Personalização → Pesquisa web.
-
-### 28. Pesquisa web sem chave — SearXNG local — `[por reservar]`
-
-O utilizador quer pesquisa na web **sem chave de API**, com tudo o que for
-possível a correr no PC. Hoje só há dois caminhos: a Brave (exige chave) ou o
-`MockWebSearchProvider` (resultados de exemplo, e diz que são).
-
-**A honestidade primeiro, porque é o que a interface tem de dizer**: pesquisar
-na internet exige a internet — a pergunta sai da máquina, obrigatoriamente. O
-que o SearXNG tira é a **chave, a conta e o intermediário comercial**: uma
-instância local recebe a pergunta, consulta vários motores públicos e junta os
-resultados. Sai a pergunta, não sai a identidade. **O texto da Privacidade tem
-de dizer isto por palavras** — dizer "tudo local" seria a mesma classe de
-mentira que esta sessão já corrigiu duas vezes (SPEC.md a prometer a mais,
-14/08; o aviso do navegador desatualizado, 15/08).
-
-**O que construir**: um `SearxngSearchProvider` ao lado do `BraveSearchProvider`
-(mesma interface `WebSearchProvider`, mesmo contrato: título, resumo e
-endereço por resultado, nunca HTML). Endereço configurável em Personalização →
-Pesquisa web, com `http://localhost:8888` por omissão. Escolha do provedor:
-Simulado / SearXNG / Brave.
-
-**Duas armadilhas concretas, para não se perderem horas nelas:**
-
-1. **A CSP é uma lista fechada.** O `connect-src` no `tauri.conf.json` não tem
-   o SearXNG — sem o acrescentar (como já lá está o `http://localhost:11434`
-   do Ollama), o pedido é bloqueado pelo browser e o erro não é óbvio.
-2. **Não passar isto pelo `fetch_page_text` do Rust.** Esse comando tem um
-   bloqueio de SSRF que recusa `localhost` e redes privadas de propósito
-   (corrigido em 13/08) — mandar-lhe uma instância local seria recusado, e
-   *desligar* o bloqueio para isto funcionar seria reabrir a falha. A pesquisa
-   vai pelo `fetch` da interface, como a Brave já vai.
-
-**Fora deste item**: instalar e correr o SearXNG é do utilizador (Docker ou
-Python). O item pode, no fim, sugerir na interface como o pôr a correr quando
-não responde — a mesma cortesia que o Ollama merece no item 27.
-
 ## Feito (mover para aqui ao fechar, com o commit)
+
+### 15. Monitores nativos de USB e bateria (`commands/usb.rs` + `commands/battery.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nenhum dos dois tinha um teste sequer. **Um achado real, na bateria**: uma
+leitura falhada do gestor de energia (engasgo transitório, não falta de
+bateria) apagava o último estado bom guardado — a leitura seguinte, mesmo
+idêntica à de antes da falha, era lida como "mudança" e disparava um
+evento a mais. Corrigido preservando o estado através da falha
+(`current.or(last)`). No USB, sem bug — só a mesma dívida de cobertura,
+fechada. Lógica de diferença de ambos extraída para funções puras
+testáveis sem hardware nenhum — 10 testes novos, o da bateria confirmado a
+apanhar o achado. Detalhe em `docs/log/historico-sessoes.md` (20/08/2026).
+
+### 15. O Explorador real (`commands/files.rs` + `apps/files/FilesWindow.tsx`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nunca tinha tido revisão própria — só confirmado a olho numa auditoria mais
+larga (19/08). **Sem bug real encontrado** — a fronteira de raiz já estava
+certa (canonicaliza antes de comparar, `Path::starts_with` por componentes,
+não strings). Três fios seguidos e fechados sem achado: link simbólico
+interno a apontar para fora (a interface não deixa "abrir" ficheiro nenhum,
+por isso não há caminho a tentar); `abrir_ficheiro` do assistente só conhece
+a árvore simulada; `watch_folder` sem fronteira de raiz mas também sem
+alcance do assistente. **Dívida de cobertura fechada**: `files_read_dir`
+nunca tinha um teste próprio — extraída a lógica de fronteira
+(`resolve_within_root`) e 6 testes novos, confirmados a apanhar uma
+regressão. De caminho, um teste instável sob carga real (várias sessões em
+paralelo) corrigido (`login-screen.test.tsx`, 15s → 30s). Detalhe em
+`docs/log/historico-sessoes.md` (20/08/2026).
+
+### 15. O navegador controlado pelo assistente (`web-browser-service.ts` + `commands/browser.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Nunca tinha tido revisão própria — só o achado de SSRF de 13/08/2026, que
+era sobre uma coisa específica (o anfitrião nunca era conferido). **Dois
+achados reais, corrigidos**: (1) o corpo da resposta HTTP era lido inteiro
+para memória antes de `MAX_TEXT_CHARS` cortar coisa nenhuma — um corpo
+enorme esgotava memória antes de qualquer limite entrar em jogo; corrigido
+com `ler_corpo_limitado()`, que corta a leitura em si a 2 MB. (2) o
+delimitador que marca o texto como "não confiável" podia ser fabricado pela
+própria página, incluindo-o literalmente no seu texto; corrigido com
+`neutralizeDelimiterLookalikes()`, que troca sequências de três ou mais
+hífens por um travessão antes de embrulhar o conteúdo. Confirmado limpo: a
+defesa de SSRF já construída (18 casos), e o interruptor de Privacidade sem
+nenhum atalho a saltá-lo. 2 testes novos, ambos provados a apanhar o
+respetivo achado. Detalhe em `docs/log/historico-sessoes.md` (20/08/2026).
+
+### 28. Pesquisa web sem chave — SearXNG local — Claude — commit ver `historico-sessoes.md`
+
+`SearxngSearchProvider` ao lado do `BraveSearchProvider` (mesma interface
+`WebSearchProvider`). Escolha explícita do provedor (Simulado / SearXNG /
+Brave — deixou de ser implícita pela presença da chave, porque com duas
+opções sem chave nenhuma isso passou a ser ambíguo) em Personalização →
+Pesquisa web, endereço do SearXNG configurável, `http://localhost:8888`
+por omissão. CSP atualizada, e a pesquisa vai pelo `fetch` da interface,
+nunca pelo `fetch_page_text` do Rust (bloqueio de SSRF de propósito). Aviso
+por palavras de que a pergunta sai da máquina na mesma — o que muda é não
+haver chave, conta nem intermediário comercial. `tsc` limpo, `eslint` 0
+erros, `vitest` 1835/1835, `cargo check` limpo.
+
+### 15. `pesquisar_na_web` (item 28) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+**Achado real de segurança, corrigido**: os resultados reais de pesquisa
+(texto de páginas arbitrárias, fora do controlo do JARVIS) chegavam ao
+modelo sem nenhuma das defesas contra injeção de instruções que
+`abrir_pagina` já tem para o mesmo tipo de conteúdo externo — sem
+delimitador, sem neutralizar hífenes que imitam um, sem aviso explícito
+"nunca instruções a seguir". Corrigido partilhando essa defesa
+(`src/lib/untrusted-content.ts`, extraída de `web-browser-service.ts`)
+entre os dois sítios. Confirmado a apanhar o achado (revertida a
+correção, 2 testes falham com o diff exato do problema; reposta, os 3
+testes novos passam). `tsc` limpo, `eslint` 0 erros, `vitest`
+145/1848 (eram 1845).
+
+### 15. O descarregamento automático do Llama (`ollama.rs`) — revisão adversarial — Claude — commit ver `historico-sessoes.md`
+
+Revisão independente ao código do aditamento ao item 27, construído nesta
+mesma sessão. **Um achado real, corrigido**: `executar_pull` assumia
+sucesso sempre que o streaming do `/api/pull` acabava sem um
+`{"error":...}` explícito, sem exigir a confirmação real
+(`{"status":"success"}`) que o Ollama manda no fim — uma ligação cortada
+de forma limpa a meio passava por "pronto" na mesma, podendo ativar o
+Ollama como provedor com um modelo que nunca ficou instalado. Corrigido
+com `resultado_do_pull`, uma função pura testável, confirmada a apanhar o
+achado (repondo o `Ok(())` incondicional de antes, o teste falha; com a
+correção, passa). Resto do ficheiro confirmado limpo. `cargo check`
+limpo, `cargo test --lib` 66/66 (eram 62).
+
+### 27 (aditamento). O Llama descarrega-se sozinho quando não há nenhum modelo — Claude — commit ver `historico-sessoes.md`
+
+Pedido do utilizador (20/08/2026): "quero o Llama... sem precisar de abrir
+outro app". Quando o `setup()` do item 27 confirma o Ollama saudável mas
+sem nenhum modelo instalado (`GET /api/tags` com `"models": []`), puxa
+`llama3.2:3b` sozinho via `POST /api/pull` (streaming NDJSON), emitindo
+`ollama://pull` (`started`/`progress`/`failed`/`done`) para a interface
+mostrar como notificação. `3b`, não `8b`+, de propósito — a mesma placa já
+tem o XTTS-v2 e o Whisper carregados. Ao terminar, só troca o provedor
+ativo para Ollama sozinho se as definições de IA ainda estiverem tal e
+qual vieram por omissão (`handleOllamaPullEvent`, extraída para
+`ollama-auto-setup.ts` — testável sem montar a app) — nunca por cima de
+uma escolha já feita (DeepSeek, Claude, ou outro modelo Ollama). `tsc`
+limpo, `eslint` 0 erros, `vitest` 1845/1845, `cargo check`/`cargo test
+--lib` limpos (62/62).
+
+### 27. O Ollama arranca com o JARVIS, como a voz clonada — Claude — commit ver `historico-sessoes.md`
+
+`src-tauri/src/ollama.rs`, no padrão de `voice_clone.rs`, com a diferença
+que o item pedia: **nunca mata nada** — o Ollama pode ser um serviço do
+próprio sistema, instalado à parte. Health-check a sério (`GET /api/tags`,
+confirma a forma do corpo, não só o código 200 — a lição do item 19), e só
+arranca `ollama serve` quando a porta está mesmo livre. Confirmado ao vivo
+nesta máquina: o registo mostra `"Ollama já está a correr — não arranco
+outro."` — o Ollama já corria por fora, e o JARVIS não lhe tocou. O caminho
+"arrancar sozinho" fica só testado por unidade (o real não foi parado só
+para testar — é o Ollama a sério da pessoa). Aviso de recursos (modelos
+grandes vs. XTTS-v2/Whisper na mesma placa) acrescentado em Personalização
+→ Assistente, estático em vez de medir VRAM a sério (fora de âmbito deste
+item — não há deteção de VRAM no projeto para reaproveitar). `tsc` limpo,
+`eslint` 0 erros, `cargo check`/`cargo test --lib` limpos (41/41).
 
 ### 24. Wake word — motor local, nunca por um serviço de fala na nuvem — Claude (19/08/2026)
 

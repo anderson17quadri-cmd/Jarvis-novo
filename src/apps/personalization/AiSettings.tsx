@@ -537,7 +537,15 @@ export function AiSettings(): React.JSX.Element {
         <>
           <p className="text-cap leading-relaxed text-t3">
             Nada sai do dispositivo — é um modelo a correr no próprio PC. Sem chave: não há
-            ninguém do outro lado a cobrar.
+            ninguém do outro lado a cobrar. O JARVIS arranca-o sozinho se não estiver a correr
+            (sem tocar num Ollama que já esteja de pé, instalado à parte).
+          </p>
+
+          <p className="flex items-start gap-1.5 text-cap leading-relaxed text-warn">
+            <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0" aria-hidden="true" />
+            Esta máquina já tem a voz clonada e o Whisper na mesma placa gráfica. Um modelo
+            grande (8B ou mais) por cima disso pode não caber — se a máquina abrandar ou cair,
+            experimenta um modelo mais pequeno da mesma família (<span className="mono">qwen3:4b</span>).
           </p>
 
           <label className="block">

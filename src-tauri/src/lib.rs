@@ -5,6 +5,8 @@ mod system;
 #[cfg(desktop)]
 mod shortcuts;
 #[cfg(desktop)]
+mod ollama;
+#[cfg(desktop)]
 mod terminal;
 #[cfg(desktop)]
 mod tray;
@@ -62,6 +64,7 @@ pub fn run() {
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .manage(voice_clone::VoiceCloneProcess(std::sync::Mutex::new(None)))
         .manage(wake_word::WakeWordProcess(std::sync::Mutex::new(None)))
+        .manage(ollama::OllamaProcess(std::sync::Mutex::new(None)))
         .manage(TerminalRegistry::default())
         .manage(commands::files::FileWatchers::new())
         .manage(commands::files::FilesRoot::new())
@@ -121,6 +124,7 @@ pub fn run() {
             tray::setup(app.handle())?;
             shortcuts::setup(app.handle())?;
             voice_clone::setup(app.handle());
+            ollama::setup(app.handle());
 
             // Monitores de fundo para os gatilhos de automação (Parte 13).
             // Cada um corre numa thread própria e emite eventos Tauri quando
@@ -149,6 +153,7 @@ pub fn run() {
             if let tauri::RunEvent::Exit = _event {
                 voice_clone::cleanup(_app_handle);
                 wake_word::cleanup(_app_handle);
+                ollama::cleanup(_app_handle);
             }
         }),
         Err(err) => eprintln!("[jarvis] a aplicação terminou com erro: {err}"),

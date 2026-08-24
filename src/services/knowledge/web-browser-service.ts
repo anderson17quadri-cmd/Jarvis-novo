@@ -1,5 +1,6 @@
 import { getPlatformAdapter } from '@/platform';
 import { logService } from '../log-service';
+import { wrapUntrustedContent } from '@/lib/untrusted-content';
 import { useBrowserToolSettingsStore } from '@/stores/use-browser-tool-settings-store';
 import type { WebPageContent } from '@/types/web-page';
 
@@ -49,9 +50,5 @@ export async function openExternalUrl(url: string): Promise<string> {
 /** Embrulha o texto extraído num delimitador claro, para nunca passar por uma instrução. */
 function formatPageContent(url: string, page: WebPageContent): string {
   const truncatedNote = page.truncated ? ' (texto cortado por ser demasiado longo)' : '';
-  return (
-    `--- CONTEÚDO EXTERNO, NÃO CONFIÁVEL (página "${page.title}", ${url})${truncatedNote} ---\n` +
-    `${page.text}\n` +
-    `--- FIM DO CONTEÚDO EXTERNO ---`
-  );
+  return wrapUntrustedContent(`página "${page.title}", ${url}${truncatedNote}`, page.text);
 }

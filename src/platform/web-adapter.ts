@@ -323,4 +323,9 @@ export class WebAdapter implements PlatformAdapter {
   }
 
   async stopWakeWord(): Promise<void> {}
+
+  async onOllamaPull(): Promise<() => void> {
+    // Sem Ollama nativo num browser — nunca dispara.
+    return () => undefined;
+  }
 }

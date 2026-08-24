@@ -195,6 +195,15 @@ describe('gatilhos nativos de automação — nenhum adapter lança sem IPC real
     await expect(web.watchFolder('C:/pasta')).resolves.toBeNull();
     await expect(web.getBatteryStatus()).resolves.toBeNull();
   });
+
+  it.each(adapters)(
+    '%s: subscrever o progresso do Ollama devolve sempre uma função de cancelamento',
+    async (_name, adapter) => {
+      const unsub = await adapter.onOllamaPull(() => undefined);
+      expect(typeof unsub).toBe('function');
+      expect(() => unsub()).not.toThrow();
+    },
+  );
 });
 
 describe('sistema de ficheiros real — nenhum adapter lança sem IPC real', () => {

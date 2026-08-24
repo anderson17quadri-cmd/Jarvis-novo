@@ -44,6 +44,7 @@ import { hydrateAll } from '@/services/hydrate-all';
 import { logService } from '@/services/log-service';
 import { mailService } from '@/services/mail/mail-service';
 import { notificationService } from '@/services/notification-service';
+import { handleOllamaPullEvent } from '@/services/ollama-auto-setup';
 import { musicService } from '@/services/music/music-service';
 import { obsidianService } from '@/services/knowledge/obsidian-service';
 import { webSearchService } from '@/services/web-search/web-search-service';
@@ -267,6 +268,27 @@ export function App(): React.JSX.Element {
     return () => {
       for (const cleanup of cleanups) cleanup();
     };
+  }, [isDesktop]);
+
+  /**
+   * Descarregamento automático do modelo Llama por omissão, quando o Ollama
+   * arranca sem nenhum modelo instalado — pedido explícito do utilizador
+   * (20/08/2026) para o JARVIS "ficar inteligente sem precisar de adicionar
+   * mais nada". A decisão em si (avisar, e só trocar o provedor ativo se as
+   * definições ainda estiverem por configurar) vive em `handleOllamaPullEvent`,
+   * testável à parte.
+   */
+  useEffect(() => {
+    if (!isDesktop) return;
+
+    const adapter = getPlatformAdapter();
+    let cleanup: (() => void) | null = null;
+
+    void (async () => {
+      cleanup = await adapter.onOllamaPull(handleOllamaPullEvent);
+    })();
+
+    return () => cleanup?.();
   }, [isDesktop]);
 
   useEffect(() => {
