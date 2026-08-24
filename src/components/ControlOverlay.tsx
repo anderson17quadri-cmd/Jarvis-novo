@@ -6,7 +6,7 @@
  * executar (ou simular).
  */
 
-import { useSyncExternalStore } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import { AlertTriangle, Check, Shield, X } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
@@ -36,6 +36,44 @@ export function ControlOverlay({
     (onChange) => directControlService.subscribe(onChange),
     () => directControlService.isSimulated,
   );
+
+  /*
+   * Foco ao abrir, no **Recusar**.
+   *
+   * Dos quatro `aria-modal` da aplicação, este era o único que não mexia no
+   * foco — logo o mais crítico, o que pergunta se o JARVIS pode mexer no
+   * computador. Sem isto, o foco ficava onde estava (atrás do overlay), e um
+   * Enter reflexo carregava num botão escondido.
+   *
+   * É o Recusar que recebe o foco, e não o Confirmar: se alguém carregar em
+   * Enter sem ler, o que acontece é a ação **não** correr. A confirmação de
+   * uma ação sobre o computador tem de ser um gesto deliberado, nunca o
+   * caminho de menor esforço.
+   */
+  const recusarRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => recusarRef.current?.focus(), 40);
+
+    /*
+     * Escape recusa — ao nível da janela, não do `div`, para funcionar de
+     * imediato: com o `onKeyDown` no elemento, os primeiros 40 ms (até o
+     * foco entrar) engoliam a tecla. Não colide com o travão de mão: o
+     * primeiro Escape recusa este passo, e um segundo logo a seguir continua
+     * a acionar o `emergencyStop` do `DirectControlHost`, que fecha a sessão
+     * inteira.
+     */
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      onCancel();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [onCancel]);
 
   return (
     <div
@@ -82,6 +120,7 @@ export function ControlOverlay({
         {/* Botões */}
         <div className="mt-s2 flex gap-2">
           <button
+            ref={recusarRef}
             type="button"
             onClick={onCancel}
             className={cn(

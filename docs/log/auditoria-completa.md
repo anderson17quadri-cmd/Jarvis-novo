@@ -359,6 +359,7 @@ sem trazer o coringa: bastam as duas entradas concretas
 | A14 | Modo simulado não travava o print do ecrã | **ALTO** | ✅ corrigido |
 | A15 | Assistente dava ficheiros de exemplo por reais | MÉDIO | ✅ corrigido |
 | A16 | Janela do Calendário não dizia que a agenda é simulada | MÉDIO | ✅ corrigido |
+| A17 | Overlay de Controlo Direto sem gestão de foco nem Escape | MÉDIO | ✅ corrigido |
 
 **Áreas varridas nesta passagem**: `src/services/` (ai-service, automation,
 memory, intents, executor, data-service, searxng, ollama-auto-setup),
@@ -518,4 +519,33 @@ ligado." no fim da lista, no mesmo tom do widget e da janela de Emails.
 
 Também tratado de caminho: o `abrir_ficheiro` (irmão do A15) passou a dizer que
 navega na árvore de exemplo, e a descrição no catálogo avisa o modelo.
+
+### A17 — O overlay de Controlo Direto era o único modal sem gestão de foco — **MÉDIO** ✅ CORRIGIDO
+
+`src/components/ControlOverlay.tsx`
+
+Quatro componentes declaram `aria-modal="true"`: a Paleta de Comandos, a
+Correção de Voz, o Painel de Notificações e o **overlay de Controlo Direto**.
+Os três primeiros gerem o foco ao abrir; o overlay **não gere nada** — e é o
+mais crítico dos quatro, o que pergunta se o JARVIS pode mexer no computador.
+
+Duas consequências reais:
+
+1. **O foco ficava atrás do overlay.** Um Enter reflexo — bastante provável,
+   já que o overlay aparece por cima do que se estava a fazer — carregava num
+   botão escondido por trás dele.
+2. **O `aria-modal="true"` mentia.** Diz à tecnologia de apoio que o resto da
+   página está inerte, e não estava.
+
+Faltava também o Escape, que a Correção de Voz já tinha.
+
+**Corrigido**: foco ao abrir no **Recusar**, nunca no Confirmar — se alguém
+carregar em Enter sem ler, o que acontece é a ação *não* correr; confirmar uma
+ação sobre o computador tem de ser um gesto deliberado, nunca o caminho de
+menor esforço. E Escape recusa, ao nível da janela (com o `onKeyDown` no
+elemento, os primeiros 40 ms — até o foco entrar — engoliam a tecla). Não
+colide com o travão de mão: o primeiro Escape recusa o passo, um segundo logo
+a seguir continua a acionar o `emergencyStop`.
+
+Dois testes em `tests/diagnostics/control-overlay-teclado.test.tsx`.
 
