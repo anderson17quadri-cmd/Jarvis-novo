@@ -20,13 +20,23 @@ Legenda de gravidade:
 | src/plugins/ | 2537 | ✅ lido (19/08) |
 | src/platform/ | 1736 | ✅ lido (19/08) |
 | src/widgets/ | 1563 | ✅ revisto (item 15, 20/08) |
-| src/services/ | 10940 | 🔄 em curso |
-| src/stores/ | 3570 | ⬜ |
-| src/hooks/ | 2021 | ⬜ |
-| src/apps/ | 10442 | ⬜ |
-| src/components/ | 6569 | ⬜ |
-| src/types/ | 3020 | ⬜ |
-| restantes (data, lib, config, design-system, automation, mcp) | ~1100 | ⬜ |
+| src/services/ | 10940 | ✅ varrido (20/08) |
+| src/stores/ | 3570 | ✅ varrido (20/08) |
+| src/hooks/ | 2021 | ✅ varrido (20/08) |
+| src/apps/ | 10442 | ✅ varrido (20/08) |
+| src/components/ | 6569 | ✅ varrido (20/08) |
+| src/types/ | 3020 | ✅ varrido (20/08) |
+| restantes (data, lib, config, design-system, automation, mcp) | ~1100 | ✅ varrido (20/08) |
+
+**O que "varrido" quer dizer, com honestidade**: os ficheiros de lógica densa
+foram lidos a sério, linha a linha (serviços, stores, hooks, o Rust todo, a
+superfície de plugins, o overlay e a porta de presença). Os ficheiros de
+apresentação pura (JSX de layout, listas, estilos) foram varridos por padrão —
+promessas de interface contra o código, ações destrutivas, efeitos sem limpeza,
+`aria-modal` sem foco, dados de exemplo a passar por reais — e não lidos
+palavra a palavra. A diferença importa: um bug de lógica escondido num
+componente de apresentação que não bata em nenhum destes padrões pode ter
+escapado.
 
 ---
 
