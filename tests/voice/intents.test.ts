@@ -123,6 +123,17 @@ describe('desktop', () => {
     expect(first('Esconde os widgets.').kind).toBe('esconder-widgets');
   });
 
+  it('"mostra os widgets" não pode esconder os widgets', () => {
+    // O caminho de "widgets" sem nome nenhum devolvia sempre
+    // `esconder-widgets`, mesmo com um verbo de mostrar à frente: dizer
+    // "mostra os widgets" fazia-os desaparecer todos, sem confirmação
+    // (`esconder-widgets` não está no conjunto CRITICAL). O comentário no
+    // código chegava a dizer que era "o inverso de os esconder", e devolvia
+    // exatamente o esconder.
+    expect(first('Mostra os widgets.').kind).not.toBe('esconder-widgets');
+    expect(first('Mostrar os widgets.').kind).not.toBe('esconder-widgets');
+  });
+
   it('mostrar um widget concreto', () => {
     const intent = first('Mostra o widget de Disco.');
     expect(intent.kind).toBe('widget');

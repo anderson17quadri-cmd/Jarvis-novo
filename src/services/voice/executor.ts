@@ -18,6 +18,7 @@ export interface VoiceExecutor {
   readonly setSystemState: (state: SystemStateId) => void;
   readonly setWidgetVisible: (widget: WidgetId, show: boolean) => void;
   readonly hideAllWidgets: () => void;
+  readonly showAllWidgets: () => void;
   readonly createTask: (title: string) => void;
   readonly search: (query: string) => void;
   readonly music: (action: 'tocar' | 'pausar' | 'proxima' | 'anterior') => void;
@@ -79,6 +80,9 @@ export function executeIntent(intent: VoiceIntent, executor: VoiceExecutor): voi
       return;
     case 'esconder-widgets':
       executor.hideAllWidgets();
+      return;
+    case 'mostrar-widgets':
+      executor.showAllWidgets();
       return;
     case 'criar-tarefa':
       executor.createTask(intent.title);

@@ -417,6 +417,14 @@ export function App(): React.JSX.Element {
         for (const widget of store.widgets) store.hide(widget.id);
         void store.persist();
       },
+      showAllWidgets: () => {
+        const store = useWidgetStore.getState();
+        // Um a um pelo `show`, não em bloco: é o `show` que resolve colisões
+        // de posição, e pôr `isVisible` a `true` à força deixava widgets
+        // empilhados no mesmo sítio da grelha.
+        for (const widget of store.widgets) store.show(widget.id);
+        void store.persist();
+      },
       createTask: (title) => {
         useTaskStore.getState().add(title, 'media');
         void useTaskStore.getState().persist();

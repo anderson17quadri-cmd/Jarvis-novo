@@ -26,6 +26,7 @@ export type VoiceIntent =
   | { readonly kind: 'estado'; readonly state: SystemStateId }
   | { readonly kind: 'widget'; readonly widget: WidgetId; readonly show: boolean }
   | { readonly kind: 'esconder-widgets' }
+  | { readonly kind: 'mostrar-widgets' }
   | { readonly kind: 'criar-tarefa'; readonly title: string }
   | { readonly kind: 'pesquisar'; readonly query: string }
   | { readonly kind: 'musica'; readonly action: 'tocar' | 'pausar' | 'proxima' | 'anterior' }
@@ -285,8 +286,15 @@ export function matchIntent(normalized: string): VoiceIntent | null {
       return { kind: 'widget', widget, show: !hiding };
     }
 
-    // "Mostra os widgets" sem nome nenhum: é o inverso de os esconder.
-    if (/widgets\b/.test(text)) return { kind: 'esconder-widgets' };
+    // "Widgets" sem nome nenhum: o verbo é que decide. Sem esta distinção,
+    // "mostra os widgets" devolvia `esconder-widgets` e fazia-os desaparecer
+    // todos — o contrário do que foi pedido, e sem confirmação, porque
+    // esconder widgets não está no conjunto CRITICAL.
+    if (/widgets\b/.test(text)) {
+      return HIDE_VERBS.some((verb) => text.startsWith(verb))
+        ? { kind: 'esconder-widgets' }
+        : { kind: 'mostrar-widgets' };
+    }
   }
 
   // ── Produtividade ────────────────────────────────────────────────────────
@@ -386,6 +394,8 @@ export function describeIntent(intent: VoiceIntent): string {
       return `${intent.show ? 'Mostrar' : 'Esconder'} o widget ${widgetName(intent.widget)}`;
     case 'esconder-widgets':
       return 'Esconder os widgets';
+    case 'mostrar-widgets':
+      return 'Mostrar os widgets';
     case 'criar-tarefa':
       return `Criar a tarefa "${intent.title}"`;
     case 'pesquisar':

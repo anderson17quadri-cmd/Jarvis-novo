@@ -18,6 +18,7 @@ function makeExecutor(): VoiceExecutor & { calls: string[] } {
     setSystemState: (state) => calls.push(`estado:${state}`),
     setWidgetVisible: (widget, show) => calls.push(`widget:${widget}:${show ? 'on' : 'off'}`),
     hideAllWidgets: () => calls.push('esconder-widgets'),
+    showAllWidgets: () => calls.push('mostrar-widgets'),
     createTask: (title) => calls.push(`tarefa:${title}`),
     search: (query) => calls.push(`procurar:${query}`),
     music: (action) => calls.push(`musica:${action}`),
