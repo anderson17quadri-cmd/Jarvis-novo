@@ -255,3 +255,108 @@ mesma classe de lacuna de honestidade já corrigida duas vezes nesta auditoria
 (SPEC.md a prometer a mais em 14/08, o aviso do navegador em 15/08): o registo
 diz "implementada" e a pessoa que o lê não fica a saber o que falta.
 
+### A9 — Requisitos da Parte 14 (Segurança) ausentes e não assinalados no SPEC.md — **MÉDIO**
+
+O `SPEC.md` marca "Permissões por plugin ✅" (linha 430) e "Painel de
+privacidade e permissões ✅" (linha 555). As duas entradas descrevem bem o que
+foi construído — mas **nenhuma menciona** que estes pedidos da Parte 14 da spec
+original não existem de todo:
+
+| Requisito da Parte 14 | Estado real |
+|---|---|
+| Permissões com quatro estados: Permitida / Negada / **Permitida uma vez** / **Permitida durante a sessão** | Só permitida/negada. Os dois estados temporários não existem |
+| **Modo privacidade** — desativa telemetria, oculta notificações sensíveis, bloqueia histórico de voz, suspende sincronizações, indicador discreto | Não existe (`grep` por `privacyMode`/`modo privacidade` não devolve nada) |
+| **Gestão de sessões** — sessão atual, dispositivo, SO, IP, último acesso; encerrar sessão específica ou todas | Não existe |
+| **Proteção contra erros** — plugin com comportamento anormal isolado automaticamente, suspenso, relatório gerado | Não existe |
+
+Não é que estejam mal construídos — é que **não estão lá, e o mapa não o diz**.
+Quem lê o `SPEC.md` para saber o que falta na Parte 14 fica com a impressão de
+que está fechada.
+
+É a mesma classe das duas lacunas já corrigidas nesta auditoria (o `SPEC.md` a
+prometer 3.1 como funcional quando nada a alcançava, 14/08; o aviso do
+navegador desatualizado, 15/08). O padrão repete-se: o que se constrói fica
+bem documentado, o que se decide não construir cai no esquecimento.
+
+**Nota justa**: alguns destes podem ter sido decisões deliberadas de âmbito
+(gestão de sessões num sistema de um só utilizador sem servidor faz pouco
+sentido). O problema não é a decisão — é não estar escrita.
+
+### A10 — O SPEC.md diz que o gatilho de rede é impossível, e não é — **MÉDIO**
+
+`SPEC.md:543`
+
+> Rede 🚫 — **sem API para eventos de conectividade no Windows**.
+
+A afirmação é falsa, e há prova concreta: o repositório irmão
+`anderson17quadri-cmd/sexta-feira` (a cópia que o utilizador mandou trabalhar
+em paralelo) tem o gatilho de rede **construído e a funcionar**, em
+`src-tauri/src/commands/network.rs` — `GetAdaptersAddresses` do crate
+`windows`, a classificar "há rede local" por adaptador `IfOperStatusUp` com
+gateway, num poll de 5 segundos, com 5 testes sobre a função pura de
+classificação.
+
+Não é um bug de código: o `Jarvis-novo` simplesmente não tem a funcionalidade.
+O problema é o **"🚫 sem API"**: um bloqueio dado como técnico e permanente,
+quando na verdade a API existe e já foi usada. Quem ler isto para decidir o que
+fazer a seguir descarta o item por impossível.
+
+**Correção proposta**: mudar de "🚫 impossível" para "⬜ por construir — ver
+`network.rs` no repositório `sexta-feira`, onde já está feito". Trazer o
+ficheiro é trabalho pequeno e já provado.
+
+### A11 — Parte 12: provedores em falta, e três deles já existem no repositório irmão — **BAIXO**
+
+`SPEC.md:427` (entrada "AI Orchestrator ✅")
+
+A spec pede treze provedores: OpenAI, Claude, Gemini, Mistral, DeepSeek, Grok,
+Cohere, OpenRouter, Ollama, LM Studio, vLLM, Llama.cpp, modelos próprios.
+Existem **três** (`DeepSeek`, `Claude`, `Ollama`) mais o local de regras.
+
+A entrada do `SPEC.md` é longa e rigorosa sobre o que foi construído, mas está
+marcada ✅ sem dizer que faltam dez provedores, nem que a "execução paralela"
+(consultar vários modelos ao mesmo tempo e combinar) não existe.
+
+**O que vale a pena saber**: o repositório irmão `sexta-feira` já tem
+**OpenAI, Gemini e LM Studio** construídos e testados
+(`src/services/ai-providers/{openai,gemini,lmstudio}-provider.ts`, ~750 linhas,
+33 testes segundo o histórico deles). Três dos dez em falta estão a um `git
+cherry-pick` de distância — não é preciso escrevê-los.
+
+**Atenção ao trazer**: a mesma alteração no `sexta-feira` alargou a CSP com
+coringas (`https:`, `http://localhost:*`) para o marketplace, o que anula a
+"lista fechada de anfitriões" que este projeto defende. Trazer os provedores
+sem trazer o coringa: bastam as duas entradas concretas
+(`https://api.openai.com`, `https://generativelanguage.googleapis.com`,
+`http://localhost:1234`).
+
+---
+
+## Resumo do varrimento
+
+| # | Achado | Gravidade | Estado |
+|---|---|---|---|
+| A1 | `confirmTool` confia em quem chama | MÉDIO | por corrigir |
+| A2 | Automações por intervalo repetem-se a cada arranque | MÉDIO | por corrigir |
+| A3 | "Mostra os widgets" escondia-os todos | MÉDIO | ✅ corrigido |
+| A4 | Apagar na interface nunca confirma | BAIXO | observação |
+| A5 | Descarregamento do modelo não se trava | BAIXO | observação |
+| A6 | Sessão de Controlo Direto sobrevivia ao bloqueio | **ALTO** | ✅ corrigido |
+| A7 | Sem indicador permanente de Controlo Direto ativo | **ALTO** | por construir |
+| A8 | Sem consentimento antes do primeiro print | MÉDIO | por construir |
+| A9 | Requisitos da Parte 14 ausentes e não assinalados | MÉDIO | ✅ documentado |
+| A10 | SPEC.md diz que o gatilho de rede é impossível (não é) | MÉDIO | ✅ corrigido no SPEC.md |
+| A11 | Provedores em falta; três já existem no repo irmão | BAIXO | documentado |
+
+**Áreas varridas nesta passagem**: `src/services/` (ai-service, automation,
+memory, intents, executor, data-service, searxng, ollama-auto-setup),
+`src/stores/` (persistência de todas as ações), `src/hooks/` (idle-lock e
+efeitos assíncronos de todos), `src/apps/` + `src/components/` (ações
+destrutivas, efeitos sem limpeza), e o cruzamento das Partes 12, 13 e 14 da
+spec original contra o código.
+
+**Método**: além de ler, cruzou-se a spec com o código requisito a requisito —
+foi assim que apareceram A6, A7 e A8, que nenhuma leitura de código sozinha
+encontraria (o código está correto naquilo que faz; o que falta é o que não
+faz).
+
