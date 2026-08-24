@@ -317,9 +317,11 @@ async function perform(
     }
 
     case 'abrir_ficheiro':
+      // Mesma ressalva do `procurar_ficheiro`: a navegação é sobre a árvore de
+      // exemplo, não sobre a pasta real que o Explorador possa ter aberta.
       return run.openFileLocation(text('nome'))
-        ? 'Explorador de Ficheiros aberto nessa pasta.'
-        : `Não encontrei nada com "${text('nome')}" no nome.`;
+        ? 'Explorador de Ficheiros aberto nessa pasta (árvore de exemplo, não o disco a sério).'
+        : `Não encontrei nada com "${text('nome')}" no nome (árvore de exemplo).`;
 
     case 'procurar_nota': {
       const notes = await run.searchNotes(text('titulo'));

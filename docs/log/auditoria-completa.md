@@ -358,6 +358,7 @@ sem trazer o coringa: bastam as duas entradas concretas
 | A13 | Privacidade mandava dizer a palavra-passe em voz alta (não há voz) | MÉDIO | ✅ corrigido |
 | A14 | Modo simulado não travava o print do ecrã | **ALTO** | ✅ corrigido |
 | A15 | Assistente dava ficheiros de exemplo por reais | MÉDIO | ✅ corrigido |
+| A16 | Janela do Calendário não dizia que a agenda é simulada | MÉDIO | ✅ corrigido |
 
 **Áreas varridas nesta passagem**: `src/services/` (ai-service, automation,
 memory, intents, executor, data-service, searxng, ollama-auto-setup),
@@ -497,4 +498,24 @@ simulada já tinha.
 `files_read_dir` lê um nível de cada vez; procurar por nome exige descer a
 árvore toda, com as decisões de profundidade e desempenho que isso traz). Fica
 para a fila.
+
+### A16 — A janela do Calendário não dizia que a agenda é simulada — **MÉDIO** ✅ CORRIGIDO
+
+`src/apps/calendar/CalendarWindow.tsx`
+
+O **widget** do calendário mostra "Agenda simulada"
+(`CalendarWidget.tsx:102`). A **janela** — a vista grande, a que se abre para
+ver o dia — não mostrava nada: apresentava compromissos inventados como se
+fossem os da pessoa.
+
+O serviço tem o sinalizador (`calendarService.isSimulated`), o widget usa-o, a
+janela ignorava-o. Das duas janelas ligadas a dados simuláveis, a de Emails
+avisa (`EmailsWindow.tsx:208`) e a do Calendário não avisava — inconsistência,
+não decisão.
+
+**Corrigido**: a janela mostra "Agenda simulada — não há calendário real
+ligado." no fim da lista, no mesmo tom do widget e da janela de Emails.
+
+Também tratado de caminho: o `abrir_ficheiro` (irmão do A15) passou a dizer que
+navega na árvore de exemplo, e a descrição no catálogo avisa o modelo.
 

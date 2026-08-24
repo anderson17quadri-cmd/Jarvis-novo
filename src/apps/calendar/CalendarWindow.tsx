@@ -17,6 +17,10 @@ export default function CalendarWindow(): React.JSX.Element {
 
   const entries = snapshot?.entries ?? [];
   const current = currentEntry(now, entries);
+  // O widget do calendário já dizia "Agenda simulada"; a janela — que é a
+  // vista maior e mais convincente — não dizia nada, e apresentava
+  // compromissos inventados como se fossem os da pessoa.
+  const isSimulated = snapshot?.isSimulated ?? true;
 
   return (
     <div>
@@ -46,6 +50,12 @@ export default function CalendarWindow(): React.JSX.Element {
           </li>
         ))}
       </ul>
+
+      {isSimulated && (
+        <p className="mt-3 text-cap text-t3">
+          Agenda simulada — não há calendário real ligado.
+        </p>
+      )}
     </div>
   );
 }
