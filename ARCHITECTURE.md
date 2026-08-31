@@ -341,3 +341,58 @@ Não é uma camada final — é parte de cada componente:
 - Contagem de partículas escala com o ecrã
 - Janelas em `lazy()`
 - Seletores do Zustand que derivam arrays **precisam** de `useShallow` — sem isso, entram em ciclo de renderização
+
+---
+
+## Serviços Python
+
+O JARVIS integra dois serviços Python locais para funcionalidades de voz:
+
+### Voice Clone Service (Porta 8090)
+
+**Função:** Síntese e reconhecimento de voz local usando XTTS-v2 e Whisper.
+
+**Tecnologia:**
+- FastAPI para API REST
+- Coqui TTS (XTTS-v2) para síntese com clonagem de voz
+- OpenAI Whisper para transcrição
+- FFmpeg para processamento de áudio
+
+**Endpoints:**
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/health` | GET | Status básico do serviço |
+| `/health/detailed` | GET | Status detalhado com uso de recursos |
+| `/vozes` | GET | Lista vozes disponíveis do modelo |
+| `/voz` | POST | Registra amostra de voz para clonagem |
+| `/falar` | POST | Sintetiza texto em áudio |
+| `/ouvir` | POST | Transcreve áudio para texto |
+
+**Segurança:**
+- CORS restrito a origens do JARVIS (`localhost:1420`, `tauri.localhost`)
+- Validação de tipo MIME para uploads de áudio
+- Limites de tamanho (10MB) e duração (1-300s)
+- Sanitização de paths de arquivos temporários
+
+**Arquivos Principais:**
+- `voice-clone-service/server.py` - Servidor principal
+- `voice-clone-service/voices/referencia.wav` - Amostra de voz clonada
+- `voice-clone-service/tests/test_validacao.py` - Testes de validação
+
+### Wake Word Service (Porta 8080)
+
+**Função:** Detecção local de palavra de ativação ("Hey Jarvis").
+
+**Tecnologia:**
+- FastAPI para API REST
+- Porcupine ou OpenWakeWord para detecção
+
+**Endpoints:**
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/health` | GET | Status do serviço |
+| `/detect` | POST | Processa áudio para detecção de wake word |
+
+**Integração:** Ambos os serviços rodam independentemente do processo principal do Tauri, comunicando via HTTP localhost. O JARVIS pode funcionar sem eles (com funcionalidade reduzida), seguindo o princípio de degradação graciosa.
+
+Ver [docs/PORTS_AND_FLOWS.md](docs/PORTS_AND_FLOWS.md) para detalhes de comunicação entre serviços.
