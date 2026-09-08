@@ -11,6 +11,8 @@ pub mod mail;
 #[cfg(desktop)]
 pub mod music;
 #[cfg(desktop)]
+pub mod network;
+#[cfg(desktop)]
 pub mod obsidian;
 #[cfg(desktop)]
 pub mod plugins;

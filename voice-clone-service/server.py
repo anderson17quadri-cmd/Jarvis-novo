@@ -23,11 +23,27 @@ import json
 import os
 import subprocess
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+
+# Constantes de validação de áudio
+ALLOWED_AUDIO_MIME_TYPES = {
+    "audio/wav": ".wav",
+    "audio/wave": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/webm": ".webm",
+    "audio/ogg": ".ogg",
+    "audio/mp4": ".mp4",
+    "audio/mpeg": ".mp3",
+}
+
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+MIN_DURATION_SECONDS = 1
+MAX_DURATION_SECONDS = 300  # 5 minutos
 
 VOICES_DIR = Path(__file__).parent / "voices"
 REFERENCE_PATH = VOICES_DIR / "referencia.wav"
@@ -220,6 +236,30 @@ def vozes_prontas() -> Response:
     )
 
 
+def _validar_duracao_audio(caminho_arquivo: str) -> float:
+    """Valida a duração do áudio usando ffprobe."""
+    try:
+        resultado = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "quiet",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                caminho_arquivo
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        if resultado.returncode != 0:
+            return 0.0
+        
+        duracao = float(resultado.stdout.strip())
+        return duracao
+    except (subprocess.TimeoutExpired, ValueError, FileNotFoundError):
+        return 0.0
+
+
 @app.post("/voz")
 async def gravar_voz(ficheiro: UploadFile) -> Response:
     """
@@ -233,12 +273,33 @@ async def gravar_voz(ficheiro: UploadFile) -> Response:
     o `.wav` de quem grava à mão como antes. Sai sempre `.wav` PCM mono: o
     ficheiro pode chegar em qualquer contentor, `REFERENCE_PATH` tem de ser
     sempre o mesmo formato que o XTTS-v2 espera.
+    
+    Validações:
+    - Tipo MIME deve estar na whitelist ALLOWED_AUDIO_MIME_TYPES
+    - Tamanho máximo: 10MB
+    - Duração: 1-300 segundos
     """
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
     conteudo = await ficheiro.read()
 
+    # Validação de tamanho mínimo
     if len(conteudo) < 1000:
         raise HTTPException(400, "O ficheiro parece vazio ou vazio de mais para ser uma gravação.")
+    
+    # Validação de tamanho máximo
+    if len(conteudo) > MAX_FILE_SIZE:
+        raise HTTPException(
+            413, 
+            f"O ficheiro excede o tamanho máximo de {MAX_FILE_SIZE // 1024 // 1024}MB."
+        )
+    
+    # Validação de tipo MIME
+    mime_type = ficheiro.content_type or ""
+    if mime_type and mime_type not in ALLOWED_AUDIO_MIME_TYPES:
+        raise HTTPException(
+            415,
+            f"Tipo de ficheiro '{mime_type}' não suportado. Tipos aceites: {', '.join(ALLOWED_AUDIO_MIME_TYPES.keys())}"
+        )
 
     sufixo = Path(ficheiro.filename or "gravacao.wav").suffix or ".wav"
     with tempfile.NamedTemporaryFile(suffix=sufixo, delete=False) as tmp:
@@ -246,6 +307,22 @@ async def gravar_voz(ficheiro: UploadFile) -> Response:
         caminho_temp = tmp.name
 
     try:
+        # Validar duração antes de converter
+        duracao = _validar_duracao_audio(caminho_temp)
+        if duracao > 0:  # Só valida se conseguiu obter duração
+            if duracao < MIN_DURATION_SECONDS:
+                Path(caminho_temp).unlink(missing_ok=True)
+                raise HTTPException(
+                    400,
+                    f"Áudio muito curto ({duracao:.1f}s). Mínimo: {MIN_DURATION_SECONDS} segundos."
+                )
+            if duracao > MAX_DURATION_SECONDS:
+                Path(caminho_temp).unlink(missing_ok=True)
+                raise HTTPException(
+                    400,
+                    f"Áudio muito longo ({duracao:.1f}s). Máximo: {MAX_DURATION_SECONDS} segundos (5 minutos)."
+                )
+        
         resultado = subprocess.run(
             ["ffmpeg", "-y", "-i", caminho_temp, "-ar", "22050", "-ac", "1", str(REFERENCE_PATH)],
             capture_output=True,

@@ -113,22 +113,37 @@ export class AutomationService {
   /** Última percentagem de bateria conhecida — para detetar cruzamentos de limiar. */
   private lastBatteryPercent: number | null = null;
 
+  /** Último estado de rede conhecido — para detetar mudanças. */
+  private lastNetworkState: { is_connected: boolean; ipv4_address: string | null } | null = null;
+
   /**
    * Chamado de fora (normalmente do App.tsx) quando um evento nativo chega.
    *
    * O motor não conhece o PlatformAdapter — quem liga os fios é a aplicação.
    * Este método só percorre as automações e decide se alguma dispara.
    */
-  checkNativeTriggers(kind: 'ficheiros' | 'usb' | 'bateria', payload: {
-    filePath?: string;
-    usbAction?: string;
-    batteryPercent?: number;
-  }): void {
+  checkNativeTriggers(
+    kind: 'ficheiros' | 'usb' | 'bateria' | 'rede',
+    payload: {
+      filePath?: string;
+      usbAction?: string;
+      batteryPercent?: number;
+      networkIsConnected?: boolean;
+      networkIpAddress?: string | null;
+    },
+  ): void {
     // Captura o "anterior" uma vez e atualiza uma vez, no fim — nunca dentro
     // do predicado, que corre por automação: atualizar ali faria a segunda
     // regra de bateria comparar contra o valor já atualizado e nunca disparar.
     const batteryCurrent = kind === 'bateria' ? payload.batteryPercent : undefined;
     const batteryPrevious = this.lastBatteryPercent;
+
+    // Para rede, capturamos o estado anterior antes de qualquer comparação
+    const networkCurrent =
+      kind === 'rede'
+        ? { is_connected: payload.networkIsConnected ?? false, ipv4_address: payload.networkIpAddress ?? null }
+        : null;
+    const networkPrevious = this.lastNetworkState;
 
     this.runByTrigger((automation) => {
       const trigger = automation.trigger;
@@ -153,11 +168,37 @@ export class AutomationService {
         return batteryPrevious < trigger.percent && batteryCurrent >= trigger.percent;
       }
 
+      if (trigger.kind === 'rede' && kind === 'rede') {
+        if (!networkCurrent || !networkPrevious) return false;
+
+        // Deteta se ligou/desligou
+        if (trigger.event === 'ligado' && !networkPrevious.is_connected && networkCurrent.is_connected) {
+          return true;
+        }
+        if (trigger.event === 'desligado' && networkPrevious.is_connected && !networkCurrent.is_connected) {
+          return true;
+        }
+        // Deteta mudança de IP (ambos conectados, IPs diferentes)
+        if (
+          trigger.event === 'ip_mudou' &&
+          networkPrevious.is_connected &&
+          networkCurrent.is_connected &&
+          networkPrevious.ipv4_address !== networkCurrent.ipv4_address
+        ) {
+          return true;
+        }
+
+        return false;
+      }
+
       return false;
     });
 
     if (batteryCurrent !== undefined) {
       this.lastBatteryPercent = batteryCurrent;
+    }
+    if (networkCurrent !== null) {
+      this.lastNetworkState = networkCurrent;
     }
   }
 

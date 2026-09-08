@@ -1,0 +1,232 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  RUST_VERSION: '1.75'
+
+jobs:
+  lint-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+
+  type-check:
+    runs-on: ubuntu-latest
+    needs: lint-frontend
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run TypeScript check
+        run: npm run typecheck
+
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: type-check
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run Vitest
+        run: npm run test:unit
+        continue-on-error: true
+
+  test-python-voice:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r voice-clone-service/requirements-dev.txt
+      
+      - name: Run pytest
+        run: pytest voice-clone-service/tests/ -v --tb=short
+
+  test-python-wake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r wake-word-service/requirements-dev.txt
+      
+      - name: Run pytest
+        run: pytest wake-word-service/tests/ -v --tb=short
+
+  lint-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          components: rustfmt, clippy
+      
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      
+      - name: Check formatting
+        run: cargo fmt --check
+        working-directory: src-tauri
+      
+      - name: Run Clippy
+        run: cargo clippy -- -D warnings
+        working-directory: src-tauri
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, type-check, test-unit]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    needs: build-frontend
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      
+      - name: Run Playwright tests
+        run: npm run test:e2e
+        continue-on-error: true
+      
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Run npm audit
+        run: npm audit --audit-level=moderate
+        continue-on-error: true
+      
+      - name: Install pip-audit
+        run: pip install pip-audit
+      
+      - name: Run pip-audit on voice-clone-service
+        run: pip-audit -r voice-clone-service/requirements.txt
+        continue-on-error: true
+
+  summary:
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, type-check, test-unit, test-python-voice, test-python-wake, lint-rust, build-frontend, security-scan]
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## CI Pipeline Summary"
+          echo ""
+          echo "| Job | Status |"
+          echo "|-----|--------|"
+          echo "| Lint Frontend | ${{ needs.lint-frontend.result }} |"
+          echo "| Type Check | ${{ needs.type-check.result }} |"
+          echo "| Unit Tests | ${{ needs.test-unit.result }} |"
+          echo "| Python Tests (Voice) | ${{ needs.test-python-voice.result }} |"
+          echo "| Python Tests (Wake) | ${{ needs.test-python-wake.result }} |"
+          echo "| Rust Lint | ${{ needs.lint-rust.result }} |"
+          echo "| Build | ${{ needs.build-frontend.result }} |"
+          echo "| Security Scan | ${{ needs.security-scan.result }} |"

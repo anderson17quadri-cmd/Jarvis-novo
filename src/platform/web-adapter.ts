@@ -43,6 +43,7 @@ export class WebAdapter implements PlatformAdapter {
     fileWatcher: false,
     usbMonitor: false,
     batteryMonitor: false,
+    networkMonitor: false,
     realFilesystem: false,
     mail: false,
     music: false,
