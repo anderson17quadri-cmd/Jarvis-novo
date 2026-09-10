@@ -1,0 +1,21 @@
+/**
+ * Minimizar: a janela "viaja" até ao dock (Parte 9 §Janelas).
+ *
+ * Só `transform` e `opacity` — a origem no fundo do ecrã faz o encolhimento
+ * apontar para onde o dock está, sem precisar de saber a posição exata do
+ * ícone. `transform-origin` não é animado, por isso não há custo de layout.
+ */
+
+.window-minimizing {
+  animation: window-to-dock 220ms var(--e-io) forwards;
+  transform-origin: 50% 100vh;
+  pointer-events: none;
+}
+
+@keyframes window-to-dock {
+  to {
+    transform: scale(0.28) translateY(24px);
+    opacity: 0;
+    filter: blur(4px);
+  }
+}

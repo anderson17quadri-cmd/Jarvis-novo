@@ -1,0 +1,8 @@
+# Só para correr tests/ — não é preciso para o serviço em si (voz, GPU,
+# modelo). Não puxa o resto de requirements.txt de propósito: os testes
+# de CORS não tocam em TTS/Whisper, e instalar torch só para isso seria
+# um desperdício.
+pytest
+fastapi
+httpx
+python-multipart

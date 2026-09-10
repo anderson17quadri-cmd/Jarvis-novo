@@ -1,0 +1,190 @@
+import { useEffect, useRef, useState } from 'react';
+import { Search } from 'lucide-react';
+
+import { cn } from '@/lib/cn';
+
+import { useSearchStore } from '@/stores/use-search-store';
+import type { CommandActions } from './command-registry';
+
+interface CommandPaletteProps {
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly actions: CommandActions;
+  /**
+   * Texto com que a paleta abre.
+   *
+   * Usado pelo comando de voz "procura…": em vez de abrir vazia e obrigar a
+   * escrever o que se acabou de dizer, abre já com a pesquisa feita.
+   */
+  readonly initialQuery?: string;
+}
+
+/**
+ * Paleta de comandos (CTRL+K).
+ *
+ * Navegável só com o teclado: setas para percorrer, Enter para executar, Escape
+ * para sair. A seleção acompanha o scroll, para não se perder de vista.
+ */
+export function CommandPalette({
+  isOpen,
+  onClose,
+  actions,
+  initialQuery = '',
+}: CommandPaletteProps): React.JSX.Element | null {
+  const query = useSearchStore((state) => state.query);
+  const results = useSearchStore((state) => state.results);
+  const setQuery = useSearchStore((state) => state.setQuery);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+
+  // O conteúdo pesquisável vem das stores de origem; a store de pesquisa
+  // subscreve-as e recalcula os resultados sozinha.
+  useEffect(() => useSearchStore.getState().hydrate(), []);
+
+  // Cada abertura começa do zero — reabrir com a pesquisa anterior confunde.
+  // A exceção é quem a abriu já com um texto, como o comando de voz. E uma
+  // pesquisa nova pode encurtar a lista abaixo do índice selecionado. São
+  // consequências diretas do que já se conhece no render: ajustam-se aqui,
+  // não num efeito a correr depois de pintar.
+  const [anterior, setAnterior] = useState({ isOpen, initialQuery, total: results.length });
+  if (
+    anterior.isOpen !== isOpen ||
+    anterior.initialQuery !== initialQuery ||
+    anterior.total !== results.length
+  ) {
+    const reabriu = isOpen && (anterior.isOpen !== isOpen || anterior.initialQuery !== initialQuery);
+    setAnterior({ isOpen, initialQuery, total: results.length });
+    if (reabriu) setSelectedIndex(0);
+    else if (anterior.total !== results.length) {
+      setSelectedIndex((index) => Math.min(index, Math.max(0, results.length - 1)));
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
+    useSearchStore.getState().setQuery(initialQuery);
+    const timer = setTimeout(() => inputRef.current?.focus(), 40);
+    return () => clearTimeout(timer);
+  }, [initialQuery, isOpen]);
+
+  useEffect(() => {
+    listRef.current
+      ?.querySelector(`[data-command-index="${selectedIndex}"]`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [selectedIndex]);
+
+  if (!isOpen) return null;
+
+  const execute = (index: number): void => {
+    const command = results[index];
+    if (!command) return;
+    onClose();
+    // Adiado um tick: deixa a paleta fechar antes de o comando abrir uma janela.
+    setTimeout(() => command.run(actions), 60);
+  };
+
+  const onKeyDown = (event: React.KeyboardEvent<HTMLInputElement>): void => {
+    switch (event.key) {
+      case 'ArrowDown':
+        event.preventDefault();
+        setSelectedIndex((index) => (index + 1) % Math.max(1, results.length));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        setSelectedIndex((index) => (index - 1 + results.length) % Math.max(1, results.length));
+        break;
+      case 'Enter':
+        event.preventDefault();
+        execute(selectedIndex);
+        break;
+      case 'Escape':
+        event.preventDefault();
+        onClose();
+        break;
+      default:
+        break;
+    }
+  };
+
+  let lastGroup = '';
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Paleta de comandos"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      className={cn(
+        'fixed inset-0 z-palette flex items-start justify-center bg-[rgb(3_6_10_/_0.6)] backdrop-blur-[6px]',
+        'px-5 pb-5 pt-[12vh] motion-safe:animate-window-in',
+      )}
+    >
+      <div className="w-[min(620px,100%)] overflow-hidden rounded-modal border border-line-2 bg-glass/[.9] shadow-2 backdrop-blur-glass">
+        <div className="flex h-[58px] items-center gap-3 border-b border-line px-5">
+          <Search className="h-[18px] w-[18px] flex-shrink-0 text-t3" aria-hidden="true" />
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder="Pesquisar comandos, emails, notícias, janelas, temas…"
+            aria-label="Pesquisar comandos"
+            aria-controls="command-results"
+            className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-t3"
+          />
+        </div>
+
+        <div
+          ref={listRef}
+          id="command-results"
+          role="listbox"
+          aria-label="Resultados"
+          className="max-h-[min(420px,52vh)] overflow-y-auto p-2"
+        >
+          {results.length === 0 ? (
+            <p className="p-7 text-center text-[13.5px] text-t3">
+              Nenhum resultado. Tente outro termo.
+            </p>
+          ) : (
+            results.map((command, index) => {
+              const showGroup = command.group !== lastGroup;
+              lastGroup = command.group;
+              const Icon = command.icon;
+
+              return (
+                <div key={command.id}>
+                  {showGroup && (
+                    <div className="px-3 pb-1.5 pt-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-t3">
+                      {command.group}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={index === selectedIndex}
+                    data-command-index={index}
+                    onClick={() => execute(index)}
+                    onPointerEnter={() => setSelectedIndex(index)}
+                    className={cn(
+                      'flex w-full items-center gap-[13px] rounded-xl px-3 py-[11px] text-t2',
+                      'transition-colors duration-hover',
+                      index === selectedIndex && 'bg-accent/10 text-accent',
+                    )}
+                  >
+                    <Icon className="h-[17px] w-[17px] flex-shrink-0 opacity-80" aria-hidden="true" />
+                    <span className="flex-1 text-left text-desc">{command.label}</span>
+                    <span className="text-[11px] text-t3">{command.hint}</span>
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

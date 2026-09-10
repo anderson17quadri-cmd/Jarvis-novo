@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+# [codec] traz o torchcodec — a partir do PyTorch 2.9, o coqui-tts precisa
+# dele para IO de áudio, e diz isso mesmo se faltar.
+coqui-tts[codec]
+# A transformers 5 removeu isin_mps_friendly, que o coqui-tts ainda importa —
+# https://github.com/idiap/coqui-ai-TTS/issues/558. Preso a <5 até isso ser
+# corrigido do lado deles.
+transformers<5
+# Reconhecimento de voz (POST /ouvir) — o WebView2 não tem nenhum serviço a
+# sério por trás da Web Speech API (ver a nota em server.py). Usa o mesmo
+# PyTorch já instalado acima, nenhuma dependência nova de GPU.
+openai-whisper

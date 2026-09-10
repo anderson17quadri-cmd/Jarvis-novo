@@ -1,0 +1,107 @@
+@import './fonts.css';
+@import './themes.css';
+@import './wallpaper.css';
+@import './appearance.css';
+@import './cursor.css';
+@import './boot.css';
+@import './login.css';
+@import './windows.css';
+@import './loader.css';
+@import './range.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-bg font-sans text-body font-normal text-t1 antialiased;
+    /* Troca de tema: as cores transformam-se gradualmente (Parte 9). */
+    transition: background var(--d-theme) var(--e-io);
+    /* O Android desenha por baixo da barra de estado e da barra de navegação. */
+    padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0)
+      env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  }
+
+  /* Foco visível em todo o lado — requisito de acessibilidade, não decoração. */
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 8px;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(0 207 255 / 0.18);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--neon);
+  }
+
+  /**
+   * `prefers-reduced-motion` a sério: além de cortar transições CSS, os
+   * componentes de canvas leem a preferência via `useReducedMotion` e reduzem
+   * a contagem de partículas ou param o loop por completo.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Em ecrãs de toque nenhum alvo desce abaixo de 44px. */
+  @media (pointer: coarse) {
+    button,
+    [role='button'],
+    a[href] {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+}
+
+@layer components {
+  /* Camadas do wallpaper: fixas, sem eventos, empilhadas por z-index. */
+  .layer {
+    @apply pointer-events-none fixed inset-0;
+  }
+
+  /* Superfície de vidro reutilizada por header, rail, dock, janelas e modais. */
+  .glass {
+    background: rgb(var(--glass-deep-rgb) / 0.55);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(30px);
+  }
+
+  .mono {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+  }
+
+  .t-label {
+    @apply text-label uppercase text-t3;
+  }
+}

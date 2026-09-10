@@ -1,0 +1,46 @@
+/**
+ * Anéis do `CoreLoader`.
+ *
+ * `linear` é a curva certa aqui, e é a exceção que a Parte 9 prevê — a
+ * rotação contínua de um indicador é do mesmo género do radar e do scanner.
+ * Uma curva com aceleração faria o anel parecer a hesitar.
+ */
+
+.core-loader-ring {
+  transform-origin: 24px 24px;
+}
+
+.core-loader-ring--outer {
+  animation: core-loader-spin 1.6s linear infinite;
+}
+
+.core-loader-ring--middle {
+  animation: core-loader-spin 1.1s linear infinite reverse;
+}
+
+.core-loader-ring--inner {
+  animation: core-loader-spin 2.8s linear infinite;
+}
+
+.core-loader-core {
+  transform-origin: 24px 24px;
+  animation: core-loader-breathe 1.8s var(--e-io) infinite;
+}
+
+@keyframes core-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes core-loader-breathe {
+  0%,
+  100% {
+    transform: scale(0.75);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+}

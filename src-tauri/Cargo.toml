@@ -1,0 +1,113 @@
+[package]
+name = "jarvis-ai-os"
+version = "1.0.0"
+description = "JARVIS AI OS — Project ARC"
+authors = ["Anderson Quadri"]
+edition = "2021"
+rust-version = "1.77.2"
+
+# O alvo Android carrega a aplicação como biblioteca dinâmica; o desktop usa o
+# binário em `main.rs`. Os três tipos são precisos para os dois funcionarem.
+[lib]
+name = "jarvis_ai_os_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# `protocol-asset` é exigida pelo `tauri-build` assim que `assetProtocol` é
+# ativado no `tauri.conf.json` — é o que deixa a música local servir ficheiros
+# de áudio ao `<audio>` pelo protocolo `asset://localhost`.
+tauri = { version = "2", features = ["protocol-asset"] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-os = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sysinfo = "0.33"
+thiserror = "2"
+
+# Bandeja, atalho global, gestão de processos, o terminal e o cofre de
+# segredos só existem no desktop. Declarar por alvo evita puxar dependências
+# que não compilam no Android — e a feature `tray-icon` do Tauri só é
+# ativada onde há mesmo bandeja. O `portable-pty` (Terminal, Parte 6.2) e o
+# `keyring` (cofre de segredos, Windows Credential Manager) entram aqui pela
+# mesma razão: funcionalidades de desktop, sem equivalente no Android.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-global-shortcut = "2"
+tauri-plugin-process = "2"
+portable-pty = "0.9"
+keyring = "2"
+notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+battery = "0.7"
+# Email real (Peça 8, lote 2): `imap` lê (síncrono, com TLS nativo do SO), e
+# `lettre` envia por SMTP. O `native-tls` é partilhado pelos dois — no Windows
+# usa o schannel do próprio sistema, sem openssl. O `chrono` é só para o campo
+# INTERNALDATE que o servidor IMAP devolve.
+imap = { version = "2", default-features = false, features = ["tls"] }
+lettre = { version = "0.11", default-features = false, features = ["smtp-transport", "builder", "hostname", "native-tls"] }
+native-tls = "0.2"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+
+# Navegador controlado pelo assistente (Peça 19, lote 5): busca uma página
+# arbitrária que a pessoa/modelo pediu. Tem de ser aqui, não `fetch()` do
+# lado da interface — dois motivos, não só um: a CSP da app é uma lista
+# fechada de anfitriões conhecidos (DeepSeek, Ollama local, Open-Meteo...),
+# nunca "qualquer sítio"; e mesmo que fosse, a maioria dos sítios recusa
+# `fetch()` vindo de outra origem por CORS, que só existe do lado do
+# browser — um cliente HTTP nativo nunca esbarra nisso. `ureq` (síncrono,
+# sem puxar o ecossistema `tokio` inteiro só para isto) com o mesmo backend
+# `native-tls` já usado no email. `scraper` extrai o texto visível e
+# descarta script/style antes de a interface sequer ver o HTML.
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+scraper = "0.20"
+# Já vinha como dependência transitiva do ureq — só falta declará-la, para
+# poder analisar o anfitrião de um endereço antes de lhe pedir seja o que
+# for (proteção contra SSRF: nunca deixar o modelo mandar o Rust pedir a
+# `localhost`, a um IP privado, ou ao endereço de metadados de nuvem).
+url = "2"
+# Controlo direto (Fase 3.2): abre um ficheiro/aplicação no abridor do
+# próprio sistema — o equivalente a um duplo-clique, não a um shell.
+open = "5"
+# Controlo direto (Fases 3.3–3.4): `xcap` captura o ecrã (o print é devolvido
+# para a interface decidir, nunca escrito em disco), `enigo` simula o rato e o
+# teclado ao nível do sistema operativo (nunca um comando de texto), e `base64`
+# codifica o PNG para viajar pelo IPC sem tocar no sistema de ficheiros. Todos
+# são cross-platform e só fazem sentido no desktop — por isso entram neste
+# grupo, ao lado do `open`, não no bloco comum do Android.
+enigo = "0.2"
+xcap = "0.9"
+base64 = "0.22"
+
+# O `windows` fica só aqui, não no grupo de cima: tanto a deteção de USB
+# (Win32_Devices_DeviceAndDriverInstallation, SetupDiGetClassDevsW) como o
+# Windows Hello (Security_Credentials_UI, UserConsentVerifier) são só do
+# Windows — não existe equivalente no Linux nem no macOS. Uma versão só:
+# duas entradas com versões diferentes do mesmo crate (0.58 e 0.62)
+# coexistiam sem erro no Cargo.toml, mas rebentavam a compilar — o Rust via
+# duas crates chamadas `windows` para o mesmo alvo e não sabia qual usar
+# num `use windows::...` sem caminho completo.
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Devices_DeviceAndDriverInstallation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_System_LibraryLoader",
+  "Security_Credentials_UI",
+  "Foundation",
+] }
+
+[features]
+# Ativado pelo `tauri build` — não usar diretamente.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

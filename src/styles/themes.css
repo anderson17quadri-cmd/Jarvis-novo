@@ -1,0 +1,221 @@
+/**
+ * Temas do sistema.
+ *
+ * `:root` é o tema base (JARVIS Classic). Cada `[data-theme]` só redefine o que
+ * muda — tudo o resto herda. É por isso que trocar de tema é instantâneo e não
+ * exige recompilar o Tailwind: as classes apontam para estas variáveis.
+ *
+ * Os valores espelham `src/design-system/tokens.ts`. O teste
+ * `tests/design-system/themes.test.ts` falha se os dois ficheiros divergirem —
+ * é o que mantém o token único mesmo com CSS à mistura.
+ */
+
+:root {
+  /* superfícies */
+  --bg: #05070a;
+  --bg2: #0b1118;
+  --card: #101922;
+  --card-hover: #162434;
+  --line: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.12);
+  /* Canais sem opacidade — o Tailwind injeta a dele. Ver tokens.ts. */
+  --tint-rgb: 255 255 255;
+  --glass-rgb: 16 25 34;
+  --glass-deep-rgb: 11 17 24;
+
+  /* texto */
+  --t1: #ffffff;
+  --t2: #c5d1df;
+  --t3: #7e91a8;
+
+  /* acento */
+  --accent: #00cfff;
+  --neon: #00a2ff;
+  --green: #22c55e;
+  --yellow: #fbbf24;
+  --red: #ef4444;
+
+  /* raios */
+  --r-btn: 16px;
+  --r-card: 20px;
+  --r-modal: 24px;
+  --r-input: 14px;
+
+  /* espaço */
+  --s1: 8px;
+  --s2: 16px;
+  --s3: 24px;
+  --s4: 32px;
+  --s5: 48px;
+  --s6: 64px;
+
+  /* estrutura */
+  --header-h: 72px;
+  --rail-w: 88px;
+  --rail-w-open: 280px;
+
+  /* movimento */
+  --e-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --d-hover: 120ms;
+  --d-click: 150ms;
+  --d-panel: 220ms;
+  --d-window: 280ms;
+  --d-theme: 500ms;
+  --d-screen: 600ms;
+
+  /* sombra */
+  --sh-1: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --sh-2: 0 20px 60px rgba(0, 0, 0, 0.55);
+  --glow: 0 0 24px rgba(0, 207, 255, 0.25);
+}
+
+[data-theme='oled'] {
+  --bg: #000000;
+  --bg2: #050505;
+  --card: #0b0b0b;
+  --card-hover: #141414;
+  --glass-rgb: 11 11 11;
+  --glass-deep-rgb: 5 5 5;
+}
+
+[data-theme='titanium'] {
+  --accent: #b8c4ce;
+  --neon: #8e9ba8;
+  --glow: 0 0 24px rgba(184, 196, 206, 0.22);
+}
+
+[data-theme='emerald'] {
+  --accent: #22e5a0;
+  --neon: #12b981;
+  --glow: 0 0 24px rgba(34, 229, 160, 0.25);
+}
+
+[data-theme='solar'] {
+  --accent: #ffb020;
+  --neon: #f59e0b;
+  --glow: 0 0 24px rgba(255, 176, 32, 0.25);
+}
+
+[data-theme='midnight'] {
+  --bg: #070c18;
+  --bg2: #0c1426;
+  --card: #111c33;
+  --card-hover: #182645;
+  --accent: #4c7dff;
+  --neon: #2e5bd9;
+  --glow: 0 0 24px rgba(76, 125, 255, 0.26);
+  --glass-rgb: 17 28 51;
+  --glass-deep-rgb: 12 20 38;
+}
+
+[data-theme='cyber-red'] {
+  --bg: #0a0406;
+  --bg2: #140a0e;
+  --card: #1b0e13;
+  --card-hover: #28151c;
+  --accent: #ff3b5c;
+  --neon: #d91f42;
+  --glow: 0 0 24px rgba(255, 59, 92, 0.26);
+  --glass-rgb: 27 14 19;
+  --glass-deep-rgb: 20 10 14;
+}
+
+[data-theme='graphite'] {
+  --bg: #0d0d0f;
+  --bg2: #141417;
+  --card: #1b1b1f;
+  --card-hover: #26262b;
+  --accent: #9aa3ad;
+  --neon: #6f7883;
+  --glow: 0 0 20px rgba(154, 163, 173, 0.18);
+  --glass-rgb: 27 27 31;
+  --glass-deep-rgb: 20 20 23;
+}
+
+[data-theme='aurora'] {
+  --bg: #060b12;
+  --bg2: #0b141f;
+  --card: #0f1c2b;
+  --card-hover: #16283d;
+  --accent: #5cf2c4;
+  --neon: #7b6bff;
+  --glow: 0 0 26px rgba(92, 242, 196, 0.24);
+  --glass-rgb: 15 28 43;
+  --glass-deep-rgb: 11 20 31;
+}
+
+/* O único tema claro: o texto escurece, as linhas viram escuras e a `tint`
+   passa a preto — sem isso as superfícies levantadas ficavam invisíveis. */
+[data-theme='arctic'] {
+  --bg: #f4f7fa;
+  --bg2: #e9eef4;
+  --card: #ffffff;
+  --card-hover: #f0f4f8;
+  --line: rgba(10, 20, 30, 0.10);
+  --line-2: rgba(10, 20, 30, 0.18);
+  --t1: #0b1622;
+  --t2: #33465c;
+  --t3: #6b7c91;
+  --accent: #0088cc;
+  --neon: #0066aa;
+  --glow: 0 0 22px rgba(0, 136, 204, 0.18);
+  --tint-rgb: 10 20 30;
+  --glass-rgb: 255 255 255;
+  --glass-deep-rgb: 244 247 250;
+}
+
+/* ── O núcleo em temas claros ─────────────────────────────────────────────
+   Os anéis e as partículas são desenhados com opacidades baixas sobre o
+   acento — feitas para fundo escuro. Num tema claro desapareciam.
+
+   Em vez de mexer em dez opacidades espalhadas pelo SVG e pelo canvas, o
+   núcleo ganha a sua própria base escura: uma projeção sobre a mesa clara,
+   que é o que ele é. O disco desvanece nas bordas para não virar um selo. */
+
+[data-theme='arctic'] .ai-core-host {
+  background: radial-gradient(
+    circle,
+    rgba(8, 18, 30, 0.94) 0%,
+    rgba(8, 18, 30, 0.9) 58%,
+    rgba(8, 18, 30, 0) 73%
+  );
+  border-radius: 50%;
+}
+
+/* ── Responsivo estrutural ────────────────────────────────────────────────
+   O rail encolhe a 1100px e desaparece a 820px, onde passa a gaveta.
+   Está aqui e não em componentes porque são medidas do shell, não de um
+   componente em particular. */
+
+@media (max-width: 1100px) {
+  :root {
+    --rail-w: 72px;
+  }
+}
+
+@media (max-width: 820px) {
+  :root {
+    --header-h: 60px;
+    --rail-w: 0px;
+  }
+}
+
+/* ── Estados do sistema (Parte 9) ─────────────────────────────────────────
+   Só a Economia mexe no aspeto: corta o glow e encurta as transições, que é
+   onde está o custo de desenho. Os outros estados mudam comportamento —
+   partículas, avisos e ritmo de sondagem — e não precisam de CSS.
+
+   O estado normal não escreve atributo nenhum, como o tema base. */
+
+[data-system-state='economia'] {
+  /* `--glow` é a única sombra que passa por variável; as outras vêm dos tokens
+     diretamente para o Tailwind, e por isso não se sobrepõem daqui. */
+  --glow: none;
+}
+
+[data-system-state='economia'] * {
+  /* Não desliga a animação — encurta-a. Um sistema imóvel parece pendurado. */
+  animation-duration: 50% !important;
+  transition-duration: 90ms !important;
+}

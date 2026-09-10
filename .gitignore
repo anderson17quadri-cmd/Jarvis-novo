@@ -1,0 +1,50 @@
+node_modules/
+dist/
+dist-ssr/
+*.local
+.DS_Store
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Android
+src-tauri/gen/android/
+*.keystore
+local.properties
+
+# Editores
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testes
+coverage/
+
+# Obsidian (notas pessoais)
+.obsidian/
+*.canvas
+*.base
+[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
+
+# Scripts locais com segredos (chaves de API de cada provedor)
+claude-*.ps1
+
+# Playwright
+playwright-report/
+test-results/
+
+# Python (root — voice-clone-service tem o seu próprio .gitignore também)
+.venv/
+venv/
+__pycache__/
+*.pyc
+logs/
+
+# Logs de execução — nunca para o repositório
+*.log

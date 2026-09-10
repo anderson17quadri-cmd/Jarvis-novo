@@ -1,0 +1,17 @@
+# A tua voz nunca vai para o repositório. Nem o modelo (é grande, e é
+# descarregado sozinho na primeira vez que o serviço arranca).
+voices/*.wav
+voices/*.mp3
+voices/*.json
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Saída de teste (curl, o loop do README a experimentar vozes) e o FFmpeg
+# descarregado à mão para o `torchcodec` — ver README.md, secção "Se algo
+# correr mal". Grandes, gerados localmente, nunca precisam de ir ao repositório.
+voz_*.wav
+teste.wav
+ffmpeg.zip
+ffmpeg-*-full_build-shared/

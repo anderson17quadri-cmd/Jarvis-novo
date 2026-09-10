@@ -1,0 +1,118 @@
+/**
+ * Aparência — o CSS que reage às preferências (Parte 15).
+ *
+ * O `useAppearanceStore` escreve `data-*` e variáveis no `<html>`; aqui está
+ * o que cada uma faz. Nenhuma regra usa cores literais: tudo sai dos tokens,
+ * para continuar a funcionar nos dez temas, incluindo o claro.
+ */
+
+:root {
+  /* Multiplicador das camadas do papel de parede. */
+  --wp-intensity: 1;
+  /* Escala global da interface. */
+  --ui-scale: 1;
+  /*
+   * Família tipográfica (Parte 15 §Tipografia à escolha). O Inter aqui é a
+   * mesma cauda do token original do Tailwind — antes de o `useAppearanceStore`
+   * escrever esta variável (ou num contexto sem JavaScript), o texto já sai
+   * legível, na família predefinida.
+   */
+  --font-sans: 'Inter', 'SF Pro Display', system-ui, -apple-system, sans-serif;
+  /* A vinheta é um token porque num tema claro tem de ser clara. */
+  --vignette: rgb(0 0 0 / 0.72);
+}
+
+[data-theme='arctic'] {
+  /*
+   * No tema claro a vinheta preta transformava o fundo branco em cinzento
+   * lavado nas bordas. Passa a um véu do próprio fundo, quase impercetível.
+   */
+  --vignette: rgb(10 20 30 / 0.06);
+}
+
+/* ── Escala da interface ──────────────────────────────────────────────────
+   Aplicada ao `font-size` da raiz e não a um `zoom` ou `transform`: assim o
+   texto cresce e os elementos em `rem` acompanham, sem desfocar nada nem
+   partir a posição fixa do header, do rail e das janelas. */
+
+html {
+  font-size: calc(16px * var(--ui-scale));
+}
+
+/* ── Papel de parede ──────────────────────────────────────────────────────
+   Cada variante liga e desliga camadas. O `liso` fica com o fundo do tema. */
+
+[data-wallpaper] .wp-layer {
+  opacity: var(--wp-intensity);
+  transition: opacity var(--d-screen) var(--e-out);
+}
+
+[data-wallpaper='grelha'] .wp-nebula,
+[data-wallpaper='grelha'] .wp-particles,
+[data-wallpaper='grelha'] .wp-lines {
+  display: none;
+}
+
+[data-wallpaper='particulas'] .wp-nebula,
+[data-wallpaper='particulas'] .wp-grid {
+  display: none;
+}
+
+[data-wallpaper='liso'] .wp-layer {
+  display: none;
+}
+
+/* ── Cursor ───────────────────────────────────────────────────────────────
+   O `sistema` devolve o ponteiro nativo; o `minimal` fica só com o ponto. */
+
+[data-cursor='sistema'] .cursor-ring,
+[data-cursor='sistema'] .cursor-dot,
+[data-cursor='minimal'] .cursor-ring {
+  display: none;
+}
+
+[data-cursor='sistema'],
+[data-cursor='sistema'] * {
+  cursor: auto;
+}
+
+[data-cursor='sistema'] button,
+[data-cursor='sistema'] a[href],
+[data-cursor='sistema'] [role='button'] {
+  cursor: pointer;
+}
+
+/* ── Alto contraste ───────────────────────────────────────────────────────
+   Sobe o texto secundário e engrossa as linhas. Não inventa cores: usa as
+   do tema, mais opacas. */
+
+[data-contrast='alto'] {
+  --t2: var(--t1);
+  --t3: var(--t2);
+  --line: rgb(var(--tint-rgb) / 0.22);
+  --line-2: rgb(var(--tint-rgb) / 0.34);
+}
+
+[data-contrast='alto'] .wp-layer {
+  /* Um fundo vivo compete com o texto quando se pediu mais contraste. */
+  opacity: calc(var(--wp-intensity) * 0.35);
+}
+
+/* ── Transparência reduzida ───────────────────────────────────────────────
+   Tira o desfoque e torna as superfícies opacas. Além de acessibilidade, é
+   o alívio maior que se pode dar a uma máquina lenta: `backdrop-filter` é a
+   camada mais cara do sistema inteiro. */
+
+[data-transparency='reduzida'] .glass,
+[data-transparency='reduzida'] [class*='backdrop-blur'] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+[data-transparency='reduzida'] {
+  --glass-alpha: 1;
+}
+
+[data-transparency='reduzida'] [class*='bg-glass'] {
+  background-color: rgb(var(--glass-rgb)) !important;
+}
