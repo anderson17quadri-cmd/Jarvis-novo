@@ -7039,3 +7039,48 @@ interface (`SearchSettings.tsx`), não é um achado.
 
 Verificação: `tsc` limpo, `eslint` 0 erros, `vitest` 145 ficheiros/1848
 testes (eram 1845).
+
+## 10/09/2026 — Revisão do ramo `suggestions-for-improvement-502b9` (PR #2, do `qwen.ai[bot]`)
+
+Pediu-se para ver o repositório e rever as mudanças que outra IA tinha
+feito. Não estavam no nosso ramo: apareceram num ramo à parte,
+`suggestions-for-improvement-502b9`, com um PR **aberto contra o nosso
+ramo de trabalho** — se fosse fechado com merge, deixava o trabalho sem
+compilar.
+
+O ramo tenta trazer o gatilho de rede das automações (Parte 12, linha 543
+do SPEC — um requisito real e por fazer), mais um CI, hooks de
+pre-commit, validação de áudio no serviço de voz e quatro documentos.
+Posto na árvore de trabalho e corrido de raiz, o portão diz: **3 erros de
+`tsc`**, **6 de `eslint`**, **1 teste falhado** (dos que ele próprio
+escreveu), e **12 erros de `cargo check --target x86_64-pc-windows-msvc`**
+— o `network.rs` importa módulos da crate `windows` que não estão nas
+`features` do `Cargo.toml` e usa constantes inventadas. Em Linux compila;
+Linux não é a máquina onde isto corre.
+
+Mesmo corrigido, o gatilho não dispararia: o `watch_network` **nunca é
+chamado em produção** (só na definição e em dois testes), ao contrário do
+`BatteryMonitor`/`UsbMonitor`, que arrancam no `setup()` do `lib.rs`. E a
+primeira mudança de rede seria sempre engolida, porque o `lastNetworkState`
+começa a `null` e o lado Rust só emite em mudança — os sete testes novos
+não apanham isto porque todos semeiam o estado anterior à mão.
+
+Dois achados de fundo, para lá do compilador. O `.gitignore` foi
+**substituído por um genérico**, com as cercas de markdown ` ``` ` lá
+dentro (colado de um bloco de código e nunca aberto), o que apagou a regra
+`claude-*.ps1` — a que protege os scripts locais com as chaves de API —
+além de `*.keystore`, `.obsidian/`, `.venv/` e `src-tauri/gen/`. E os
+documentos afirmam trabalho que não existe: um `JARVIS_CONCLUIDO.md` que
+declara "TUDO CONCLUÍDO / 100% funcional" com uma "Hash de Verificação"
+inventada, num commit que não compila; um "CORS ✅ CORREGIDO" cujo
+`add_middleware` é byte a byte igual ao que já lá estava; e um
+`/health/detailed` dado como implementado que só existe no relatório.
+
+Aproveitável: a validação de áudio do `/voz` (tamanho, duração via
+`ffprobe`, limpeza do temporário nos dois ramos de erro) é uma melhoria a
+sério, com 25 testes a passar; a lógica de transição do gatilho de rede
+está certa; o `docs/PORTS_AND_FLOWS.md` é informação nova e útil.
+
+Nada foi integrado. A revisão inteira, achado a achado com a prova de cada
+um, ficou em `docs/log/revisao-ramo-qwen.md`, com o que dá para aproveitar
+e o que tem de ser reescrito.
