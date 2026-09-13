@@ -40,6 +40,7 @@ const GLOBAL_INVOKE_EVENT = 'jarvis://global-invoke';
 const BATTERY_EVENT = 'automation://battery-changed';
 const USB_EVENT = 'automation://usb-changed';
 const FILE_EVENT = 'automation://file-changed';
+const NETWORK_EVENT = 'automation://network-changed';
 
 /** Progresso do descarregamento automático do modelo Ollama por omissão. */
 const OLLAMA_PULL_EVENT = 'ollama://pull';
@@ -336,6 +337,57 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
         BATTERY_EVENT,
         (event) => handler(event.payload),
       );
+      return unlisten;
+    } catch {
+      return () => undefined;
+    }
+  }
+
+  async getNetworkState(): Promise<{
+    is_connected: boolean;
+    connection_type: string;
+    ipv4_address: string | null;
+    interface_name: string;
+    is_metered: boolean;
+  } | null> {
+    if (!this.capabilities.networkMonitor) return null;
+    return this.tryInvoke<{
+      is_connected: boolean;
+      connection_type: string;
+      ipv4_address: string | null;
+      interface_name: string;
+      is_metered: boolean;
+    }>('get_network_state', null);
+  }
+
+  async watchNetwork(): Promise<string | null> {
+    if (!this.capabilities.networkMonitor) return null;
+    return this.tryInvoke<string>('watch_network', null);
+  }
+
+  async unwatchNetwork(): Promise<void> {
+    if (!this.capabilities.networkMonitor) return;
+    await this.tryInvoke('unwatch_network', null);
+  }
+
+  async onNetworkChanged(
+    handler: (event: {
+      is_connected: boolean;
+      connection_type: string;
+      ipv4_address: string | null;
+      interface_name: string;
+      is_metered: boolean;
+    }) => void,
+  ): Promise<() => void> {
+    if (!this.capabilities.networkMonitor) return () => undefined;
+    try {
+      const unlisten = await listen<{
+        is_connected: boolean;
+        connection_type: string;
+        ipv4_address: string | null;
+        interface_name: string;
+        is_metered: boolean;
+      }>(NETWORK_EVENT, (event) => handler(event.payload));
       return unlisten;
     } catch {
       return () => undefined;

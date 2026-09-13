@@ -66,6 +66,12 @@ export interface BatteryTrigger {
   readonly percent: number;
 }
 
+/** Quando o estado da rede muda (nativo). */
+export interface NetworkTrigger {
+  readonly kind: 'rede';
+  readonly event: 'ligado' | 'desligado' | 'ip_mudou';
+}
+
 export type AutomationTrigger =
   | TimeTrigger
   | IntervalTrigger
@@ -73,7 +79,8 @@ export type AutomationTrigger =
   | ManualTrigger
   | FileTrigger
   | UsbTrigger
-  | BatteryTrigger;
+  | BatteryTrigger
+  | NetworkTrigger;
 
 // ── Condições ──────────────────────────────────────────────────────────────
 
@@ -206,6 +213,8 @@ export function describeTrigger(trigger: AutomationTrigger): string {
       return `Quando um dispositivo é ${trigger.action}`;
     case 'bateria':
       return `Quando a bateria ${trigger.direction === 'abaixo' ? 'desce abaixo' : 'sobe acima'} de ${trigger.percent}%`;
+    case 'rede':
+      return `Quando a rede é ${trigger.event === 'ligado' ? 'ligada' : trigger.event === 'desligado' ? 'desligada' : 'alterada'}`;
   }
 }
 

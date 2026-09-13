@@ -40,6 +40,8 @@ export interface PlatformCapabilities {
   readonly usbMonitor: boolean;
   /** Monitor de bateria para gatilhos de automação. */
   readonly batteryMonitor: boolean;
+  /** Monitor de rede para gatilhos de automação. */
+  readonly networkMonitor: boolean;
   /** Leitura real do disco (Explorador), com pasta-raiz escolhida pela pessoa. */
   readonly realFilesystem: boolean;
   /** Correio real (IMAP para ler, SMTP para enviar) via comandos Rust. */

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type DragEvent } from 'react';
-import { ArrowRight, BatteryMedium, Check, Clock, FolderOpen, Globe, MessageSquare, Moon, Settings, Trash2, Usb } from 'lucide-react';
+import { ArrowRight, BatteryMedium, Check, Clock, FolderOpen, Globe, MessageSquare, Moon, Settings, Trash2, Usb, Wifi } from 'lucide-react';
 
 import { cn } from '@/lib/cn';
 import { appTitle, stateName, themeName, widgetName } from '@/lib/names';
@@ -82,6 +82,12 @@ const BLOCK_TEMPLATES: readonly BlockTemplate[] = [
     icon: <BatteryMedium className="h-3.5 w-3.5" />,
     create: (): AutomationTrigger => ({ kind: 'bateria', direction: 'abaixo', percent: 20 }),
   },
+  {
+    kind: 'quando',
+    label: 'Rede',
+    icon: <Wifi className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'rede', event: 'ligado' }),
+  },
   // Condições (Se)
   {
     kind: 'se',
@@ -151,6 +157,7 @@ function blockLabel(config: AutomationTrigger | AutomationCondition | Automation
     case 'ficheiros': return `Muda em ${(config as { folderPath: string }).folderPath}`;
     case 'usb': return `USB ${(config as { action: string }).action}`;
     case 'bateria': return `Bateria ${(config as { direction: string }).direction} de ${(config as { percent: number }).percent}%`;
+    case 'rede': return `Rede ${(config as { event: string }).event === 'ligado' ? 'ligada' : (config as { event: string }).event === 'desligado' ? 'desligada' : 'IP mudou'}`;
     case 'dia-da-semana': return config.days.map((d) => WEEKDAY_LABELS[d] ?? '?').join(', ');
     case 'faixa-horaria': return `${config.fromHour}h–${config.toHour}h`;
     case 'estado-sistema': return `Modo ${stateName(config.state)}`;

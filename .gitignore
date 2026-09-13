@@ -1,50 +1,68 @@
+```
+# Dependencies
 node_modules/
-dist/
-dist-ssr/
-*.local
-.DS_Store
+target/
 
-# Rust / Tauri
-src-tauri/target/
-src-tauri/gen/
+# Logs and temp files
+*.log
+*.tmp
 
-# Android
-src-tauri/gen/android/
-*.keystore
-local.properties
+# Environment
+.env
+.env.local
+*.env.*
 
-# Editores
-.vscode/*
-!.vscode/extensions.json
+# Editors
+.vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
 
-# Testes
-coverage/
-
-# Obsidian (notas pessoais)
-.obsidian/
-*.canvas
-*.base
-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].md
-
-# Scripts locais com segredos (chaves de API de cada provedor)
-claude-*.ps1
-
-# Playwright
-playwright-report/
-test-results/
-
-# Python (root — voice-clone-service tem o seu próprio .gitignore também)
-.venv/
-venv/
+# Python
 __pycache__/
 *.pyc
-logs/
+*.pyo
+*.pyd
 
-# Logs de execução — nunca para o repositório
-*.log
+# Build artifacts
+dist/
+build/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Compression
+*.zip
+*.gz
+*.tar
+*.tgz
+*.bz2
+*.xz
+*.7z
+*.rar
+*.zst
+*.lz4
+*.lzh
+*.cab
+*.arj
+*.rpm
+*.deb
+*.Z
+*.lz
+*.lzo
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+
+# System
+.DS_Store
+Thumbs.db
+```

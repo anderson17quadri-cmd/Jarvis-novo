@@ -254,6 +254,14 @@ export function App(): React.JSX.Element {
           automationService.checkNativeTriggers('bateria', { batteryPercent: event.percent });
         }),
       );
+      cleanups.push(
+        await adapter.onNetworkChanged((event) => {
+          automationService.checkNativeTriggers('rede', {
+            networkIsConnected: event.is_connected,
+            networkIpAddress: event.ipv4_address,
+          });
+        }),
+      );
 
       // Regista as pastas que as automações de ficheiros pedem para observar.
       // A deduplicação é do lado Rust (FileWatchers) — chamar watch_folder

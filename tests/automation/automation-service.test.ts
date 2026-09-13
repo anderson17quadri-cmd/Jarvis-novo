@@ -480,6 +480,107 @@ describe('gatilhos nativos (checkNativeTriggers)', () => {
 
     expect(executor.calls).toEqual([]);
   });
+
+  it('rede: dispara quando a rede se liga (de desligado para ligado)', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'ligado' } }),
+    );
+
+    // Estado inicial: desligado
+    service.checkNativeTriggers('rede', { networkIsConnected: false, networkIpAddress: null });
+    expect(executor.calls).toEqual([]);
+
+    // Rede ligou
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('rede: dispara quando a rede se desliga (de ligado para desligado)', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'desligado' } }),
+    );
+
+    // Estado inicial: ligado
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    expect(executor.calls).toEqual([]);
+
+    // Rede desligou
+    service.checkNativeTriggers('rede', { networkIsConnected: false, networkIpAddress: null });
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('rede: dispara quando o IP muda (ambos ligados, IPs diferentes)', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'ip_mudou' } }),
+    );
+
+    // Estado inicial: ligado com IP antigo
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    expect(executor.calls).toEqual([]);
+
+    // IP mudou
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.200' });
+    expect(executor.calls).toEqual(['aviso:Olá']);
+  });
+
+  it('rede: não dispara quando o IP se mantém igual', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'ip_mudou' } }),
+    );
+
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('rede: não dispara evento "ligado" se já estava ligado', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'ligado' } }),
+    );
+
+    // Já estava ligado
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    // Continua ligado
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('rede: não dispara evento "desligado" se já estava desligado', () => {
+    service.add(
+      makeAutomation({ trigger: { kind: 'rede', event: 'desligado' } }),
+    );
+
+    // Já estava desligado
+    service.checkNativeTriggers('rede', { networkIsConnected: false, networkIpAddress: null });
+    // Continua desligado
+    service.checkNativeTriggers('rede', { networkIsConnected: false, networkIpAddress: null });
+
+    expect(executor.calls).toEqual([]);
+  });
+
+  it('rede: duas regras de rede diferentes disparam na mesma mudança', () => {
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'rede', event: 'desligado' },
+        actions: [{ kind: 'notificar', title: 'rede caiu', description: '' }],
+      }),
+    );
+    service.add(
+      makeAutomation({
+        trigger: { kind: 'rede', event: 'ligado' },
+        actions: [{ kind: 'notificar', title: 'rede voltou', description: '' }],
+      }),
+    );
+
+    // Começa ligado
+    service.checkNativeTriggers('rede', { networkIsConnected: true, networkIpAddress: '192.168.1.100' });
+    // Desliga - só a regra "desligado" deve disparar
+    service.checkNativeTriggers('rede', { networkIsConnected: false, networkIpAddress: null });
+
+    expect(executor.calls).toEqual(['aviso:rede caiu']);
+  });
 });
 
 describe('gatilho por intervalo — sobrevive a reiniciar a app', () => {

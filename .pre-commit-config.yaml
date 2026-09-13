@@ -1,0 +1,51 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-merge-conflict
+
+  - repo: https://github.com/psf/black
+    rev: 24.3.0
+    hooks:
+      - id: black
+        files: (voice-clone-service|wake-word-service)/.*\.py$
+
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        files: (voice-clone-service|wake-word-service)/.*\.py$
+        args: [--max-line-length=100]
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: (voice-clone-service|wake-word-service)/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: npm-lint
+        name: ESLint
+        entry: npm run lint
+        language: system
+        types_or: [typescript, tsx, javascript]
+        pass_filenames: false
+        
+      - id: cargo-fmt
+        name: Rust Formatter
+        entry: cargo fmt
+        language: system
+        files: src-tauri/.*\.rs$
+        pass_filenames: false
+        
+      - id: cargo-clippy
+        name: Rust Linter
+        entry: cargo clippy -- -D warnings
+        language: system
+        files: src-tauri/.*\.rs$
+        pass_filenames: false
