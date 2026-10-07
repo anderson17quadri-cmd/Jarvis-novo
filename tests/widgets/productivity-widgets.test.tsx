@@ -8,9 +8,12 @@ import TasksWidget from '@/widgets/tasks/TasksWidget';
 import { memoryService } from '@/services/assistant/memory-service';
 import { useAssistantStore } from '@/stores/use-assistant-store';
 import { useTaskStore } from '@/stores/use-task-store';
+import { calendarService } from '@/services/calendar/calendar-service';
+import { MockCalendarProvider } from '@/services/calendar/providers/calendar-provider';
 
 beforeEach(() => {
   localStorage.clear();
+  calendarService.setProvider(new MockCalendarProvider());
   vi.useFakeTimers({ shouldAdvanceTime: true });
 });
 

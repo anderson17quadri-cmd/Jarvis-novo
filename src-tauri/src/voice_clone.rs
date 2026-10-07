@@ -13,17 +13,8 @@ const PORT: u16 = 8090;
 /// até se tentar arrancar, ou se não houver nada para arrancar aqui.
 pub struct VoiceCloneProcess(pub Mutex<Option<Child>>);
 
-/// Há um serviço de voz a responder, saudável, na porta do serviço. Confirma
-/// primeiro com `GET /health` — não basta a porta estar aberta: um `uvicorn`
-/// morto a meio (a tentar ligar, por exemplo) ou um processo estranho qualquer
-/// a ocupar a porta abririam a ligação TCP mas não falam o nosso protocolo, e
-/// a app ficava calada na mesma.
-///
-/// Mas o `ok` do `/health` é hardcoded (`server.py` devolve sempre `"ok": True`),
-/// por isso não chega: um órfão preso a responder — com o contexto CUDA
-/// envenenado por um reset da GPU, por exemplo — continua a dizer `ok:true` mas
-/// falha o `/falar`. Por isso, se a porta responder, prova-se a sério com uma
-/// síntese mínima (`consegue_sintetizar`) antes de se aceitar o serviço como bom.
+/// O modo de reconhecimento local só exige Whisper instalado. Uma síntese
+/// de prova só é pedida ao serviço legado, quando a clonagem está ativa.
 fn servico_saudavel() -> bool {
     let corpo = match ureq::get(&format!("http://127.0.0.1:{PORT}/health"))
         .timeout(Duration::from_secs(2))
@@ -32,7 +23,23 @@ fn servico_saudavel() -> bool {
         Ok(resposta) if resposta.status() == 200 => resposta.into_string().unwrap_or_default(),
         _ => return false,
     };
+    let sintese_local = serde_json::from_str::<serde_json::Value>(&corpo)
+        .ok()
+        .and_then(|v| v.get("sintese_local").and_then(|field| field.as_bool()));
+    if sintese_local == Some(false) {
+        return saude_sem_sintese(&corpo);
+    }
     saude_ok(&corpo) && consegue_sintetizar()
+}
+
+fn saude_sem_sintese(corpo: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(corpo)
+        .map(|v| {
+            v.get("ok").and_then(|field| field.as_bool()) == Some(true)
+                && v.get("sintese_local").and_then(|field| field.as_bool()) == Some(false)
+                && v.get("reconhecimento_disponivel").and_then(|field| field.as_bool()) == Some(true)
+        })
+        .unwrap_or(false)
 }
 
 /// O corpo de `GET /health` diz que está tudo bem (`ok: true`). Separado do
@@ -170,7 +177,7 @@ pub fn setup(app: &AppHandle) {
     matar_servico_preso();
 
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let Some(pasta) = encontrar_pasta_do_servico(&base) else {
+    let Some(pasta) = encontrar_pasta_do_servico(&base).or_else(|| crate::local_services::find_installed(app, "voice-clone-service")) else {
         eprintln!(
             "[jarvis] voice-clone-service não está configurado nesta máquina (sem .venv) \
              — a voz local fica desligada até correres voice-clone-service/setup.ps1."
@@ -225,7 +232,7 @@ pub fn reiniciar_voz_clonada(app: AppHandle) -> Result<(), String> {
 
     // 3. Arranca de novo.
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let Some(pasta) = encontrar_pasta_do_servico(&base) else {
+    let Some(pasta) = encontrar_pasta_do_servico(&base).or_else(|| crate::local_services::find_installed(&app, "voice-clone-service")) else {
         return Err("voice-clone-service não está configurado nesta máquina (sem .venv)".into());
     };
 
@@ -313,6 +320,13 @@ mod tests {
         assert!(!e_wav(br#"{"detail":"o modelo falhou"}"#));
         assert!(!e_wav(b""));
         assert!(!e_wav(b"RIFF"));
+    }
+
+    #[test]
+    fn reconhecimento_frio_nao_depende_de_sintese() {
+        assert!(saude_sem_sintese(r#"{"ok":true,"sintese_local":false,"reconhecimento_disponivel":true,"reconhecimento_carregado":false}"#));
+        assert!(!saude_sem_sintese(r#"{"ok":true,"sintese_local":false,"reconhecimento_disponivel":false}"#));
+        assert!(!saude_sem_sintese(r#"{"ok":true,"sintese_local":true,"reconhecimento_disponivel":true}"#));
     }
 
     #[test]

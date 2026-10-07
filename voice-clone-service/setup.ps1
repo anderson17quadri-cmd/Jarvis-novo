@@ -1,5 +1,5 @@
-﻿# Prepara o serviço de voz clonada sozinho — Python, ambiente virtual,
-# PyTorch com CUDA, dependências, e confirma no fim se a GPU foi encontrada.
+﻿# Prepara o reconhecimento local — Python, ambiente virtual,
+# PyTorch em CPU ou CUDA, dependências e verificação do ambiente.
 #
 # A única coisa que este script não escolhe sozinho com certeza é a versão
 # exata do CUDA a pedir ao PyTorch — isso muda com o tempo, e placas novas
@@ -9,11 +9,13 @@
 # o que fazer.
 #
 # Uso:
+#   .\setup.ps1 -Cpu             # reconhecimento sem GPU
 #   .\setup.ps1                  # usa a versão de CUDA por omissão (cu130)
 #   .\setup.ps1 -Cuda cu126      # força outra versão, se a por omissão falhar
 
 param(
-    [string]$Cuda = "cu130"
+    [string]$Cuda = "cu130",
+    [switch]$Cpu
 )
 
 $ErrorActionPreference = "Stop"
@@ -44,15 +46,25 @@ if (-not (Test-Path ".venv")) {
 
 & .\.venv\Scripts\Activate.ps1
 
-Escreve "3. PyTorch com CUDA ($Cuda)..."
-Escreve "   Se isto falhar mais abaixo na confirmação da GPU, corre de novo com -Cuda e outra versão — vê a lista em pytorch.org."
-# torchaudio tem de vir da mesma fonte que o torch — instalado à parte, do
-# índice normal do PyPI, corre o risco de vir sem CUDA ou com uma versão que
-# não bate certo com o torch já instalado. O XTTS-v2 precisa dos dois.
-pip install --quiet torch torchaudio --index-url "https://download.pytorch.org/whl/$Cuda"
+if ($Cpu) {
+    Escreve "3. PyTorch em CPU..."
+} else {
+    Escreve "3. PyTorch com CUDA ($Cuda)..."
+    Escreve "   Se a GPU não for reconhecida, repete com -Cuda e uma versão adequada à placa."
+}
+$torchIndex = if ($Cpu) { "https://download.pytorch.org/whl/cpu" } else { "https://download.pytorch.org/whl/$Cuda" }
+pip install --quiet torch --index-url $torchIndex
+if ($LASTEXITCODE -ne 0) { throw "A instalação do PyTorch falhou." }
 
-Escreve "4. O resto das dependências (FastAPI, coqui-tts)..."
+Escreve "4. O resto das dependências (FastAPI, Whisper local)..."
 pip install --quiet -r requirements.txt
+if ($LASTEXITCODE -ne 0) { throw "A instalação das dependências de transcrição falhou." }
+
+if ($Cpu) {
+    python -c "import torch, whisper; print('Whisper local pronto em CPU.')"
+    if ($LASTEXITCODE -ne 0) { throw "Não consegui importar o Whisper." }
+    exit 0
+}
 
 Escreve "5. A confirmar se a GPU foi encontrada..."
 # O PyTorch escreve avisos inofensivos no stderr (por exemplo, sobre uma GPU
@@ -72,8 +84,8 @@ if ($linhas[0] -eq "True") {
     Escreve "   GPU encontrada: $($linhas[1])"
     Escreve ""
     Escreve "Tudo pronto. Falta:"
-    Escreve "  1. Gravar a tua voz e guardar como voices\referencia.wav"
-    Escreve "  2. Arrancar com: .\run.ps1"
+    Escreve "  1. Arrancar o reconhecimento local com: .\run.ps1"
+    Escreve "  2. Configurar a voz OpenAI na app em Personalização → Voz"
 } else {
     EscreveErro "   A GPU NÃO foi encontrada (torch.cuda.is_available() = False)."
     EscreveErro ""

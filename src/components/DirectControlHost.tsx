@@ -12,6 +12,7 @@ import { useEffect, useRef, useSyncExternalStore } from 'react';
 
 import { ControlOverlay } from '@/components/ControlOverlay';
 import { directControlService } from '@/services/direct-control-service';
+import { visionService } from '@/services/vision/vision-service';
 
 /** Janela em que duas teclas `Esc` contam como "travão de mão". */
 const HANDBRAKE_WINDOW_MS = 500;
@@ -21,6 +22,7 @@ export function DirectControlHost(): React.JSX.Element | null {
     (onChange) => directControlService.subscribe(onChange),
     () => directControlService.pending,
   );
+  const consent = useSyncExternalStore(listener => visionService.subscribe(listener), () => visionService.pendingConsent);
 
   // Travão de mão (Fase 3.4): duas vezes em `Esc` num curto espaço, para tudo.
   // Vive aqui e não no overlay porque deve estar ativo mesmo sem passo pendente —
@@ -46,6 +48,11 @@ export function DirectControlHost(): React.JSX.Element | null {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
+  if (consent) return <ControlOverlay purpose="captura" stepRisk="medio"
+    stepDescription={consent.provider.isRemote
+      ? `O print, com as zonas sensíveis tapadas, será enviado a ${consent.provider.name}. O resto do ecrã sai da máquina. Permitir nesta sessão?`
+      : `O print, com as zonas sensíveis tapadas, será analisado localmente por ${consent.provider.name}. Permitir nesta sessão?`}
+    onConfirm={() => visionService.answerConsent(true)} onCancel={() => visionService.answerConsent(false)} />;
   if (!pending) return null;
 
   return (

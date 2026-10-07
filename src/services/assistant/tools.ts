@@ -194,9 +194,8 @@ export const TOOLS: readonly ToolDefinition[] = [
     name: 'procurar_ficheiro',
     description:
       'Procura ficheiros e pastas pelo nome (parcial, sem acentos) numa árvore de ficheiros ' +
-      'de exemplo — NÃO é o disco real da pessoa, mesmo que ela tenha escolhido uma pasta no ' +
-      'Explorador. Devolve o que encontrar, com a pasta onde está cada um; não abre nada. ' +
-      'Diz sempre que os resultados são de uma árvore de exemplo, para não os dares por reais.',
+      'na pasta real escolhida no Explorador. Sem pasta escolhida, pesquisa apenas exemplos. ' +
+      'Devolve nomes e pastas, sem ler conteúdos nem abrir ficheiros. Respeita a origem e os limites indicados no resultado.',
     risk: 'livre',
     parameters: [text('nome', 'Nome ou parte do nome a procurar.')],
   },
@@ -204,8 +203,8 @@ export const TOOLS: readonly ToolDefinition[] = [
     name: 'abrir_ficheiro',
     description:
       'Abre o Explorador de Ficheiros já na pasta de um ficheiro ou pasta encontrado pelo nome ' +
-      '(parcial, sem acentos), na mesma árvore de exemplo do procurar_ficheiro — NÃO no disco ' +
-      'real. Usa isto para "esse ficheiro" depois de o nome já estar resolvido a partir do que ' +
+      '(parcial, sem acentos), dentro da pasta escolhida ou dos exemplos se não houver raiz. Não executa o ficheiro. ' +
+      'Usa isto para "esse ficheiro" depois de o nome já estar resolvido a partir do que ' +
       'se disse antes na conversa.',
     risk: 'livre',
     parameters: [text('nome', 'Nome ou parte do nome do ficheiro ou pasta a abrir.')],

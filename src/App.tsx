@@ -6,6 +6,7 @@ import { BootSequence } from '@/components/boot/BootSequence';
 import { CommandPalette } from '@/components/command-palette/CommandPalette';
 import { DesktopContextMenu } from '@/components/context-menu/DesktopContextMenu';
 import { DirectControlHost } from '@/components/DirectControlHost';
+import { DirectControlStatus } from '@/components/DirectControlStatus';
 import { NotificationPanel } from '@/components/notifications/NotificationPanel';
 import { ToastViewport } from '@/components/notifications/ToastViewport';
 import { AppShell } from '@/components/shell/AppShell';
@@ -31,10 +32,8 @@ import { useVoice } from '@/hooks/use-voice';
 import { useWorkspace } from '@/hooks/use-workspace';
 import { getPlatformAdapter, initializePlatform } from '@/platform';
 import { USER_FIRST_NAME } from '@/constants/user';
-import { seedFiles } from '@/data/files';
 import { themeName } from '@/lib/names';
-import { searchFiles as searchFileTree } from '@/types/file-entry';
-import { normalizeSearch } from '@/utils/text';
+import { searchAssistantFiles } from '@/services/assistant/file-search';
 import { aiService } from '@/services/ai-service';
 import { setContextSource } from '@/services/assistant/context';
 import { memoryService } from '@/services/assistant/memory-service';
@@ -254,6 +253,9 @@ export function App(): React.JSX.Element {
           automationService.checkNativeTriggers('bateria', { batteryPercent: event.percent });
         }),
       );
+      cleanups.push(await adapter.onNetworkChanged((event) => {
+        automationService.checkNativeTriggers('rede', event);
+      }));
 
       // Regista as pastas que as automações de ficheiros pedem para observar.
       // A deduplicação é do lado Rust (FileWatchers) — chamar watch_folder
@@ -596,18 +598,16 @@ export function App(): React.JSX.Element {
         setPaletteQuery(query);
         openPalette();
       },
-      searchFiles: (query) =>
-        searchFileTree(seedFiles(), query, normalizeSearch).map((result) => ({
-          name: result.entry.name,
-          pathNames: result.pathNames,
-        })),
-      openFileLocation: (query) => {
-        const [first] = searchFileTree(seedFiles(), query, normalizeSearch);
-        if (!first) return false;
-
-        usePendingFileNavigationStore.getState().set(first.path);
+      searchFiles: searchAssistantFiles,
+      openFileLocation: async (query) => {
+        const result = await searchAssistantFiles(query);
+        if (result.source === 'indisponível') return 'Não consegui aceder à pasta escolhida. Volta a escolhê-la no Explorador.';
+        const [first] = result.matches;
+        if (!first) return `Não encontrei esse nome ${result.source === 'real' ? 'na pasta real escolhida' : 'na árvore de exemplo'}.${result.isTruncated ? ' A pesquisa foi parcial.' : ''}`;
+        if (first.realParents) usePendingFileNavigationStore.getState().setReal(first.realParents);
+        else if (first.examplePath) usePendingFileNavigationStore.getState().set(first.examplePath);
         launch('files');
-        return true;
+        return `Explorador aberto na pasta do resultado (${result.source === 'real' ? 'pasta real escolhida' : 'árvore de exemplo'}).`;
       },
       searchNotes: async (query) => {
         await obsidianService.refreshNotes();
@@ -809,6 +809,7 @@ export function App(): React.JSX.Element {
 
       {/* Overlay de controlo direto — só aparece quando há um passo a confirmar. */}
       <DirectControlHost />
+      <DirectControlStatus />
 
       {avatarFlight && (
         <FlyingAvatar

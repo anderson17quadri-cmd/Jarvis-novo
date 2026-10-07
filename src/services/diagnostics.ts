@@ -6,6 +6,7 @@ import { fpsMeter } from './fps-meter';
 import { logService } from './log-service';
 import { soundService } from './sound-service';
 import { systemService } from './system-service';
+import { voiceService } from './voice-service';
 
 /**
  * Diagnóstico (Parte 16).
@@ -17,7 +18,7 @@ import { systemService } from './system-service';
 
 export interface ServiceStatus {
   readonly name: string;
-  readonly state: 'ativo' | 'parado' | 'indisponível';
+  readonly state: 'ativo' | 'parado' | 'indisponível' | 'configurado' | 'por-verificar';
   readonly detail: string;
 }
 
@@ -58,6 +59,42 @@ function readFirstPaint(): number | null {
   return paint ? Math.round(paint.startTime) : null;
 }
 
+let localVoiceStatuses: readonly ServiceStatus[] = [
+  { name: 'Transcrição local', state: 'por-verificar', detail: 'Whisper · ainda não verificado' },
+  { name: 'Detetor local', state: 'por-verificar', detail: 'Vosk · ainda não verificado' },
+];
+let checkingVoice: Promise<void> | null = null;
+
+/** Só consulta a saúde local. Não abre o microfone, gera áudio ou faz pedidos pagos. */
+export function refreshVoiceDiagnostics(): Promise<void> {
+  checkingVoice ??= (async () => {
+    const checked = new Date().toLocaleTimeString('pt-PT');
+    async function health(port: number): Promise<Record<string, unknown> | null> {
+      try {
+        const response = await fetch(`http://127.0.0.1:${port}/health`, { signal: AbortSignal.timeout(1500) });
+        if (!response.ok) return null;
+        const data: unknown = await response.json();
+        return data && typeof data === 'object' && 'ok' in data && data.ok === true
+          ? data : null;
+      } catch { return null; }
+    }
+    const [stt, wake] = await Promise.all([health(8090), health(8091)]);
+    localVoiceStatuses = [
+      { name: 'Transcrição local',
+        state: stt?.reconhecimento_carregado === true ? 'ativo'
+          : stt?.reconhecimento_disponivel === true ? 'configurado' : 'indisponível',
+        detail: `${stt?.reconhecimento_carregado === true ? 'Whisper carregado'
+          : stt?.reconhecimento_disponivel === true ? 'Whisper instalado; carrega na primeira transcrição'
+            : 'serviço ou Whisper indisponível'} · verificado às ${checked}` },
+      { name: 'Detetor local', state: wake?.running === true ? 'ativo' : wake ? 'parado' : 'indisponível',
+        detail: `${wake?.running === true ? 'Vosk a ouvir localmente'
+          : wake?.model_ready === true ? 'serviço disponível; detetor parado; modelo por validar'
+            : wake ? 'modelo Vosk não instalado' : 'serviço local indisponível'} · verificado às ${checked}` },
+    ];
+  })().finally(() => { checkingVoice = null; });
+  return checkingVoice;
+}
+
 export function readDiagnostics(): Diagnostics {
   const memory = readMemory();
   const adapter = getPlatformAdapter();
@@ -69,6 +106,13 @@ export function readDiagnostics(): Diagnostics {
     heapLimitBytes: memory?.jsHeapSizeLimit ?? null,
     fps: fpsMeter.current,
     services: [
+      { name: 'Voz OpenAI',
+        state: voiceService.lastOpenAiVoiceError ? 'indisponível' : voiceService.hasOpenAiKey
+          ? voiceService.lastOpenAiPlaybackAt ? 'ativo' : 'por-verificar' : 'parado',
+        detail: voiceService.lastOpenAiVoiceError ?? (voiceService.hasOpenAiKey
+          ? voiceService.lastOpenAiPlaybackAt ? 'áudio reproduzido nesta sessão; naturalidade por avaliar'
+            : 'chave configurada; áudio não testado' : 'falta configurar a chave em Personalização → Voz') },
+      ...localVoiceStatuses,
       {
         name: 'Plataforma',
         state: 'ativo',

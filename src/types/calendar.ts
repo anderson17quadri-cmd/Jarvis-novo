@@ -16,3 +16,8 @@ export interface CalendarSnapshot {
   readonly date: string;
   readonly isSimulated: boolean;
 }
+
+export interface CalendarEvent extends AgendaEntry {
+  readonly date: string;
+}
+export type CalendarEventDraft = Omit<CalendarEvent, 'id'>;

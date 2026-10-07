@@ -10,6 +10,7 @@ import { NewsService } from '@/services/news/news-service';
 import { MailService } from '@/services/mail/mail-service';
 import { MusicService } from '@/services/music/music-service';
 import { CalendarService } from '@/services/calendar/calendar-service';
+import { MockCalendarProvider } from '@/services/calendar/providers/calendar-provider';
 
 /** Serviço mínimo, para exercitar a base sem depender de nenhum domínio. */
 class CounterService extends PollingDataService<number> {
@@ -253,7 +254,7 @@ describe('os serviços expõem que os dados são simulados', () => {
     ['notícias', new NewsService()],
     ['email', new MailService()],
     ['música', new MusicService()],
-    ['calendário', new CalendarService()],
+    ['calendário', new CalendarService(new MockCalendarProvider())],
   ])('%s', async (_name, service) => {
     await service.refresh();
     // A interface precisa disto para o dizer ao utilizador em vez de fingir.

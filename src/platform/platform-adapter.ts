@@ -111,6 +111,7 @@ export interface PlatformAdapter {
   onUsbChanged(handler: (event: { action: string; deviceName: string | null }) => void): Promise<() => void>;
   /** Ouve eventos de mudança de bateria. Devolve função para cancelar. */
   onBatteryChanged(handler: (event: { percent: number; isCharging: boolean; isPlugged: boolean }) => void): Promise<() => void>;
+  onNetworkChanged(handler: (event: { connected: boolean; previousConnected: boolean | null }) => void): Promise<() => void>;
 
   // ── Janela nativa ────────────────────────────────────────────────────────
   /** Sem efeito onde não há gestão de janelas. */

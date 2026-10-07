@@ -1,24 +1,13 @@
 """
-Serviço local de voz clonada (Parte 7.1 — docs/spec/voz-clonada-local.md).
+Reconhecimento Whisper local do JARVIS, na porta 8090.
 
-Sozinho, à parte do JARVIS — a mesma relação que o Ollama já tem com a app:
-corre no próprio PC, o JARVIS fala com ele por HTTP no localhost, e nada disto
-sai da máquina. Usa o XTTS-v2 (Coqui) — que faz duas coisas diferentes, e as
-duas ficam aqui: clona UMA voz só (a de quem grava a amostra em
-`voices/referencia.wav` — isto é a voz de quem usa o sistema, não um serviço
-geral de clonagem), e também traz várias dezenas de vozes já gravadas por
-atores que autorizaram o uso, sem clonar ninguém (`GET /vozes`).
-
-Confirmado a funcionar numa RTX 5070 (09/08/2026) — áudio real, gerado com a
-voz gravada em `voices/referencia.wav`. Precisou de três correções que só
-apareceram a sério no Windows: FFmpeg de uma versão específica (4 a 8, não a
-mais recente), `os.add_dll_directory` para o Python encontrar as DLLs, e o
-PyTorch reinstalado contra um índice CUDA mais recente (a RTX 5070 é
-demasiado nova para o `cu126` inicial). Tudo documentado no README.md.
-
+A síntese OpenAI é chamada pela app e não envia áudio do microfone.
+O XTTS só carrega se JARVIS_LEGACY_TTS=1, para compatibilidade explícita.
+A gravação antiga é preservada; a clonagem está desativada por omissão.
 Arranca com: uvicorn server:app --host 127.0.0.1 --port 8090
 """
 
+import importlib.util
 import json
 import os
 import subprocess
@@ -82,7 +71,7 @@ def _json_utf8(data: dict, status_code: int = 200) -> Response:
     )
 
 
-app = FastAPI(title="JARVIS — voz clonada local")
+app = FastAPI(title="JARVIS — reconhecimento local")
 
 
 @app.exception_handler(HTTPException)
@@ -159,6 +148,8 @@ def _preparar_ffmpeg_no_windows() -> None:
 @app.on_event("startup")
 def carregar_modelo() -> None:
     global _tts_model, _vozes_disponiveis
+    if os.environ.get("JARVIS_LEGACY_TTS") != "1":
+        return
     _preparar_ffmpeg_no_windows()
 
     # Importado aqui, não no topo do ficheiro: importar `TTS` já obriga o
@@ -193,10 +184,16 @@ def _carregar_stt_se_preciso() -> None:
         _stt_loading = False
 
 
+def _reconhecimento_disponivel() -> bool:
+    return _stt_model is not None or importlib.util.find_spec("whisper") is not None
+
+
 @app.get("/health")
 def saude() -> Response:
     return _json_utf8({
         "ok": True,
+        "sintese_local": os.environ.get("JARVIS_LEGACY_TTS") == "1",
+        "reconhecimento_disponivel": _reconhecimento_disponivel(),
         "modelo_carregado": _tts_model is not None,
         "voz_configurada": REFERENCE_PATH.exists(),
         "reconhecimento_carregado": _stt_model is not None,
@@ -214,6 +211,8 @@ def vozes_prontas() -> Response:
     ouviram, e uma genérica para as restantes. Antes do modelo carregar
     (ou nos testes sem GPU), cai-se só para a pequena curadoria.
     """
+    if os.environ.get("JARVIS_LEGACY_TTS") != "1":
+        return _json_utf8({"vozes": {}})
     nomes = _vozes_disponiveis if _vozes_disponiveis is not None else list(VOZES_PRONTAS)
     return _json_utf8(
         {"vozes": {nome: VOZES_PRONTAS.get(nome, "Voz do modelo XTTS-v2") for nome in nomes}}
@@ -235,6 +234,8 @@ async def gravar_voz(ficheiro: UploadFile) -> Response:
     sempre o mesmo formato que o XTTS-v2 espera.
     """
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
+    if os.environ.get("JARVIS_LEGACY_TTS") != "1":
+        raise HTTPException(410, "A clonagem está desativada. Escolhe uma voz em Personalização → Voz.")
     conteudo = await ficheiro.read()
 
     if len(conteudo) < 1000:
@@ -279,6 +280,8 @@ def falar(pedido: dict) -> Response:
     `pedido["velocidade"]` por omissão `1.0` (o ritmo de base do modelo) —
     aceita um número entre 0.5 e 2.0, colando-se aos limites fora disso.
     """
+    if os.environ.get("JARVIS_LEGACY_TTS") != "1":
+        raise HTTPException(410, "A síntese local por clonagem está desativada.")
     if _tts_model is None:
         raise HTTPException(503, "O modelo ainda está a carregar. Tenta outra vez em instantes.")
 

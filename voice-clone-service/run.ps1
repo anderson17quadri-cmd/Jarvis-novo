@@ -1,5 +1,4 @@
-﻿# Arranca o serviço de voz clonada — depois de correres .\setup.ps1 uma vez
-# e de teres uma gravação em voices\referencia.wav.
+﻿# Arranca o reconhecimento local, depois de correres .\setup.ps1 uma vez.
 
 $ErrorActionPreference = "Stop"
 
@@ -10,7 +9,7 @@ if (-not (Test-Path ".venv")) {
 
 & .\.venv\Scripts\Activate.ps1
 
-if (-not (Test-Path "voices\referencia.wav")) {
+if ($env:JARVIS_LEGACY_TTS -eq "1" -and -not (Test-Path "voices\referencia.wav")) {
     Write-Host "Aviso: ainda não há nenhuma gravação em voices\referencia.wav." -ForegroundColor Yellow
     Write-Host "O serviço arranca na mesma, mas /falar não funciona até gravares." -ForegroundColor Yellow
 }

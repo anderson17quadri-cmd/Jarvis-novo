@@ -1,4 +1,6 @@
 import { AlertTriangle, Download, Star } from 'lucide-react';
+import { useState } from 'react';
+import { RemoteMarketplace } from './RemoteMarketplace';
 
 import { cn } from '@/lib/cn';
 import { PLUGIN_CATEGORY_LABELS } from './plugin-catalog';
@@ -9,30 +11,27 @@ const INSTALL_FORMATTER = new Intl.NumberFormat('pt-PT');
 /**
  * Esboço do Marketplace (Parte 11 §Marketplace, atualizações, rollback).
  *
- * Só desenho: os cartões abaixo são dados de exemplo, escritos à mão, sem
- * nenhuma origem remota real por trás. "Instalar" fica sempre desativado —
- * ligar isto a uma fonte a sério é uma decisão à parte, documentada em
- * `docs/spec/plugins-marketplace.md`, não algo para simular como se já
- * estivesse decidido.
+ * Sem fonte configurada mostra exemplos rotulados; um índice público GitHub
+ * liga a instalação assinada com confirmação, atualizações manuais e rollback.
  */
 export function MarketplaceTab(): React.JSX.Element {
+  const [connected, setConnected] = useState(false);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-s3">
-      <p className="flex items-start gap-2 rounded-input border border-warn/30 bg-warn/[.06] p-2.5 text-cap text-t2">
+      <RemoteMarketplace onConnected={setConnected} />
+      {!connected && <p className="flex items-start gap-2 rounded-input border border-warn/30 bg-warn/[.06] p-2.5 text-cap text-t2">
         <AlertTriangle className="mt-px h-3.5 w-3.5 flex-shrink-0 text-warn" aria-hidden="true" />
         <span>
-          Esboço, não uma loja a sério: os plugins abaixo são dados de exemplo, escritos à mão —
-          nenhum vem de um servidor real, e "Instalar" não faz nada. O que falta decidir antes
-          disto ligar a uma fonte real está em{' '}
-          <code className="mono text-[11px]">docs/spec/plugins-marketplace.md</code>.
+          Os plugins abaixo são dados de exemplo, escritos à mão — nenhum vem de um servidor real,
+          e "Instalar" não faz nada. Carrega um índice GitHub acima para ver pacotes remotos assinados.
         </span>
-      </p>
+      </p>}
 
-      <ul className="flex flex-col gap-2.5 overflow-y-auto pr-0.5">
+      {!connected && <ul className="flex flex-col gap-2.5 overflow-y-auto pr-0.5">
         {MARKETPLACE_LISTINGS.map((listing) => (
           <MarketplaceCard key={listing.id} listing={listing} />
         ))}
-      </ul>
+      </ul>}
     </div>
   );
 }

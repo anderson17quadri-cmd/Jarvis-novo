@@ -35,7 +35,7 @@
         "style-src": "'self' 'unsafe-inline'",
         "font-src": "'self'",
         "media-src": "'self' blob: asset: http://asset.localhost",
-        "connect-src": "'self' ipc: http://ipc.localhost https://api.deepseek.com https://api.anthropic.com http://localhost:11434 http://127.0.0.1:8090 http://127.0.0.1:8091 http://localhost:8888 https://api.open-meteo.com https://geocoding-api.open-meteo.com https://newsapi.org https://api.search.brave.com",
+        "connect-src": "'self' ipc: http://ipc.localhost https://api.openai.com wss://api.openai.com https://raw.githubusercontent.com https://api.deepseek.com https://api.anthropic.com http://localhost:11434 http://127.0.0.1:8090 http://127.0.0.1:8091 http://localhost:8888 https://api.open-meteo.com https://geocoding-api.open-meteo.com https://newsapi.org https://api.search.brave.com",
         "script-src": "'self'"
       },
       "assetProtocol": {
@@ -47,12 +47,30 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.ico"
+    ],
     "windows": {
-      "webviewInstallMode": { "type": "downloadBootstrapper" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
     },
     "android": {
       "minSdkVersion": 24
+    },
+    "resources": {
+      "../scripts/preparar-servicos-locais.ps1": "services/preparar-servicos-locais.ps1",
+      "../voice-clone-service/server.py": "services/voice-clone-service/server.py",
+      "../voice-clone-service/setup.ps1": "services/voice-clone-service/setup.ps1",
+      "../voice-clone-service/run.ps1": "services/voice-clone-service/run.ps1",
+      "../voice-clone-service/requirements.txt": "services/voice-clone-service/requirements.txt",
+      "../wake-word-service/server.py": "services/wake-word-service/server.py",
+      "../wake-word-service/setup.ps1": "services/wake-word-service/setup.ps1",
+      "../wake-word-service/run.ps1": "services/wake-word-service/run.ps1",
+      "../wake-word-service/requirements.txt": "services/wake-word-service/requirements.txt"
     }
   },
   "plugins": {}

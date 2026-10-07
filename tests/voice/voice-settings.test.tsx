@@ -6,15 +6,6 @@ import { VoiceSettings } from '@/apps/personalization/VoiceSettings';
 import { voiceService } from '@/services/voice-service';
 import { useVoiceSettingsStore } from '@/stores/use-voice-settings-store';
 
-/**
- * Escolha de voz (Parte 7.1 §Voz).
- *
- * O pedido era simples: uma voz mais humana sem pagar por uma API. A
- * resposta não é clonar ninguém — é deixar escolher, de entre as vozes que o
- * próprio sistema já tem instaladas (as "Natural" do Windows, por exemplo),
- * em vez de ficar preso à primeira que calhar.
- */
-
 const VOICES = [
   { name: 'Microsoft Helena - Portuguese (Portugal)', lang: 'pt-PT', voiceURI: 'helena' },
   { name: 'Microsoft Duarte Online (Natural) - Portuguese (Portugal)', lang: 'pt-PT', voiceURI: 'duarte-natural' },
@@ -101,7 +92,7 @@ describe('VoiceSettings', () => {
     expect(speak).toHaveBeenCalled();
   });
 
-  it('mostra as vozes clonadas locais quando o serviço está disponível', async () => {
+  it('mostra OpenAI em pt-BR e deixa de oferecer clonagem, mesmo com o serviço antigo disponível', async () => {
     vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
       disponivel: true,
       vozPropriaGravada: true,
@@ -110,11 +101,13 @@ describe('VoiceSettings', () => {
 
     render(<VoiceSettings />);
 
-    expect(await screen.findByText('A minha voz')).toBeInTheDocument();
-    expect(await screen.findByText(/Ana Florence/)).toBeInTheDocument();
+    expect(screen.getByText(/Voz OpenAI/)).toBeInTheDocument();
+    expect(screen.getByText(/português brasileiro/i)).toBeInTheDocument();
+    expect(screen.queryByText('A minha voz')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Gravar a minha voz' })).not.toBeInTheDocument();
   });
 
-  it('escolher uma voz clonada pronta guarda-a como preferida', async () => {
+  it('escolher Marin guarda a preferência para a OpenAI', async () => {
     vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
       disponivel: true,
       vozPropriaGravada: false,
@@ -123,51 +116,25 @@ describe('VoiceSettings', () => {
     const user = userEvent.setup();
     render(<VoiceSettings />);
 
-    await user.click(await screen.findByRole('radio', { name: /Ana Florence/ }));
+    await user.click(screen.getByRole('radio', { name: 'Marin' }));
 
-    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'clonada', nome: 'Ana Florence' });
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'openai', voice: 'marin' });
   });
 
-  describe('gravar a amostra da própria voz (sub-fase 4.2)', () => {
-    beforeEach(() => {
-      vi.spyOn(voiceService, 'getCloneServiceInfo').mockResolvedValue({
-        disponivel: true,
-        vozPropriaGravada: false,
-        vozesProntas: [],
-      });
-    });
+  it('testar OpenAI não muda a preferência guardada', async () => {
+    useVoiceSettingsStore.setState({ openAiKey: 'teste', selection: { kind: 'auto' } });
+    const speakVoice = vi.spyOn(voiceService, 'speak').mockReturnValue(true);
+    render(<VoiceSettings />);
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Testar a voz Cedar' }));
+    expect(speakVoice).toHaveBeenCalledWith(expect.stringContaining('você'), expect.anything(),
+      { kind: 'openai', voice: 'cedar' });
+    expect(useVoiceSettingsStore.getState().selection).toEqual({ kind: 'auto' });
+  });
 
-    it('oferece gravar quando o serviço local está disponível, mesmo sem voz gravada ainda', async () => {
-      render(<VoiceSettings />);
-
-      expect(await screen.findByRole('button', { name: 'Gravar a minha voz' })).toBeInTheDocument();
-    });
-
-    it('gravar com sucesso deixa escolher "A minha voz" a seguir, sem reiniciar a janela', async () => {
-      vi.spyOn(voiceService, 'recordVoiceSample').mockReturnValue({
-        result: Promise.resolve({ ok: true, bytes: 12_345 }),
-        stop: vi.fn(),
-      });
-      const user = userEvent.setup();
-      render(<VoiceSettings />);
-
-      await user.click(await screen.findByRole('button', { name: 'Gravar a minha voz' }));
-
-      expect(await screen.findByText(/Gravado/)).toBeInTheDocument();
-      expect(await screen.findByText('A minha voz')).toBeInTheDocument();
-    });
-
-    it('uma gravação falhada mostra o motivo, não um "não funcionou" vazio', async () => {
-      vi.spyOn(voiceService, 'recordVoiceSample').mockReturnValue({
-        result: Promise.resolve({ ok: false, motivo: 'audio-capture' }),
-        stop: vi.fn(),
-      });
-      const user = userEvent.setup();
-      render(<VoiceSettings />);
-
-      await user.click(await screen.findByRole('button', { name: 'Gravar a minha voz' }));
-
-      expect(await screen.findByText('Não encontrei nenhum microfone ligado a este dispositivo.')).toBeInTheDocument();
-    });
+  it('sem chave, o teste OpenAI está desativado e mostra o que falta', () => {
+    useVoiceSettingsStore.setState({ openAiKey: '' });
+    render(<VoiceSettings />);
+    expect(screen.getByRole('button', { name: 'Testar a voz Cedar' })).toBeDisabled();
+    expect(screen.getByText('Configura a chave para ouvir as amostras.')).toBeInTheDocument();
   });
 });

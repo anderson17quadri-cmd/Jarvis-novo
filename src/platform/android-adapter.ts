@@ -35,6 +35,7 @@ export class AndroidAdapter extends TauriAdapterBase {
     fileWatcher: false,
     usbMonitor: false,
     batteryMonitor: false,
+    networkMonitor: false,
     // `commands::files::files_set_root`/`files_read_dir` só entram no
     // `invoke_handler` do ramo desktop — fora dele, o comando nem existe.
     realFilesystem: false,

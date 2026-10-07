@@ -112,6 +112,7 @@ export class AutomationService {
 
   /** Última percentagem de bateria conhecida — para detetar cruzamentos de limiar. */
   private lastBatteryPercent: number | null = null;
+  private lastNetworkConnected: boolean | null = null;
 
   /**
    * Chamado de fora (normalmente do App.tsx) quando um evento nativo chega.
@@ -119,16 +120,22 @@ export class AutomationService {
    * O motor não conhece o PlatformAdapter — quem liga os fios é a aplicação.
    * Este método só percorre as automações e decide se alguma dispara.
    */
-  checkNativeTriggers(kind: 'ficheiros' | 'usb' | 'bateria', payload: {
+  checkNativeTriggers(kind: 'ficheiros' | 'usb' | 'bateria' | 'rede', payload: {
     filePath?: string;
     usbAction?: string;
     batteryPercent?: number;
+    connected?: boolean;
+    previousConnected?: boolean | null;
   }): void {
     // Captura o "anterior" uma vez e atualiza uma vez, no fim — nunca dentro
     // do predicado, que corre por automação: atualizar ali faria a segunda
     // regra de bateria comparar contra o valor já atualizado e nunca disparar.
     const batteryCurrent = kind === 'bateria' ? payload.batteryPercent : undefined;
     const batteryPrevious = this.lastBatteryPercent;
+    const networkCurrent = kind === 'rede' ? payload.connected : undefined;
+    const networkPrevious = this.lastNetworkConnected ?? payload.previousConnected;
+    const networkChanged = typeof networkCurrent === 'boolean' && typeof networkPrevious === 'boolean'
+      && networkCurrent !== networkPrevious;
 
     this.runByTrigger((automation) => {
       const trigger = automation.trigger;
@@ -142,6 +149,9 @@ export class AutomationService {
 
       if (trigger.kind === 'usb' && kind === 'usb') {
         return trigger.action === (payload.usbAction ?? '');
+      }
+      if (trigger.kind === 'rede' && kind === 'rede') {
+        return networkChanged && (trigger.action === 'ligado') === networkCurrent;
       }
 
       if (trigger.kind === 'bateria' && kind === 'bateria') {
@@ -159,6 +169,7 @@ export class AutomationService {
     if (batteryCurrent !== undefined) {
       this.lastBatteryPercent = batteryCurrent;
     }
+    if (typeof networkCurrent === 'boolean') this.lastNetworkConnected = networkCurrent;
   }
 
   // ── Gestão ───────────────────────────────────────────────────────────────

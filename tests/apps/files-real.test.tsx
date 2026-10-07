@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -47,7 +48,7 @@ const ROOT_ENTRIES: readonly RealFileEntry[] = [
 describe('FilesWindow — modo real', () => {
   beforeEach(() => {
     storage.clear();
-    usePendingFileNavigationStore.setState({ path: null });
+    usePendingFileNavigationStore.setState({ path: null, realParents: null });
     pickFilesRoot = vi.fn(async () => null);
     filesSetRoot = vi.fn(async () => null);
     filesReadDir = vi.fn(async () => null);
@@ -56,6 +57,32 @@ describe('FilesWindow — modo real', () => {
   it('mostra o botão para escolher uma pasta real quando a plataforma suporta', () => {
     render(<FilesWindow />);
     expect(screen.getByRole('button', { name: /Escolher pasta real/ })).toBeInTheDocument();
+  });
+
+  it('recebe a navegação real do assistente mesmo com a janela aberta', async () => {
+    storage.set('files.real-root-path', ROOT.path);
+    filesSetRoot = vi.fn(async () => ROOT);
+    filesReadDir = vi.fn(async path => path === ROOT.path ? ROOT_ENTRIES : [
+      { name: 'foto.png', path: `${ROOT.path}/Fotos/foto.png`, isDirectory: false, sizeBytes: 20, modifiedAt: 0 },
+    ]);
+    render(<FilesWindow />);
+    await screen.findByText('notas.txt');
+    usePendingFileNavigationStore.getState().setReal([ROOT, { path: `${ROOT.path}/Fotos`, name: 'Fotos' }]);
+    await screen.findByText('foto.png');
+    expect(screen.queryByText('notas.txt')).not.toBeInTheDocument();
+    expect(usePendingFileNavigationStore.getState().realParents).toBeNull();
+  });
+
+  it('conserva a pasta pendente durante a montagem dupla do React', async () => {
+    storage.set('files.real-root-path', ROOT.path);
+    filesSetRoot = vi.fn(async () => ROOT);
+    filesReadDir = vi.fn(async path => path === ROOT.path ? ROOT_ENTRIES : [
+      { name: 'foto.png', path: `${ROOT.path}/Fotos/foto.png`, isDirectory: false, sizeBytes: 20, modifiedAt: 0 },
+    ]);
+    usePendingFileNavigationStore.getState().setReal([ROOT, { path: `${ROOT.path}/Fotos`, name: 'Fotos' }]);
+    render(<StrictMode><FilesWindow /></StrictMode>);
+    await screen.findByText('foto.png');
+    expect(screen.queryByText('notas.txt')).not.toBeInTheDocument();
   });
 
   it('escolher uma pasta lista o que lá está a sério', async () => {
