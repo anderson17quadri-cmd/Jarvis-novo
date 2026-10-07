@@ -2,6 +2,7 @@ import { logService } from '../log-service';
 import { getTool, validateArgs, type ToolDefinition } from './tools';
 import { wrapUntrustedContent } from '@/lib/untrusted-content';
 import type { SearchOutcome } from '@/types/web-search';
+import type { AssistantFileSearch } from './file-search';
 
 /**
  * Execução de ferramentas (Parte 7.2 §Agentes).
@@ -49,9 +50,9 @@ export interface ToolExecutor {
   readonly notify: (title: string, description: string) => void;
   readonly search: (query: string) => void;
   /** Ficheiros e pastas cujo nome contém `query` (sem acentos, parcial). */
-  readonly searchFiles: (query: string) => readonly FileMatch[];
+  readonly searchFiles: (query: string) => readonly FileMatch[] | AssistantFileSearch | Promise<readonly FileMatch[] | AssistantFileSearch>;
   /** Abre o Explorador na pasta do primeiro resultado. `false` se não houver nenhum. */
-  readonly openFileLocation: (query: string) => boolean;
+  readonly openFileLocation: (query: string) => boolean | Promise<boolean | string>;
   /** Notas do vault Obsidian cujo título contém `query` (sem acentos, parcial). */
   readonly searchNotes: (query: string) => Promise<readonly NoteMatch[]>;
   /** Conteúdo da primeira nota cujo título contém `query`. `null` se não houver nenhuma. */
@@ -293,16 +294,15 @@ async function perform(
       return `Pesquisa aberta com "${text('termo')}".`;
 
     case 'procurar_ficheiro': {
-      const results = run.searchFiles(text('nome'));
-      // A árvore que estas ferramentas percorrem é a de exemplo (`seedFiles`),
-      // nunca o disco a sério — mesmo quando o Explorador tem uma pasta real
-      // escolhida, que ele lê por outro caminho. Sem o dizer, o assistente
-      // respondia sobre ficheiros inventados como se fossem os da pessoa. É a
-      // mesma disciplina que a pesquisa web simulada já segue: dizer que é
-      // exemplo, em vez de deixar passar por real.
-      const aviso = '(árvore de exemplo — a pesquisa no disco a sério ainda não está ligada a esta ferramenta)';
+      const found = await run.searchFiles(text('nome'));
+      const search: AssistantFileSearch = 'source' in found
+        ? found : { source: 'exemplo', matches: found, isTruncated: false };
+      if (search.source === 'indisponível') return 'Não consegui aceder à pasta escolhida. Volta a escolhê-la no Explorador de Ficheiros.';
+      const results = search.matches;
+      const aviso = search.source === 'real' ? '(na pasta real escolhida)' : '(árvore de exemplo)';
+      const limite = search.isTruncated ? ' Pesquisa parcial: foi atingido um limite de tempo, tamanho ou acesso.' : '';
       if (results.length === 0) {
-        return `Não encontrei nada com "${text('nome')}" no nome ${aviso}.`;
+        return `Não encontrei nada com "${text('nome')}" no nome ${aviso}.${limite}`;
       }
 
       const lista = results
@@ -313,15 +313,17 @@ async function perform(
         )
         .join(', ');
 
-      return `Encontrei ${results.length} ${results.length === 1 ? 'resultado' : 'resultados'} ${aviso}: ${lista}.`;
+      const content = search.source === 'real' ? wrapUntrustedContent('nomes de ficheiros', lista) : lista;
+      return `Encontrei ${results.length} ${results.length === 1 ? 'resultado' : 'resultados'} ${aviso}: ${content}.${limite}`;
     }
 
-    case 'abrir_ficheiro':
-      // Mesma ressalva do `procurar_ficheiro`: a navegação é sobre a árvore de
-      // exemplo, não sobre a pasta real que o Explorador possa ter aberta.
-      return run.openFileLocation(text('nome'))
+    case 'abrir_ficheiro': {
+      const opened = await run.openFileLocation(text('nome'));
+      if (typeof opened === 'string') return opened;
+      return opened
         ? 'Explorador de Ficheiros aberto nessa pasta (árvore de exemplo, não o disco a sério).'
         : `Não encontrei nada com "${text('nome')}" no nome (árvore de exemplo).`;
+    }
 
     case 'procurar_nota': {
       const notes = await run.searchNotes(text('titulo'));

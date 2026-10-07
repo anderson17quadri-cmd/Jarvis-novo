@@ -21,6 +21,7 @@ import { useCapabilities } from '@/hooks/use-platform';
 import { cn } from '@/lib/cn';
 import { formatBytes, formatShortDate } from '@/lib/format';
 import { getPlatformAdapter } from '@/platform';
+import { REAL_ROOT_STORAGE_KEY } from '@/services/assistant/file-search';
 import { usePendingFileNavigationStore } from '@/stores/use-pending-file-navigation-store';
 import { fileKindFromName, resolvePath, type FileEntry, type FileKind } from '@/types/file-entry';
 import type { RealFilesRoot } from '@/types/real-file-entry';
@@ -54,9 +55,6 @@ interface Row {
   readonly isFolder: boolean;
 }
 
-/** Onde fica guardado o caminho da última pasta-raiz real escolhida. */
-const REAL_ROOT_STORAGE_KEY = 'files.real-root-path';
-
 /**
  * Explorador de ficheiros.
  *
@@ -71,10 +69,8 @@ const REAL_ROOT_STORAGE_KEY = 'files.real-root-path';
  *   próxima vez, e se a pasta tiver desaparecido cai-se de volta ao
  *   simulado em silêncio, sem um erro que ninguém pediu para ver.
  *
- * O caminho pendente do assistente (`usePendingFileNavigationStore`, de
- * "abrir esse ficheiro") só conhece a árvore simulada — se existir um
- * pedido pendente na primeira leitura, a reabertura da raiz real espera
- * pela próxima montagem em vez de o atropelar.
+ * Os pedidos do assistente navegam na pasta escolhida e também são recebidos
+ * quando a janela já está aberta. A raiz é novamente validada antes de navegar.
  */
 export default function FilesWindow(): React.JSX.Element {
   const root = useMemo(() => seedFiles(), []);
@@ -84,6 +80,7 @@ export default function FilesWindow(): React.JSX.Element {
   const [initialPendingPath] = useState<readonly string[] | null>(
     () => usePendingFileNavigationStore.getState().consume(),
   );
+  const [initialPendingReal] = useState(() => usePendingFileNavigationStore.getState().consumeReal());
   const [path, setPath] = useState<readonly string[]>(() => initialPendingPath ?? []);
   const [sortBy, setSortBy] = useState<SortBy>('nome');
 
@@ -103,30 +100,50 @@ export default function FilesWindow(): React.JSX.Element {
   // real guardada. Uma pasta que desapareceu entretanto não é um erro para
   // mostrar — cai-se de volta ao simulado como se nunca tivesse havido raiz.
   useEffect(() => {
-    if (!capabilities.realFilesystem || initialPendingPath !== null) return;
-
     let cancelled = false;
+    let generation = 0;
 
-    async function restore(): Promise<void> {
+    async function restore(parents?: readonly RealFilesRoot[]): Promise<void> {
+      if (!capabilities.realFilesystem) return;
+      const request = ++generation;
       const adapter = getPlatformAdapter();
       const savedPath = await adapter.storageGet<string | null>(REAL_ROOT_STORAGE_KEY, null);
       if (!savedPath || cancelled) return;
 
       const declared = await adapter.filesSetRoot(savedPath);
-      if (cancelled) return;
+      if (cancelled || request !== generation) return;
 
       if (!declared) {
         await adapter.storageRemove(REAL_ROOT_STORAGE_KEY);
         return;
       }
-
+      if (parents && declared.path !== parents[0]?.path) {
+        setRealError('A pasta escolhida mudou. Repete a pesquisa do ficheiro.');
+        return;
+      }
       setRealRoot(declared);
-      setRealCrumbs([{ name: declared.name, path: declared.path }]);
+      setRealCrumbs(parents ?? [{ name: declared.name, path: declared.path }]);
     }
 
-    void restore();
+    const pendingReal = initialPendingReal ?? usePendingFileNavigationStore.getState().consumeReal();
+    if (pendingReal) void restore(pendingReal);
+    else if (initialPendingPath === null) void restore();
+    const unsubscribe = usePendingFileNavigationStore.subscribe((state, previous) => {
+      if (state.realParents && state.realParents !== previous.realParents) {
+        const parents = usePendingFileNavigationStore.getState().consumeReal();
+        if (parents) void restore(parents);
+      } else if (state.path && state.path !== previous.path) {
+        const next = usePendingFileNavigationStore.getState().consume();
+        if (!next) return;
+        generation++;
+        setRealRoot(null);
+        setRealCrumbs([]);
+        setPath(next);
+      }
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

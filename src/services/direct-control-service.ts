@@ -51,6 +51,8 @@ class DirectControlService {
   private enabled = false;
   private passwordHash: string | null = null;
   private sessionExpiresAt: number | null = null;
+  private sessionGeneration = 0;
+  private sessionTimer: ReturnType<typeof setTimeout> | null = null;
   private simulatedMode = true;
   private steps: readonly StepRecord[] = [];
   private readonly listeners = new Set<Listener>();
@@ -65,6 +67,9 @@ class DirectControlService {
     this.enabled = value;
     if (!value) {
       this.sessionExpiresAt = null;
+      this.pendingStep = null;
+      if (this.sessionTimer !== null) clearTimeout(this.sessionTimer);
+      this.sessionTimer = null;
     }
     this.emit();
   }
@@ -108,18 +113,32 @@ class DirectControlService {
     return Date.now() < this.sessionExpiresAt;
   }
 
+  get sessionToken(): number | null {
+    return this.enabled && this.sessionActive ? this.sessionGeneration : null;
+  }
+
+  get sessionRemainingSeconds(): number {
+    return this.sessionExpiresAt ? Math.max(0, Math.ceil((this.sessionExpiresAt - Date.now()) / 1000)) : 0;
+  }
+
   /** Duração da sessão em minutos. */
   sessionDurationMinutes = 30;
 
   /** Abre uma sessão de controlo direto por N minutos. */
   startSession(): void {
+    if (this.sessionTimer !== null) clearTimeout(this.sessionTimer);
+    this.sessionGeneration += 1;
     this.sessionExpiresAt = Date.now() + this.sessionDurationMinutes * 60_000;
+    this.sessionTimer = setTimeout(() => this.endSession(), this.sessionDurationMinutes * 60_000);
     logService.log('info', 'auditoria', 'Sessão de controlo direto iniciada');
     this.emit();
   }
 
   endSession(): void {
+    if (this.sessionTimer !== null) clearTimeout(this.sessionTimer);
+    this.sessionTimer = null;
     this.sessionExpiresAt = null;
+    this.pendingStep = null;
     logService.log('info', 'auditoria', 'Sessão de controlo direto terminada');
     this.emit();
   }

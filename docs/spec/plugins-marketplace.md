@@ -1,66 +1,59 @@
-# Marketplace de plugins — esboço
+# Marketplace de plugins — fonte GitHub configurável
 
-Desenho da interface, confirmado 11/08/2026. **Não é uma decisão de
-ligar a uma fonte real** — é o oposto: existe para haver algo concreto a
-olhar antes de tomar essa decisão, que é maior do que vale a pena tomar
-sozinho, sem o utilizador a decidir.
+O pedido de construir as pendências, em 07/10/2026, autoriza o cliente de
+catálogo remoto. Usa um formato aberto sobre GitHub, sem servidor próprio,
+pagamentos ou atualizações automáticas. A fonte é escolhida na interface;
+sem fonte, os seis exemplos anteriores continuam rotulados e não instaláveis.
 
-## O que existe hoje
+## Cliente funcional — 07/10/2026
 
-Uma terceira aba na Loja de plugins (`PluginManagerWindow.tsx`), ao lado
-de "Loja" e "Instalados": `MarketplaceTab.tsx`, com seis entradas de
-`marketplace-sample-data.ts` — nomes, autores e números **inventados à
-mão**, sem nenhum ficheiro, servidor ou API por trás. "Instalar" está
-sempre desativado, com `title` a explicar porquê. Não há pesquisa nem
-filtro por categoria nesta aba — não faria sentido sobre seis entradas
-estáticas, e teria de se refazer quando (se) a fonte real entrar com
-paginação a sério.
+`RemoteMarketplace.tsx` carrega um índice público de `raw.githubusercontent.com`
+apenas ao clicar. Os pacotes devem vir do mesmo repositório do índice,
+sem credenciais, parâmetros ou redirecionamentos. Há limites de 100 entradas,
+256 KiB para o índice, 2 MiB por pacote e 15 segundos por download.
 
-## Porque não liga já a uma fonte real
+O índice tem esta forma:
 
-O catálogo local (`plugin-catalog.ts`) já resolve "mostrar plugins" —
-o que falta não é a interface, é confiar em código de terceiros. Isso
-exige respostas a perguntas que este projeto não pode responder sozinho:
+```json
+{
+  "version": 1,
+  "plugins": [{
+    "id": "meu-plugin",
+    "name": "Meu plugin",
+    "version": "1.0.0",
+    "author": "Editor",
+    "downloadUrl": "https://raw.githubusercontent.com/editor/repo/main/meu-plugin.jarvis-plugin",
+    "sha256": "hash SHA-256 dos bytes do pacote, com 64 caracteres hexadecimais"
+  }]
+}
+```
 
-1. **Onde vivem os plugins?** Um registo próprio (servidor a manter,
-   custo, disponibilidade) ou um formato aberto (ex.: um repositório Git
-   com um `index.json`, sem servidor nenhum a manter)? A segunda opção é
-   mais barata mas exige decidir quem pode escrever nesse índice.
-2. **Quem verifica o quê, antes de instalar?** A sandbox
-   (`docs/spec/plugins-sandbox.md`) já limita o que um plugin *consegue*
-   fazer — mas não diz nada sobre se o código é o que diz ser. Falta
-   assinatura (quem assina? uma CA própria? confiar na assinatura do
-   repositório Git?) e algum tipo de revisão antes de um plugin aparecer
-   listado, nem que seja automática (lint sobre o `manifest.json`,
-   confirmar que as permissões pedidas batem com as capacidades usadas).
-3. **Atualizações.** Um plugin instalado é uma cópia de um momento no
-   tempo. Atualizar automaticamente é conveniente e arriscado (código
-   novo a correr sem ninguém ver); pedir confirmação a cada atualização
-   é seguro e cansativo. Isto pede uma decisão explícita, não um valor
-   por omissão escolhido às pressas.
-4. **Rollback.** Se uma atualização parte alguma coisa, voltar à versão
-   anterior exige guardar versões antigas nalgum lado — mais uma decisão
-   de armazenamento antes de "atualizações" fazer sentido sozinho.
-5. **Dinheiro.** Metade dos exemplos em `marketplace-sample-data.ts` são
-   "pagos" só para a interface mostrar os dois estados — mas cobrar a
-   sério é pagamentos, reembolsos, fraude, impostos. Nada disto tem
-   resposta nenhuma hoje, nem deve fingir que tem.
-6. **Moderação.** Quem tira um plugin malicioso do ar, com que critério,
-   e quão depressa? Sem resposta a isto, um "marketplace" a sério é uma
-   promessa de segurança que ninguém está a cumprir.
+O SHA-256 deve corresponder aos bytes descarregados. O pacote continua a
+usar o formato `.jarvis-plugin` existente: manifesto, código, assinatura
+Ed25519 e chave pública. Identificador e versão têm de corresponder ao índice;
+a assinatura cobre manifesto e código e respeita as chaves revogadas.
+Um pacote remoto não pode substituir identificadores do catálogo do sistema.
 
-## O que faria sentido antes da próxima decisão
+Antes de instalar, a pessoa vê o manifesto real verificado, versão, autor,
+permissões pedidas e chave pública. Confirma que confia nessa chave. Uma
+assinatura matematicamente válida não prova a identidade do editor nem uma
+revisão de segurança; não é apresentado um selo de editor verificado.
 
-Não é "construir o registo" — é decidir, com o utilizador, se o caminho
-é um registo próprio ou um formato aberto sobre Git, porque as duas
-respostas às perguntas acima são completamente diferentes consoante essa
-escolha. Só depois disso decidido é que assinatura, atualizações e
-moderação ganham uma forma concreta para desenhar.
+As atualizações são manuais e conservam a chave do editor; uma troca de
+chave é recusada. Guardam a versão anterior localmente e atualizam o runtime.
+A instalação/atualização fica desativada até a pessoa a ativar na aba
+Instalados. Recuperar a versão anterior requer confirmação e volta a
+verificar a assinatura e a revogação. Guarda uma versão anterior por plugin;
+recuperar permite alternar entre as duas versões guardadas. Uma falha ao
+persistir a atualização repõe pacote, runtime e estado anteriores em memória.
 
-## Para quem escrever plugins entretanto
+O fluxo de carregar, verificar, confirmar, atualizar e recuperar foi
+testado num Edge real com respostas de rede simuladas e assinaturas reais.
+Não foi publicado nem ligado um catálogo de terceiros nesta sessão.
 
-O SDK mínimo já existe (`plugins/sdk/`, ver
-`docs/spec/plugins-sandbox.md` §O SDK) — um plugin pode ser escrito e
-testado localmente (`plugins/examples/`) muito antes de haver
-marketplace nenhum para o publicar. As duas coisas não dependem uma da
-outra.
+## História do esboço — 11/08/2026
+
+A primeira aba mostrava seis exemplos, todos não instaláveis. O cliente
+configurável substitui esse limite quando há uma fonte. Um registo central
+com moderação, pagamentos e gestão pública de editores continua fora desta
+entrega. O SDK e a instalação local permanecem disponíveis aos autores.

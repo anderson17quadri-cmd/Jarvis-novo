@@ -34,6 +34,7 @@ export const STORAGE_KEYS = {
   obsidianSettings: 'obsidian-settings',
   browserToolSettings: 'browser-tool-settings',
   sensitiveZones: 'sensitive-zones',
+  calendarEvents: 'calendar-events',
 } as const;
 
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];

@@ -7,7 +7,7 @@ import type { PlatformCapabilities, PlatformKind } from '@/types/platform';
 export class DesktopAdapter extends TauriAdapterBase {
   protected readonly kind: PlatformKind = 'desktop';
 
-  readonly capabilities: PlatformCapabilities = {
+  get capabilities(): PlatformCapabilities { return {
     systemMetrics: true,
     processList: true,
     systemTray: true,
@@ -30,6 +30,7 @@ export class DesktopAdapter extends TauriAdapterBase {
     fileWatcher: true,
     usbMonitor: true,
     batteryMonitor: true,
+    networkMonitor: this.info.osName === 'windows',
     // `std::fs` a sério, atrás de uma pasta-raiz declarada — ver
     // commands/files.rs (files_set_root/files_read_dir).
     realFilesystem: true,
@@ -43,5 +44,5 @@ export class DesktopAdapter extends TauriAdapterBase {
     // Controlo direto — começa pela ação nativa de menor risco (open_path,
     // commands/control.rs) e cresce para rato/teclado nas sub-fases seguintes.
     directControl: true,
-  };
+  }; }
 }

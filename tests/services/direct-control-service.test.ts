@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { directControlService, type ControlStep } from '@/services/direct-control-service';
 
@@ -29,6 +29,26 @@ function makeStep(overrides: Partial<ControlStep> = {}): ControlStep & { readonl
   };
   return Object.defineProperty(step, 'calls', { get: () => calls }) as ControlStep & { readonly calls: number };
 }
+
+afterEach(() => { directControlService.endSession(); vi.useRealTimers(); });
+
+describe('tempo e travão da sessão', () => {
+  it('a expiração limpa a confirmação pendente e avisa os subscritores', () => {
+    vi.useFakeTimers();
+    directControlService.setEnabled(true);
+    directControlService.setSimulated(false);
+    directControlService.startSession();
+    directControlService.executeStep(makeStep({ risk: 'medio' }), false);
+    const listener = vi.fn();
+    const off = directControlService.subscribe(listener);
+    expect(directControlService.sessionRemainingSeconds).toBe(1800);
+    vi.advanceTimersByTime(1800_000);
+    expect(directControlService.sessionToken).toBeNull();
+    expect(directControlService.pending).toBeNull();
+    expect(listener).toHaveBeenCalled();
+    off();
+  });
+});
 
 beforeEach(() => {
   directControlService.setEnabled(false);

@@ -286,11 +286,15 @@ export class VoiceService {
   private openAiController: AbortController | null = null;
   private openAiAudio: { audio: HTMLAudioElement; url: string } | null = null;
   lastOpenAiVoiceError: string | null = null;
+  lastOpenAiPlaybackAt: number | null = null;
+  get hasOpenAiKey(): boolean { return Boolean(this.openAiKey); }
   onOpenAiVoiceError: ((message: string) => void) | null = null;
 
   configureOpenAi(apiKey: string): void {
     this.stopSpeaking();
     this.openAiKey = apiKey.trim();
+    this.lastOpenAiPlaybackAt = null;
+    this.lastOpenAiVoiceError = null;
   }
 
   private async speakOpenAi(
@@ -318,7 +322,10 @@ export class VoiceService {
         callbacks.onEnd();
       };
       audio.onplay = (): void => {
-        if (generation === this.speakGeneration) callbacks.onStart?.();
+        if (generation === this.speakGeneration) {
+          this.lastOpenAiPlaybackAt = Date.now();
+          callbacks.onStart?.();
+        }
       };
       audio.onended = finish;
       audio.onerror = (): void => {

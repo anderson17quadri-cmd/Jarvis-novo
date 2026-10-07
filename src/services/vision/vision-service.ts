@@ -19,7 +19,7 @@ import type { VisionProvider } from './vision-provider';
  * **A porta de presença (`docs/spec/fase-3-controlo-direto.md` §1, §2) vive
  * aqui, não só nas ações.** As zonas sensíveis tapam só o que a pessoa marcou
  * — o resto do ecrã continua a sair da máquina se o provedor for remoto.
- * "Olhar" não pede confirmação por passo (não mexe em nada), mas continua a
+ * A primeira captura pede autorização para este provedor e sessão, e continua a
  * exigir o mesmo que abrir o Controlo Direto exige para tudo o resto: o
  * interruptor ligado e uma sessão de presença ativa. Sem isto, um print do
  * ecrã — senhas, conversas, saldos — podia viajar para a nuvem mesmo com o
@@ -31,8 +31,56 @@ import type { VisionProvider } from './vision-provider';
 
 class VisionService {
   private provider: VisionProvider | null = null;
+  private authorized: { token: number; provider: VisionProvider } | null = null;
+  private consent: { token: number; provider: VisionProvider; resolve: (allowed: boolean) => void;
+    promise: Promise<boolean>; timer: ReturnType<typeof setTimeout> } | null = null;
+  private readonly listeners = new Set<() => void>();
+
+  constructor() {
+    directControlService.subscribe(() => {
+      if (directControlService.sessionToken !== this.authorized?.token || directControlService.isSimulated) {
+        this.authorized = null;
+      }
+      if (this.consent && (directControlService.sessionToken !== this.consent.token || directControlService.isSimulated)) {
+        this.answerConsent(false);
+      }
+    });
+  }
+
+  get pendingConsent(): { readonly provider: VisionProvider } | null { return this.consent; }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => { this.listeners.delete(listener); };
+  }
+
+  answerConsent(allowed: boolean): void {
+    const consent = this.consent;
+    if (!consent) return;
+    this.consent = null;
+    clearTimeout(consent.timer);
+    const valid = allowed && directControlService.sessionToken === consent.token &&
+      !directControlService.isSimulated && this.provider === consent.provider;
+    if (valid) this.authorized = { token: consent.token, provider: consent.provider };
+    consent.resolve(valid);
+    for (const listener of this.listeners) listener();
+  }
+
+  private requestConsent(token: number, provider: VisionProvider): Promise<boolean> {
+    if (this.authorized?.token === token && this.authorized.provider === provider) return Promise.resolve(true);
+    if (this.consent?.token === token && this.consent.provider === provider) return this.consent.promise;
+    this.answerConsent(false);
+    let resolve!: (allowed: boolean) => void;
+    const promise = new Promise<boolean>(done => { resolve = done; });
+    const timer = setTimeout(() => this.answerConsent(false), Math.min(60_000, directControlService.sessionRemainingSeconds * 1000));
+    this.consent = { token, provider, resolve, promise, timer };
+    for (const listener of this.listeners) listener();
+    return promise;
+  }
 
   setProvider(provider: VisionProvider | null): void {
+    this.answerConsent(false);
+    this.authorized = null;
     this.provider = provider;
   }
 
@@ -63,21 +111,32 @@ class VisionService {
       return 'O modelo de visão não está configurado — define-o em Privacidade → Controlo.';
     }
 
+    const provider = this.provider;
+    const token = directControlService.sessionToken;
+    if (token === null || !(await this.requestConsent(token, provider))) {
+      return 'A captura do ecrã não foi autorizada nesta sessão.';
+    }
+    if (directControlService.sessionToken !== token || directControlService.isSimulated || this.provider !== provider) {
+      return 'A sessão mudou antes da captura — o pedido foi cancelado.';
+    }
     const adapter = getPlatformAdapter();
     const zones: readonly ScreenRect[] = useSensitiveZonesStore
       .getState()
       .zones.map(({ x, y, width, height }) => ({ x, y, width, height }));
 
     const image = await adapter.captureScreen(zones);
+    if (directControlService.sessionToken !== token || directControlService.isSimulated || this.provider !== provider) {
+      return 'A sessão mudou antes do envio — o print foi descartado.';
+    }
     if (image === null) {
       return 'Não consegui capturar o ecrã — esta plataforma não o permite.';
     }
 
     try {
-      return await this.provider.describe(image);
+      return await provider.describe(image);
     } catch (error) {
       const failure = error instanceof AiFailure ? error : new AiFailure('rede');
-      const causa = this.provider.isRemote
+      const causa = provider.isRemote
         ? 'O print foi enviado, mas o modelo remoto falhou.'
         : 'O modelo local falhou — confirma que o Ollama está a correr e que o modelo de visão está instalado (ollama pull).';
       return `Não consegui interpretar o ecrã: ${failure.message}. ${causa}`;

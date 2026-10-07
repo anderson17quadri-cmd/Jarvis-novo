@@ -84,6 +84,14 @@ const BLOCK_TEMPLATES: readonly BlockTemplate[] = [
   },
   // Condições (Se)
   {
+    kind: 'quando', label: 'Rede ligada (Windows)', icon: <Globe className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'rede', action: 'ligado' }),
+  },
+  {
+    kind: 'quando', label: 'Rede desligada (Windows)', icon: <Globe className="h-3.5 w-3.5" />,
+    create: (): AutomationTrigger => ({ kind: 'rede', action: 'desligado' }),
+  },
+  {
     kind: 'se',
     label: 'Dia da semana',
     icon: <Clock className="h-3.5 w-3.5" />,
@@ -150,6 +158,7 @@ function blockLabel(config: AutomationTrigger | AutomationCondition | Automation
     case 'manual': return 'Execução manual';
     case 'ficheiros': return `Muda em ${(config as { folderPath: string }).folderPath}`;
     case 'usb': return `USB ${(config as { action: string }).action}`;
+    case 'rede': return `Rede ${(config as { action: string }).action === 'ligado' ? 'ligada' : 'desligada'} (Windows)`;
     case 'bateria': return `Bateria ${(config as { direction: string }).direction} de ${(config as { percent: number }).percent}%`;
     case 'dia-da-semana': return config.days.map((d) => WEEKDAY_LABELS[d] ?? '?').join(', ');
     case 'faixa-horaria': return `${config.fromHour}h–${config.toHour}h`;
@@ -244,7 +253,7 @@ export function AutomationEditor({ onClose, onSaved, existing }: AutomationEdito
     setGenerating(true);
     setNlError(null);
     try {
-      const prompt = `Interpreta esta frase em português como uma automação JARVIS com blocos QUANDO/SE/ENTÃO. Responde só com JSON válido, sem mais texto:\n\n"${nlPrompt.trim()}"\n\nEstrutura:\n{\n  "nome": "nome curto",\n  "descricao": "uma frase",\n  "quando": { gatilho },\n  "se": [condições],\n  "entao": [ações]\n}\n\nGatilhos: hora (hour,minute), intervalo (everyMinutes), evento (event), manual, ficheiros (folderPath), usb (action: ligado/desligado), bateria (direction: abaixo/acima, percent: 0–100)\nCondições: dia-da-semana (days: 0=dom..6=sáb), faixa-horaria (fromHour,toHour), estado-sistema (state)\nAções: abrir-janela (appId), notificar (title,description), tema (theme), estado-sistema (state), widget (widget,show), falar (text)\nIDs reais: apps=[${ALL_APPS.map(a => a.id).join(',')}], temas=[${THEMES.map(t => t.id).join(',')}], widgets=[${ALL_WIDGETS.map(w => w.id).join(',')}], estados=[${Object.keys(SYSTEM_STATES).join(',')}]`;
+      const prompt = `Interpreta esta frase em português como uma automação JARVIS com blocos QUANDO/SE/ENTÃO. Responde só com JSON válido, sem mais texto:\n\n"${nlPrompt.trim()}"\n\nEstrutura:\n{\n  "nome": "nome curto",\n  "descricao": "uma frase",\n  "quando": { gatilho },\n  "se": [condições],\n  "entao": [ações]\n}\n\nGatilhos: hora (hour,minute), intervalo (everyMinutes), evento (event), manual, ficheiros (folderPath), usb (action: ligado/desligado), rede (action: ligado/desligado, Windows), bateria (direction: abaixo/acima, percent: 0–100)\nCondições: dia-da-semana (days: 0=dom..6=sáb), faixa-horaria (fromHour,toHour), estado-sistema (state)\nAções: abrir-janela (appId), notificar (title,description), tema (theme), estado-sistema (state), widget (widget,show), falar (text)\nIDs reais: apps=[${ALL_APPS.map(a => a.id).join(',')}], temas=[${THEMES.map(t => t.id).join(',')}], widgets=[${ALL_WIDGETS.map(w => w.id).join(',')}], estados=[${Object.keys(SYSTEM_STATES).join(',')}]`;
       const reply = await aiService.send(prompt);
       if (reply.length === 0) {
         setNlError('O assistente não respondeu nada — tente outra vez.');

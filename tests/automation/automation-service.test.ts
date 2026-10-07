@@ -59,6 +59,23 @@ afterEach(() => {
 });
 
 describe('execução', () => {
+  it('dispara todas as regras de rede na primeira transição recebida, sem repetir o mesmo estado', () => {
+    service.add(makeAutomation({ trigger: { kind: 'rede', action: 'desligado' } }));
+    service.add(makeAutomation({ trigger: { kind: 'rede', action: 'desligado' } }));
+    service.checkNativeTriggers('rede', { connected: false, previousConnected: true });
+    expect(executor.calls).toHaveLength(2);
+    service.checkNativeTriggers('rede', { connected: false, previousConnected: true });
+    expect(executor.calls).toHaveLength(2);
+  });
+
+  it('a fotografia inicial da rede não executa automações', () => {
+    service.add(makeAutomation({ trigger: { kind: 'rede', action: 'ligado' } }));
+    service.checkNativeTriggers('rede', { connected: true, previousConnected: null });
+    expect(executor.calls).toHaveLength(0);
+    service.checkNativeTriggers('rede', { connected: false, previousConnected: true });
+    service.checkNativeTriggers('rede', { connected: true, previousConnected: false });
+    expect(executor.calls).toHaveLength(1);
+  });
   it('corre as ações pela ordem em que estão escritas', () => {
     const automation = service.add(
       makeAutomation({

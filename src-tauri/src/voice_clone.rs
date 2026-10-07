@@ -177,7 +177,7 @@ pub fn setup(app: &AppHandle) {
     matar_servico_preso();
 
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let Some(pasta) = encontrar_pasta_do_servico(&base) else {
+    let Some(pasta) = encontrar_pasta_do_servico(&base).or_else(|| crate::local_services::find_installed(app, "voice-clone-service")) else {
         eprintln!(
             "[jarvis] voice-clone-service não está configurado nesta máquina (sem .venv) \
              — a voz local fica desligada até correres voice-clone-service/setup.ps1."
@@ -232,7 +232,7 @@ pub fn reiniciar_voz_clonada(app: AppHandle) -> Result<(), String> {
 
     // 3. Arranca de novo.
     let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    let Some(pasta) = encontrar_pasta_do_servico(&base) else {
+    let Some(pasta) = encontrar_pasta_do_servico(&base).or_else(|| crate::local_services::find_installed(&app, "voice-clone-service")) else {
         return Err("voice-clone-service não está configurado nesta máquina (sem .venv)".into());
     };
 

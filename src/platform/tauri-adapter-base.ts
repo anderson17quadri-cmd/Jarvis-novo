@@ -342,6 +342,22 @@ export abstract class TauriAdapterBase implements PlatformAdapter {
     }
   }
 
+  async onNetworkChanged(
+    handler: (event: { connected: boolean; previousConnected: boolean | null }) => void,
+  ): Promise<() => void> {
+    if (!this.capabilities.networkMonitor) return () => undefined;
+    try {
+      let received = false;
+      const unlisten = await listen<{ connected: boolean; previousConnected: boolean | null }>(
+        'automation://network-changed', event => { received = true; handler(event.payload); },
+      );
+      // O monitor pode ter emitido a primeira leitura antes de montar a UI.
+      const connected = await this.tryInvoke<boolean>('get_network_status', null);
+      if (!received && connected !== null) handler({ connected, previousConnected: null });
+      return unlisten;
+    } catch { return () => undefined; }
+  }
+
   // ── Janela nativa ────────────────────────────────────────────────────────
 
   async minimizeWindow(): Promise<void> {

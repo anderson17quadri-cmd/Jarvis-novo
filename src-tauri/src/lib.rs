@@ -5,6 +5,8 @@ mod system;
 #[cfg(desktop)]
 mod shortcuts;
 #[cfg(desktop)]
+mod local_services;
+#[cfg(desktop)]
 mod ollama;
 #[cfg(desktop)]
 mod terminal;
@@ -96,6 +98,7 @@ pub fn run() {
             commands::windows_hello::windows_hello_available,
             commands::windows_hello::windows_hello_verify,
             commands::battery::get_battery_status,
+            commands::network::get_network_status,
             commands::files::watch_folder,
             commands::files::unwatch_folder,
             commands::files::files_set_root,
@@ -135,6 +138,7 @@ pub fn run() {
             // Sem isto, cairiam no fim do setup e as threads paravam.
             let battery = commands::battery::BatteryMonitor::start(app.handle().clone());
             app.manage(battery);
+            app.manage(commands::network::NetworkMonitor::start(app.handle().clone()));
 
             // O monitor de USB só existe no Windows (ver commands/mod.rs) —
             // `SetupDiGetClassDevsW` não tem equivalente noutro desktop.

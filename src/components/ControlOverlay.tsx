@@ -20,6 +20,7 @@ const RISK_STYLE: Record<RiskLevel, string> = {
 };
 
 interface ControlOverlayProps {
+  readonly purpose?: 'controlo' | 'captura';
   readonly stepDescription: string;
   readonly stepRisk: RiskLevel;
   readonly onConfirm: () => void;
@@ -27,6 +28,7 @@ interface ControlOverlayProps {
 }
 
 export function ControlOverlay({
+  purpose = 'controlo',
   stepDescription,
   stepRisk,
   onConfirm,
@@ -80,7 +82,7 @@ export function ControlOverlay({
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#020304]/[.65] backdrop-blur-[2px]"
       role="alertdialog"
       aria-modal="true"
-      aria-label="Confirmação de controlo direto"
+      aria-label={purpose === 'captura' ? 'Permitir captura do ecrã' : 'Confirmação de controlo direto'}
     >
       <div className="mx-4 w-full max-w-[440px] rounded-card border border-line/40 bg-surface p-s3 shadow-[0_8px_40px_rgba(0,0,0,.45)]">
         {/* Cabeçalho */}
@@ -89,9 +91,10 @@ export function ControlOverlay({
             <Shield className="h-4.5 w-4.5 text-danger" />
           </span>
           <div>
-            <p className="text-[13px] font-semibold">Controlo direto</p>
+            <p className="text-[13px] font-semibold">{purpose === 'captura' ? 'Captura do ecrã' : 'Controlo direto'}</p>
             <p className="text-[11px] text-t3">
-              O JARVIS pede para executar esta ação no teu computador.
+              {purpose === 'captura' ? 'Autoriza a primeira captura desta sessão. Podes parar o Controlo Direto a qualquer momento.' :
+                'O JARVIS pede para executar esta ação no teu computador.'}
             </p>
           </div>
         </div>

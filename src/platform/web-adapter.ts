@@ -43,6 +43,7 @@ export class WebAdapter implements PlatformAdapter {
     fileWatcher: false,
     usbMonitor: false,
     batteryMonitor: false,
+    networkMonitor: false,
     realFilesystem: false,
     mail: false,
     music: false,
@@ -243,6 +244,8 @@ export class WebAdapter implements PlatformAdapter {
   async onBatteryChanged(): Promise<() => void> {
     return () => undefined;
   }
+
+  async onNetworkChanged(): Promise<() => void> { return () => undefined; }
 
   // ── Sistema de ficheiros real ────────────────────────────────────────────
 

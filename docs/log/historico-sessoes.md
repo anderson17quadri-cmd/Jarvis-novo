@@ -7115,3 +7115,59 @@ real para avaliar naturalidade e latência. A API TTS usada será retirada
 em 06/01/2027; a migração para Realtime fica explicitamente pendente em
 `docs/spec/voz-openai-ptbr.md`. Trabalho numa branch isolada, preservando as
 alterações locais do checkout original.
+
+
+## 07/10/2026 — Construção das pendências funcionais
+
+Continuação do pedido do utilizador para construir o que faltava. A voz
+OpenAI passou para Realtime (`gpt-realtime-2.1-mini`): chave efémera,
+WebSocket, PCM16 para WAV, sem microfone/ferramentas/histórico, fecho ao
+concluir ou cancelar. Cedar/Marin e as instruções pt-BR permanecem;
+naturalidade e acesso da conta continuam sem validação real por falta de chave.
+
+Agenda local por omissão com CRUD persistido e widget atualizado; pesquisa
+do assistente nos nomes da pasta real escolhida, com limites e aviso de
+resultado parcial; abertura da pasta do resultado numa janela já aberta.
+O teste Edge encontrou a montagem dupla do React a perder o caminho inicial;
+corrigido e coberto por um teste com StrictMode.
+
+Controlo Direto ganhou indicador persistente, tempo restante e Parar,
+expiração que cancela confirmações, e consentimento da primeira captura
+por sessão/provedor. A autorização é revogada com sessão, simulação ou
+mudança de provedor; uma imagem lida durante uma sessão terminada é
+descartada antes de envio. O Edge encontrou uma janela a cobrir o Parar
+num ecrã de 390; corrigida a ordem de apresentação e posição junto à zona
+inferior, acima das janelas.
+
+Gatilho de rede Windows com Network List Manager, leitura inicial sem
+execução, transições conservando o estado anterior e deduplicação por estado.
+Diagnósticos separados de síntese, Whisper e Vosk, com verificação local
+sem abrir o microfone ou gerar pedidos pagos.
+
+Marketplace configurável sobre índices públicos GitHub: limites de origem,
+tempo e tamanho, hash SHA-256, Ed25519 e revogação, confirmação da chave e
+permissões, instalação desativada, atualização manual e uma versão anterior
+para recuperação. Não foi publicado um catálogo nem criados pagamentos.
+Verificado no Edge com downloads simulados e assinaturas Ed25519 reais.
+
+Distribuição Windows preparada com os nove recursos de serviços locais,
+script de cópia/preparação em LocalAppData e arranque nativo que reconhece
+essa pasta. Setup Whisper permite CPU sem exigir GPU; setup Vosk descarrega
+num diretório próprio e verifica caminhos antes de mover/eliminar. A cópia
+foi testada num destino isolado, sem instalar dependências no perfil real.
+
+Verificação: TypeScript e ESLint dos ficheiros tocados sem erros; build
+Vite; 153 ficheiros/1891 testes Vitest; 72 testes Rust (incluindo leitura real
+da ligação de rede); seis testes Python. O primeiro pytest falhou na pasta
+TEMP partilhada por permissão; passou com uma pasta temporária própria no
+projeto. Scripts Edge passaram para voz Realtime, agenda com persistência,
+largura 390, recusa de captura, Parar, diagnóstico, Marketplace com
+instalação/atualização/recuperação e navegação real do assistente. Rede,
+disco, captura e geração de voz simulados no browser; não houve audição
+real, instalação em máquina limpa ou teste de desligar a rede.
+
+Instalador NSIS x64 gerado, com recursos de preparação local. Corrigida
+a codificação dos três scripts alterados para Windows PowerShell 5.1;
+os cinco scripts empacotados passaram no parser dessa versão. Não foi
+instalado nem executado nesta sessão. O trabalho continua isolado na branch
+`codex/voz-openai-ptbr` do PR #3, preservando as alterações do checkout original.

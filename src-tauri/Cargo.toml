@@ -97,6 +97,8 @@ windows = { version = "0.62", features = [
   "Win32_Devices_DeviceAndDriverInstallation",
   "Win32_UI_WindowsAndMessaging",
   "Win32_System_LibraryLoader",
+  "Win32_System_Com",
+  "Win32_Networking_NetworkListManager",
   "Security_Credentials_UI",
   "Foundation",
 ] }

@@ -605,6 +605,7 @@ export const CAPABILITY_LABELS: Record<keyof PlatformCapabilities, string> = {
   fileWatcher: 'observador de pastas',
   usbMonitor: 'monitor USB',
   batteryMonitor: 'monitor de bateria',
+  networkMonitor: 'monitor de rede (Windows)',
   realFilesystem: 'sistema de ficheiros real',
   mail: 'correio real',
   music: 'música local',

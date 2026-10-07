@@ -5,7 +5,7 @@ import { useCapabilities, usePlatformInfo } from '@/hooks/use-platform';
 import { CommandConsole } from './CommandConsole';
 import { cn } from '@/lib/cn';
 import { formatBytes, formatTime } from '@/lib/format';
-import { readDiagnostics, type Diagnostics } from '@/services/diagnostics';
+import { readDiagnostics, refreshVoiceDiagnostics, type Diagnostics } from '@/services/diagnostics';
 import { fpsMeter } from '@/services/fps-meter';
 import {
   filterLogs,
@@ -176,6 +176,12 @@ function StatePanel(): React.JSX.Element {
   const [diagnostics, setDiagnostics] = useState<Diagnostics>(() => readDiagnostics());
   const capabilities = useCapabilities();
   const info = usePlatformInfo();
+  const [checkingVoice, setCheckingVoice] = useState(false);
+  async function checkVoice(): Promise<void> {
+    setCheckingVoice(true);
+    try { await refreshVoiceDiagnostics(); setDiagnostics(readDiagnostics()); }
+    finally { setCheckingVoice(false); }
+  }
 
   useEffect(() => {
     // O medidor de FPS só corre enquanto este painel está aberto — a mesma
@@ -222,6 +228,10 @@ function StatePanel(): React.JSX.Element {
 
       <section>
         <p className="t-label mb-2">Serviços</p>
+        <button type="button" disabled={checkingVoice} onClick={() => void checkVoice()}
+          className="mb-2 rounded border border-line px-2 py-1 text-[11px] text-t2 disabled:opacity-50">
+          {checkingVoice ? 'A verificar…' : 'Verificar serviços de voz'}
+        </button>
         <ul className="space-y-1">
           {diagnostics.services.map((service) => (
             <li
@@ -234,11 +244,12 @@ function StatePanel(): React.JSX.Element {
                   service.state === 'ativo' && 'bg-ok',
                   service.state === 'parado' && 'bg-t3',
                   service.state === 'indisponível' && 'bg-warn',
+                  (service.state === 'por-verificar' || service.state === 'configurado') && 'bg-warn',
                 )}
                 aria-hidden="true"
               />
               <span className="flex-1 text-[12px]">{service.name}</span>
-              <span className="text-[10.5px] text-t3">{service.detail}</span>
+              <span className="min-w-0 flex-1 text-[10.5px] text-t3">{service.detail}</span>
             </li>
           ))}
         </ul>

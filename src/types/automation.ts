@@ -66,6 +66,12 @@ export interface BatteryTrigger {
   readonly percent: number;
 }
 
+/** Quando o Windows deteta ligação ou perda de rede. Não testa servidores externos. */
+export interface NetworkTrigger {
+  readonly kind: 'rede';
+  readonly action: 'ligado' | 'desligado';
+}
+
 export type AutomationTrigger =
   | TimeTrigger
   | IntervalTrigger
@@ -73,7 +79,8 @@ export type AutomationTrigger =
   | ManualTrigger
   | FileTrigger
   | UsbTrigger
-  | BatteryTrigger;
+  | BatteryTrigger
+  | NetworkTrigger;
 
 // ── Condições ──────────────────────────────────────────────────────────────
 
@@ -206,6 +213,8 @@ export function describeTrigger(trigger: AutomationTrigger): string {
       return `Quando um dispositivo é ${trigger.action}`;
     case 'bateria':
       return `Quando a bateria ${trigger.direction === 'abaixo' ? 'desce abaixo' : 'sobe acima'} de ${trigger.percent}%`;
+    case 'rede':
+      return trigger.action === 'ligado' ? 'Quando a rede fica ligada' : 'Quando a ligação à rede se perde';
   }
 }
 

@@ -1,4 +1,4 @@
-import type { AgendaEntry, CalendarSnapshot } from '@/types/calendar';
+import type { AgendaEntry, CalendarEvent, CalendarEventDraft, CalendarSnapshot } from '@/types/calendar';
 
 /**
  * Contrato de um provedor de calendário.
@@ -12,6 +12,9 @@ export interface CalendarProvider {
   readonly name: string;
   isConfigured(): boolean;
   fetch(date?: Date, signal?: AbortSignal): Promise<CalendarSnapshot | null>;
+  create?(event: CalendarEventDraft): Promise<CalendarEvent>;
+  update?(id: string, event: CalendarEventDraft): Promise<void>;
+  remove?(id: string): Promise<void>;
 }
 
 /** Compromissos de demonstração, os mesmos que estavam em `@/data/agenda`. */

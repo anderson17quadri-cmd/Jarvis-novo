@@ -72,7 +72,7 @@ pub fn iniciar_wake_word(app: AppHandle, palavra: String) -> Result<(), String> 
 
     if precisa_arrancar && !servico_a_correr() {
         let base = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        let Some(pasta) = encontrar_pasta(&base) else {
+        let Some(pasta) = encontrar_pasta(&base).or_else(|| crate::local_services::find_installed(&app, "wake-word-service")) else {
             return Err("wake-word-service não está configurado — corre wake-word-service/setup.ps1".into());
         };
         let filho = arrancar(&pasta).map_err(|erro| format!("não consegui arrancar a wake word: {erro}"))?;
