@@ -7084,3 +7084,34 @@ está certa; o `docs/PORTS_AND_FLOWS.md` é informação nova e útil.
 Nada foi integrado. A revisão inteira, achado a achado com a prova de cada
 um, ficou em `docs/log/revisao-ramo-qwen.md`, com o que dá para aproveitar
 e o que tem de ser reescrito.
+
+## 2026-10-07 — Preparar voz OpenAI em pt-BR, sem depender da clonagem
+
+O utilizador recusou as amostras Piper Cadu e Kokoro Alex por soarem
+robotizadas e pediu para continuar o projeto enquanto estava longe do PC.
+Preparada a síntese OpenAI com Cedar e Marin, instruções de conversa em
+pt-BR, escolha e teste em Personalização. O teste não muda a preferência.
+A pontuação é preservada para entonação; a limpeza feita para o XTTS fica
+limitada aos motores anteriores. A chave usa o cofre nativo ou apenas a
+memória da sessão no browser, nunca o armazenamento de preferências.
+Cancelamento, respostas tardias e erros são tratados sem repetição de
+pedidos pagos nem passagem automática para as vozes recusadas.
+
+O gravador de clonagem saiu da interface. O serviço Python passa a arrancar
+com Whisper local sem carregar XTTS; o primeiro pedido pode carregar o
+reconhecimento ainda frio. Os controlos de saúde TypeScript e Rust aceitam
+essa disponibilidade sem exigir uma síntese. A gravação antiga é preservada
+e o backend antigo fica opcional com `JARVIS_LEGACY_TTS=1` e dependências
+separadas. As preferências clonadas migram para Cedar, mantendo microfone e
+wake word; as escolhas explícitas de voz do sistema mantêm-se.
+
+Verificação: `tsc`, ESLint dos ficheiros tocados, build Vite, 1867 testes
+Vitest (165 de voz), seis testes Python e seis testes Rust de `voice_clone`.
+A primeira suite geral teve uma falha intermitente no botão de regenerar;
+passou isolada e na execução final completa. O fluxo de escolha, teste,
+chave em memória e recarregamento foi confirmado num Edge real com API
+simulada. Não houve chamada paga nem audição da voz OpenAI: falta uma chave
+real para avaliar naturalidade e latência. A API TTS usada será retirada
+em 06/01/2027; a migração para Realtime fica explicitamente pendente em
+`docs/spec/voz-openai-ptbr.md`. Trabalho numa branch isolada, preservando as
+alterações locais do checkout original.

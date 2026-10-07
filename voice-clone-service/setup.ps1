@@ -1,4 +1,4 @@
-﻿# Prepara o serviço de voz clonada sozinho — Python, ambiente virtual,
+﻿# Prepara o reconhecimento local — Python, ambiente virtual,
 # PyTorch com CUDA, dependências, e confirma no fim se a GPU foi encontrada.
 #
 # A única coisa que este script não escolhe sozinho com certeza é a versão
@@ -51,7 +51,7 @@ Escreve "   Se isto falhar mais abaixo na confirmação da GPU, corre de novo co
 # não bate certo com o torch já instalado. O XTTS-v2 precisa dos dois.
 pip install --quiet torch torchaudio --index-url "https://download.pytorch.org/whl/$Cuda"
 
-Escreve "4. O resto das dependências (FastAPI, coqui-tts)..."
+Escreve "4. O resto das dependências (FastAPI, Whisper local)..."
 pip install --quiet -r requirements.txt
 
 Escreve "5. A confirmar se a GPU foi encontrada..."
@@ -72,8 +72,8 @@ if ($linhas[0] -eq "True") {
     Escreve "   GPU encontrada: $($linhas[1])"
     Escreve ""
     Escreve "Tudo pronto. Falta:"
-    Escreve "  1. Gravar a tua voz e guardar como voices\referencia.wav"
-    Escreve "  2. Arrancar com: .\run.ps1"
+    Escreve "  1. Arrancar o reconhecimento local com: .\run.ps1"
+    Escreve "  2. Configurar a voz OpenAI na app em Personalização → Voz"
 } else {
     EscreveErro "   A GPU NÃO foi encontrada (torch.cuda.is_available() = False)."
     EscreveErro ""

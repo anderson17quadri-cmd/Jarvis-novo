@@ -1,18 +1,13 @@
 import { create } from 'zustand';
+import { getPlatformAdapter } from '@/platform';
 
 import { voiceService, type VoiceSelection } from '@/services/voice-service';
 import { storageService, STORAGE_KEYS } from '@/services/storage-service';
 
-/**
- * Qual voz de síntese usar (Parte 7.1 §Voz / §Voz clonada local).
- *
- * Guarda a `VoiceSelection` inteira, não só um URI — desde que há também a
- * opção de voz clonada (local, `voice-clone-service/`), "qual voz" já não é
- * só um identificador do sistema operativo, é também "sistema ou serviço
- * local, e dentro deste, qual nome".
- */
 interface VoiceSettingsState {
   selection: VoiceSelection;
+  openAiKey: string;
+  saveOpenAiKey: (key: string) => Promise<boolean>;
   /**
    * Microfone sempre ativo (14/08/2026): o modo conversa fica ligado e
    * reengata-se sozinho, mesmo a atravessar reinícios — é a forma de o
@@ -31,16 +26,7 @@ interface VoiceSettingsState {
   hydrate: () => Promise<void>;
 }
 
-/**
- * Voz por omissão, para quem nunca escolheu nenhuma (primeiro arranque, ou
- * `hydrate` sem nada guardado): "Alison Dietlinde", uma das vozes prontas do
- * XTTS-v2, em vez de `{ kind: 'auto' }` (a voz robótica do sistema). Só
- * entra em jogo se o serviço local (`voice-clone-service/`) estiver a
- * correr — sem ele, `speakClonada` falha em silêncio e nada soa; quem nunca
- * o instalou não fica sem voz nenhuma, só sem áudio até o instalar ou
- * escolher outra em Definições.
- */
-const DEFAULT_SELECTION: VoiceSelection = { kind: 'clonada', nome: 'Alison Dietlinde' };
+const DEFAULT_SELECTION: VoiceSelection = { kind: 'openai', voice: 'cedar' };
 
 /**
  * "Jarvis" seria a escolha óbvia, mas o motor local (Vosk, modelo
@@ -55,6 +41,20 @@ const DEFAULT_WAKE_WORD = 'Sentinela';
 
 export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
   selection: DEFAULT_SELECTION,
+  openAiKey: '',
+  saveOpenAiKey: async (key) => {
+    const value = key.trim();
+    const adapter = getPlatformAdapter();
+    if (adapter.capabilities.secretVault) {
+      const saved = value
+        ? await adapter.secretSet('openai-voice-api-key', value)
+        : await adapter.secretDelete('openai-voice-api-key');
+      if (!saved) return false;
+    }
+    set({ openAiKey: value });
+    voiceService.configureOpenAi(value);
+    return true;
+  },
   micAlwaysOn: false,
   wakeWordEnabled: false,
   wakeWord: DEFAULT_WAKE_WORD,
@@ -101,18 +101,26 @@ export const useVoiceSettingsStore = create<VoiceSettingsState>((set, get) => ({
       }) | null
     >(STORAGE_KEYS.voiceSettings, null);
 
-    const selection = saved?.selection?.kind
+    const previous = saved?.selection?.kind
       ? saved.selection
       : saved?.kind
         ? saved
         : DEFAULT_SELECTION;
+    const selection = previous.kind === 'clonada' ||
+      (previous.kind === 'openai' && previous.voice !== 'cedar' && previous.voice !== 'marin')
+      ? DEFAULT_SELECTION : previous;
     const micAlwaysOn = saved?.micAlwaysOn === true;
     const wakeWordEnabled = saved?.wakeWordEnabled === true;
     const wakeWord = typeof saved?.wakeWord === 'string' && saved.wakeWord.trim()
       ? saved.wakeWord.trim()
       : DEFAULT_WAKE_WORD;
 
-    set({ selection, micAlwaysOn, wakeWordEnabled, wakeWord });
+    const adapter = getPlatformAdapter();
+    const openAiKey = adapter.capabilities.secretVault
+      ? (await adapter.secretGet('openai-voice-api-key')) ?? '' : '';
+    set({ selection, openAiKey, micAlwaysOn, wakeWordEnabled, wakeWord });
+    voiceService.configureOpenAi(openAiKey);
     voiceService.setSelection(selection);
+    if (previous.kind === 'clonada') await get().persist();
   },
 }));

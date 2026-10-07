@@ -86,6 +86,11 @@ export function useVoice(): {
    * perceber; repetir a cada frase seria pior do que o silêncio.
    */
   useEffect(() => {
+    voiceService.onOpenAiVoiceError = (message) => {
+      if (sessionStorage.getItem('jarvis.openai-voice-error') === message) return;
+      sessionStorage.setItem('jarvis.openai-voice-error', message);
+      notificationService.warn('Voz OpenAI indisponível', message, { category: 'assistente' });
+    };
     voiceService.onCloneServiceUnavailable = () => {
       if (sessionStorage.getItem(CLONE_WARN_KEY) !== null) return;
       sessionStorage.setItem(CLONE_WARN_KEY, '1');
@@ -108,6 +113,7 @@ export function useVoice(): {
     };
 
     return () => {
+      voiceService.onOpenAiVoiceError = null;
       voiceService.onCloneServiceUnavailable = null;
       voiceService.onCloneServiceNeedsRestart = null;
     };

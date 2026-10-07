@@ -1,58 +1,50 @@
-# Voz clonada local
+# Reconhecimento local
 
-Serviço à parte do JARVIS — a mesma relação que o Ollama já tem com a app:
-corre no teu PC, o JARVIS fala com ele por HTTP no `localhost`, nada sai da
-máquina. Ver o desenho completo em
-[`docs/spec/voz-clonada-local.md`](../docs/spec/voz-clonada-local.md).
+Desde 07/10/2026, este serviço fornece Whisper local por omissão. A app
+sintetiza a voz pela OpenAI, com Cedar ou Marin em pt-BR. Ver a configuração,
+privacidade e limites em
+[`voz-openai-ptbr.md`](../docs/spec/voz-openai-ptbr.md).
 
-**Confirmado a funcionar numa RTX 5070 (09/08/2026).** Os passos abaixo
-incluem as três correções que só apareceram a sério no Windows.
+O nome da pasta e a porta 8090 mantêm-se para compatibilidade com o arranque
+do Tauri. O serviço não precisa de gravação de referência e não carrega XTTS.
+`GET /health` indica se o reconhecimento está instalado ou carregado; o
+primeiro `POST /ouvir` carrega o Whisper. A indicação de instalação ainda não
+prova que a GPU ou a transcrição funcionam nesta máquina.
 
-**Também faz reconhecimento de voz (`POST /ouvir`), não só síntese.** O
-WebView2 (o motor do Tauri no Windows) não tem nenhum serviço a sério por
-trás da Web Speech API do browser — o microfone liga, mas nunca sai
-transcrição nenhuma, nem erro, fica preso para sempre. Confirmado a sério
-nesta app (09/08/2026), não é suposição. O arranjo usa o Whisper, com o
-mesmo PyTorch+CUDA já instalado acima — nenhuma dependência nova de GPU.
-`voice-service.ts` já fala com este endpoint sozinho sempre que este
-serviço estiver a correr; não precisa de nada manual.
-
-**Duas formas de escolher a voz, sem clonar ninguém sem autorização:**
-- **Uma voz pronta do próprio modelo** (`GET /vozes`) — todas as que o
-  XTTS-v2 trouxer (mais de 40), gravadas por atores que autorizaram o uso.
-  Não precisa de gravação nenhuma.
-- **A tua voz, ou a de alguém que autorizou explicitamente** — grava-se em
-  `voices/referencia.wav` (`POST /voz`), e o serviço clona-a.
-
-`POST /falar` usa a voz pronta se mandares `"voz": "Ana Florence"` no
-pedido (qualquer nome que `GET /vozes` liste); sem isso, usa a gravação
-clonada.
-
-## Caminho rápido — um script faz quase tudo
+## Arranque no Windows
 
 ```powershell
 cd voice-clone-service
 .\setup.ps1
-```
-
-Confirma o Python, cria o ambiente virtual, instala o PyTorch com CUDA e o
-resto das dependências, e no fim diz-te se a GPU foi encontrada. Se a
-versão de CUDA por omissão não bater certo com o que a tua placa precisa,
-o próprio script diz o que fazer — normalmente é correr outra vez com
-`.\setup.ps1 -Cuda cuXXX`, com a versão que o pytorch.org indicar.
-
-Depois de gravares a tua voz em `voices\referencia.wav` (passo 5 abaixo,
-esse continua manual — é a tua voz, não há como automatizar isso):
-
-```powershell
 .\run.ps1
 ```
 
-Arranca o serviço e avisa se ainda não houver gravação nenhuma.
+O script prepara o ambiente virtual, PyTorch e Whisper. O FFmpeg tem de
+estar no PATH para descodificar as gravações. A versão CUDA pode ser ajustada
+com `setup.ps1 -Cuda cuXXX`, conforme a placa. Não é preciso gravar uma voz.
 
-**Os passos abaixo são o que estes dois scripts fazem por dentro** — útil
-se algo falhar e precisares de perceber onde, ou se preferires correr à
-mão.
+Em ambientes já preparados, reinstalar `requirements.txt` atualiza as
+dependências do reconhecimento; pacotes antigos podem continuar instalados,
+mas não são carregados pelo arranque normal.
+
+## Compatibilidade com XTTS antigo
+
+A gravação em `voices/referencia.wav` é preservada. Para ativar os endpoints
+antigos deliberadamente:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-legacy-tts.txt
+$env:JARVIS_LEGACY_TTS = "1"
+.\run.ps1
+```
+
+Sem esta variável, `POST /voz` e `POST /falar` devolvem 410 e `GET /vozes`
+devolve uma lista vazia. Esta opção não repõe o gravador na interface nova.
+
+Os passos abaixo conservam a referência técnica do XTTS usada em agosto de
+2026. Aplicam-se apenas ao modo antigo, com `requirements-legacy-tts.txt` e
+`JARVIS_LEGACY_TTS=1`; o desenho original está em
+[`voz-clonada-local.md`](../docs/spec/voz-clonada-local.md).
 
 ## 1. Python
 
@@ -99,7 +91,7 @@ que não bate certo com a que o PyTorch instalado espera.
 ## 4. O resto das dependências
 
 ```powershell
-pip install -r requirements.txt
+pip install -r requirements-legacy-tts.txt
 ```
 
 A primeira vez que o serviço arrancar, o modelo XTTS-v2 é descarregado

@@ -14,6 +14,8 @@
  * sem forma de se distinguir de "não tem permissão" ou "não há serviço".
  */
 
+import { synthesizeOpenAi, type OpenAiVoice } from './openai-voice';
+
 /** O reconhecimento de voz não está nos tipos padrão do DOM. */
 interface SpeechRecognitionResultLike {
   readonly transcript: string;
@@ -109,13 +111,15 @@ export interface RecordSampleHandle {
  *
  * - `'auto'` — a escolha automática de sempre (uma voz do sistema).
  * - `'sistema'` — uma voz específica das que o sistema operativo já tem.
- * - `'clonada'` — o serviço local de voz clonada. `nome: null` é a voz do
+ * - `'openai'` — síntese na nuvem em pt-BR; sem enviar o microfone.
+ * - `'clonada'` — compatibilidade com o serviço local de voz clonada. `nome: null` é a voz do
  *   próprio utilizador (a amostra gravada); um nome é uma das vozes prontas
  *   do modelo (ver `CloneVoiceInfo`), sem clonagem nenhuma.
  */
 export type VoiceSelection =
   | { readonly kind: 'auto' }
   | { readonly kind: 'sistema'; readonly voiceURI: string }
+  | { readonly kind: 'openai'; readonly voice: OpenAiVoice }
   | { readonly kind: 'clonada'; readonly nome: string | null };
 
 const VOICE_SELECTION_AUTO: VoiceSelection = { kind: 'auto' };
@@ -278,6 +282,74 @@ export interface VoiceCallbacks {
 const SPEAK_GUARD_MS = 900;
 
 export class VoiceService {
+  private openAiKey = '';
+  private openAiController: AbortController | null = null;
+  private openAiAudio: { audio: HTMLAudioElement; url: string } | null = null;
+  lastOpenAiVoiceError: string | null = null;
+  onOpenAiVoiceError: ((message: string) => void) | null = null;
+
+  configureOpenAi(apiKey: string): void {
+    this.stopSpeaking();
+    this.openAiKey = apiKey.trim();
+  }
+
+  private async speakOpenAi(
+    text: string,
+    voice: OpenAiVoice,
+    generation: number,
+    callbacks: { onStart?: () => void; onEnd: () => void },
+  ): Promise<void> {
+    const controller = new AbortController();
+    this.openAiController = controller;
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    let ownedAudio: { audio: HTMLAudioElement; url: string } | null = null;
+    try {
+      const blob = await synthesizeOpenAi(text, voice, this.openAiKey, controller.signal);
+      if (controller.signal.aborted || generation !== this.speakGeneration) return;
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      ownedAudio = { audio, url };
+      this.openAiAudio = ownedAudio;
+      const finish = (): void => {
+        URL.revokeObjectURL(url);
+        if (this.openAiAudio?.audio === audio) this.openAiAudio = null;
+        if (generation !== this.speakGeneration) return;
+        this.onSpeechEnd();
+        callbacks.onEnd();
+      };
+      audio.onplay = (): void => {
+        if (generation === this.speakGeneration) callbacks.onStart?.();
+      };
+      audio.onended = finish;
+      audio.onerror = (): void => {
+        if (generation === this.speakGeneration) {
+          this.lastOpenAiVoiceError = 'Não foi possível reproduzir a voz. Tenta de novo com o botão de teste.';
+          this.onOpenAiVoiceError?.(this.lastOpenAiVoiceError);
+        }
+        finish();
+      };
+      await audio.play();
+    } catch (error) {
+      if (ownedAudio) {
+        ownedAudio.audio.pause();
+        URL.revokeObjectURL(ownedAudio.url);
+        if (this.openAiAudio === ownedAudio) this.openAiAudio = null;
+      }
+      if (generation !== this.speakGeneration) return;
+      this.lastOpenAiVoiceError = controller.signal.aborted
+        ? 'A geração da voz demorou demasiado. Confirma a ligação e tenta de novo.'
+        : error instanceof Error && error.message !== 'Failed to fetch'
+          ? error.message
+          : 'Não foi possível contactar a OpenAI. Confirma a ligação à Internet.';
+      this.onOpenAiVoiceError?.(this.lastOpenAiVoiceError);
+      this.onSpeechEnd();
+      callbacks.onEnd();
+    } finally {
+      clearTimeout(timeout);
+      if (this.openAiController === controller) this.openAiController = null;
+    }
+  }
+
   private recognition: SpeechRecognitionLike | null = null;
   private listening = false;
 
@@ -443,7 +515,7 @@ export class VoiceService {
 
   /**
    * Pergunta rápida (700ms) se `voice-clone-service/` está a correr e já
-   * tem o modelo de reconhecimento carregado. Timeout curto de propósito —
+   * tem o reconhecimento instalado ou carregado. Timeout curto de propósito —
    * se não responder depressa, é porque não está lá, e o botão do
    * microfone não deve ficar à espera disso.
    *
@@ -456,8 +528,11 @@ export class VoiceService {
     try {
       const resposta = await fetch(`${CLONE_SERVICE_URL}/health`, { signal: AbortSignal.timeout(700) });
       if (!resposta.ok) return false;
-      const saude = (await resposta.json()) as { reconhecimento_carregado?: boolean };
-      return Boolean(saude.reconhecimento_carregado);
+      const saude = (await resposta.json()) as {
+        ok?: boolean; reconhecimento_carregado?: boolean; reconhecimento_disponivel?: boolean;
+      };
+      return Boolean(saude.reconhecimento_carregado ||
+        (saude.ok === true && saude.reconhecimento_disponivel === true));
     } catch {
       return false;
     }
@@ -709,6 +784,7 @@ export class VoiceService {
   private prefetchGeracao = 0;
 
   setSelection(selection: VoiceSelection): void {
+    this.stopSpeaking();
     this.selection = selection;
     // Voz nova → pré-sínteses feitas para a voz antiga já não servem.
     this.prefetchGeracao += 1;
@@ -1068,7 +1144,7 @@ export class VoiceService {
   }
 
   /**
-   * Lê um texto em voz alta, em português europeu.
+   * Lê um texto em voz alta com a voz escolhida.
    *
    * `selectionOverride` serve só o botão de "testar" nas configurações —
    * ouvir uma voz sem a tornar a preferida. Sem argumento, usa a preferida
@@ -1093,7 +1169,12 @@ export class VoiceService {
     selectionOverride?: VoiceSelection,
   ): boolean {
     const selection = selectionOverride ?? this.selection;
-    const limpo = limparParaSintese(text);
+    // A OpenAI usa a pontuação para a entonação. A limpeza antiga resolve
+    // um problema do XTTS e só se aplica aos motores anteriores.
+    const limpo = selection.kind === 'openai' ? text.trim() : limparParaSintese(text);
+
+    if (selection.kind === 'openai' || this.openAiController || this.openAiAudio) this.stopSpeaking();
+    this.lastOpenAiVoiceError = null;
 
     this.onSpeechStart();
     const toque = ++this.speakGeneration;
@@ -1120,6 +1201,11 @@ export class VoiceService {
     // quando existe de facto.
     const embrulhado: { onStart?: () => void; onEnd: () => void } = { onEnd: terminar };
     if (callbacks?.onStart) embrulhado.onStart = callbacks.onStart;
+
+    if (selection.kind === 'openai') {
+      void this.speakOpenAi(limpo, selection.voice, toque, embrulhado);
+      return true;
+    }
 
     if (selection.kind === 'clonada') {
       void this.speakClonada(limpo, selection.nome, toque, embrulhado);
@@ -1152,7 +1238,7 @@ export class VoiceService {
 
     try {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'pt-PT';
+      utterance.lang = 'pt-BR';
       utterance.rate = 1.02;
       utterance.pitch = 0.95;
 
@@ -1162,9 +1248,9 @@ export class VoiceService {
         : undefined;
       const preferred =
         chosen ??
-        portugueseVoices.find((voice) => /male|masc|duarte|ricardo|joaquim/i.test(voice.name)) ??
+        portugueseVoices.find((voice) => /^pt[-_]BR$/i.test(voice.lang)) ??
         portugueseVoices[0];
-      if (preferred) utterance.voice = preferred;
+      if (preferred) { utterance.voice = preferred; utterance.lang = preferred.lang; }
 
       utterance.onstart = (): void => {
         this.onSpeechStart();
@@ -1201,6 +1287,13 @@ export class VoiceService {
     // voo (a meio do `fetch`) se descarte em vez de tocar — o utilizador
     // pediu para parar, e o áudio que chegar depois já não lhe pertence.
     this.speakGeneration += 1;
+    this.openAiController?.abort();
+    this.openAiController = null;
+    if (this.openAiAudio) {
+      this.openAiAudio.audio.pause();
+      URL.revokeObjectURL(this.openAiAudio.url);
+      this.openAiAudio = null;
+    }
 
     // O mesmo para a pré-síntese: as frases que ainda estavam a ser
     // sintetizadas para a fala que acabou de ser cortada já não fazem falta.
